@@ -1,4 +1,4 @@
-# Headless Component SDK
+# KF AI SDK
 
 A comprehensive solution for building complex filter queries, dynamic forms, and API interactions. Includes headless React hooks and a chainable API client for modern web applications.
 
