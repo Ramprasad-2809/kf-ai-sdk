@@ -13,13 +13,11 @@ The Components SDK includes:
 ## Architecture Integration
 
 ```tsx
-// Components use App layer types for type safety
-import { AdminUser } from "@kf-ai-sdk/app";
-
-// Components use API layer for data operations  
-import { api } from "@kf-ai-sdk/api";
+// Components use App layer for both types AND data operations
+import { User, Roles, AdminUser } from "@kf-ai-sdk/app";
 
 // Components provide React hooks with React Query integration
+const user = new User(Roles.Admin);
 const table = useTable<AdminUser>({
   source: "users",
   // Automatically typed as AdminUser[]
@@ -39,18 +37,18 @@ import { AdminUser } from "@kf-ai-sdk/app";
 function CreateUserForm() {
   const form = useForm<AdminUser>({
     source: "user-validation", // Fetches validation schema
-    operation: "create",       // Uses api('users').create()
+    operation: "create", // Uses api('users').create()
     defaultValues: {
       name: "",
       email: "",
-      salary: 0
+      salary: 0,
     },
     onSuccess: (data) => {
       console.log("User created:", data);
     },
     onError: (error) => {
       console.error("Form error:", error);
-    }
+    },
   });
 
   if (form.isLoadingInitialData) {
@@ -59,27 +57,20 @@ function CreateUserForm() {
 
   return (
     <form onSubmit={form.handleSubmit()}>
-      <input 
-        {...form.register("name")} 
-        placeholder="Name" 
-      />
+      <input {...form.register("name")} placeholder="Name" />
       {form.formState.errors.name && (
         <span>{form.formState.errors.name.message}</span>
       )}
 
-      <input 
-        {...form.register("email")} 
-        placeholder="Email"
-        type="email" 
-      />
+      <input {...form.register("email")} placeholder="Email" type="email" />
       {form.formState.errors.email && (
         <span>{form.formState.errors.email.message}</span>
       )}
 
-      <input 
-        {...form.register("salary", { valueAsNumber: true })} 
+      <input
+        {...form.register("salary", { valueAsNumber: true })}
         placeholder="Salary"
-        type="number" 
+        type="number"
       />
       {form.formState.errors.salary && (
         <span>{form.formState.errors.salary.message}</span>
@@ -89,9 +80,7 @@ function CreateUserForm() {
         {form.isSubmitting ? "Creating..." : "Create User"}
       </button>
 
-      {form.submitError && (
-        <div>Error: {form.submitError.message}</div>
-      )}
+      {form.submitError && <div>Error: {form.submitError.message}</div>}
     </form>
   );
 }
@@ -110,14 +99,14 @@ function CreateUserForm() {
 
 ```tsx
 interface UseFormOptions<T> {
-  source: string;                    // Schema identifier
-  operation: "create" | "update";   // API operation type
-  defaultValues?: Partial<T>;       // Initial form values
+  source: string; // Schema identifier
+  operation: "create" | "update"; // API operation type
+  defaultValues?: Partial<T>; // Initial form values
   mode?: "onBlur" | "onChange" | "onSubmit"; // Validation trigger
-  onSuccess?: (data: T) => void;     // Success callback
+  onSuccess?: (data: T) => void; // Success callback
   onError?: (error: Error) => void; // Error callback
-  itemId?: string;                   // For update operations
-  loadEntity?: boolean;              // Auto-load existing data for updates
+  itemId?: string; // For update operations
+  loadEntity?: boolean; // Auto-load existing data for updates
 }
 ```
 
@@ -133,7 +122,7 @@ function EditUserForm({ userId }: { userId: string }) {
     onSuccess: (updatedUser) => {
       console.log("User updated:", updatedUser);
       // Redirect or show success message
-    }
+    },
   });
 
   if (form.isLoadingInitialData || form.isLoadingEntity) {
@@ -168,13 +157,13 @@ function UsersTable() {
     initialState: {
       pagination: {
         pageIndex: 0,
-        pageSize: 20
+        pageSize: 20,
       },
       sorting: {
         key: "name",
-        direction: "asc"
-      }
-    }
+        direction: "asc",
+      },
+    },
   });
 
   if (table.isLoading) {
@@ -204,19 +193,19 @@ function UsersTable() {
         <thead>
           <tr>
             <th onClick={() => table.sorting.toggle("name")}>
-              Name {table.sorting.key === "name" && (
-                table.sorting.direction === "asc" ? "↑" : "↓"
-              )}
+              Name{" "}
+              {table.sorting.key === "name" &&
+                (table.sorting.direction === "asc" ? "↑" : "↓")}
             </th>
             <th onClick={() => table.sorting.toggle("email")}>
-              Email {table.sorting.key === "email" && (
-                table.sorting.direction === "asc" ? "↑" : "↓"
-              )}
+              Email{" "}
+              {table.sorting.key === "email" &&
+                (table.sorting.direction === "asc" ? "↑" : "↓")}
             </th>
             <th onClick={() => table.sorting.toggle("salary")}>
-              Salary {table.sorting.key === "salary" && (
-                table.sorting.direction === "asc" ? "↑" : "↓"
-              )}
+              Salary{" "}
+              {table.sorting.key === "salary" &&
+                (table.sorting.direction === "asc" ? "↑" : "↓")}
             </th>
             <th>Actions</th>
           </tr>
@@ -249,21 +238,24 @@ function UsersTable() {
           >
             Previous
           </button>
-          
+
           <span>
-            Page {table.pagination.currentPage + 1} of {table.pagination.totalPages}
+            Page {table.pagination.currentPage + 1} of{" "}
+            {table.pagination.totalPages}
           </span>
-          
+
           <button
             onClick={() => table.pagination.goToNext()}
             disabled={!table.pagination.canGoToNext}
           >
             Next
           </button>
-          
+
           <select
             value={table.pagination.pageSize}
-            onChange={(e) => table.pagination.setPageSize(Number(e.target.value))}
+            onChange={(e) =>
+              table.pagination.setPageSize(Number(e.target.value))
+            }
           >
             <option value={10}>10 per page</option>
             <option value={20}>20 per page</option>
@@ -290,10 +282,10 @@ function UsersTable() {
 
 ```tsx
 interface UseTableOptions<T> {
-  source: string;                    // Data source identifier
-  enableSorting?: boolean;           // Enable column sorting
-  enablePagination?: boolean;        // Enable pagination
-  enableSearch?: boolean;            // Enable global search
+  source: string; // Data source identifier
+  enableSorting?: boolean; // Enable column sorting
+  enablePagination?: boolean; // Enable pagination
+  enableSearch?: boolean; // Enable global search
   initialState?: {
     pagination?: {
       pageIndex: number;
@@ -304,9 +296,9 @@ interface UseTableOptions<T> {
       direction: "asc" | "desc";
     };
   };
-  onRowClick?: (row: T) => void;     // Row click handler
-  onEdit?: (id: string) => void;     // Edit action handler
-  onDelete?: (id: string) => void;   // Delete action handler
+  onRowClick?: (row: T) => void; // Row click handler
+  onEdit?: (id: string) => void; // Edit action handler
+  onDelete?: (id: string) => void; // Delete action handler
 }
 ```
 
@@ -325,6 +317,8 @@ function RoleBasedUsersTable({ userRole }: { userRole: string }) {
 }
 
 function AdminUsersTable() {
+  const userClient = new User(Roles.Admin);
+
   const table = useTable<AdminUser>({
     source: "users",
     enableSorting: true,
@@ -347,7 +341,14 @@ function AdminUsersTable() {
             <td>{user.email}</td>
             <td>${user.salary}</td> {/* TypeScript knows this exists */}
             <td>
-              <button onClick={() => table.actions.delete(user.id)}>
+              <button
+                onClick={async () => {
+                  if (confirm("Are you sure?")) {
+                    await userClient.delete(user.id);
+                    table.refetch();
+                  }
+                }}
+              >
                 Delete
               </button>
             </td>
@@ -394,11 +395,14 @@ function EmployeeUsersTable() {
 ```tsx
 import { useState } from "react";
 import { useTable, useForm } from "@kf-ai-sdk/components";
-import { AdminUser } from "@kf-ai-sdk/app";
+import { User, Roles, AdminUser } from "@kf-ai-sdk/app";
 
 function UserManagement() {
   const [mode, setMode] = useState<"list" | "create" | "edit">("list");
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Create App SDK client for role-aware operations
+  const user = new User(Roles.Admin);
 
   const table = useTable<AdminUser>({
     source: "users",
@@ -410,10 +414,10 @@ function UserManagement() {
     },
     onDelete: async (id) => {
       if (confirm("Are you sure?")) {
-        await api("users").delete(id);
+        await user.delete(id); // ✅ Use App SDK, not API directly
         table.refetch();
       }
-    }
+    },
   });
 
   const createForm = useForm<AdminUser>({
@@ -422,11 +426,11 @@ function UserManagement() {
     onSuccess: () => {
       setMode("list");
       table.refetch();
-    }
+    },
   });
 
   const editForm = useForm<AdminUser>({
-    source: "user-validation", 
+    source: "user-validation",
     operation: "update",
     itemId: editingId,
     loadEntity: true,
@@ -434,7 +438,7 @@ function UserManagement() {
       setMode("list");
       setEditingId(null);
       table.refetch();
-    }
+    },
   });
 
   if (mode === "create") {
@@ -444,9 +448,15 @@ function UserManagement() {
         <form onSubmit={createForm.handleSubmit()}>
           <input {...createForm.register("name")} placeholder="Name" />
           <input {...createForm.register("email")} placeholder="Email" />
-          <input {...createForm.register("salary")} placeholder="Salary" type="number" />
+          <input
+            {...createForm.register("salary")}
+            placeholder="Salary"
+            type="number"
+          />
           <button type="submit">Create</button>
-          <button type="button" onClick={() => setMode("list")}>Cancel</button>
+          <button type="button" onClick={() => setMode("list")}>
+            Cancel
+          </button>
         </form>
       </div>
     );
@@ -459,9 +469,15 @@ function UserManagement() {
         <form onSubmit={editForm.handleSubmit()}>
           <input {...editForm.register("name")} placeholder="Name" />
           <input {...editForm.register("email")} placeholder="Email" />
-          <input {...editForm.register("salary")} placeholder="Salary" type="number" />
+          <input
+            {...editForm.register("salary")}
+            placeholder="Salary"
+            type="number"
+          />
           <button type="submit">Update</button>
-          <button type="button" onClick={() => setMode("list")}>Cancel</button>
+          <button type="button" onClick={() => setMode("list")}>
+            Cancel
+          </button>
         </form>
       </div>
     );
@@ -473,7 +489,7 @@ function UserManagement() {
         <h2>Users</h2>
         <button onClick={() => setMode("create")}>Create User</button>
       </div>
-      
+
       <UsersTable />
     </div>
   );
@@ -496,8 +512,8 @@ function ProductCatalog() {
     enableSorting: true,
     enablePagination: true,
     initialState: {
-      sorting: { key: "name", direction: "asc" }
-    }
+      sorting: { key: "name", direction: "asc" },
+    },
   });
 
   // Update table when search/filter changes
@@ -514,11 +530,8 @@ function ProductCatalog() {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-        
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-        >
+
+        <select value={category} onChange={(e) => setCategory(e.target.value)}>
           <option value="">All Categories</option>
           <option value="electronics">Electronics</option>
           <option value="clothing">Clothing</option>
@@ -607,7 +620,7 @@ function OptimizedTable() {
   const table = useTable({
     source: "users",
     searchQuery: debouncedSearch, // Only search after 300ms delay
-    enablePagination: true
+    enablePagination: true,
   });
 
   return (
@@ -617,7 +630,7 @@ function OptimizedTable() {
         onChange={(e) => setSearchTerm(e.target.value)}
         placeholder="Search users..."
       />
-      
+
       {/* Table renders with debounced search */}
       <UsersTable table={table} />
     </div>
@@ -635,19 +648,19 @@ import { AdminUser, EmployeeUser } from "@kf-ai-sdk/app";
 // Form hook is fully typed
 const form = useForm<AdminUser>({
   source: "user-validation",
-  operation: "create"
+  operation: "create",
 });
 
 // form.register() provides autocomplete for AdminUser fields
 // form.formState.errors is typed with AdminUser field names
 
-// Table hook is fully typed  
+// Table hook is fully typed
 const table = useTable<EmployeeUser>({
-  source: "users"
+  source: "users",
 });
 
 // table.rows is typed as EmployeeUser[]
 // table.sorting.toggle() only accepts valid field names
 ```
 
-This ensures that components are always type-safe and consistent with the role-based access control defined in the App layer.
+This ensures that components are always type-safe, respect role-based permissions, and maintain proper architectural separation between layers.
