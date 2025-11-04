@@ -1,403 +1,280 @@
 # KF AI SDK
 
-A comprehensive solution for building complex filter queries, dynamic forms, and API interactions. Includes headless React hooks and a chainable API client for modern web applications.
+A type-safe, AI-driven SDK for building modern web applications with role-based access control, dynamic forms, and data tables. Built on a three-layer architecture for optimal AI code generation and developer experience.
 
-## Components
+## Architecture Overview
 
-### 🔍 Filter SDK
+The KF AI SDK is built on three integrated layers:
 
-A headless React hook for building complex filter queries with nested AND/OR logic. Integrates seamlessly with React Query for optimal caching and performance.
+### 🎯 App Layer (`app/`)
+**Type-Safe Contracts with Role-Based Access Control**
+- AI-readable type definitions and schemas
+- Role-based field access enforcement
+- Single source of truth for data models and permissions
+- Compile-time validation of AI-generated code
 
-### 📝 Form SDK
+### 🔗 API Layer (`api/`)
+**Simple CRUD Operations**
+- Chainable API client: `api('users').list()`, `api('users').get()`, etc.
+- 5 core operations: get, create, update, delete, list
+- Basic HTTP client with error handling
+- Clean separation from business logic
 
-A React hook for building dynamic forms with backend-driven validation, React Query-powered schema loading, and automatic error handling with optimistic updates.
-
-### 📊 Table SDK
-
-A React hook for building powerful data tables with sorting, filtering, pagination, and React Query integration for automatic caching, background updates, and loading states.
-
-### 🚀 API Client
-
-A chainable API client designed for React Query integration, providing 5 core CRUD operations with seamless filter integration, caching, and error handling.
+### 🧩 Components Layer (`components/`)
+**Headless React Components**
+- Dynamic forms with backend-driven validation
+- Data tables with sorting, filtering, and pagination
+- React Query integration for optimal caching
+- Type-safe integration with App and API layers
 
 ## Quick Start
 
-### Filter Building
+### Three-Layer Integration Example
 
 ```tsx
-import { useFilter, useTable } from "@kf-ai-sdk/headless-filter";
+// 1. AI reads App Layer for type-safe code generation
+import { User, Roles, AdminUser } from "@kf-ai-sdk/app";
 
-function MyComponent() {
-  const filter = useFilter();
+// 2. Components use API Layer for data operations
+import { api } from "@kf-ai-sdk/api";
 
-  // Add simple conditions
-  filter.addCondition(null, {
-    field: "name",
-    operator: "CONTAINS",
-    value: "john",
-  });
+// 3. UI components integrate both layers
+import { useTable, useForm } from "@kf-ai-sdk/components";
 
-  // Use filter with Table SDK for automatic data fetching and caching
-  const table = useTable({
+function AdminUserManagement() {
+  // Type-safe user client with role-based access
+  const user = new User(Roles.Admin);
+  
+  // Table with automatic type inference
+  const table = useTable<AdminUser>({
     source: "users",
-    filter: filter.json, // Table automatically handles React Query with filters
-    enableFiltering: true,
-    initialState: {
-      pagination: { pageSize: 20 },
-    },
-  });
-
-  return (
-    <div>
-      {/* Filter controls */}
-      <div>
-        <button onClick={() => filter.clear()}>Clear Filters</button>
-        <span>Active conditions: {filter.conditionCount}</span>
-      </div>
-
-      {/* Results */}
-      {table.isLoading && <div>Loading...</div>}
-      {table.rows.map((user) => (
-        <div key={user.id}>{user.name}</div>
-      ))}
-    </div>
-  );
-}
-```
-
-### Form Building
-
-```tsx
-import { useForm } from "@kf-ai-sdk/headless-filter";
-
-function UserForm() {
-  const form = useForm<User>({
-    source: "users", // Automatically fetches schema and handles React Query
-    operation: "create", // Automatically handles submission via api('users').create()
-    defaultValues: { name: "", email: "" },
-    onSuccess: (data) => {
-      console.log("Form submitted:", data);
-    },
-    onError: (error) => {
-      console.error("Form error:", error);
-    },
-  });
-
-  if (form.isLoadingInitialData) return <div>Loading form...</div>;
-
-  return (
-    <form onSubmit={form.handleSubmit()}>
-      <input {...form.register("name")} placeholder="Name" />
-      <input {...form.register("email")} placeholder="Email" />
-      <button type="submit" disabled={form.isSubmitting}>
-        {form.isSubmitting ? "Submitting..." : "Submit"}
-      </button>
-      {form.submitError && <div>Error: {form.submitError.message}</div>}
-    </form>
-  );
-}
-```
-
-### Table Building
-
-```tsx
-import {
-  useTable,
-  createDateColumn,
-  createEnumColumn,
-} from "@kf-ai-sdk/headless-filter";
-
-function UsersTable() {
-  const table = useTable<User>({
-    source: "users", // Automatically handles React Query integration
-    columns: [
-      { fieldId: "name", enableSorting: true },
-      { fieldId: "email", enableSorting: true },
-      createEnumColumn<User>("status", {
-        mapping: { active: "Active", inactive: "Inactive" },
-        enableSorting: true,
-      }),
-      createDateColumn<User>("createdAt", {
-        format: "short",
-        enableSorting: true,
-      }),
-    ],
     enableSorting: true,
-    enableFiltering: true,
     enablePagination: true,
-    initialState: {
-      pagination: {
-        pageIndex: 0,
-        pageSize: 20,
-      },
-      sorting: {
-        key: "createdAt",
-        direction: "desc",
-      },
-    },
   });
 
-  if (table.isLoading) return <div>Loading...</div>;
-  if (table.error) return <div>Error: {table.error.message}</div>;
+  // Form with backend-driven validation
+  const form = useForm<AdminUser>({
+    source: "user-validation",
+    operation: "create",
+    onSuccess: () => table.refetch(),
+  });
 
   return (
     <div>
-      <input
-        placeholder="Search..."
-        value={table.globalFilter}
-        onChange={(e) => table.setGlobalFilter(e.target.value)}
-      />
-      {table.isFetching && <div>Updating...</div>}
+      {/* Create Form */}
+      <form onSubmit={form.handleSubmit()}>
+        <input {...form.register("name")} placeholder="Name" />
+        <input {...form.register("email")} placeholder="Email" />
+        <input {...form.register("salary")} placeholder="Salary" /> {/* Admin can see salary */}
+        <button type="submit">Create User</button>
+      </form>
+
+      {/* Users Table */}
       <table>
         <thead>
           <tr>
-            <th onClick={() => table.sorting.toggle("name")}>
-              Name {table.sorting.key === "name" ? "↕️" : ""}
-            </th>
-            <th onClick={() => table.sorting.toggle("email")}>
-              Email {table.sorting.key === "email" ? "↕️" : ""}
-            </th>
-            <th>Status</th>
-            <th>Created</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Salary</th> {/* Admin can see salary */}
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {table.rows.map((user) => (
+          {table.rows.map((user: AdminUser) => (
             <tr key={user.id}>
               <td>{user.name}</td>
               <td>{user.email}</td>
-              <td>{user.status}</td>
-              <td>{new Date(user.createdAt).toLocaleDateString()}</td>
+              <td>${user.salary}</td> {/* TypeScript knows this exists for Admin */}
+              <td>
+                <button onClick={() => api("users").delete(user.id)}>
+                  Delete
+                </button>
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
-
-      {/* Pagination */}
-      <div>
-        <button
-          onClick={() => table.pagination.goToPrevious()}
-          disabled={!table.pagination.canGoToPrevious}
-        >
-          Previous
-        </button>
-        <span>
-          Page {table.pagination.currentPage + 1} of{" "}
-          {table.pagination.totalPages}
-        </span>
-        <button
-          onClick={() => table.pagination.goToNext()}
-          disabled={!table.pagination.canGoToNext}
-        >
-          Next
-        </button>
-      </div>
     </div>
   );
 }
 ```
 
-### API Operations
+### Role-Based Access Control
 
 ```tsx
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+// Employee gets limited access to the same data
+import { User, Roles, EmployeeUser } from "@kf-ai-sdk/app";
 
-function UserOperations() {
-  const queryClient = useQueryClient();
-
-  // Query for fetching a user
-  const userQuery = useQuery({
-    queryKey: ["users", "user_1"],
-    queryFn: () => api("users").get("user_1"),
-  });
-
-  // Mutations for CRUD operations
-  const createUserMutation = useMutation({
-    mutationFn: api("users").create,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["users"] });
-    },
-  });
-
-  const updateUserMutation = useMutation({
-    mutationFn: ({ id, data }) => api("users").update(id, data),
-    onSuccess: (data, { id }) => {
-      queryClient.setQueryData(["users", id], data);
-      queryClient.invalidateQueries({ queryKey: ["users", "list"] });
-    },
-  });
-
-  const deleteUserMutation = useMutation({
-    mutationFn: api("users").delete,
-    onSuccess: (_, deletedId) => {
-      queryClient.removeQueries({ queryKey: ["users", deletedId] });
-      queryClient.invalidateQueries({ queryKey: ["users", "list"] });
-    },
-  });
-
-  // Filtered list query
-  const filteredUsersQuery = useQuery({
-    queryKey: ["users", "filtered", filterJson],
-    queryFn: () =>
-      api("users").list({
-        filter: filterJson,
-        sort: [{ field: "name", direction: "asc" }],
-        pageNo: 1,
-        pageSize: 25,
-      }),
-    enabled: !!filterJson,
+function EmployeeUserList() {
+  const user = new User(Roles.Employee);
+  
+  const table = useTable<EmployeeUser>({
+    source: "users",
+    enableSorting: true,
   });
 
   return (
-    <div>
-      <button
-        onClick={() =>
-          createUserMutation.mutate({
-            name: "John",
-            email: "john@example.com",
-          })
-        }
-      >
-        Create User
-      </button>
-      <button
-        onClick={() =>
-          updateUserMutation.mutate({
-            id: "user_1",
-            data: { status: "active" },
-          })
-        }
-      >
-        Update User
-      </button>
-      <button onClick={() => deleteUserMutation.mutate("user_1")}>
-        Delete User
-      </button>
-    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          {/* <th>Salary</th> */} {/* Employee cannot see salary */}
+        </tr>
+      </thead>
+      <tbody>
+        {table.rows.map((user: EmployeeUser) => (
+          <tr key={user.id}>
+            <td>{user.name}</td>
+            <td>{user.email}</td>
+            {/* <td>{user.salary}</td> */} {/* ❌ TypeScript Error: Property doesn't exist */}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
+}
+```
+
+### Simple API Operations
+
+```tsx
+import { api } from "@kf-ai-sdk/api";
+
+// Basic CRUD operations
+async function userOperations() {
+  // Get single user
+  const user = await api("users").get("user_123");
+  
+  // Create new user
+  const newUser = await api("users").create({
+    name: "John Doe",
+    email: "john@example.com"
+  });
+  
+  // Update user
+  const updatedUser = await api("users").update("user_123", {
+    status: "active"
+  });
+  
+  // Delete user
+  await api("users").delete("user_123");
+  
+  // List users with pagination
+  const usersList = await api("users").list({
+    pageNo: 1,
+    pageSize: 20,
+    sort: [{ field: "name", direction: "asc" }]
+  });
 }
 ```
 
 ## Documentation
 
-### Filter SDK
+### Layer Documentation
+- **[App SDK](app/README.md)** - Type-safe contracts, roles, and AI code generation
+- **[API Client](api/README.md)** - Simple CRUD operations and HTTP client  
+- **[Components](components/README.md)** - React hooks for forms and tables
 
-- **[Filter Overview](filter/README.md)** - Core concepts and quick start guide
-- **[Hook API Reference](filter/hook.md)** - Complete useFilter API and advanced patterns
-- **[UI Components](filter/components.md)** - Headless UI components and implementation examples
-
-### Form SDK
-
-- **[Form Overview](form/README.md)** - Backend-driven validation and API integration
-
-### Table SDK
-
-- **[Table Overview](table/README.md)** - Data tables with sorting, filtering, and pagination
-
-### API Client
-
-- **[API Documentation](api/README.md)** - Complete API client methods and integration examples
+### Migration Guide
+- **[Migration Guide](MIGRATION.md)** - Upgrading from the previous structure
 
 ## Features
 
-### Filter SDK
+### App Layer (`sdk/app`)
+- ✅ **Role-Based Access Control** - Compile-time enforcement of field visibility
+- ✅ **AI Code Generation** - Single source of truth for AI-readable contracts
+- ✅ **Type Safety** - TypeScript validation of all generated code
+- ✅ **Semantic Types** - Field types that convey meaning (IdField, StringField, etc.)
+- ✅ **Single File Per Source** - All logic for a data model in one place
 
-- ✅ **Nested Groups** - Complex AND/OR logic with unlimited nesting
-- ✅ **Field Comparison** - Compare fields against other fields or parameters
-- ✅ **Flexible Operators** - Text, numeric, date, and null comparison operators
+### API Layer (`sdk/api`)
+- ✅ **Simple CRUD Operations** - get, create, update, delete, list
+- ✅ **Chainable Interface** - Clean `api('source').method()` syntax
+- ✅ **Error Handling** - Consistent error handling across operations
+- ✅ **TypeScript Support** - Full type safety for API operations
+
+### Components Layer (`sdk/components`)
+- ✅ **Backend-Driven Forms** - Automatic validation schema loading
+- ✅ **Data Tables** - Sorting, pagination, and search functionality
+- ✅ **React Query Integration** - Optimal caching and background updates
+- ✅ **Type-Safe Integration** - Uses App layer types for compile-time safety
 - ✅ **Headless UI** - Unstyled components for complete design control
 
-### Form SDK
+## Key Benefits
 
-- ✅ **Backend-Driven Validation** - Automatic schema fetching and rule application
-- ✅ **Cross-Field Validation** - Field references using $ syntax for complex validation
-- ✅ **API Integration** - Built-in API client integration for seamless data operations
-- ✅ **Loading States** - Automatic handling of loading, success, and error states
+### For AI Code Generation
+- **Single Source of Truth**: App layer provides all type definitions in one place
+- **Role Awareness**: AI generates code that respects user permissions
+- **Type Safety**: Any TypeScript error indicates incorrect AI generation
+- **Self-Documenting**: Type definitions serve as API documentation
 
-### Table SDK
+### For Developers  
+- **Three-Layer Architecture**: Clear separation of concerns
+- **Role-Based Security**: Compile-time enforcement of data access
+- **Modern React**: Hooks, React Query, and TypeScript throughout
+- **Extensible**: Easy to add new data sources and roles
 
-- ✅ **API Integration** - Automatic data fetching using the API client
-- ✅ **Sorting & Filtering** - Built-in sorting and global search capabilities
-- ✅ **Pagination** - Complete pagination with page size controls
-- ✅ **Column Helpers** - Pre-built column types for dates, enums, booleans
-- ✅ **Loading & Error States** - Automatic state management and user feedback
+### For Applications
+- **Performance**: React Query caching and background updates
+- **Reliability**: Type-safe operations prevent runtime errors
+- **Scalability**: Consistent patterns across all data operations
+- **Maintainability**: Single file per data model, clear structure
 
-### API Client
+## Example: AI-Generated Admin Page
 
-- ✅ **CRUD Operations** - get, create, update, delete, list with unified interface
-- ✅ **Filter Integration** - Seamless integration with Filter SDK
-- ✅ **Pagination & Sorting** - Built-in support for data table operations
-- ✅ **Error Handling** - Consistent error handling across all operations
-
-### All SDKs
-
-- ✅ **Type Safe** - Complete TypeScript support with intelligent types
-- ✅ **React Hooks** - Modern React patterns with state management
-- ✅ **JSON Generation** - Automatic conversion to backend-ready formats
-
-## Quick Examples
-
-### Multiple Conditions (AND Logic)
+When AI generates an admin page for "Order Management", it reads the App layer and produces:
 
 ```tsx
-const filter = useFilter();
+import { Order, Roles, AdminOrder } from "@kf-ai-sdk/app";
+import { useTable, useForm } from "@kf-ai-sdk/components";
 
-filter.addCondition(null, {
-  field: "age",
-  operator: "GREATER_THAN",
-  value: "18",
-});
-filter.addCondition(null, {
-  field: "status",
-  operator: "EQUALS",
-  value: "active",
-});
+// AI generates type-safe code based on role
+function AdminOrderManagement() {
+  const order = new Order(Roles.Admin); // Type-safe role
+  
+  const table = useTable<AdminOrder>({
+    source: "orders",
+    enableSorting: true,
+  });
 
-// Generates: age > 18 AND status = 'active'
+  return (
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Customer</th>
+          <th>Total Amount</th> {/* Admin can see financial data */}
+          <th>Profit Margin</th> {/* Admin can see profit */}
+          <th>Internal Notes</th> {/* Admin can see internal notes */}
+        </tr>
+      </thead>
+      <tbody>
+        {table.rows.map((order: AdminOrder) => (
+          <tr key={order.id}>
+            <td>{order.id}</td>
+            <td>{order.customerId}</td>
+            <td>${order.totalAmount}</td> {/* ✅ TypeScript knows this exists */}
+            <td>{order.profitMargin}%</td> {/* ✅ TypeScript knows this exists */}
+            <td>{order.internalNotes}</td> {/* ✅ TypeScript knows this exists */}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+// If AI tries to generate employee code that accesses admin fields:
+function EmployeeOrderList() {
+  const order = new Order(Roles.Employee);
+  const data = await order.get("123");
+  
+  return <div>{data.totalAmount}</div>; // ❌ TypeScript Error!
+  // Property 'totalAmount' does not exist on type 'EmployeeOrder'
+}
 ```
 
-### Nested Groups (Complex Logic)
-
-```tsx
-const filter = useFilter();
-
-// Create OR group for roles
-const roleGroup = filter.addGroup(null, "OR");
-filter.addCondition(roleGroup, {
-  field: "role",
-  operator: "EQUALS",
-  value: "admin",
-});
-filter.addCondition(roleGroup, {
-  field: "role",
-  operator: "EQUALS",
-  value: "moderator",
-});
-
-// Add condition to root (AND with the group)
-filter.addCondition(null, {
-  field: "isActive",
-  operator: "EQUALS",
-  value: true,
-});
-
-// Generates: (role = 'admin' OR role = 'moderator') AND isActive = true
-```
-
-### Field-to-Field Comparison
-
-```tsx
-const filter = useFilter();
-
-filter.addCondition(null, {
-  field: "endDate",
-  operator: "GREATER_THAN",
-  rhsType: "Field",
-  compareField: "startDate",
-});
-
-// Generates: endDate > startDate
-```
+**The AI sees the TypeScript error and automatically regenerates correct code.**
 
 ## License
 

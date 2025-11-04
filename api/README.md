@@ -1,38 +1,28 @@
-# API Documentation
+# API Client - Simple CRUD Operations
 
-A simple, chainable API client for CRUD operations with integrated filter support, designed to work seamlessly with React Query.
+The API Client provides a clean, chainable interface for basic CRUD operations. It focuses on simplicity and consistency without the complexity of filters or React Query integration.
 
 ## Overview
 
 The API client provides 5 core methods for data operations:
 
 - `get(id)` - Retrieve a single record
-- `create(data)` - Create a new record
+- `create(data)` - Create a new record  
 - `update(id, data)` - Update an existing record
 - `delete(id)` - Delete a record
-- `list(options)` - List records with filtering, sorting, and pagination
+- `list(options)` - List records with basic pagination and sorting
 
-## Usage Patterns
+## Basic Usage
 
-### With React Query (Recommended)
+```tsx
+import { api } from "@kf-ai-sdk/api";
 
-```typescript
-// For queries
-const usersQuery = useQuery({
-  queryKey: ["users", "list"],
-  queryFn: api("users").list(),
-});
-
-// For mutations
-const createUserMutation = useMutation({
-  mutationFn: api("users").create(),
-});
-```
-
-### Direct Usage (Legacy)
-
-```typescript
-const result = await api("resource").method(params);
+// Simple operations
+const user = await api("users").get("user_123");
+const users = await api("users").list();
+const newUser = await api("users").create({ name: "John", email: "john@example.com" });
+const updatedUser = await api("users").update("user_123", { status: "active" });
+await api("users").delete("user_123");
 ```
 
 ## Methods
@@ -41,25 +31,12 @@ const result = await api("resource").method(params);
 
 Retrieve a single record by ID.
 
-```typescript
-// With React Query (Recommended)
-const userQuery = useQuery({
-  queryKey: ["users", "user_1"],
-  queryFn: () => api("users").get("user_1"),
-});
-
-const productQuery = useQuery({
-  queryKey: ["products", "prod_123"],
-  queryFn: () => api("products").get("prod_123"),
-});
-
-// Direct usage
-const user = await api("users").get("user_1");
-const product = await api("products").get("prod_123");
+```tsx
+const user = await api("users").get("user_123");
+const product = await api("products").get("prod_456");
 ```
 
 **Parameters:**
-
 - `id: string` - The unique identifier for the record
 
 **Returns:** `Promise<T>` - The requested record
@@ -68,33 +45,21 @@ const product = await api("products").get("prod_123");
 
 Create a new record.
 
-```typescript
-// With React Query (Recommended)
-const createUserMutation = useMutation({
-  mutationFn: api("users").create(),
-  onSuccess: (newUser) => {
-    // Invalidate users list to refetch
-    queryClient.invalidateQueries({ queryKey: ["users"] });
-  },
-});
-
-// Usage
-createUserMutation.mutate({
-  name: "John Doe",
-  email: "john@example.com",
-  status: "active",
-});
-
-// Direct usage
+```tsx
 const newUser = await api("users").create({
   name: "John Doe",
   email: "john@example.com",
-  status: "active",
+  status: "active"
+});
+
+const newProduct = await api("products").create({
+  name: "Widget",
+  price: 99.99,
+  category: "gadgets"
 });
 ```
 
 **Parameters:**
-
 - `data: object` - The data for the new record
 
 **Returns:** `Promise<T>` - The created record with generated ID
@@ -103,36 +68,19 @@ const newUser = await api("users").create({
 
 Update an existing record.
 
-```typescript
-// With React Query (Recommended)
-const updateUserMutation = useMutation({
-  mutationFn: ({ id, data }) => api("users").update(id, data),
-  onSuccess: (updatedUser, { id }) => {
-    // Update cached user data
-    queryClient.setQueryData(["users", id], updatedUser);
-    // Invalidate users list
-    queryClient.invalidateQueries({ queryKey: ["users", "list"] });
-  },
-});
-
-// Usage
-updateUserMutation.mutate({
-  id: "user_1",
-  data: {
-    status: "inactive",
-    lastLogin: new Date(),
-  },
-});
-
-// Direct usage
-const updatedUser = await api("users").update("user_1", {
+```tsx
+const updatedUser = await api("users").update("user_123", {
   status: "inactive",
-  lastLogin: new Date(),
+  lastLogin: new Date()
+});
+
+const updatedProduct = await api("products").update("prod_456", {
+  price: 89.99,
+  inStock: true
 });
 ```
 
 **Parameters:**
-
 - `id: string` - The unique identifier for the record
 - `data: object` - The fields to update
 
@@ -142,87 +90,62 @@ const updatedUser = await api("users").update("user_1", {
 
 Delete a record by ID.
 
-```typescript
-// With React Query (Recommended)
-const deleteUserMutation = useMutation({
-  mutationFn: api("users").delete,
-  onSuccess: (_, deletedId) => {
-    // Remove from cache
-    queryClient.removeQueries({ queryKey: ["users", deletedId] });
-    // Invalidate users list
-    queryClient.invalidateQueries({ queryKey: ["users", "list"] });
-  },
-});
-
-// Usage
-deleteUserMutation.mutate("user_1");
-
-// Direct usage
-await api("users").delete("user_1");
+```tsx
+await api("users").delete("user_123");
+await api("products").delete("prod_456");
 ```
 
 **Parameters:**
-
 - `id: string` - The unique identifier for the record
 
 **Returns:** `Promise<void>` - Resolves when deletion is complete
 
 ### list(options)
 
-List records with optional filtering, sorting, and pagination.
+List records with optional pagination and sorting.
 
-```typescript
-// With React Query (Recommended)
-const usersListQuery = useQuery({
-  queryKey: ["users", "list"],
-  queryFn: () => api("users").list(),
-});
+```tsx
+// Basic listing
+const users = await api("users").list();
 
 // With pagination
-const productsQuery = useQuery({
-  queryKey: ["products", "list", { pageNo: 1, pageSize: 20 }],
-  queryFn: () =>
-    api("products").list({
-      pageNo: 1,
-      pageSize: 20,
-    }),
-});
-
-// With search
-const searchQuery = useQuery({
-  queryKey: ["users", "search", "john"],
-  queryFn: () =>
-    api("users").list({
-      q: "john",
-      pageSize: 10,
-    }),
-  enabled: !!searchTerm, // Only run when there's a search term
+const products = await api("products").list({
+  pageNo: 1,
+  pageSize: 20
 });
 
 // With sorting
-const sortedProductsQuery = useQuery({
-  queryKey: ["products", "list", { sort: "price:desc" }],
-  queryFn: () =>
-    api("products").list({
-      sort: [{ field: "price", direction: "desc" }],
-    }),
+const sortedUsers = await api("users").list({
+  sort: [{ field: "name", direction: "asc" }]
 });
 
-// Direct usage
-const users = await api("users").list();
+// With search
+const searchResults = await api("users").list({
+  q: "john",
+  pageSize: 10
+});
+
+// Combined options
+const results = await api("orders").list({
+  pageNo: 1,
+  pageSize: 25,
+  sort: [
+    { field: "createdAt", direction: "desc" },
+    { field: "status", direction: "asc" }
+  ],
+  q: "pending"
+});
 ```
 
 **Parameters:**
-
 - `options?: ListOptions` - Optional configuration object
 
-```typescript
+```tsx
 interface ListOptions {
-  filter?: FilterJSON; // Filter using the filter SDK
-  sort?: SortOption[]; // Sort configuration
-  pageNo?: number; // Page number (1-based)
-  pageSize?: number; // Number of records per page
-  q?: string; // Search query
+  pageNo?: number;        // Page number (1-based)
+  pageSize?: number;      // Number of records per page
+  sort?: SortOption[];    // Sort configuration
+  q?: string;             // Search query
 }
 
 interface SortOption {
@@ -233,271 +156,52 @@ interface SortOption {
 
 **Returns:** `Promise<ListResponse<T>>` - Paginated results
 
-```typescript
+```tsx
 interface ListResponse<T> {
-  data: T[];
-  total: number;
-  pageNo: number;
-  pageSize: number;
-  totalPages: number;
+  data: T[];           // Array of records
+  total: number;       // Total number of records
+  pageNo: number;      // Current page number
+  pageSize: number;    // Records per page
+  totalPages: number;  // Total number of pages
 }
 ```
 
-## Integration with Filter SDK
+## TypeScript Support
 
-The `list` method integrates seamlessly with the headless filter builder and React Query:
+The API client supports full TypeScript typing:
 
-```typescript
-import { useFilter } from "@kf-ai-sdk/headless-filter";
-import { useQuery } from "@tanstack/react-query";
-
-function UserList() {
-  const filter = useFilter();
-
-  // Build your filter
-  filter.addCondition(null, {
-    field: "status",
-    operator: "EQUALS",
-    value: "active",
-  });
-
-  filter.addCondition(null, {
-    field: "department",
-    operator: "EQUALS",
-    value: "engineering",
-  });
-
-  // Use filter with React Query
-  const usersQuery = useQuery({
-    queryKey: ["users", "filtered", filter.json],
-    queryFn: () =>
-      api("users").list({
-        filter: filter.json,
-        pageSize: 50,
-        sort: [{ field: "name", direction: "asc" }],
-      }),
-    enabled: !filter.isEmpty, // Only fetch when filter is not empty
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-  });
-
-  if (usersQuery.isLoading) {
-    return <div>Loading users...</div>;
-  }
-
-  if (usersQuery.error) {
-    return <div>Error: {usersQuery.error.message}</div>;
-  }
-
-  return (
-    <div>
-      {/* Your filter UI */}
-      {/* Your user list */}
-      {usersQuery.data?.data.map((user) => (
-        <div key={user.id}>{user.name}</div>
-      ))}
-    </div>
-  );
+```tsx
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  status: "active" | "inactive";
 }
-```
 
-## Advanced List Examples
-
-### Complex Filtering with Nested Groups
-
-```typescript
-function AdminUsersTable() {
-  const filter = useFilter();
-
-  // Create OR group for roles
-  const roleGroup = filter.addGroup(null, "OR");
-  filter.addCondition(roleGroup, {
-    field: "role",
-    operator: "EQUALS",
-    value: "admin",
-  });
-  filter.addCondition(roleGroup, {
-    field: "role",
-    operator: "EQUALS",
-    value: "moderator",
-  });
-
-  // Add root-level condition
-  filter.addCondition(null, {
-    field: "isActive",
-    operator: "EQUALS",
-    value: "true",
-  });
-
-  // Query: (role = 'admin' OR role = 'moderator') AND isActive = true
-  const usersQuery = useQuery({
-    queryKey: ["users", "admins", filter.json],
-    queryFn: () =>
-      api("users").list({
-        filter: filter.json,
-        sort: [
-          { field: "role", direction: "asc" },
-          { field: "name", direction: "asc" },
-        ],
-        pageNo: 1,
-        pageSize: 25,
-      }),
-    enabled: !filter.isEmpty,
-  });
-
-  return (
-    <div>
-      {usersQuery.data?.data.map((user) => (
-        <div key={user.id}>
-          {user.name} - {user.role}
-        </div>
-      ))}
-    </div>
-  );
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  inStock: boolean;
 }
-```
 
-### Date Range Filtering
-
-```typescript
-function OrdersThisYear() {
-  const filter = useFilter();
-
-  filter.addCondition(null, {
-    field: "createdAt",
-    operator: "GREATER_THAN_OR_EQUAL_TO",
-    value: "2024-01-01",
-  });
-
-  filter.addCondition(null, {
-    field: "createdAt",
-    operator: "LESS_THAN",
-    value: "2024-12-31",
-  });
-
-  const ordersQuery = useQuery({
-    queryKey: ["orders", "2024", filter.json],
-    queryFn: () =>
-      api("orders").list({
-        filter: filter.json,
-        sort: [{ field: "createdAt", direction: "desc" }],
-      }),
-    staleTime: 10 * 60 * 1000, // Cache for 10 minutes
-  });
-
-  return (
-    <div>
-      {ordersQuery.isLoading && <div>Loading orders...</div>}
-      {ordersQuery.data?.data.map((order) => (
-        <div key={order.id}>
-          Order #{order.id} - {order.createdAt}
-        </div>
-      ))}
-    </div>
-  );
-}
-```
-
-### Field-to-Field Comparisons
-
-```typescript
-const filter = useFilter();
-
-// Find products where sale price is less than regular price
-filter.addCondition(null, {
-  field: "salePrice",
-  operator: "LESS_THAN",
-  rhsType: "Field",
-  compareField: "regularPrice",
+// Typed operations
+const user: User = await api("users").get("user_123");
+const users: ListResponse<User> = await api("users").list();
+const newUser: User = await api("users").create({
+  name: "John",
+  email: "john@example.com"
 });
-
-const saleProducts = await api("products").list({
-  filter: filter.json,
-  sort: [{ field: "salePrice", direction: "asc" }],
-});
-```
-
-### Search with Filters
-
-```typescript
-function ProductSearch({ searchTerm }) {
-  const filter = useFilter();
-
-  filter.addCondition(null, {
-    field: "category",
-    operator: "EQUALS",
-    value: "electronics",
-  });
-
-  filter.addCondition(null, {
-    field: "inStock",
-    operator: "EQUALS",
-    value: "true",
-  });
-
-  // Search for products within electronics category, in stock items only
-  const productsQuery = useQuery({
-    queryKey: ["products", "search", searchTerm, filter.json],
-    queryFn: () =>
-      api("products").list({
-        filter: filter.json,
-        q: searchTerm,
-        sort: [{ field: "price", direction: "asc" }],
-        pageSize: 20,
-      }),
-    enabled: !!searchTerm && searchTerm.length >= 2, // Only search with 2+ characters
-    staleTime: 30 * 1000, // Cache for 30 seconds (search results change frequently)
-  });
-
-  return (
-    <div>
-      {productsQuery.isFetching && <div>Searching...</div>}
-      {productsQuery.data?.data.map((product) => (
-        <div key={product.id}>
-          {product.name} - ${product.price}
-        </div>
-      ))}
-    </div>
-  );
-}
 ```
 
 ## Error Handling
 
-### With React Query (Recommended)
+All API operations return promises that can be handled with try/catch:
 
-```typescript
-function UserProfile({ userId }) {
-  const userQuery = useQuery({
-    queryKey: ["users", userId],
-    queryFn: () => api("users").get(userId),
-    retry: (failureCount, error) => {
-      // Don't retry on 404s
-      if (error?.status === 404) return false;
-      return failureCount < 3;
-    },
-  });
-
-  if (userQuery.isLoading) {
-    return <div>Loading user...</div>;
-  }
-
-  if (userQuery.error) {
-    if (userQuery.error.status === 404) {
-      return <div>User not found</div>;
-    }
-    return <div>Error: {userQuery.error.message}</div>;
-  }
-
-  return <div>User: {userQuery.data.name}</div>;
-}
-```
-
-### Direct Usage
-
-```typescript
+```tsx
 try {
-  const user = await api("users").get("user_1");
-  console.log(user);
+  const user = await api("users").get("user_123");
+  console.log("User found:", user);
 } catch (error) {
   if (error.status === 404) {
     console.log("User not found");
@@ -505,216 +209,221 @@ try {
     console.error("API error:", error.message);
   }
 }
-```
 
-## TypeScript Support
-
-The API client supports full TypeScript typing with React Query:
-
-```typescript
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  status: "active" | "inactive";
-  department: string;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  category: string;
-  inStock: boolean;
-}
-
-// Typed React Query calls
-const userQuery = useQuery<User>({
-  queryKey: ["users", "user_1"],
-  queryFn: () => api("users").get("user_1"),
-});
-
-const productsQuery = useQuery<ListResponse<Product>>({
-  queryKey: ["products", "list"],
-  queryFn: () => api("products").list(),
-});
-
-// Typed mutations
-const createUserMutation = useMutation<User, Error, Partial<User>>({
-  mutationFn: api("users").create,
-});
-
-// Type-safe filter building
-const filter = useFilter();
-filter.addCondition(null, {
-  field: "status" as keyof User,
-  operator: "EQUALS",
-  value: "active",
-});
-
-// Direct usage (still supported)
-const user: User = await api("users").get("user_1");
-const products: ListResponse<Product> = await api("products").list();
-```
-
-## Performance Best Practices
-
-### Debounced Filtering with React Query
-
-```typescript
-import { useDebouncedValue } from "@mantine/hooks"; // or your preferred debounce hook
-
-function ProductList() {
-  const filter = useFilter();
-  const [debouncedFilter] = useDebouncedValue(filter.json, 300);
-
-  const productsQuery = useQuery({
-    queryKey: ["products", "filtered", debouncedFilter],
-    queryFn: () => api("products").list({ filter: debouncedFilter }),
-    enabled: !filter.isEmpty,
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-    keepPreviousData: true, // Show previous data while loading new data
+try {
+  const newUser = await api("users").create({
+    name: "John",
+    email: "invalid-email" // Invalid data
   });
-
-  return (
-    <div>
-      {productsQuery.isFetching && <div>Updating...</div>}
-      {productsQuery.data?.data.map((product) => (
-        <div key={product.id}>{product.name}</div>
-      ))}
-    </div>
-  );
+} catch (error) {
+  if (error.status === 400) {
+    console.log("Validation errors:", error.details);
+  } else {
+    console.error("Creation failed:", error.message);
+  }
 }
 ```
 
-### Pagination with React Query
+## Configuration
 
-```typescript
-function UserList() {
-  const [currentPage, setCurrentPage] = useState(1);
-  const filter = useFilter();
-  const pageSize = 25;
+### Base URL
 
-  const usersQuery = useQuery({
-    queryKey: ["users", "list", { page: currentPage, filter: filter.json }],
-    queryFn: () =>
-      api("users").list({
-        filter: filter.json,
-        pageNo: currentPage,
-        pageSize,
-      }),
-    keepPreviousData: true, // Keep showing old data while loading new page
-    staleTime: 5 * 60 * 1000, // Cache pages for 5 minutes
-  });
+Configure the base URL for all API requests:
 
-  // Reset to first page when filter changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filter.json]);
+```tsx
+import { setApiBaseUrl } from "@kf-ai-sdk/api";
 
-  const totalPages = usersQuery.data?.totalPages ?? 0;
-
-  return (
-    <div>
-      {/* Filter UI */}
-
-      {/* Loading state */}
-      {usersQuery.isFetching && <div>Loading...</div>}
-
-      {/* User list */}
-      {usersQuery.data?.data.map((user) => (
-        <div key={user.id}>{user.name}</div>
-      ))}
-
-      {/* Pagination controls */}
-      <div>
-        <button
-          onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-          disabled={currentPage === 1 || usersQuery.isFetching}
-        >
-          Previous
-        </button>
-        <span>
-          Page {currentPage} of {totalPages}
-        </span>
-        <button
-          onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-          disabled={currentPage === totalPages || usersQuery.isFetching}
-        >
-          Next
-        </button>
-      </div>
-    </div>
-  );
-}
+setApiBaseUrl("https://api.example.com/v1");
 ```
 
-### Optimistic Updates
+### Headers
 
-```typescript
-function UserActions({ user }) {
-  const queryClient = useQueryClient();
+Set default headers for all requests:
 
-  const updateUserMutation = useMutation({
-    mutationFn: ({ id, data }) => api("users").update(id, data),
-    onMutate: async ({ id, data }) => {
-      // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ["users", id] });
+```tsx
+import { setDefaultHeaders } from "@kf-ai-sdk/api";
 
-      // Snapshot previous value
-      const previousUser = queryClient.getQueryData(["users", id]);
-
-      // Optimistically update
-      queryClient.setQueryData(["users", id], (old) => ({ ...old, ...data }));
-
-      return { previousUser };
-    },
-    onError: (err, variables, context) => {
-      // Rollback on error
-      if (context?.previousUser) {
-        queryClient.setQueryData(["users", variables.id], context.previousUser);
-      }
-    },
-    onSettled: (data, error, { id }) => {
-      // Always refetch after error or success
-      queryClient.invalidateQueries({ queryKey: ["users", id] });
-    },
-  });
-
-  return (
-    <button
-      onClick={() =>
-        updateUserMutation.mutate({
-          id: user.id,
-          data: { status: "active" },
-        })
-      }
-    >
-      Activate User
-    </button>
-  );
-}
+setDefaultHeaders({
+  "Authorization": "Bearer your-token-here",
+  "Content-Type": "application/json"
+});
 ```
 
-### Query Key Management
+### Request Interceptors
 
-```typescript
-// Create consistent query key factories
-const userKeys = {
-  all: ["users"] as const,
-  lists: () => [...userKeys.all, "list"] as const,
-  list: (filters: string) => [...userKeys.lists(), { filters }] as const,
-  details: () => [...userKeys.all, "detail"] as const,
-  detail: (id: string) => [...userKeys.details(), id] as const,
-};
+Add custom request/response handling:
 
-// Usage
-const usersQuery = useQuery({
-  queryKey: userKeys.list(JSON.stringify(filter.json)),
-  queryFn: () => api("users").list({ filter: filter.json }),
+```tsx
+import { addRequestInterceptor, addResponseInterceptor } from "@kf-ai-sdk/api";
+
+// Add authentication token
+addRequestInterceptor((config) => {
+  const token = localStorage.getItem("authToken");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
 });
 
-// Easy cache invalidation
-queryClient.invalidateQueries({ queryKey: userKeys.lists() }); // Invalidate all user lists
-queryClient.invalidateQueries({ queryKey: userKeys.detail(userId) }); // Invalidate specific user
+// Handle common error responses
+addResponseInterceptor(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Redirect to login
+      window.location.href = "/login";
+    }
+    return Promise.reject(error);
+  }
+);
 ```
+
+## Examples
+
+### User Management
+
+```tsx
+import { api } from "@kf-ai-sdk/api";
+
+class UserService {
+  async getAllUsers() {
+    return api("users").list();
+  }
+  
+  async getUserById(id: string) {
+    return api("users").get(id);
+  }
+  
+  async createUser(userData: Partial<User>) {
+    return api("users").create(userData);
+  }
+  
+  async updateUserStatus(id: string, status: string) {
+    return api("users").update(id, { status });
+  }
+  
+  async deleteUser(id: string) {
+    return api("users").delete(id);
+  }
+  
+  async searchUsers(query: string) {
+    return api("users").list({ q: query, pageSize: 50 });
+  }
+  
+  async getPaginatedUsers(page: number, size: number = 20) {
+    return api("users").list({
+      pageNo: page,
+      pageSize: size,
+      sort: [{ field: "name", direction: "asc" }]
+    });
+  }
+}
+```
+
+### Product Catalog
+
+```tsx
+import { api } from "@kf-ai-sdk/api";
+
+class ProductService {
+  async getFeaturedProducts() {
+    return api("products").list({
+      pageSize: 10,
+      sort: [{ field: "featured", direction: "desc" }]
+    });
+  }
+  
+  async getProductsByCategory(category: string) {
+    return api("products").list({
+      q: category,
+      sort: [{ field: "price", direction: "asc" }]
+    });
+  }
+  
+  async updateProductPrice(id: string, price: number) {
+    return api("products").update(id, { price });
+  }
+  
+  async toggleProductStock(id: string, inStock: boolean) {
+    return api("products").update(id, { inStock });
+  }
+}
+```
+
+### Order Processing
+
+```tsx
+import { api } from "@kf-ai-sdk/api";
+
+class OrderService {
+  async getRecentOrders() {
+    return api("orders").list({
+      pageNo: 1,
+      pageSize: 25,
+      sort: [{ field: "createdAt", direction: "desc" }]
+    });
+  }
+  
+  async getOrdersByStatus(status: string) {
+    return api("orders").list({
+      q: status,
+      sort: [{ field: "createdAt", direction: "desc" }]
+    });
+  }
+  
+  async updateOrderStatus(id: string, status: string) {
+    return api("orders").update(id, { 
+      status,
+      updatedAt: new Date()
+    });
+  }
+  
+  async createOrder(orderData: Partial<Order>) {
+    return api("orders").create({
+      ...orderData,
+      createdAt: new Date(),
+      status: "pending"
+    });
+  }
+}
+```
+
+## Integration with App Layer
+
+The API client is used by the App layer for actual data operations:
+
+```tsx
+// In sdk/app/sources/user.ts
+export class User<TRole extends Role> {
+  async list(): Promise<ListResponse<UserForRole<TRole>>> {
+    return api("users").list(); // Uses this API client
+  }
+  
+  async get(id: IdField): Promise<UserForRole<TRole>> {
+    return api("users").get(id); // Uses this API client
+  }
+}
+```
+
+The API client provides the networking layer while the App layer provides the type safety and role-based access control.
+
+## Best Practices
+
+1. **Use TypeScript interfaces** - Define clear types for your data models
+2. **Handle errors consistently** - Always wrap API calls in try/catch
+3. **Configure once** - Set base URL and headers at app startup
+4. **Use semantic resource names** - `api("users")` not `api("user_management")`
+5. **Leverage pagination** - Use pageSize to control data volume
+6. **Sort by default** - Provide consistent ordering for list operations
+
+## Limitations
+
+This API client is intentionally simple and does not include:
+
+- Advanced filtering (use Components layer for complex filters)
+- React Query integration (use Components layer for caching)
+- Request cancellation
+- Offline support
+- Automatic retries
+
+For advanced features, use the Components layer which builds on top of this API client.
