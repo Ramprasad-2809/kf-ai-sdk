@@ -7,21 +7,27 @@ A type-safe, AI-driven SDK for building modern web applications with role-based 
 The KF AI SDK is built on three integrated layers:
 
 ### 🎯 App Layer (`app/`)
+
 **Type-Safe Contracts with Role-Based Access Control**
+
 - AI-readable type definitions and schemas
 - Role-based field access enforcement
 - Single source of truth for data models and permissions
 - Compile-time validation of AI-generated code
 
 ### 🔗 API Layer (`api/`)
+
 **Simple CRUD Operations**
+
 - Chainable API client: `api('users').list()`, `api('users').get()`, etc.
 - 5 core operations: get, create, update, delete, list
 - Basic HTTP client with error handling
 - Clean separation from business logic
 
 ### 🧩 Components Layer (`components/`)
+
 **Headless React Components**
+
 - Dynamic forms with backend-driven validation
 - Data tables with sorting, filtering, and pagination
 - React Query integration for optimal caching
@@ -44,7 +50,7 @@ import { useTable, useForm } from "@kf-ai-sdk/components";
 function AdminUserManagement() {
   // Type-safe user client with role-based access
   const user = new User(Roles.Admin);
-  
+
   // Table with automatic type inference
   const table = useTable<AdminUser>({
     source: "users",
@@ -65,7 +71,8 @@ function AdminUserManagement() {
       <form onSubmit={form.handleSubmit()}>
         <input {...form.register("name")} placeholder="Name" />
         <input {...form.register("email")} placeholder="Email" />
-        <input {...form.register("salary")} placeholder="Salary" /> {/* Admin can see salary */}
+        <input {...form.register("salary")} placeholder="Salary" />{" "}
+        {/* Admin can see salary */}
         <button type="submit">Create User</button>
       </form>
 
@@ -84,11 +91,10 @@ function AdminUserManagement() {
             <tr key={user.id}>
               <td>{user.name}</td>
               <td>{user.email}</td>
-              <td>${user.salary}</td> {/* TypeScript knows this exists for Admin */}
+              <td>${user.salary}</td>{" "}
+              {/* TypeScript knows this exists for Admin */}
               <td>
-                <button onClick={() => api("users").delete(user.id)}>
-                  Delete
-                </button>
+                <button onClick={() => user.delete(user.id)}>Delete</button>
               </td>
             </tr>
           ))}
@@ -107,7 +113,7 @@ import { User, Roles, EmployeeUser } from "@kf-ai-sdk/app";
 
 function EmployeeUserList() {
   const user = new User(Roles.Employee);
-  
+
   const table = useTable<EmployeeUser>({
     source: "users",
     enableSorting: true,
@@ -127,7 +133,8 @@ function EmployeeUserList() {
           <tr key={user.id}>
             <td>{user.name}</td>
             <td>{user.email}</td>
-            {/* <td>{user.salary}</td> */} {/* ❌ TypeScript Error: Property doesn't exist */}
+            {/* <td>{user.salary}</td> */}{" "}
+            {/* ❌ TypeScript Error: Property doesn't exist */}
           </tr>
         ))}
       </tbody>
@@ -145,26 +152,26 @@ import { api } from "@kf-ai-sdk/api";
 async function userOperations() {
   // Get single user
   const user = await api("users").get("user_123");
-  
+
   // Create new user
   const newUser = await api("users").create({
     name: "John Doe",
-    email: "john@example.com"
+    email: "john@example.com",
   });
-  
+
   // Update user
   const updatedUser = await api("users").update("user_123", {
-    status: "active"
+    status: "active",
   });
-  
+
   // Delete user
   await api("users").delete("user_123");
-  
+
   // List users with pagination
   const usersList = await api("users").list({
     pageNo: 1,
     pageSize: 20,
-    sort: [{ field: "name", direction: "asc" }]
+    sort: [{ field: "name", direction: "asc" }],
   });
 }
 ```
@@ -172,16 +179,19 @@ async function userOperations() {
 ## Documentation
 
 ### Layer Documentation
+
 - **[App SDK](app/README.md)** - Type-safe contracts, roles, and AI code generation
-- **[API Client](api/README.md)** - Simple CRUD operations and HTTP client  
+- **[API Client](api/README.md)** - Simple CRUD operations and HTTP client
 - **[Components](components/README.md)** - React hooks for forms and tables
 
 ### Migration Guide
+
 - **[Migration Guide](MIGRATION.md)** - Upgrading from the previous structure
 
 ## Features
 
 ### App Layer (`sdk/app`)
+
 - ✅ **Role-Based Access Control** - Compile-time enforcement of field visibility
 - ✅ **AI Code Generation** - Single source of truth for AI-readable contracts
 - ✅ **Type Safety** - TypeScript validation of all generated code
@@ -189,12 +199,14 @@ async function userOperations() {
 - ✅ **Single File Per Source** - All logic for a data model in one place
 
 ### API Layer (`sdk/api`)
+
 - ✅ **Simple CRUD Operations** - get, create, update, delete, list
 - ✅ **Chainable Interface** - Clean `api('source').method()` syntax
 - ✅ **Error Handling** - Consistent error handling across operations
 - ✅ **TypeScript Support** - Full type safety for API operations
 
 ### Components Layer (`sdk/components`)
+
 - ✅ **Backend-Driven Forms** - Automatic validation schema loading
 - ✅ **Data Tables** - Sorting, pagination, and search functionality
 - ✅ **React Query Integration** - Optimal caching and background updates
@@ -204,18 +216,21 @@ async function userOperations() {
 ## Key Benefits
 
 ### For AI Code Generation
+
 - **Single Source of Truth**: App layer provides all type definitions in one place
 - **Role Awareness**: AI generates code that respects user permissions
 - **Type Safety**: Any TypeScript error indicates incorrect AI generation
 - **Self-Documenting**: Type definitions serve as API documentation
 
-### For Developers  
+### For Developers
+
 - **Three-Layer Architecture**: Clear separation of concerns
 - **Role-Based Security**: Compile-time enforcement of data access
 - **Modern React**: Hooks, React Query, and TypeScript throughout
 - **Extensible**: Easy to add new data sources and roles
 
 ### For Applications
+
 - **Performance**: React Query caching and background updates
 - **Reliability**: Type-safe operations prevent runtime errors
 - **Scalability**: Consistent patterns across all data operations
@@ -232,7 +247,7 @@ import { useTable, useForm } from "@kf-ai-sdk/components";
 // AI generates type-safe code based on role
 function AdminOrderManagement() {
   const order = new Order(Roles.Admin); // Type-safe role
-  
+
   const table = useTable<AdminOrder>({
     source: "orders",
     enableSorting: true,
@@ -254,9 +269,11 @@ function AdminOrderManagement() {
           <tr key={order.id}>
             <td>{order.id}</td>
             <td>{order.customerId}</td>
-            <td>${order.totalAmount}</td> {/* ✅ TypeScript knows this exists */}
+            <td>${order.totalAmount}</td>{" "}
+            {/* ✅ TypeScript knows this exists */}
             <td>{order.profitMargin}%</td> {/* ✅ TypeScript knows this exists */}
-            <td>{order.internalNotes}</td> {/* ✅ TypeScript knows this exists */}
+            <td>{order.internalNotes}</td>{" "}
+            {/* ✅ TypeScript knows this exists */}
           </tr>
         ))}
       </tbody>
@@ -268,7 +285,7 @@ function AdminOrderManagement() {
 function EmployeeOrderList() {
   const order = new Order(Roles.Employee);
   const data = await order.get("123");
-  
+
   return <div>{data.totalAmount}</div>; // ❌ TypeScript Error!
   // Property 'totalAmount' does not exist on type 'EmployeeOrder'
 }
