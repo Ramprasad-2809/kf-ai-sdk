@@ -1,226 +1,494 @@
-# API Client - Simple CRUD Operations
+# Runtime API Client - Business Object CRUD Operations
 
-The API Client provides a clean, chainable interface for basic CRUD operations. It focuses on simplicity and consistency without the complexity of filters or React Query integration.
+The Runtime API Client provides a comprehensive interface for Business Object CRUD operations, fully compatible with the Runtime API specification. It handles complex filtering, structured sorting, automatic datetime encoding/decoding, and proper request/response formatting.
 
 ## Overview
 
-The API client provides 5 core methods for data operations:
+The API client provides 5 core methods for Business Object operations:
 
-- `get(id)` - Retrieve a single record
-- `create(data)` - Create a new record  
-- `update(id, data)` - Update an existing record
-- `delete(id)` - Delete a record
-- `list(options)` - List records with basic pagination and sorting
+- `get(id)` - Retrieve a single Business Object instance
+- `create(data)` - Create a new Business Object instance  
+- `update(id, data)` - Update an existing Business Object instance
+- `delete(id)` - Delete a Business Object instance
+- `list(options)` - List Business Object instances with advanced filtering and sorting
 
 ## Basic Usage
 
 ```tsx
 import { api } from "@kf-ai-sdk/api";
 
-// Simple operations
-const user = await api("users").get("user_123");
-const users = await api("users").list();
-const newUser = await api("users").create({ name: "John", email: "john@example.com" });
-const updatedUser = await api("users").update("user_123", { status: "active" });
-await api("users").delete("user_123");
+// Business Object operations
+const user = await api("user").get("USER_123");
+const users = await api("user").list();
+const createResponse = await api("user").create({ 
+  username: "john.doe", 
+  email: "john@example.com" 
+});
+const updateResponse = await api("user").update("USER_123", { 
+  email: "newemail@example.com" 
+});
+const deleteResponse = await api("user").delete("USER_123");
 ```
 
 ## Methods
 
 ### get(id)
 
-Retrieve a single record by ID.
+Retrieve a single Business Object instance by ID.
 
 ```tsx
-const user = await api("users").get("user_123");
-const product = await api("products").get("prod_456");
+const user = await api("user").get("USER_123");
+const leave = await api("leave").get("LEAVE_001");
 ```
 
-**Parameters:**
-- `id: string` - The unique identifier for the record
+**API Endpoint:** `GET /api/app/{bo_id}/{instance_id}/read`
 
-**Returns:** `Promise<T>` - The requested record
+**Parameters:**
+- `id: string` - The unique identifier for the Business Object instance
+
+**Returns:** `Promise<T>` - The requested record with decoded datetime fields
+
+**Response Format:**
+```tsx
+// API returns: { "Data": { ...record } }
+// Client returns: { ...record } with decoded datetimes
+```
 
 ### create(data)
 
-Create a new record.
+Create a new Business Object instance.
 
 ```tsx
-const newUser = await api("users").create({
-  name: "John Doe",
-  email: "john@example.com",
-  status: "active"
+// Create with auto-generated ID
+const response = await api("leave").create({
+  start_date: "2025-07-01",
+  end_date: "2025-07-05",
+  leave_type: "Sick",
+  leave_days: 5,
+  reason: "Medical leave"
 });
+console.log(response._id); // "LEAVE_1001"
 
-const newProduct = await api("products").create({
-  name: "Widget",
-  price: 99.99,
-  category: "gadgets"
+// Create with custom ID
+const response = await api("user").create({
+  _id: "USER_456",
+  username: "jane.doe",
+  first_name: "Jane",
+  last_name: "Doe",
+  email: "jane@example.com"
+});
+console.log(response._id); // "USER_456"
+
+// Create with workflow initiation
+const response = await api("leave").create({
+  start_date: "2025-06-15",
+  end_date: "2025-06-18",
+  leave_type: "Annual",
+  leave_status: "INITIATE" // Triggers workflow
 });
 ```
 
-**Parameters:**
-- `data: object` - The data for the new record
+**API Endpoint:** `POST /api/app/{bo_id}/create`
 
-**Returns:** `Promise<T>` - The created record with generated ID
+**Parameters:**
+- `data: Partial<T> & { _id?: string }` - The data for the new record, optionally including custom ID
+
+**Returns:** `Promise<CreateUpdateResponse>` - Object containing the ID of created record
+
+```tsx
+interface CreateUpdateResponse {
+  _id: string;
+}
+```
 
 ### update(id, data)
 
-Update an existing record.
+Update an existing Business Object instance (partial updates supported).
 
 ```tsx
-const updatedUser = await api("users").update("user_123", {
-  status: "inactive",
-  lastLogin: new Date()
+// Simple field update
+const response = await api("leave").update("LEAVE_001", {
+  leave_days: 7,
+  reason: "Extended medical leave"
 });
 
-const updatedProduct = await api("products").update("prod_456", {
-  price: 89.99,
-  inStock: true
+// Workflow state transition
+const response = await api("leave").update("LEAVE_001", {
+  leave_status: "MANAGER_APPROVAL",
+  manager_remarks: "Approved by manager"
+});
+
+// Partial update
+const response = await api("vendor").update("VEND_1001", {
+  phone: "+1-555-9999",
+  email: "newemail@vendor.com"
 });
 ```
 
+**API Endpoint:** `POST /api/app/{bo_id}/{instance_id}/update`
+
 **Parameters:**
 - `id: string` - The unique identifier for the record
-- `data: object` - The fields to update
+- `data: Partial<T>` - The fields to update (only include fields you want to change)
 
-**Returns:** `Promise<T>` - The updated record
+**Returns:** `Promise<CreateUpdateResponse>` - Object containing the ID of updated record
 
 ### delete(id)
 
-Delete a record by ID.
+Delete a Business Object instance.
 
 ```tsx
-await api("users").delete("user_123");
-await api("products").delete("prod_456");
+const response = await api("leave").delete("LEAVE_001");
+console.log(response.status); // "success"
+
+const response = await api("user").delete("USER_123");
+console.log(response.status); // "success"
 ```
+
+**API Endpoint:** `DELETE /api/app/{bo_id}/{instance_id}/delete`
 
 **Parameters:**
 - `id: string` - The unique identifier for the record
 
-**Returns:** `Promise<void>` - Resolves when deletion is complete
+**Returns:** `Promise<DeleteResponse>` - Success confirmation
+
+```tsx
+interface DeleteResponse {
+  status: "success";
+}
+```
 
 ### list(options)
 
-List records with optional pagination and sorting.
+List Business Object instances with advanced filtering, sorting, and pagination.
 
 ```tsx
 // Basic listing
-const users = await api("users").list();
+const users = await api("user").list();
 
-// With pagination
-const products = await api("products").list({
-  pageNo: 1,
-  pageSize: 20
+// With structured filtering
+const activeUsers = await api("user").list({
+  Filter: {
+    Operator: "AND",
+    Condition: [
+      {
+        Operator: "EQ",
+        LHSField: "status",
+        RHSValue: "Active"
+      }
+    ]
+  }
 });
 
-// With sorting
-const sortedUsers = await api("users").list({
-  sort: [{ field: "name", direction: "asc" }]
-});
-
-// With search
-const searchResults = await api("users").list({
-  q: "john",
-  pageSize: 10
-});
-
-// Combined options
-const results = await api("orders").list({
-  pageNo: 1,
-  pageSize: 25,
-  sort: [
-    { field: "createdAt", direction: "desc" },
-    { field: "status", direction: "asc" }
+// With complex filtering and sorting
+const results = await api("leave").list({
+  Filter: {
+    Operator: "AND",
+    Condition: [
+      {
+        Operator: "EQ",
+        LHSField: "leave_type",
+        RHSValue: "Annual"
+      },
+      {
+        Operator: "GTE",
+        LHSField: "leave_days",
+        RHSValue: 3
+      }
+    ]
+  },
+  Sort: [
+    { Field: "start_date", Order: "DESC" },
+    { Field: "leave_days", Order: "ASC" }
   ],
-  q: "pending"
+  Page: 1,
+  PageSize: 50
+});
+
+// With specific fields only
+const userSummary = await api("user").list({
+  Field: ["_id", "username", "email", "first_name", "last_name"],
+  Page: 1,
+  PageSize: 10
 });
 ```
+
+**API Endpoint:** `POST /api/app/{bo_id}/list`
 
 **Parameters:**
 - `options?: ListOptions` - Optional configuration object
 
 ```tsx
 interface ListOptions {
-  pageNo?: number;        // Page number (1-based)
-  pageSize?: number;      // Number of records per page
-  sort?: SortOption[];    // Sort configuration
-  q?: string;             // Search query
-}
-
-interface SortOption {
-  field: string;
-  direction: "asc" | "desc";
+  Type?: "List" | "Aggregation" | "Pivot";  // Query type (defaults to "List")
+  Field?: string[];                         // Specific fields to return
+  Filter?: Filter;                          // Filter criteria
+  Sort?: Sort[];                           // Sort configuration
+  Page?: number;                           // Page number (1-indexed)
+  PageSize?: number;                       // Records per page
 }
 ```
 
-**Returns:** `Promise<ListResponse<T>>` - Paginated results
+**Returns:** `Promise<ListResponse<T>>` - Array of records with decoded datetimes
 
 ```tsx
 interface ListResponse<T> {
-  data: T[];           // Array of records
-  total: number;       // Total number of records
-  pageNo: number;      // Current page number
-  pageSize: number;    // Records per page
-  totalPages: number;  // Total number of pages
+  Data: T[];  // Array of records
 }
+```
+
+## Advanced Filtering
+
+The API client supports complex filtering with nested conditions:
+
+### Filter Operators
+
+```tsx
+// Comparison operators
+"EQ"         // Equal
+"NE"         // Not Equal  
+"GT"         // Greater Than
+"GTE"        // Greater Than or Equal
+"LT"         // Less Than
+"LTE"        // Less Than or Equal
+"Between"    // Value in range (inclusive)
+"NotBetween" // Value outside range
+
+// List operators
+"IN"         // Value in list
+"NIN"        // Value not in list
+
+// Null/Empty operators
+"Empty"      // Field is null or empty
+"NotEmpty"   // Field has a value
+
+// String operators
+"Contains"     // String contains substring
+"NotContains"  // String doesn't contain
+"MinLength"    // Minimum string length
+"MaxLength"    // Maximum string length
+
+// Logical operators
+"AND"        // All conditions must be true
+"OR"         // Any condition must be true
+```
+
+### Filter Examples
+
+```tsx
+// Simple equality
+{
+  Filter: {
+    Operator: "AND",
+    Condition: [
+      {
+        Operator: "EQ",
+        LHSField: "status",
+        RHSValue: "Active"
+      }
+    ]
+  }
+}
+
+// Range query
+{
+  Filter: {
+    Operator: "AND",
+    Condition: [
+      {
+        Operator: "Between",
+        LHSField: "leave_days",
+        RHSValue: [3, 7]
+      }
+    ]
+  }
+}
+
+// Multiple conditions with OR
+{
+  Filter: {
+    Operator: "OR",
+    Condition: [
+      {
+        Operator: "EQ",
+        LHSField: "leave_type",
+        RHSValue: "Sick"
+      },
+      {
+        Operator: "EQ",
+        LHSField: "leave_type",
+        RHSValue: "Emergency"
+      }
+    ]
+  }
+}
+
+// Nested AND/OR conditions
+{
+  Filter: {
+    Operator: "AND",
+    Condition: [
+      {
+        Operator: "GTE",
+        LHSField: "leave_days",
+        RHSValue: 3
+      },
+      {
+        Operator: "OR",
+        Condition: [
+          {
+            Operator: "EQ",
+            LHSField: "leave_type",
+            RHSValue: "Annual"
+          },
+          {
+            Operator: "EQ",
+            LHSField: "leave_type",
+            RHSValue: "Sick"
+          }
+        ]
+      }
+    ]
+  }
+}
+
+// String operations
+{
+  Filter: {
+    Operator: "AND",
+    Condition: [
+      {
+        Operator: "Contains",
+        LHSField: "reason",
+        RHSValue: "vacation"
+      },
+      {
+        Operator: "NotEmpty",
+        LHSField: "manager_remarks"
+      }
+    ]
+  }
+}
+```
+
+## Sorting
+
+```tsx
+// Single field sort
+Sort: [
+  { Field: "start_date", Order: "DESC" }
+]
+
+// Multi-field sort
+Sort: [
+  { Field: "leave_type", Order: "ASC" },
+  { Field: "start_date", Order: "DESC" },
+  { Field: "leave_days", Order: "ASC" }
+]
+```
+
+## DateTime Handling
+
+The API client automatically handles datetime encoding and decoding:
+
+### API DateTime Formats
+
+```tsx
+// DateTime format (with milliseconds)
+{
+  "$__dt__": 1741668010.123456
+}
+
+// Date format (YYYY-MM-DD)
+{
+  "$__d__": "2025-03-11"
+}
+```
+
+### Utility Functions
+
+```tsx
+import { encodeDatetime, decodeDatetime, encodeDate, decodeDate } from "@kf-ai-sdk/api";
+
+// Encoding (for custom requests)
+const apiDateTime = encodeDatetime(new Date());  // { $__dt__: 1741668010.123456 }
+const apiDate = encodeDate(new Date());          // { $__d__: "2025-03-11" }
+
+// Decoding (automatic in responses)
+const jsDate = decodeDatetime({ $__dt__: 1741668010.123456 });
+const jsDate2 = decodeDate({ $__d__: "2025-03-11" });
 ```
 
 ## TypeScript Support
 
-The API client supports full TypeScript typing:
+The API client provides full TypeScript support with proper typing:
 
 ```tsx
 interface User {
-  id: string;
-  name: string;
+  _id: string;
+  username: string;
+  first_name: string;
+  last_name: string;
   email: string;
-  status: "active" | "inactive";
+  roles: string[];
+  _created_at: Date;  // Automatically decoded from API format
+  _modified_at: Date; // Automatically decoded from API format
 }
 
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  inStock: boolean;
+interface Leave {
+  _id: string;
+  start_date: string;
+  end_date: string;
+  leave_type: string;
+  leave_days: number;
+  reason: string;
+  leave_status?: string;
+  manager_remarks?: string;
+  _created_at: Date;
+  _modified_at: Date;
 }
 
 // Typed operations
-const user: User = await api("users").get("user_123");
-const users: ListResponse<User> = await api("users").list();
-const newUser: User = await api("users").create({
-  name: "John",
+const user: User = await api("user").get("USER_123");
+const users: ListResponse<User> = await api("user").list();
+const createResponse: CreateUpdateResponse = await api("user").create({
+  username: "john.doe",
+  first_name: "John",
+  last_name: "Doe",
   email: "john@example.com"
 });
 ```
 
 ## Error Handling
 
-All API operations return promises that can be handled with try/catch:
+All API operations return promises that handle API-specific errors:
 
 ```tsx
 try {
-  const user = await api("users").get("user_123");
+  const user = await api("user").get("USER_123");
   console.log("User found:", user);
 } catch (error) {
-  if (error.status === 404) {
-    console.log("User not found");
-  } else {
-    console.error("API error:", error.message);
-  }
+  console.error("Failed to get user:", error.message);
+  // Error messages include API status and details
 }
 
 try {
-  const newUser = await api("users").create({
-    name: "John",
-    email: "invalid-email" // Invalid data
+  const response = await api("leave").create({
+    start_date: "2025-07-01",
+    // Missing required fields
   });
 } catch (error) {
-  if (error.status === 400) {
-    console.log("Validation errors:", error.details);
-  } else {
-    console.error("Creation failed:", error.message);
-  }
+  console.error("Creation failed:", error.message);
+  // API will return specific validation errors
+}
+
+try {
+  const response = await api("leave").update("LEAVE_001", {
+    leave_status: "INVALID_STATUS"
+  });
+} catch (error) {
+  console.error("Update failed:", error.message);
+  // API may return workflow transition errors
 }
 ```
 
@@ -233,7 +501,8 @@ Configure the base URL for all API requests:
 ```tsx
 import { setApiBaseUrl } from "@kf-ai-sdk/api";
 
-setApiBaseUrl("https://api.example.com/v1");
+// Default: http://localhost:3000/api/app
+setApiBaseUrl("https://api.example.com/api/app");
 ```
 
 ### Headers
@@ -249,140 +518,99 @@ setDefaultHeaders({
 });
 ```
 
-### Request Interceptors
-
-Add custom request/response handling:
-
-```tsx
-import { addRequestInterceptor, addResponseInterceptor } from "@kf-ai-sdk/api";
-
-// Add authentication token
-addRequestInterceptor((config) => {
-  const token = localStorage.getItem("authToken");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// Handle common error responses
-addResponseInterceptor(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Redirect to login
-      window.location.href = "/login";
-    }
-    return Promise.reject(error);
-  }
-);
-```
-
-## Examples
-
-### User Management
+## Complete Example
 
 ```tsx
 import { api } from "@kf-ai-sdk/api";
 
-class UserService {
-  async getAllUsers() {
-    return api("users").list();
+class LeaveManagementService {
+  // Get single leave request
+  async getLeaveRequest(id: string) {
+    return api("leave").get(id);
   }
   
-  async getUserById(id: string) {
-    return api("users").get(id);
-  }
-  
-  async createUser(userData: Partial<User>) {
-    return api("users").create(userData);
-  }
-  
-  async updateUserStatus(id: string, status: string) {
-    return api("users").update(id, { status });
-  }
-  
-  async deleteUser(id: string) {
-    return api("users").delete(id);
-  }
-  
-  async searchUsers(query: string) {
-    return api("users").list({ q: query, pageSize: 50 });
-  }
-  
-  async getPaginatedUsers(page: number, size: number = 20) {
-    return api("users").list({
-      pageNo: page,
-      pageSize: size,
-      sort: [{ field: "name", direction: "asc" }]
-    });
-  }
-}
-```
-
-### Product Catalog
-
-```tsx
-import { api } from "@kf-ai-sdk/api";
-
-class ProductService {
-  async getFeaturedProducts() {
-    return api("products").list({
-      pageSize: 10,
-      sort: [{ field: "featured", direction: "desc" }]
+  // Create leave request with workflow
+  async createLeaveRequest(data: {
+    start_date: string;
+    end_date: string;
+    leave_type: string;
+    leave_days: number;
+    reason: string;
+  }) {
+    return api("leave").create({
+      ...data,
+      leave_status: "INITIATE" // Start workflow
     });
   }
   
-  async getProductsByCategory(category: string) {
-    return api("products").list({
-      q: category,
-      sort: [{ field: "price", direction: "asc" }]
+  // Approve leave request (manager action)
+  async approveLeaveRequest(id: string, remarks: string) {
+    return api("leave").update(id, {
+      leave_status: "MANAGER_APPROVAL",
+      manager_remarks: remarks
     });
   }
   
-  async updateProductPrice(id: string, price: number) {
-    return api("products").update(id, { price });
-  }
-  
-  async toggleProductStock(id: string, inStock: boolean) {
-    return api("products").update(id, { inStock });
-  }
-}
-```
-
-### Order Processing
-
-```tsx
-import { api } from "@kf-ai-sdk/api";
-
-class OrderService {
-  async getRecentOrders() {
-    return api("orders").list({
-      pageNo: 1,
-      pageSize: 25,
-      sort: [{ field: "createdAt", direction: "desc" }]
+  // Get pending approvals for manager
+  async getPendingApprovals() {
+    return api("leave").list({
+      Filter: {
+        Operator: "AND",
+        Condition: [
+          {
+            Operator: "EQ",
+            LHSField: "leave_status",
+            RHSValue: "MANAGER_APPROVAL"
+          }
+        ]
+      },
+      Sort: [
+        { Field: "start_date", Order: "ASC" }
+      ]
     });
   }
   
-  async getOrdersByStatus(status: string) {
-    return api("orders").list({
-      q: status,
-      sort: [{ field: "createdAt", direction: "desc" }]
+  // Get leave history for user
+  async getUserLeaveHistory(userId: string) {
+    return api("leave").list({
+      Filter: {
+        Operator: "AND",
+        Condition: [
+          {
+            Operator: "EQ",
+            LHSField: "_created_by",
+            RHSValue: userId
+          }
+        ]
+      },
+      Sort: [
+        { Field: "start_date", Order: "DESC" }
+      ],
+      PageSize: 50
     });
   }
   
-  async updateOrderStatus(id: string, status: string) {
-    return api("orders").update(id, { 
-      status,
-      updatedAt: new Date()
-    });
-  }
-  
-  async createOrder(orderData: Partial<Order>) {
-    return api("orders").create({
-      ...orderData,
-      createdAt: new Date(),
-      status: "pending"
+  // Search leaves by type and date range
+  async searchLeaves(leaveType: string, startDate: string, endDate: string) {
+    return api("leave").list({
+      Filter: {
+        Operator: "AND",
+        Condition: [
+          {
+            Operator: "EQ",
+            LHSField: "leave_type",
+            RHSValue: leaveType
+          },
+          {
+            Operator: "Between",
+            LHSField: "start_date",
+            RHSValue: [startDate, endDate]
+          }
+        ]
+      },
+      Sort: [
+        { Field: "start_date", Order: "ASC" }
+      ]
     });
   }
 }
@@ -393,37 +621,41 @@ class OrderService {
 The API client is used by the App layer for actual data operations:
 
 ```tsx
-// In sdk/app/sources/user.ts
+// In app/sources/user.ts
 export class User<TRole extends Role> {
   async list(): Promise<ListResponse<UserForRole<TRole>>> {
-    return api("users").list(); // Uses this API client
+    return api("user").list(); // Uses Runtime API client
   }
   
-  async get(id: IdField): Promise<UserForRole<TRole>> {
-    return api("users").get(id); // Uses this API client
+  async get(id: string): Promise<UserForRole<TRole>> {
+    return api("user").get(id); // Uses Runtime API client
   }
 }
 ```
 
-The API client provides the networking layer while the App layer provides the type safety and role-based access control.
+The API client provides the Runtime API compatibility while the App layer provides type safety and role-based access control.
 
 ## Best Practices
 
-1. **Use TypeScript interfaces** - Define clear types for your data models
+1. **Use Business Object IDs** - Use `api("user")` not `api("users")`
 2. **Handle errors consistently** - Always wrap API calls in try/catch
 3. **Configure once** - Set base URL and headers at app startup
-4. **Use semantic resource names** - `api("users")` not `api("user_management")`
-5. **Leverage pagination** - Use pageSize to control data volume
-6. **Sort by default** - Provide consistent ordering for list operations
+4. **Leverage structured filtering** - Use the full power of filter operators
+5. **Use multi-field sorting** - Provide consistent ordering
+6. **Specify fields when needed** - Use `Field` array for large datasets
+7. **Handle workflow fields** - Be aware of ActivityFlow field behavior
+8. **Use pagination** - Set appropriate `PageSize` for performance
 
-## Limitations
+## API Specification Compliance
 
-This API client is intentionally simple and does not include:
+This client is fully compliant with the Runtime CRUD API specification:
 
-- Advanced filtering (use Components layer for complex filters)
-- React Query integration (use Components layer for caching)
-- Request cancellation
-- Offline support
-- Automatic retries
-
-For advanced features, use the Components layer which builds on top of this API client.
+- ✅ Correct URL patterns: `/api/app/{bo_id}/<operation>`
+- ✅ Proper HTTP methods: GET for read, POST for create/update/list, DELETE for delete
+- ✅ Structured request/response formats
+- ✅ Complex filtering with all supported operators
+- ✅ Multi-field sorting with ASC/DESC
+- ✅ Datetime encoding/decoding
+- ✅ Workflow field support
+- ✅ Pagination and field selection
+- ✅ Error handling for all documented error cases

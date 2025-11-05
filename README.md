@@ -17,11 +17,12 @@ The KF AI SDK is built on three integrated layers:
 
 ### 🔗 API Layer (`api/`)
 
-**Simple CRUD Operations**
+**Runtime CRUD API Client**
 
-- Chainable API client: `api('users').list()`, `api('users').get()`, etc.
+- Business Object API client: `api('user').list()`, `api('leave').get()`, etc.
 - 5 core operations: get, create, update, delete, list
-- Basic HTTP client with error handling
+- Full Runtime API compatibility with structured filtering and sorting
+- Automatic datetime encoding/decoding for API formats
 - Clean separation from business logic
 
 ### 🧩 Components Layer (`components/`)
@@ -143,35 +144,59 @@ function EmployeeUserList() {
 }
 ```
 
-### Simple API Operations
+### Runtime API Operations
 
 ```tsx
 import { api } from "@kf-ai-sdk/api";
 
-// Basic CRUD operations
+// Runtime CRUD operations
 async function userOperations() {
-  // Get single user
-  const user = await api("users").get("user_123");
+  // Get single user by ID
+  const user = await api("user").get("USER_123");
 
-  // Create new user
-  const newUser = await api("users").create({
-    name: "John Doe",
+  // Create new user (with optional custom ID)
+  const createResponse = await api("user").create({
+    _id: "USER_456", // Optional custom ID
+    username: "john.doe",
+    first_name: "John",
+    last_name: "Doe",
     email: "john@example.com",
   });
+  console.log(createResponse._id); // "USER_456"
 
-  // Update user
-  const updatedUser = await api("users").update("user_123", {
-    status: "active",
+  // Update user (partial updates supported)
+  const updateResponse = await api("user").update("USER_123", {
+    email: "newemail@example.com",
+    last_name: "Smith",
   });
 
   // Delete user
-  await api("users").delete("user_123");
+  const deleteResponse = await api("user").delete("USER_123");
+  console.log(deleteResponse.status); // "success"
 
-  // List users with pagination
-  const usersList = await api("users").list({
-    pageNo: 1,
-    pageSize: 20,
-    sort: [{ field: "name", direction: "asc" }],
+  // List users with structured filtering and sorting
+  const usersList = await api("user").list({
+    Filter: {
+      Operator: "AND",
+      Condition: [
+        {
+          Operator: "EQ",
+          LHSField: "status", 
+          RHSValue: "Active"
+        },
+        {
+          Operator: "Contains",
+          LHSField: "email",
+          RHSValue: "@company.com"
+        }
+      ]
+    },
+    Sort: [
+      { Field: "last_name", Order: "ASC" },
+      { Field: "first_name", Order: "ASC" }
+    ],
+    Page: 1,
+    PageSize: 50
   });
 }
 ```
@@ -198,10 +223,13 @@ async function userOperations() {
 - ✅ **Semantic Types** - Field types that convey meaning (IdField, StringField, etc.)
 - ✅ **Single File Per Source** - All logic for a data model in one place
 
-### API Layer (`sdk/api`)
+### API Layer (`api/`)
 
-- ✅ **Simple CRUD Operations** - get, create, update, delete, list
-- ✅ **Chainable Interface** - Clean `api('source').method()` syntax
+- ✅ **Runtime CRUD Operations** - get, create, update, delete, list
+- ✅ **Business Object Interface** - Clean `api('bo_id').method()` syntax
+- ✅ **Structured Filtering** - Complex filters with AND/OR/nested conditions
+- ✅ **Advanced Sorting** - Multi-field sorting with ASC/DESC directions
+- ✅ **Datetime Handling** - Automatic encoding/decoding of API datetime formats
 - ✅ **Error Handling** - Consistent error handling across operations
 - ✅ **TypeScript Support** - Full type safety for API operations
 
