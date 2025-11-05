@@ -5,7 +5,10 @@ import {
   IdField,
   StringField,
   NumberField,
-  DateField,
+  DateTimeField,
+  SelectField,
+  CurrencyField,
+  TextAreaField,
 } from "../types/base-fields";
 import { Role, Roles } from "../types/roles";
 import { ListResponse, ListOptions, CreateUpdateResponse, DeleteResponse } from "../types/common";
@@ -27,17 +30,17 @@ export type OrderType = {
   /** Customer who placed the order */
   customerId: IdField;
 
-  /** Total order amount in cents */
-  totalAmount: NumberField;
+  /** Total order amount */
+  totalAmount: CurrencyField;
 
   /** Current order status */
-  status: StringField<"pending" | "completed" | "cancelled" | "refunded">;
+  status: SelectField<"pending" | "completed" | "cancelled" | "refunded">;
 
   /** When the order was created */
-  _created_at: DateField;
+  _created_at: DateTimeField;
 
   /** When the order was last modified */
-  _modified_at: DateField;
+  _modified_at: DateTimeField;
 
   /** User who created the record */
   _created_by: {
@@ -58,10 +61,10 @@ export type OrderType = {
   _m_version: StringField;
 
   /** Internal notes (admin only) */
-  internalNotes: StringField;
+  internalNotes: TextAreaField;
 
   /** Profit margin percentage (admin only) */
-  profitMargin: NumberField;
+  profitMargin: NumberField<2>;
 };
 
 // ============================================================

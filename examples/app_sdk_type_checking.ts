@@ -15,7 +15,7 @@ await order.delete("order-id-456");
 const newOrder = await order.create({
   _id: "010",
   customerId: "Claude",
-  totalAmount: 250,
+  totalAmount: { currency: "USD", value: 250.75 },
   status: "completed",
   internalNotes: "Handle with care",
   profitMargin: 15,

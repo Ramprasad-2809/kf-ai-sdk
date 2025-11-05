@@ -5,8 +5,11 @@ import {
   IdField,
   StringField,
   NumberField,
-  DateField,
+  DateTimeField,
   BooleanField,
+  SelectField,
+  TextAreaField,
+  CurrencyField,
 } from "../types/base-fields";
 import { Role, Roles } from "../types/roles";
 import { ListResponse, ListOptions, CreateUpdateResponse, DeleteResponse } from "../types/common";
@@ -29,13 +32,13 @@ export type ProductType = {
   name: StringField;
 
   /** Sale price */
-  price: NumberField;
+  price: CurrencyField;
 
   /** Product description */
-  description: StringField;
+  description: TextAreaField;
 
   /** Product category */
-  category: StringField<
+  category: SelectField<
     "electronics" | "clothing" | "books" | "home" | "sports"
   >;
 
@@ -43,10 +46,10 @@ export type ProductType = {
   inStock: BooleanField;
 
   /** When the product was created */
-  _created_at: DateField;
+  _created_at: DateTimeField;
 
   /** When the product was last modified */
-  _modified_at: DateField;
+  _modified_at: DateTimeField;
 
   /** User who created the record */
   _created_by: {
@@ -67,16 +70,16 @@ export type ProductType = {
   _m_version: StringField;
 
   /** Cost price (admin only) */
-  cost: NumberField;
+  cost: CurrencyField;
 
   /** Supplier name (admin only) */
   supplier: StringField;
 
   /** Profit margin percentage (admin only) */
-  margin: NumberField;
+  margin: NumberField<2>;
 
   /** Last restocked date (admin only) */
-  lastRestocked: DateField;
+  lastRestocked: DateTimeField;
 };
 
 // ============================================================
