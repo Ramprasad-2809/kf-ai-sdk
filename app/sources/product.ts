@@ -9,7 +9,7 @@ import {
   BooleanField,
 } from "../types/base-fields";
 import { Role, Roles } from "../types/roles";
-import { ListResponse, ListOptions } from "../types/common";
+import { ListResponse, ListOptions, CreateUpdateResponse, DeleteResponse } from "../types/common";
 import { api } from "../../api";
 
 // ============================================================
@@ -23,7 +23,7 @@ import { api } from "../../api";
  */
 export type ProductType = {
   /** Unique product identifier */
-  id: IdField;
+  _id: IdField;
 
   /** Product name */
   name: StringField;
@@ -43,7 +43,28 @@ export type ProductType = {
   inStock: BooleanField;
 
   /** When the product was created */
-  createdAt: DateField;
+  _created_at: DateField;
+
+  /** When the product was last modified */
+  _modified_at: DateField;
+
+  /** User who created the record */
+  _created_by: {
+    _id: IdField;
+    username: StringField;
+  };
+
+  /** User who last modified the record */
+  _modified_by: {
+    _id: IdField;
+    username: StringField;
+  };
+
+  /** Record version (for concurrency control) */
+  _version: StringField;
+
+  /** Metadata version */
+  _m_version: StringField;
 
   /** Cost price (admin only) */
   cost: NumberField;
@@ -72,7 +93,7 @@ export type AdminProduct = ProductType;
  */
 export type UserProduct = Pick<
   ProductType,
-  "id" | "name" | "price" | "description" | "category" | "inStock" | "createdAt"
+  "_id" | "name" | "price" | "description" | "category" | "inStock" | "_created_at" | "_modified_at" | "_created_by" | "_modified_by" | "_version" | "_m_version"
 >;
 
 // ============================================================
@@ -90,20 +111,6 @@ export type ProductForRole<TRole extends Role> =
     ? UserProduct
     : never;
 
-// ============================================================
-// FILTER TYPES (optional but recommended)
-// ============================================================
-
-/**
- * Available filter options for product queries
- */
-export interface ProductFilters {
-  category?: ProductType["category"] | ProductType["category"][];
-  inStock?: BooleanField;
-  minPrice?: NumberField;
-  maxPrice?: NumberField;
-  supplier?: StringField; // Admin only
-}
 
 // ============================================================
 // CLASS IMPLEMENTATION
@@ -126,9 +133,9 @@ export class Product<TRole extends Role = typeof Roles.Admin> {
    * @returns Paginated list of products (filtered by role)
    */
   async list(
-    options?: ListOptions & { filter?: ProductFilters }
+    options?: ListOptions
   ): Promise<ListResponse<ProductForRole<TRole>>> {
-    return api("products").list(options);
+    return api("product").list(options);
   }
 
   /**
@@ -137,79 +144,46 @@ export class Product<TRole extends Role = typeof Roles.Admin> {
    * @returns Product data (filtered by role)
    */
   async get(id: IdField): Promise<ProductForRole<TRole>> {
-    return api("products").get(id);
+    return api("product").get(id);
   }
 
   /**
    * Create new product
    * @param data - Product data (only fields visible to role)
-   * @returns Created product (filtered by role)
+   * @returns Create response with product ID
    */
   async create(
     data: Partial<ProductForRole<TRole>>
-  ): Promise<ProductForRole<TRole>> {
-    return api("products").create(data);
+  ): Promise<CreateUpdateResponse> {
+    return api("product").create(data);
   }
 
   /**
    * Update existing product
    * @param id - Product ID
    * @param data - Updated fields (only fields visible to role)
-   * @returns Updated product (filtered by role)
+   * @returns Update response with product ID
    */
   async update(
     id: IdField,
     data: Partial<ProductForRole<TRole>>
-  ): Promise<ProductForRole<TRole>> {
-    return api("products").update(id, data);
+  ): Promise<CreateUpdateResponse> {
+    return api("product").update(id, data);
   }
 
   /**
    * Delete product (admin only)
    * @param id - Product ID
+   * @returns Delete response with status
    * @throws Error if non-admin attempts deletion
    */
-  async delete(id: IdField): Promise<void> {
+  async delete(id: IdField): Promise<DeleteResponse> {
     // Role-based permission check
     if (this.role !== Roles.Admin) {
       throw new Error("Only admins can delete products");
     }
 
-    await api("products").delete(id);
+    return api("product").delete(id);
   }
 
-  /**
-   * Update stock status (admin only)
-   * @param id - Product ID
-   * @param inStock - New stock status
-   * @returns Updated product
-   */
-  async updateStock(
-    id: IdField,
-    inStock: BooleanField
-  ): Promise<ProductForRole<TRole>> {
-    if (this.role !== Roles.Admin) {
-      throw new Error("Only admins can update stock status");
-    }
-
-    return this.update(id, { inStock } as Partial<ProductForRole<TRole>>);
-  }
-
-  /**
-   * Get products by category
-   * @param category - Product category
-   * @returns Filtered list of products
-   */
-  async getByCategory(
-    category: ProductType["category"]
-  ): Promise<ListResponse<ProductForRole<TRole>>> {
-    return this.list({
-      Filter: { category },
-    });
-  }
-
-  /**
-   * Filter product data based on user role
-   * @private
-   */
 }

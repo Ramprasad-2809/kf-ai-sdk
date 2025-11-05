@@ -13,18 +13,19 @@ await order.delete("order-id-456");
 
 // create api:
 const newOrder = await order.create({
-  id: "010",
+  _id: "010",
   customerId: "Claude",
   totalAmount: 250,
   status: "completed",
-  createdAt: new Date(),
-  updatedAt: new Date(),
   internalNotes: "Handle with care",
   profitMargin: 15,
 });
 
+let status = await order.update("010", { status: "completed" });
+status._id;
+
 // list api:
 const ordersList = await order.list();
 ordersList.Data.forEach((order) => {
-  console.log(order.id, order.profitMargin);
+  console.log(order._id, order.profitMargin);
 });

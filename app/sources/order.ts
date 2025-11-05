@@ -8,7 +8,7 @@ import {
   DateField,
 } from "../types/base-fields";
 import { Role, Roles } from "../types/roles";
-import { ListResponse, ListOptions } from "../types/common";
+import { ListResponse, ListOptions, CreateUpdateResponse, DeleteResponse } from "../types/common";
 import { api } from "../../api";
 
 // ============================================================
@@ -22,7 +22,7 @@ import { api } from "../../api";
  */
 export type OrderType = {
   /** Unique order identifier */
-  id: IdField;
+  _id: IdField;
 
   /** Customer who placed the order */
   customerId: IdField;
@@ -34,10 +34,28 @@ export type OrderType = {
   status: StringField<"pending" | "completed" | "cancelled" | "refunded">;
 
   /** When the order was created */
-  createdAt: DateField;
+  _created_at: DateField;
 
-  /** When the order was last updated */
-  updatedAt: DateField;
+  /** When the order was last modified */
+  _modified_at: DateField;
+
+  /** User who created the record */
+  _created_by: {
+    _id: IdField;
+    username: StringField;
+  };
+
+  /** User who last modified the record */
+  _modified_by: {
+    _id: IdField;
+    username: StringField;
+  };
+
+  /** Record version (for concurrency control) */
+  _version: StringField;
+
+  /** Metadata version */
+  _m_version: StringField;
 
   /** Internal notes (admin only) */
   internalNotes: StringField;
@@ -60,7 +78,7 @@ export type AdminOrder = OrderType;
  */
 export type UserOrder = Pick<
   OrderType,
-  "id" | "customerId" | "status" | "createdAt" | "totalAmount"
+  "_id" | "customerId" | "status" | "_created_at" | "_modified_at" | "totalAmount" | "_created_by" | "_modified_by" | "_version" | "_m_version"
 >;
 
 // ============================================================
@@ -100,7 +118,7 @@ export class Order<TRole extends Role = typeof Roles.Admin> {
   async list(
     options?: ListOptions
   ): Promise<ListResponse<OrderForRole<TRole>>> {
-    return api("orders").list(options);
+    return api("order").list(options);
   }
 
   /**
@@ -109,44 +127,45 @@ export class Order<TRole extends Role = typeof Roles.Admin> {
    * @returns Order data (filtered by role)
    */
   async get(id: IdField): Promise<OrderForRole<TRole>> {
-    return api("orders").get(id);
+    return api("order").get(id);
   }
 
   /**
    * Create new order
    * @param data - Order data (only fields visible to role)
-   * @returns Created order (filtered by role)
+   * @returns Create response with order ID
    */
   async create(
     data: Partial<OrderForRole<TRole>>
-  ): Promise<OrderForRole<TRole>> {
-    return api("orders").create(data);
+  ): Promise<CreateUpdateResponse> {
+    return api("order").create(data);
   }
 
   /**
    * Update existing order
    * @param id - Order ID
    * @param data - Updated fields (only fields visible to role)
-   * @returns Updated order (filtered by role)
+   * @returns Update response with order ID
    */
   async update(
     id: IdField,
     data: Partial<OrderForRole<TRole>>
-  ): Promise<OrderForRole<TRole>> {
-    return api("orders").update(id, data);
+  ): Promise<CreateUpdateResponse> {
+    return api("order").update(id, data);
   }
 
   /**
    * Delete order (admin only)
    * @param id - Order ID
+   * @returns Delete response with status
    * @throws Error if non-admin attempts deletion
    */
-  async delete(id: IdField): Promise<void> {
+  async delete(id: IdField): Promise<DeleteResponse> {
     // Role-based permission check
     if (this.role !== Roles.Admin) {
       throw new Error("Only admins can delete orders");
     }
 
-    await api("orders").delete(id);
+    return api("order").delete(id);
   }
 }
