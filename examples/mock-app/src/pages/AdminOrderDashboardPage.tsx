@@ -1,47 +1,18 @@
-import { useEffect, useMemo } from 'react';
-import { useTable } from 'kf-ai-sdk';
-import { useRole } from '../providers/RoleProvider';
-import { initializeMockApi } from '../utils/mockApiClient';
-
-interface OrderType {
-  _id: string;
-  customerName: string;
-  customerEmail: string;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
-  total: {
-    value: number;
-    currency: string;
-  };
-  itemCount: number;
-  _created_at: Date;
-  profit?: {
-    value: number;
-    currency: string;
-  };
-  shippingCost?: {
-    value: number;
-    currency: string;
-  };
-  internalNotes?: string;
-}
+import { useMemo } from "react";
+import { useTable } from "kf-ai-sdk";
+import { OrderForRole, Roles } from "../../../../app";
 
 export function AdminOrderDashboardPage() {
-  const { } = useRole();
-  
-  useEffect(() => {
-    initializeMockApi();
-  }, []);
-
-  const table = useTable<OrderType>({
-    source: 'order',
+  const table = useTable<OrderForRole<typeof Roles.Admin>>({
+    source: "order",
     columns: [
-      { fieldId: '_id', enableSorting: true, label: 'Order ID' },
-      { fieldId: 'customerName', enableSorting: true, label: 'Customer' },
-      { fieldId: 'status', enableSorting: true, label: 'Status' },
-      { fieldId: 'total', enableSorting: true, label: 'Total' },
-      { fieldId: 'profit', enableSorting: true, label: 'Profit' },
-      { fieldId: 'itemCount', enableSorting: true, label: 'Items' },
-      { fieldId: '_created_at', enableSorting: true, label: 'Date' },
+      { fieldId: "_id", enableSorting: true },
+      { fieldId: "customerName", enableSorting: true },
+      { fieldId: "status", enableSorting: true },
+      { fieldId: "total", enableSorting: true },
+      { fieldId: "profit", enableSorting: true },
+      { fieldId: "itemCount", enableSorting: true },
+      { fieldId: "_created_at", enableSorting: true },
     ],
     enableSorting: true,
     enableFiltering: true,
@@ -52,44 +23,50 @@ export function AdminOrderDashboardPage() {
         pageSize: 15,
       },
       sorting: {
-        field: '_created_at' as keyof OrderType,
-        direction: 'desc',
+        field: "_created_at" as keyof OrderForRole<typeof Roles.Admin>,
+        direction: "desc",
       },
     },
     onSuccess: (data) => {
       console.log(`Loaded ${data.length} orders`);
     },
     onError: (error) => {
-      console.error('Failed to load orders:', error);
+      console.error("Failed to load orders:", error);
     },
   });
 
   // Calculate dashboard stats
   const stats = useMemo(() => {
     const orders = table.rows;
-    const totalRevenue = orders.reduce((sum, order) => sum + order.total.value, 0);
-    const totalProfit = orders.reduce((sum, order) => sum + (order.profit?.value || 0), 0);
-    const pendingOrders = orders.filter(order => order.status === 'pending').length;
-    const completedOrders = orders.filter(order => order.status === 'delivered').length;
-    
+    const totalRevenue = orders.reduce(
+      (sum, order) =>
+        sum + (typeof order.total === "object" ? order.total.value : 0),
+      0
+    );
+    const totalProfit = orders.reduce(
+      (sum, order) =>
+        sum +
+        (order.profit && typeof order.profit === "object"
+          ? order.profit.value
+          : 0),
+      0
+    );
+    const pendingOrders = orders.filter(
+      (order) => order.status === "pending"
+    ).length;
+    const completedOrders = orders.filter(
+      (order) => order.status === "delivered"
+    ).length;
+
     return { totalRevenue, totalProfit, pendingOrders, completedOrders };
   }, [table.rows]);
-
-  if (table.isLoading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <div className="loading-spinner"></div>
-        <span className="ml-2">Loading dashboard...</span>
-      </div>
-    );
-  }
 
   if (table.error) {
     return (
       <div className="error-boundary">
         <h3 className="text-red-800 font-medium">Error loading dashboard</h3>
         <p className="text-red-600 text-sm">{table.error.message}</p>
-        <button 
+        <button
           onClick={() => table.refetch()}
           className="mt-2 px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
         >
@@ -105,18 +82,18 @@ export function AdminOrderDashboardPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Order Dashboard</h1>
-          <p className="text-gray-600">Complete order management and analytics</p>
-          <div className="role-badge role-badge-admin">
-            Admin Dashboard
-          </div>
+          <p className="text-gray-600">
+            Complete order management and analytics
+          </p>
+          <div className="role-badge role-badge-admin">Admin Dashboard</div>
         </div>
-        
-        <button 
+
+        <button
           onClick={() => table.refetch()}
           disabled={table.isFetching}
           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
         >
-          {table.isFetching ? 'Refreshing...' : 'Refresh'}
+          {table.isFetching ? "Refreshing..." : "Refresh"}
         </button>
       </div>
 
@@ -141,7 +118,9 @@ export function AdminOrderDashboardPage() {
           </p>
         </div>
         <div className="bg-white p-6 rounded-lg shadow border">
-          <h3 className="text-sm font-medium text-gray-500">Completed Orders</h3>
+          <h3 className="text-sm font-medium text-gray-500">
+            Completed Orders
+          </h3>
           <p className="text-2xl font-bold text-purple-600">
             {stats.completedOrders}
           </p>
@@ -153,13 +132,13 @@ export function AdminOrderDashboardPage() {
         <input
           type="text"
           placeholder="Search orders..."
-          value={table.filter.global}
-          onChange={(e) => table.filter.setGlobal(e.target.value)}
+          value={table.search.query}
+          onChange={(e) => table.search.setQuery(e.target.value)}
           className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-        {table.filter.global && (
-          <button 
-            onClick={table.filter.clear}
+        {table.search.query && (
+          <button
+            onClick={table.search.clear}
             className="px-2 py-1 text-gray-500 hover:text-gray-700"
           >
             Clear
@@ -172,14 +151,14 @@ export function AdminOrderDashboardPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th 
+              <th
                 className="table-header cursor-pointer hover:bg-gray-100"
-                onClick={() => table.sort.toggle('_id')}
+                onClick={() => table.sort.toggle("_id")}
               >
                 Order ID
-                {table.sort.field === '_id' && (
+                {table.sort.field === "_id" && (
                   <span className="ml-1">
-                    {table.sort.direction === 'asc' ? '↑' : '↓'}
+                    {table.sort.direction === "asc" ? "↑" : "↓"}
                   </span>
                 )}
               </th>
@@ -188,21 +167,51 @@ export function AdminOrderDashboardPage() {
               <th className="table-header">Total</th>
               <th className="table-header">Profit</th>
               <th className="table-header">Items</th>
-              <th 
+              <th
                 className="table-header cursor-pointer hover:bg-gray-100"
-                onClick={() => table.sort.toggle('_created_at')}
+                onClick={() => table.sort.toggle("_created_at")}
               >
                 Date
-                {table.sort.field === '_created_at' && (
+                {table.sort.field === "_created_at" && (
                   <span className="ml-1">
-                    {table.sort.direction === 'asc' ? '↑' : '↓'}
+                    {table.sort.direction === "asc" ? "↑" : "↓"}
                   </span>
                 )}
               </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {table.rows.length > 0 ? (
+            {table.isLoading ? (
+              // Loading state - show skeleton rows
+              Array.from({ length: 5 }).map((_, idx) => (
+                <tr key={`loading-${idx}`} className="animate-pulse">
+                  <td className="table-cell">
+                    <div className="h-4 bg-gray-200 rounded w-20"></div>
+                  </td>
+                  <td className="table-cell">
+                    <div className="space-y-2">
+                      <div className="h-4 bg-gray-200 rounded w-32"></div>
+                      <div className="h-3 bg-gray-200 rounded w-24"></div>
+                    </div>
+                  </td>
+                  <td className="table-cell">
+                    <div className="h-6 bg-gray-200 rounded-full w-20"></div>
+                  </td>
+                  <td className="table-cell">
+                    <div className="h-4 bg-gray-200 rounded w-16"></div>
+                  </td>
+                  <td className="table-cell">
+                    <div className="h-4 bg-gray-200 rounded w-16"></div>
+                  </td>
+                  <td className="table-cell">
+                    <div className="h-4 bg-gray-200 rounded w-8"></div>
+                  </td>
+                  <td className="table-cell">
+                    <div className="h-4 bg-gray-200 rounded w-24"></div>
+                  </td>
+                </tr>
+              ))
+            ) : table.rows.length > 0 ? (
               table.rows.map((order) => (
                 <tr key={order._id} className="hover:bg-gray-50">
                   <td className="table-cell font-medium text-gray-900">
@@ -210,28 +219,41 @@ export function AdminOrderDashboardPage() {
                   </td>
                   <td className="table-cell">
                     <div>
-                      <div className="font-medium text-gray-900">{order.customerName}</div>
-                      <div className="text-gray-500 text-xs">{order.customerEmail}</div>
+                      <div className="font-medium text-gray-900">
+                        {order.customerName}
+                      </div>
+                      <div className="text-gray-500 text-xs">
+                        {order.customerEmail}
+                      </div>
                     </div>
                   </td>
                   <td className="table-cell">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      order.status === 'delivered' 
-                        ? 'bg-green-100 text-green-800' 
-                        : order.status === 'pending' 
-                        ? 'bg-orange-100 text-orange-800'
-                        : order.status === 'cancelled'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        order.status === "delivered"
+                          ? "bg-green-100 text-green-800"
+                          : order.status === "pending"
+                            ? "bg-orange-100 text-orange-800"
+                            : order.status === "cancelled"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-blue-100 text-blue-800"
+                      }`}
+                    >
+                      {order.status.charAt(0).toUpperCase() +
+                        order.status.slice(1)}
                     </span>
                   </td>
                   <td className="table-cell font-medium text-gray-900">
-                    ${order.total.value.toFixed(2)}
+                    $
+                    {typeof order.total === "object"
+                      ? order.total.value.toFixed(2)
+                      : "0.00"}
                   </td>
                   <td className="table-cell font-medium text-green-600">
-                    ${order.profit?.value.toFixed(2) || '0.00'}
+                    $
+                    {order.profit && typeof order.profit === "object"
+                      ? order.profit.value.toFixed(2)
+                      : "0.00"}
                   </td>
                   <td className="table-cell text-gray-500">
                     {order.itemCount}
@@ -243,7 +265,10 @@ export function AdminOrderDashboardPage() {
               ))
             ) : (
               <tr>
-                <td colSpan={7} className="table-cell text-center text-gray-500">
+                <td
+                  colSpan={7}
+                  className="table-cell text-center text-gray-500"
+                >
                   No orders found.
                 </td>
               </tr>
@@ -257,7 +282,7 @@ export function AdminOrderDashboardPage() {
         <div className="text-sm text-gray-700">
           Showing {table.rows.length} of {table.totalItems} orders
         </div>
-        
+
         <div className="flex items-center space-x-2">
           <button
             onClick={() => table.pagination.goToPrevious()}
@@ -266,11 +291,11 @@ export function AdminOrderDashboardPage() {
           >
             Previous
           </button>
-          
+
           <span className="text-sm text-gray-700">
             Page {table.pagination.currentPage} of {table.pagination.totalPages}
           </span>
-          
+
           <button
             onClick={() => table.pagination.goToNext()}
             disabled={!table.pagination.canGoNext}

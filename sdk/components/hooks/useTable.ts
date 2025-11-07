@@ -1,7 +1,7 @@
-import { useState, useMemo, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { api } from '../../api';
-import type { ListResponse, ListOptions } from '../../types/common';
+import { useState, useMemo, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../../api";
+import type { ListResponse, ListOptions } from "../../types/common";
 
 // ============================================================
 // TYPE DEFINITIONS
@@ -18,10 +18,6 @@ export interface ColumnDefinition<T> {
   enableFiltering?: boolean;
   /** Custom transform function (overrides auto-formatting) */
   transform?: (value: any, row: T) => React.ReactNode;
-  /** Column width */
-  width?: string | number;
-  /** Text alignment */
-  align?: 'left' | 'center' | 'right';
 }
 
 export interface UseTableOptions<T> {
@@ -43,7 +39,7 @@ export interface UseTableOptions<T> {
     };
     sorting?: {
       field: keyof T;
-      direction: 'asc' | 'desc';
+      direction: "asc" | "desc";
     };
     globalFilter?: string;
   };
@@ -57,29 +53,36 @@ export interface UseTableReturn<T> {
   // Data
   rows: T[];
   totalItems: number;
-  
+
   // Loading States
   isLoading: boolean;
   isFetching: boolean;
-  
+
   // Error Handling
   error: Error | null;
-  
+
+  // Search (Flat Access)
+  search: {
+    query: string;
+    setQuery: (value: string) => void;
+    clear: () => void;
+  };
+
   // Sorting (Flat Access)
   sort: {
     field: keyof T | null;
-    direction: 'asc' | 'desc' | null;
+    direction: "asc" | "desc" | null;
     toggle: (field: keyof T) => void;
     clear: () => void;
   };
-  
+
   // Filtering (Flat Access)
   filter: {
     global: string;
     setGlobal: (value: string) => void;
     clear: () => void;
   };
-  
+
   // Pagination (Flat Access)
   pagination: {
     currentPage: number;
@@ -93,7 +96,7 @@ export interface UseTableReturn<T> {
     goToPage: (page: number) => void;
     setPageSize: (size: number) => void;
   };
-  
+
   // Operations
   refetch: () => Promise<ListResponse<T>>;
 }
@@ -102,9 +105,13 @@ export interface UseTableReturn<T> {
 // INTERNAL STATE TYPES
 // ============================================================
 
+interface SearchState {
+  query: string;
+}
+
 interface SortingState<T> {
   field: keyof T | null;
-  direction: 'asc' | 'desc' | null;
+  direction: "asc" | "desc" | null;
 }
 
 interface FilteringState {
@@ -127,7 +134,7 @@ interface PaginationState {
  */
 // function _detectFieldType<T>(fieldId: keyof T): string {
 //   const fieldName = String(fieldId);
-  
+
 //   // Basic pattern matching - will be replaced with actual type introspection
 //   if (fieldName.includes('price') || fieldName.includes('cost') || fieldName.includes('amount')) {
 //     return 'currency';
@@ -141,7 +148,7 @@ interface PaginationState {
 //   if (fieldName.includes('status') || fieldName.includes('type') || fieldName.includes('category')) {
 //     return 'string';
 //   }
-  
+
 //   return 'string'; // default
 // }
 
@@ -149,20 +156,26 @@ interface PaginationState {
 // MAIN HOOK
 // ============================================================
 
-export function useTable<T = any>(options: UseTableOptions<T>): UseTableReturn<T> {
+export function useTable<T = any>(
+  options: UseTableOptions<T>
+): UseTableReturn<T> {
   // ============================================================
   // STATE MANAGEMENT
   // ============================================================
-  
+
+  const [search, setSearch] = useState<SearchState>({
+    query: "",
+  });
+
   const [sorting, setSorting] = useState<SortingState<T>>({
     field: options.initialState?.sorting?.field || null,
     direction: options.initialState?.sorting?.direction || null,
   });
-  
+
   const [filtering, setFiltering] = useState<FilteringState>({
-    global: options.initialState?.globalFilter || '',
+    global: options.initialState?.globalFilter || "",
   });
-  
+
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: options.initialState?.pagination?.pageIndex || 0,
     pageSize: options.initialState?.pagination?.pageSize || 10,
@@ -171,55 +184,63 @@ export function useTable<T = any>(options: UseTableOptions<T>): UseTableReturn<T
   // ============================================================
   // API OPTIONS BUILDER
   // ============================================================
-  
+
   const apiOptions = useMemo((): ListOptions => {
     const opts: ListOptions = {};
-    
+
     // Add sorting
     if (sorting.field && sorting.direction) {
-      opts.Sort = [{
-        Field: String(sorting.field),
-        Order: sorting.direction === 'asc' ? 'ASC' : 'DESC'
-      }];
+      opts.Sort = [
+        {
+          Field: String(sorting.field),
+          Order: sorting.direction === "asc" ? "ASC" : "DESC",
+        },
+      ];
     }
-    
-    // Add global filter
-    if (filtering.global && options.enableFiltering) {
-      // This is a simplified global filter - in real implementation,
-      // you'd want to apply this across multiple fields
+
+    // Add search query (global search across multiple fields)
+    if (search.query && options.enableFiltering) {
+      // This is a simplified global search - applies across all searchable columns
       opts.Filter = {
-        Operator: 'OR',
+        Operator: "OR",
         Condition: options.columns
-          .filter(col => col.enableFiltering !== false)
-          .map(col => ({
-            Operator: 'Contains' as const,
+          .filter((col) => col.enableFiltering !== false)
+          .map((col) => ({
+            Operator: "Contains" as const,
             LHSField: String(col.fieldId),
-            RHSValue: filtering.global
-          }))
+            RHSValue: search.query,
+          })),
       };
     }
-    
+
     // Add pagination
     if (options.enablePagination) {
       opts.Page = pagination.pageIndex + 1; // Convert to 1-indexed
       opts.PageSize = pagination.pageSize;
     }
-    
+
     return opts;
-  }, [sorting, filtering, pagination, options.columns, options.enableFiltering, options.enablePagination]);
+  }, [
+    sorting,
+    search.query,
+    pagination,
+    options.columns,
+    options.enableFiltering,
+    options.enablePagination,
+  ]);
 
   // ============================================================
   // DATA FETCHING
   // ============================================================
-  
+
   const {
     data,
     isLoading,
     isFetching,
     error,
-    refetch: queryRefetch
+    refetch: queryRefetch,
   } = useQuery({
-    queryKey: ['table', options.source, apiOptions],
+    queryKey: ["table", options.source, apiOptions],
     queryFn: async (): Promise<ListResponse<T>> => {
       try {
         const response = await api<T>(options.source).list(apiOptions);
@@ -239,10 +260,10 @@ export function useTable<T = any>(options: UseTableOptions<T>): UseTableReturn<T
   // ============================================================
   // COMPUTED VALUES
   // ============================================================
-  
+
   const rows = useMemo(() => data?.Data || [], [data]);
   const totalItems = useMemo(() => data?.Data?.length || 0, [data]); // Note: This should come from API response
-  
+
   const totalPages = useMemo(() => {
     return Math.ceil(totalItems / pagination.pageSize);
   }, [totalItems, pagination.pageSize]);
@@ -250,19 +271,19 @@ export function useTable<T = any>(options: UseTableOptions<T>): UseTableReturn<T
   // ============================================================
   // SORTING OPERATIONS
   // ============================================================
-  
+
   const toggleSort = useCallback((field: keyof T) => {
-    setSorting(prev => {
+    setSorting((prev) => {
       if (prev.field === field) {
         // Same field - toggle direction or clear
-        if (prev.direction === 'asc') {
-          return { field, direction: 'desc' };
-        } else if (prev.direction === 'desc') {
+        if (prev.direction === "asc") {
+          return { field, direction: "desc" };
+        } else if (prev.direction === "desc") {
           return { field: null, direction: null };
         }
       }
       // New field or no current sort
-      return { field, direction: 'asc' };
+      return { field, direction: "asc" };
     });
   }, []);
 
@@ -271,55 +292,72 @@ export function useTable<T = any>(options: UseTableOptions<T>): UseTableReturn<T
   }, []);
 
   // ============================================================
+  // SEARCH OPERATIONS
+  // ============================================================
+
+  const setSearchQuery = useCallback((value: string) => {
+    setSearch({ query: value });
+    // Reset to first page when searching
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  }, []);
+
+  const clearSearch = useCallback(() => {
+    setSearch({ query: "" });
+  }, []);
+
+  // ============================================================
   // FILTERING OPERATIONS
   // ============================================================
-  
+
   const setGlobalFilter = useCallback((value: string) => {
-    setFiltering(prev => ({ ...prev, global: value }));
+    setFiltering((prev) => ({ ...prev, global: value }));
     // Reset to first page when filtering
-    setPagination(prev => ({ ...prev, pageIndex: 0 }));
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   }, []);
 
   const clearFilter = useCallback(() => {
-    setFiltering({ global: '' });
+    setFiltering({ global: "" });
   }, []);
 
   // ============================================================
   // PAGINATION OPERATIONS
   // ============================================================
-  
+
   const canGoNext = pagination.pageIndex < totalPages - 1;
   const canGoPrevious = pagination.pageIndex > 0;
 
   const goToNext = useCallback(() => {
     if (canGoNext) {
-      setPagination(prev => ({ ...prev, pageIndex: prev.pageIndex + 1 }));
+      setPagination((prev) => ({ ...prev, pageIndex: prev.pageIndex + 1 }));
     }
   }, [canGoNext]);
 
   const goToPrevious = useCallback(() => {
     if (canGoPrevious) {
-      setPagination(prev => ({ ...prev, pageIndex: prev.pageIndex - 1 }));
+      setPagination((prev) => ({ ...prev, pageIndex: prev.pageIndex - 1 }));
     }
   }, [canGoPrevious]);
 
-  const goToPage = useCallback((page: number) => {
-    const pageIndex = Math.max(0, Math.min(page - 1, totalPages - 1)); // Convert to 0-indexed and clamp
-    setPagination(prev => ({ ...prev, pageIndex }));
-  }, [totalPages]);
+  const goToPage = useCallback(
+    (page: number) => {
+      const pageIndex = Math.max(0, Math.min(page - 1, totalPages - 1)); // Convert to 0-indexed and clamp
+      setPagination((prev) => ({ ...prev, pageIndex }));
+    },
+    [totalPages]
+  );
 
   const setPageSize = useCallback((size: number) => {
-    setPagination(prev => ({ 
-      ...prev, 
-      pageSize: size, 
-      pageIndex: 0 // Reset to first page
+    setPagination((prev) => ({
+      ...prev,
+      pageSize: size,
+      pageIndex: 0, // Reset to first page
     }));
   }, []);
 
   // ============================================================
   // REFETCH OPERATION
   // ============================================================
-  
+
   const refetch = useCallback(async (): Promise<ListResponse<T>> => {
     const result = await queryRefetch();
     return result.data || { Data: [] };
@@ -328,19 +366,26 @@ export function useTable<T = any>(options: UseTableOptions<T>): UseTableReturn<T
   // ============================================================
   // RETURN OBJECT
   // ============================================================
-  
+
   return {
     // Data
     rows,
     totalItems,
-    
+
     // Loading States
     isLoading,
     isFetching,
-    
+
     // Error Handling
     error: error as Error | null,
-    
+
+    // Search (Flat Access)
+    search: {
+      query: search.query,
+      setQuery: setSearchQuery,
+      clear: clearSearch,
+    },
+
     // Sorting (Flat Access)
     sort: {
       field: sorting.field,
@@ -348,14 +393,14 @@ export function useTable<T = any>(options: UseTableOptions<T>): UseTableReturn<T
       toggle: toggleSort,
       clear: clearSort,
     },
-    
+
     // Filtering (Flat Access)
     filter: {
       global: filtering.global,
       setGlobal: setGlobalFilter,
       clear: clearFilter,
     },
-    
+
     // Pagination (Flat Access)
     pagination: {
       currentPage: pagination.pageIndex + 1, // Convert to 1-indexed for UI
@@ -369,7 +414,7 @@ export function useTable<T = any>(options: UseTableOptions<T>): UseTableReturn<T
       goToPage,
       setPageSize,
     },
-    
+
     // Operations
     refetch,
   };

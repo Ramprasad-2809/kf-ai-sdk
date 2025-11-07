@@ -1,36 +1,15 @@
-import { useEffect } from 'react';
-import { useTable } from 'kf-ai-sdk';
-import { useRole } from '../providers/RoleProvider';
-import { initializeMockApi } from '../utils/mockApiClient';
-
-interface UserOrderType {
-  _id: string;
-  customerName: string;
-  customerEmail: string;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
-  total: {
-    value: number;
-    currency: string;
-  };
-  itemCount: number;
-  _created_at: Date;
-}
+import { useTable } from "kf-ai-sdk";
+import { OrderForRole, Roles } from "../../../../app";
 
 export function UserOrderHistoryPage() {
-  const { } = useRole();
-  
-  useEffect(() => {
-    initializeMockApi();
-  }, []);
-
-  const table = useTable<UserOrderType>({
-    source: 'order',
+  const table = useTable<OrderForRole<typeof Roles.User>>({
+    source: "order",
     columns: [
-      { fieldId: '_id', enableSorting: true, label: 'Order #' },
-      { fieldId: 'status', enableSorting: true, label: 'Status' },
-      { fieldId: 'total', enableSorting: true, label: 'Total' },
-      { fieldId: 'itemCount', enableSorting: true, label: 'Items' },
-      { fieldId: '_created_at', enableSorting: true, label: 'Order Date' },
+      { fieldId: "_id", enableSorting: true },
+      { fieldId: "status", enableSorting: true },
+      { fieldId: "total", enableSorting: true },
+      { fieldId: "itemCount", enableSorting: true },
+      { fieldId: "_created_at", enableSorting: true },
     ],
     enableSorting: true,
     enableFiltering: true,
@@ -41,33 +20,24 @@ export function UserOrderHistoryPage() {
         pageSize: 10,
       },
       sorting: {
-        field: '_created_at' as keyof UserOrderType,
-        direction: 'desc',
+        field: "_created_at" as keyof OrderForRole<typeof Roles.User>,
+        direction: "desc",
       },
     },
     onSuccess: (data) => {
       console.log(`Loaded ${data.length} orders`);
     },
     onError: (error) => {
-      console.error('Failed to load orders:', error);
+      console.error("Failed to load orders:", error);
     },
   });
-
-  if (table.isLoading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <div className="loading-spinner"></div>
-        <span className="ml-2">Loading your orders...</span>
-      </div>
-    );
-  }
 
   if (table.error) {
     return (
       <div className="error-boundary">
         <h3 className="text-red-800 font-medium">Error loading orders</h3>
         <p className="text-red-600 text-sm">{table.error.message}</p>
-        <button 
+        <button
           onClick={() => table.refetch()}
           className="mt-2 px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
         >
@@ -77,8 +47,12 @@ export function UserOrderHistoryPage() {
     );
   }
 
-  const totalSpent = table.rows.reduce((sum, order) => sum + order.total.value, 0);
-  const recentOrders = table.rows.filter(order => {
+  const totalSpent = table.rows.reduce(
+    (sum, order) =>
+      sum + (typeof order.total === "object" ? order.total.value : 0),
+    0
+  );
+  const recentOrders = table.rows.filter((order) => {
     const orderDate = new Date(order._created_at);
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -94,17 +68,15 @@ export function UserOrderHistoryPage() {
           <p className="text-gray-600">
             {table.totalItems} total orders • Customer view
           </p>
-          <div className="role-badge role-badge-user">
-            Your Orders Only
-          </div>
+          <div className="role-badge role-badge-user">Your Orders Only</div>
         </div>
-        
-        <button 
+
+        <button
           onClick={() => table.refetch()}
           disabled={table.isFetching}
           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
         >
-          {table.isFetching ? 'Refreshing...' : 'Refresh'}
+          {table.isFetching ? "Refreshing..." : "Refresh"}
         </button>
       </div>
 
@@ -116,7 +88,9 @@ export function UserOrderHistoryPage() {
         </div>
         <div className="bg-white p-4 rounded-lg shadow border">
           <h3 className="text-sm font-medium text-gray-500">Total Spent</h3>
-          <p className="text-xl font-bold text-green-600">${totalSpent.toFixed(2)}</p>
+          <p className="text-xl font-bold text-green-600">
+            ${totalSpent.toFixed(2)}
+          </p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow border">
           <h3 className="text-sm font-medium text-gray-500">Recent Orders</h3>
@@ -130,13 +104,13 @@ export function UserOrderHistoryPage() {
         <input
           type="text"
           placeholder="Search your orders..."
-          value={table.filter.global}
-          onChange={(e) => table.filter.setGlobal(e.target.value)}
+          value={table.search.query}
+          onChange={(e) => table.search.setQuery(e.target.value)}
           className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-        {table.filter.global && (
-          <button 
-            onClick={table.filter.clear}
+        {table.search.query && (
+          <button
+            onClick={table.search.clear}
             className="px-2 py-1 text-gray-500 hover:text-gray-700"
           >
             Clear
@@ -149,28 +123,28 @@ export function UserOrderHistoryPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th 
+              <th
                 className="table-header cursor-pointer hover:bg-gray-100"
-                onClick={() => table.sort.toggle('_id')}
+                onClick={() => table.sort.toggle("_id")}
               >
                 Order #
-                {table.sort.field === '_id' && (
+                {table.sort.field === "_id" && (
                   <span className="ml-1">
-                    {table.sort.direction === 'asc' ? '↑' : '↓'}
+                    {table.sort.direction === "asc" ? "↑" : "↓"}
                   </span>
                 )}
               </th>
               <th className="table-header">Status</th>
               <th className="table-header">Total</th>
               <th className="table-header">Items</th>
-              <th 
+              <th
                 className="table-header cursor-pointer hover:bg-gray-100"
-                onClick={() => table.sort.toggle('_created_at')}
+                onClick={() => table.sort.toggle("_created_at")}
               >
                 Date
-                {table.sort.field === '_created_at' && (
+                {table.sort.field === "_created_at" && (
                   <span className="ml-1">
-                    {table.sort.direction === 'asc' ? '↑' : '↓'}
+                    {table.sort.direction === "asc" ? "↑" : "↓"}
                   </span>
                 )}
               </th>
@@ -178,32 +152,63 @@ export function UserOrderHistoryPage() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {table.rows.length > 0 ? (
+            {table.isLoading ? (
+              // Loading state - show skeleton rows
+              Array.from({ length: 5 }).map((_, idx) => (
+                <tr key={`loading-${idx}`} className="animate-pulse">
+                  <td className="table-cell">
+                    <div className="h-4 bg-gray-200 rounded w-20"></div>
+                  </td>
+                  <td className="table-cell">
+                    <div className="h-6 bg-gray-200 rounded-full w-20"></div>
+                  </td>
+                  <td className="table-cell">
+                    <div className="h-4 bg-gray-200 rounded w-24"></div>
+                  </td>
+                  <td className="table-cell">
+                    <div className="h-4 bg-gray-200 rounded w-8"></div>
+                  </td>
+                  <td className="table-cell">
+                    <div className="h-4 bg-gray-200 rounded w-24"></div>
+                  </td>
+                  <td className="table-cell">
+                    <div className="h-8 bg-gray-200 rounded w-16"></div>
+                  </td>
+                </tr>
+              ))
+            ) : table.rows.length > 0 ? (
               table.rows.map((order) => (
                 <tr key={order._id} className="hover:bg-gray-50">
                   <td className="table-cell font-medium text-blue-600">
-                    #{order._id.replace('order_', '')}
+                    #{order._id.replace("order_", "")}
                   </td>
                   <td className="table-cell">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      order.status === 'delivered' 
-                        ? 'bg-green-100 text-green-800' 
-                        : order.status === 'pending' 
-                        ? 'bg-orange-100 text-orange-800'
-                        : order.status === 'cancelled'
-                        ? 'bg-red-100 text-red-800'
-                        : order.status === 'shipped'
-                        ? 'bg-purple-100 text-purple-800'
-                        : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        order.status === "delivered"
+                          ? "bg-green-100 text-green-800"
+                          : order.status === "pending"
+                            ? "bg-orange-100 text-orange-800"
+                            : order.status === "cancelled"
+                              ? "bg-red-100 text-red-800"
+                              : order.status === "shipped"
+                                ? "bg-purple-100 text-purple-800"
+                                : "bg-blue-100 text-blue-800"
+                      }`}
+                    >
+                      {order.status.charAt(0).toUpperCase() +
+                        order.status.slice(1)}
                     </span>
                   </td>
                   <td className="table-cell font-medium text-gray-900">
-                    ${order.total.value.toFixed(2)}
+                    $
+                    {(typeof order.total === "object"
+                      ? order.total.value
+                      : 0
+                    ).toFixed(2)}
                   </td>
                   <td className="table-cell text-gray-500">
-                    {order.itemCount} item{order.itemCount !== 1 ? 's' : ''}
+                    {order.itemCount} item{order.itemCount !== 1 ? "s" : ""}
                   </td>
                   <td className="table-cell text-gray-500">
                     {new Date(order._created_at).toLocaleDateString()}
@@ -217,10 +222,15 @@ export function UserOrderHistoryPage() {
               ))
             ) : (
               <tr>
-                <td colSpan={6} className="table-cell text-center text-gray-500">
+                <td
+                  colSpan={6}
+                  className="table-cell text-center text-gray-500"
+                >
                   <div className="py-8">
                     <p className="text-lg font-medium">No orders found</p>
-                    <p className="text-sm">You haven't placed any orders yet.</p>
+                    <p className="text-sm">
+                      You haven't placed any orders yet.
+                    </p>
                   </div>
                 </td>
               </tr>
@@ -234,7 +244,7 @@ export function UserOrderHistoryPage() {
         <div className="text-sm text-gray-700">
           Showing {table.rows.length} of {table.totalItems} orders
         </div>
-        
+
         <div className="flex items-center space-x-2">
           <button
             onClick={() => table.pagination.goToPrevious()}
@@ -243,11 +253,11 @@ export function UserOrderHistoryPage() {
           >
             Previous
           </button>
-          
+
           <span className="text-sm text-gray-700">
             Page {table.pagination.currentPage} of {table.pagination.totalPages}
           </span>
-          
+
           <button
             onClick={() => table.pagination.goToNext()}
             disabled={!table.pagination.canGoNext}
@@ -261,8 +271,9 @@ export function UserOrderHistoryPage() {
       {/* Note */}
       <div className="bg-blue-50 border border-blue-200 rounded p-4">
         <p className="text-blue-800 text-sm">
-          <strong>Personal View:</strong> This page shows only your orders. 
-          Administrative data like profit margins and internal notes are not visible.
+          <strong>Personal View:</strong> This page shows only your orders.
+          Administrative data like profit margins and internal notes are not
+          visible.
         </p>
       </div>
     </div>

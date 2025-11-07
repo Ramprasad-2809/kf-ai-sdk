@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Navigation } from './components/Navigation';
 import { AdminProductListPage } from './pages/AdminProductListPage';
@@ -5,8 +6,12 @@ import { UserProductListPage } from './pages/UserProductListPage';
 import { AdminOrderDashboardPage } from './pages/AdminOrderDashboardPage';
 import { UserOrderHistoryPage } from './pages/UserOrderHistoryPage';
 import { ErrorTestingPage } from './pages/ErrorTestingPage';
+import { initializeMockApi } from './utils/mockApiClient';
 
 function App() {
+  useEffect(() => {
+    initializeMockApi();
+  }, []);
   return (
     <div className="min-h-screen bg-gray-50">
       <Navigation />

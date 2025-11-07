@@ -8,7 +8,6 @@ import {
   DateTimeField,
   SelectField,
   CurrencyField,
-  TextAreaField,
 } from "../../sdk/types/base-fields";
 import { Role, Roles } from "../types/roles";
 import { ListResponse, ListOptions, CreateUpdateResponse, DeleteResponse, api } from "../../sdk";
@@ -19,21 +18,26 @@ import { ListResponse, ListOptions, CreateUpdateResponse, DeleteResponse, api } 
 
 /**
  * Complete Order type with all fields
- * Field types (IdField, StringField, etc.) provide semantic meaning
- * but resolve to their base TypeScript types (string, number, etc.)
+ * Field types provide semantic meaning but resolve to their base TypeScript types
  */
 export type OrderType = {
   /** Unique order identifier */
   _id: IdField;
 
-  /** Customer who placed the order */
-  customerId: IdField;
+  /** Customer name */
+  customerName: StringField;
 
-  /** Total order amount */
-  totalAmount: CurrencyField;
+  /** Customer email */
+  customerEmail: StringField;
 
-  /** Current order status */
-  status: SelectField<"pending" | "completed" | "cancelled" | "refunded">;
+  /** Order status */
+  status: SelectField<'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled'>;
+
+  /** Order total amount */
+  total: CurrencyField;
+
+  /** Number of items in order */
+  itemCount: NumberField;
 
   /** When the order was created */
   _created_at: DateTimeField;
@@ -59,11 +63,14 @@ export type OrderType = {
   /** Metadata version */
   _m_version: StringField;
 
-  /** Internal notes (admin only) */
-  internalNotes: TextAreaField;
+  /** Profit amount (admin only) */
+  profit: CurrencyField;
 
-  /** Profit margin percentage (admin only) */
-  profitMargin: NumberField<2>;
+  /** Shipping cost (admin only) */
+  shippingCost: CurrencyField;
+
+  /** Internal notes (admin only) */
+  internalNotes: StringField;
 };
 
 // ============================================================
@@ -71,16 +78,16 @@ export type OrderType = {
 // ============================================================
 
 /**
- * Admin view - can see all fields including sensitive data
+ * Admin view - can see all fields including profit and internal data
  */
 export type AdminOrder = OrderType;
 
 /**
- * User view - can only see basic order information, no financial/internal data
+ * User view - can only see public order information
  */
 export type UserOrder = Pick<
   OrderType,
-  "_id" | "customerId" | "status" | "_created_at" | "_modified_at" | "totalAmount" | "_created_by" | "_modified_by" | "_version" | "_m_version"
+  "_id" | "customerName" | "customerEmail" | "status" | "total" | "itemCount" | "_created_at" | "_modified_at" | "_created_by" | "_modified_by" | "_version" | "_m_version"
 >;
 
 // ============================================================
@@ -91,11 +98,12 @@ export type UserOrder = Pick<
  * Maps role to appropriate view type
  * This is how TypeScript knows which fields to allow
  */
-export type OrderForRole<TRole extends Role> = TRole extends typeof Roles.Admin
-  ? AdminOrder
-  : TRole extends typeof Roles.User
-  ? UserOrder
-  : never;
+export type OrderForRole<TRole extends Role> =
+  TRole extends typeof Roles.Admin
+    ? AdminOrder
+    : TRole extends typeof Roles.User
+    ? UserOrder
+    : never;
 
 // ============================================================
 // CLASS IMPLEMENTATION
