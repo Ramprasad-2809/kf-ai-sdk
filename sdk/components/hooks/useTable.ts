@@ -34,7 +34,7 @@ export interface UseTableOptions<T> {
   /** Initial state */
   initialState?: {
     pagination?: {
-      pageIndex: number;
+      pageNo: number; // 1-indexed page number
       pageSize: number;
     };
     sorting?: {
@@ -119,7 +119,7 @@ interface FilteringState {
 }
 
 interface PaginationState {
-  pageIndex: number;
+  pageNo: number; // 1-indexed page number
   pageSize: number;
 }
 
@@ -177,7 +177,7 @@ export function useTable<T = any>(
   });
 
   const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: options.initialState?.pagination?.pageIndex || 0,
+    pageNo: options.initialState?.pagination?.pageNo || 1, // Start at page 1
     pageSize: options.initialState?.pagination?.pageSize || 10,
   });
 
@@ -198,24 +198,14 @@ export function useTable<T = any>(
       ];
     }
 
-    // Add search query (global search across multiple fields)
-    if (search.query && options.enableFiltering) {
-      // This is a simplified global search - applies across all searchable columns
-      opts.Filter = {
-        Operator: "OR",
-        Condition: options.columns
-          .filter((col) => col.enableFiltering !== false)
-          .map((col) => ({
-            Operator: "Contains" as const,
-            LHSField: String(col.fieldId),
-            RHSValue: search.query,
-          })),
-      };
+    // Add search query (separate from filters)
+    if (search.query) {
+      opts.Search = search.query;
     }
 
     // Add pagination
     if (options.enablePagination) {
-      opts.Page = pagination.pageIndex + 1; // Convert to 1-indexed
+      opts.Page = pagination.pageNo; // Already 1-indexed
       opts.PageSize = pagination.pageSize;
     }
 
@@ -224,8 +214,6 @@ export function useTable<T = any>(
     sorting,
     search.query,
     pagination,
-    options.columns,
-    options.enableFiltering,
     options.enablePagination,
   ]);
 
@@ -257,12 +245,33 @@ export function useTable<T = any>(
     },
   });
 
+  // Count query for accurate total items
+  const {
+    data: countData,
+    isLoading: isCountLoading,
+    isFetching: isCountFetching,
+    error: countError,
+    refetch: countRefetch,
+  } = useQuery({
+    queryKey: ["table-count", options.source, apiOptions],
+    queryFn: async () => {
+      try {
+        return await api<T>(options.source).count(apiOptions);
+      } catch (err) {
+        if (options.onError) {
+          options.onError(err as Error);
+        }
+        throw err;
+      }
+    },
+  });
+
   // ============================================================
   // COMPUTED VALUES
   // ============================================================
 
   const rows = useMemo(() => data?.Data || [], [data]);
-  const totalItems = useMemo(() => data?.Data?.length || 0, [data]); // Note: This should come from API response
+  const totalItems = useMemo(() => countData?.Count || 0, [countData]);
 
   const totalPages = useMemo(() => {
     return Math.ceil(totalItems / pagination.pageSize);
@@ -298,7 +307,7 @@ export function useTable<T = any>(
   const setSearchQuery = useCallback((value: string) => {
     setSearch({ query: value });
     // Reset to first page when searching
-    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    setPagination((prev) => ({ ...prev, pageNo: 1 }));
   }, []);
 
   const clearSearch = useCallback(() => {
@@ -312,7 +321,7 @@ export function useTable<T = any>(
   const setGlobalFilter = useCallback((value: string) => {
     setFiltering((prev) => ({ ...prev, global: value }));
     // Reset to first page when filtering
-    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    setPagination((prev) => ({ ...prev, pageNo: 1 }));
   }, []);
 
   const clearFilter = useCallback(() => {
@@ -323,25 +332,25 @@ export function useTable<T = any>(
   // PAGINATION OPERATIONS
   // ============================================================
 
-  const canGoNext = pagination.pageIndex < totalPages - 1;
-  const canGoPrevious = pagination.pageIndex > 0;
+  const canGoNext = pagination.pageNo < totalPages;
+  const canGoPrevious = pagination.pageNo > 1;
 
   const goToNext = useCallback(() => {
     if (canGoNext) {
-      setPagination((prev) => ({ ...prev, pageIndex: prev.pageIndex + 1 }));
+      setPagination((prev) => ({ ...prev, pageNo: prev.pageNo + 1 }));
     }
   }, [canGoNext]);
 
   const goToPrevious = useCallback(() => {
     if (canGoPrevious) {
-      setPagination((prev) => ({ ...prev, pageIndex: prev.pageIndex - 1 }));
+      setPagination((prev) => ({ ...prev, pageNo: prev.pageNo - 1 }));
     }
   }, [canGoPrevious]);
 
   const goToPage = useCallback(
     (page: number) => {
-      const pageIndex = Math.max(0, Math.min(page - 1, totalPages - 1)); // Convert to 0-indexed and clamp
-      setPagination((prev) => ({ ...prev, pageIndex }));
+      const pageNo = Math.max(1, Math.min(page, totalPages)); // Clamp between 1 and totalPages
+      setPagination((prev) => ({ ...prev, pageNo }));
     },
     [totalPages]
   );
@@ -350,7 +359,7 @@ export function useTable<T = any>(
     setPagination((prev) => ({
       ...prev,
       pageSize: size,
-      pageIndex: 0, // Reset to first page
+      pageNo: 1, // Reset to first page
     }));
   }, []);
 
@@ -359,9 +368,12 @@ export function useTable<T = any>(
   // ============================================================
 
   const refetch = useCallback(async (): Promise<ListResponse<T>> => {
-    const result = await queryRefetch();
-    return result.data || { Data: [] };
-  }, [queryRefetch]);
+    const [listResult] = await Promise.all([
+      queryRefetch(),
+      countRefetch(),
+    ]);
+    return listResult.data || { Data: [] };
+  }, [queryRefetch, countRefetch]);
 
   // ============================================================
   // RETURN OBJECT
@@ -373,11 +385,11 @@ export function useTable<T = any>(
     totalItems,
 
     // Loading States
-    isLoading,
-    isFetching,
+    isLoading: isLoading || isCountLoading,
+    isFetching: isFetching || isCountFetching,
 
     // Error Handling
-    error: error as Error | null,
+    error: (error || countError) as Error | null,
 
     // Search (Flat Access)
     search: {
@@ -403,7 +415,7 @@ export function useTable<T = any>(
 
     // Pagination (Flat Access)
     pagination: {
-      currentPage: pagination.pageIndex + 1, // Convert to 1-indexed for UI
+      currentPage: pagination.pageNo, // Already 1-indexed
       pageSize: pagination.pageSize,
       totalPages,
       totalItems,

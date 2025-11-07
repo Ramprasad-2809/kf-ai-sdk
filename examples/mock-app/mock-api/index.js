@@ -65,6 +65,67 @@ export function setupMockAPI(middlewares) {
     }
 
     // ==================== PRODUCT ENDPOINTS ====================
+    if (url.includes('/product/count') && method === 'POST') {
+      parseBody().then(async (body) => {
+        // Check for error simulation
+        const errorType = new URL(req.url, 'http://localhost').searchParams.get('error');
+        
+        if (errorType === 'network') {
+          await sendError('Network error simulation', 500);
+          return;
+        }
+        
+        if (errorType === 'auth') {
+          await sendError('Unauthorized access', 401);
+          return;
+        }
+
+        // Get role from headers
+        const role = req.headers['x-user-role'] || 'admin';
+        
+        // Filter products by role
+        let products = filterProductsByRole(mockProducts, role);
+        
+        // Apply search (separate from filters)
+        if (body.Search) {
+          const searchValue = body.Search.toLowerCase();
+          products = products.filter(product => {
+            // Search across multiple fields
+            const searchableFields = ['name', 'category', 'supplier'];
+            return searchableFields.some(field => {
+              const value = product[field];
+              return value && String(value).toLowerCase().includes(searchValue);
+            });
+          });
+        }
+        
+        // Apply filtering from request body (separate from search)
+        if (body.Filter && body.Filter.Condition) {
+          products = products.filter(product => {
+            return body.Filter.Condition.some(condition => {
+              const value = product[condition.LHSField];
+              const searchValue = condition.RHSValue.toLowerCase();
+              
+              if (condition.Operator === 'Contains') {
+                return String(value).toLowerCase().includes(searchValue);
+              }
+              return false;
+            });
+          });
+        }
+        
+        await sendJSON({
+          Count: products.length,
+          Success: true,
+          Timestamp: new Date().toISOString()
+        });
+      }).catch(error => {
+        console.error('[Mock API Error]:', error);
+        sendError('Internal server error', 500);
+      });
+      return;
+    }
+
     if (url.includes('/product/list') && method === 'POST') {
       parseBody().then(async (body) => {
         // Check for error simulation
@@ -91,7 +152,20 @@ export function setupMockAPI(middlewares) {
         // Filter products by role
         let products = filterProductsByRole(mockProducts, role);
         
-        // Apply filtering from request body
+        // Apply search (separate from filters)
+        if (body.Search) {
+          const searchValue = body.Search.toLowerCase();
+          products = products.filter(product => {
+            // Search across multiple fields
+            const searchableFields = ['name', 'category', 'supplier'];
+            return searchableFields.some(field => {
+              const value = product[field];
+              return value && String(value).toLowerCase().includes(searchValue);
+            });
+          });
+        }
+        
+        // Apply filtering from request body (separate from search)
         if (body.Filter && body.Filter.Condition) {
           products = products.filter(product => {
             return body.Filter.Condition.some(condition => {
@@ -161,6 +235,76 @@ export function setupMockAPI(middlewares) {
     }
 
     // ==================== ORDER ENDPOINTS ====================
+    if (url.includes('/order/count') && method === 'POST') {
+      parseBody().then(async (body) => {
+        // Check for error simulation
+        const errorType = new URL(req.url, 'http://localhost').searchParams.get('error');
+        
+        if (errorType === 'network') {
+          await sendError('Network error simulation', 500);
+          return;
+        }
+        
+        if (errorType === 'auth') {
+          await sendError('Unauthorized access', 401);
+          return;
+        }
+
+        // Get role from headers
+        const role = req.headers['x-user-role'] || 'admin';
+        
+        // Filter orders by role
+        let orders = filterOrdersByRole(mockOrders, role);
+        
+        // For user role, only show their own orders (simulate)
+        if (role === 'user') {
+          const userId = req.headers['x-user-id'] || 'user_001';
+          orders = orders.filter(order => 
+            order.customerEmail.includes('customer1') || 
+            order.customerEmail.includes('customer2')
+          );
+        }
+        
+        // Apply search (separate from filters)
+        if (body.Search) {
+          const searchValue = body.Search.toLowerCase();
+          orders = orders.filter(order => {
+            // Search across multiple fields
+            const searchableFields = ['_id', 'customerName', 'customerEmail', 'status'];
+            return searchableFields.some(field => {
+              const value = order[field];
+              return value && String(value).toLowerCase().includes(searchValue);
+            });
+          });
+        }
+        
+        // Apply filtering from request body (separate from search)
+        if (body.Filter && body.Filter.Condition) {
+          orders = orders.filter(order => {
+            return body.Filter.Condition.some(condition => {
+              const value = order[condition.LHSField];
+              const searchValue = condition.RHSValue.toLowerCase();
+              
+              if (condition.Operator === 'Contains') {
+                return String(value).toLowerCase().includes(searchValue);
+              }
+              return false;
+            });
+          });
+        }
+        
+        await sendJSON({
+          Count: orders.length,
+          Success: true,
+          Timestamp: new Date().toISOString()
+        });
+      }).catch(error => {
+        console.error('[Mock API Error]:', error);
+        sendError('Internal server error', 500);
+      });
+      return;
+    }
+
     if (url.includes('/order/list') && method === 'POST') {
       parseBody().then(async (body) => {
         // Check for error simulation
@@ -191,7 +335,20 @@ export function setupMockAPI(middlewares) {
           );
         }
         
-        // Apply filtering from request body
+        // Apply search (separate from filters)
+        if (body.Search) {
+          const searchValue = body.Search.toLowerCase();
+          orders = orders.filter(order => {
+            // Search across multiple fields
+            const searchableFields = ['_id', 'customerName', 'customerEmail', 'status'];
+            return searchableFields.some(field => {
+              const value = order[field];
+              return value && String(value).toLowerCase().includes(searchValue);
+            });
+          });
+        }
+        
+        // Apply filtering from request body (separate from search)
         if (body.Filter && body.Filter.Condition) {
           orders = orders.filter(order => {
             return body.Filter.Condition.some(condition => {

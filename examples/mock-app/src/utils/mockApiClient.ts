@@ -52,9 +52,23 @@ export function transformApiRequest(
     if (options?.Sort) queryParams.append("Sort", JSON.stringify(options.Sort));
     if (options?.Filter)
       queryParams.append("Filter", JSON.stringify(options.Filter));
+    if (options?.Search) queryParams.append("Search", String(options.Search));
 
     const queryString = queryParams.toString();
     return `${mappedBo}/list${queryString ? "?" + queryString : ""}`;
+  }
+
+  if (method === "count") {
+    // Convert SDK count request to mock API format
+    const queryParams = new URLSearchParams();
+
+    if (options?.Sort) queryParams.append("Sort", JSON.stringify(options.Sort));
+    if (options?.Filter)
+      queryParams.append("Filter", JSON.stringify(options.Filter));
+    if (options?.Search) queryParams.append("Search", String(options.Search));
+
+    const queryString = queryParams.toString();
+    return `${mappedBo}/count${queryString ? "?" + queryString : ""}`;
   }
 
   return `${mappedBo}/${method}`;

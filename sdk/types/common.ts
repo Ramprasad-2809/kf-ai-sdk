@@ -107,6 +107,14 @@ export interface DeleteResponse {
 }
 
 /**
+ * Count API response
+ */
+export interface CountResponse {
+  /** Total count of matching records */
+  Count: number;
+}
+
+/**
  * Options for list queries (API request format)
  */
 export interface ListOptions {
@@ -121,6 +129,9 @@ export interface ListOptions {
 
   /** Sort configuration */
   Sort?: Sort;
+
+  /** Search query (separate from filters) */
+  Search?: string;
 
   /** Page number (1-indexed) */
   Page?: number;

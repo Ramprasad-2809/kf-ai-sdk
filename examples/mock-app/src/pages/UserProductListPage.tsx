@@ -1,5 +1,13 @@
 import { useTable } from "kf-ai-sdk";
 import { ProductForRole, Roles } from "../../../../app";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export function UserProductListPage() {
   const table = useTable<ProductForRole<typeof Roles.User>>({
@@ -16,7 +24,7 @@ export function UserProductListPage() {
     enablePagination: true,
     initialState: {
       pagination: {
-        pageIndex: 0,
+        pageNo: 1,
         pageSize: 10,
       },
       sorting: {
@@ -91,12 +99,12 @@ export function UserProductListPage() {
       </div>
 
       {/* Table */}
-      <div className="table-container">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th
-                className="table-header cursor-pointer hover:bg-gray-100"
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead
+                className="cursor-pointer hover:bg-gray-100"
                 onClick={() => table.sort.toggle("name")}
               >
                 Name
@@ -105,9 +113,9 @@ export function UserProductListPage() {
                     {table.sort.direction === "asc" ? "↑" : "↓"}
                   </span>
                 )}
-              </th>
-              <th
-                className="table-header cursor-pointer hover:bg-gray-100"
+              </TableHead>
+              <TableHead
+                className="cursor-pointer hover:bg-gray-100"
                 onClick={() => table.sort.toggle("category")}
               >
                 Category
@@ -116,49 +124,49 @@ export function UserProductListPage() {
                     {table.sort.direction === "asc" ? "↑" : "↓"}
                   </span>
                 )}
-              </th>
-              <th className="table-header">Price</th>
-              <th className="table-header">Stock</th>
-              <th className="table-header">Created</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+              </TableHead>
+              <TableHead>Price</TableHead>
+              <TableHead>Stock</TableHead>
+              <TableHead>Created</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {table.isLoading ? (
               // Loading state - show skeleton rows
               Array.from({ length: 5 }).map((_, idx) => (
-                <tr key={`loading-${idx}`} className="animate-pulse">
-                  <td className="table-cell">
+                <TableRow key={`loading-${idx}`} className="animate-pulse">
+                  <TableCell>
                     <div className="h-4 bg-gray-200 rounded w-32"></div>
-                  </td>
-                  <td className="table-cell">
+                  </TableCell>
+                  <TableCell>
                     <div className="h-4 bg-gray-200 rounded w-24"></div>
-                  </td>
-                  <td className="table-cell">
+                  </TableCell>
+                  <TableCell>
                     <div className="h-4 bg-gray-200 rounded w-20"></div>
-                  </td>
-                  <td className="table-cell">
+                  </TableCell>
+                  <TableCell>
                     <div className="h-6 bg-gray-200 rounded-full w-24"></div>
-                  </td>
-                  <td className="table-cell">
+                  </TableCell>
+                  <TableCell>
                     <div className="h-4 bg-gray-200 rounded w-24"></div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))
             ) : table.rows.length > 0 ? (
               table.rows.map((product) => (
-                <tr key={product._id} className="hover:bg-gray-50">
-                  <td className="table-cell font-medium text-gray-900">
+                <TableRow key={product._id}>
+                  <TableCell className="font-medium text-gray-900">
                     {product.name}
-                  </td>
-                  <td className="table-cell text-gray-500">
+                  </TableCell>
+                  <TableCell className="text-gray-500">
                     {product.category}
-                  </td>
-                  <td className="table-cell text-gray-900">
+                  </TableCell>
+                  <TableCell className="text-gray-900">
                     {typeof product.price === "object"
                       ? `${product.price.currency} ${product.price.value}`
                       : product.price}
-                  </td>
-                  <td className="table-cell">
+                  </TableCell>
+                  <TableCell>
                     <span
                       className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                         product.inStock
@@ -168,24 +176,24 @@ export function UserProductListPage() {
                     >
                       {product.inStock ? "Available" : "Out of Stock"}
                     </span>
-                  </td>
-                  <td className="table-cell text-gray-500">
+                  </TableCell>
+                  <TableCell className="text-gray-500">
                     {new Date(product._created_at).toLocaleDateString()}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))
             ) : (
-              <tr>
-                <td
+              <TableRow>
+                <TableCell
                   colSpan={5}
-                  className="table-cell text-center text-gray-500"
+                  className="text-center text-gray-500"
                 >
                   No products found.
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       {/* Pagination */}
