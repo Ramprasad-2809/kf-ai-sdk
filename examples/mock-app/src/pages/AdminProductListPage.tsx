@@ -1,5 +1,13 @@
 import { useTable } from "kf-ai-sdk";
 import { ProductForRole, Roles } from "../../../../app";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export function AdminProductListPage() {
   const table = useTable<ProductForRole<typeof Roles.Admin>>({
@@ -93,12 +101,12 @@ export function AdminProductListPage() {
       </div>
 
       {/* Table */}
-      <div className="table-container">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th
-                className="table-header cursor-pointer hover:bg-gray-100"
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead
+                className="cursor-pointer hover:bg-gray-100"
                 onClick={() => table.sort.toggle("name")}
               >
                 Name
@@ -107,9 +115,9 @@ export function AdminProductListPage() {
                     {table.sort.direction === "asc" ? "↑" : "↓"}
                   </span>
                 )}
-              </th>
-              <th
-                className="table-header cursor-pointer hover:bg-gray-100"
+              </TableHead>
+              <TableHead
+                className="cursor-pointer hover:bg-gray-100"
                 onClick={() => table.sort.toggle("category")}
               >
                 Category
@@ -118,68 +126,68 @@ export function AdminProductListPage() {
                     {table.sort.direction === "asc" ? "↑" : "↓"}
                   </span>
                 )}
-              </th>
-              <th className="table-header">Price</th>
-              <th className="table-header">Cost</th>
-              <th className="table-header">Margin</th>
-              <th className="table-header">Supplier</th>
-              <th className="table-header">Stock</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+              </TableHead>
+              <TableHead>Price</TableHead>
+              <TableHead>Cost</TableHead>
+              <TableHead>Margin</TableHead>
+              <TableHead>Supplier</TableHead>
+              <TableHead>Stock</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {table.isLoading ? (
               // Loading state - show skeleton rows
               Array.from({ length: 5 }).map((_, idx) => (
-                <tr key={`loading-${idx}`} className="animate-pulse">
-                  <td className="table-cell">
+                <TableRow key={`loading-${idx}`} className="animate-pulse">
+                  <TableCell>
                     <div className="h-4 bg-gray-200 rounded w-32"></div>
-                  </td>
-                  <td className="table-cell">
+                  </TableCell>
+                  <TableCell>
                     <div className="h-4 bg-gray-200 rounded w-24"></div>
-                  </td>
-                  <td className="table-cell">
+                  </TableCell>
+                  <TableCell>
                     <div className="h-4 bg-gray-200 rounded w-20"></div>
-                  </td>
-                  <td className="table-cell">
+                  </TableCell>
+                  <TableCell>
                     <div className="h-4 bg-gray-200 rounded w-20"></div>
-                  </td>
-                  <td className="table-cell">
+                  </TableCell>
+                  <TableCell>
                     <div className="h-4 bg-gray-200 rounded w-16"></div>
-                  </td>
-                  <td className="table-cell">
+                  </TableCell>
+                  <TableCell>
                     <div className="h-4 bg-gray-200 rounded w-24"></div>
-                  </td>
-                  <td className="table-cell">
+                  </TableCell>
+                  <TableCell>
                     <div className="h-6 bg-gray-200 rounded-full w-20"></div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))
             ) : table.rows.length > 0 ? (
               table.rows.map((product) => (
-                <tr key={product._id} className="hover:bg-gray-50">
-                  <td className="table-cell font-medium text-gray-900">
+                <TableRow key={product._id}>
+                  <TableCell className="font-medium text-gray-900">
                     {product.name}
-                  </td>
-                  <td className="table-cell text-gray-500">
+                  </TableCell>
+                  <TableCell className="text-gray-500">
                     {product.category}
-                  </td>
-                  <td className="table-cell text-gray-900">
+                  </TableCell>
+                  <TableCell className="text-gray-900">
                     {typeof product.price === "object"
                       ? `${product.price.currency} ${product.price.value}`
                       : product.price}
-                  </td>
-                  <td className="table-cell text-gray-900">
+                  </TableCell>
+                  <TableCell className="text-gray-900">
                     {typeof product.cost === "object"
                       ? `${product.cost.currency} ${product.cost.value}`
                       : "N/A"}
-                  </td>
-                  <td className="table-cell text-gray-900">
+                  </TableCell>
+                  <TableCell className="text-gray-900">
                     {product.margin ? `${product.margin.toFixed(2)}%` : "N/A"}
-                  </td>
-                  <td className="table-cell text-gray-500">
+                  </TableCell>
+                  <TableCell className="text-gray-500">
                     {product.supplier || "N/A"}
-                  </td>
-                  <td className="table-cell">
+                  </TableCell>
+                  <TableCell>
                     <span
                       className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                         product.inStock
@@ -189,21 +197,21 @@ export function AdminProductListPage() {
                     >
                       {product.inStock ? "In Stock" : "Out of Stock"}
                     </span>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))
             ) : (
-              <tr>
-                <td
+              <TableRow>
+                <TableCell
                   colSpan={7}
-                  className="table-cell text-center text-gray-500"
+                  className="text-center text-gray-500"
                 >
                   No products found.
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       {/* Pagination */}

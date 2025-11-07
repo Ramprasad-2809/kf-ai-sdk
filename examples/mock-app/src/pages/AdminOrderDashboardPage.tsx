@@ -1,6 +1,15 @@
 import { useMemo } from "react";
 import { useTable } from "kf-ai-sdk";
 import { OrderForRole, Roles } from "../../../../app";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export function AdminOrderDashboardPage() {
   const table = useTable<OrderForRole<typeof Roles.Admin>>({
@@ -99,32 +108,48 @@ export function AdminOrderDashboardPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-6 rounded-lg shadow border">
-          <h3 className="text-sm font-medium text-gray-500">Total Revenue</h3>
-          <p className="text-2xl font-bold text-green-600">
-            ${stats.totalRevenue.toLocaleString()}
-          </p>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow border">
-          <h3 className="text-sm font-medium text-gray-500">Total Profit</h3>
-          <p className="text-2xl font-bold text-blue-600">
-            ${stats.totalProfit.toLocaleString()}
-          </p>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow border">
-          <h3 className="text-sm font-medium text-gray-500">Pending Orders</h3>
-          <p className="text-2xl font-bold text-orange-600">
-            {stats.pendingOrders}
-          </p>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow border">
-          <h3 className="text-sm font-medium text-gray-500">
-            Completed Orders
-          </h3>
-          <p className="text-2xl font-bold text-purple-600">
-            {stats.completedOrders}
-          </p>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-gray-500">Total Revenue</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-green-600">
+              ${stats.totalRevenue.toLocaleString()}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-gray-500">Total Profit</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-blue-600">
+              ${stats.totalProfit.toLocaleString()}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-gray-500">Pending Orders</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-orange-600">
+              {stats.pendingOrders}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-gray-500">
+              Completed Orders
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-purple-600">
+              {stats.completedOrders}
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Search and Filters */}
@@ -147,12 +172,12 @@ export function AdminOrderDashboardPage() {
       </div>
 
       {/* Orders Table */}
-      <div className="table-container">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th
-                className="table-header cursor-pointer hover:bg-gray-100"
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead
+                className="cursor-pointer hover:bg-gray-100"
                 onClick={() => table.sort.toggle("_id")}
               >
                 Order ID
@@ -161,14 +186,14 @@ export function AdminOrderDashboardPage() {
                     {table.sort.direction === "asc" ? "↑" : "↓"}
                   </span>
                 )}
-              </th>
-              <th className="table-header">Customer</th>
-              <th className="table-header">Status</th>
-              <th className="table-header">Total</th>
-              <th className="table-header">Profit</th>
-              <th className="table-header">Items</th>
-              <th
-                className="table-header cursor-pointer hover:bg-gray-100"
+              </TableHead>
+              <TableHead>Customer</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Total</TableHead>
+              <TableHead>Profit</TableHead>
+              <TableHead>Items</TableHead>
+              <TableHead
+                className="cursor-pointer hover:bg-gray-100"
                 onClick={() => table.sort.toggle("_created_at")}
               >
                 Date
@@ -177,47 +202,47 @@ export function AdminOrderDashboardPage() {
                     {table.sort.direction === "asc" ? "↑" : "↓"}
                   </span>
                 )}
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {table.isLoading ? (
               // Loading state - show skeleton rows
               Array.from({ length: 5 }).map((_, idx) => (
-                <tr key={`loading-${idx}`} className="animate-pulse">
-                  <td className="table-cell">
+                <TableRow key={`loading-${idx}`} className="animate-pulse">
+                  <TableCell>
                     <div className="h-4 bg-gray-200 rounded w-20"></div>
-                  </td>
-                  <td className="table-cell">
+                  </TableCell>
+                  <TableCell>
                     <div className="space-y-2">
                       <div className="h-4 bg-gray-200 rounded w-32"></div>
                       <div className="h-3 bg-gray-200 rounded w-24"></div>
                     </div>
-                  </td>
-                  <td className="table-cell">
+                  </TableCell>
+                  <TableCell>
                     <div className="h-6 bg-gray-200 rounded-full w-20"></div>
-                  </td>
-                  <td className="table-cell">
+                  </TableCell>
+                  <TableCell>
                     <div className="h-4 bg-gray-200 rounded w-16"></div>
-                  </td>
-                  <td className="table-cell">
+                  </TableCell>
+                  <TableCell>
                     <div className="h-4 bg-gray-200 rounded w-16"></div>
-                  </td>
-                  <td className="table-cell">
+                  </TableCell>
+                  <TableCell>
                     <div className="h-4 bg-gray-200 rounded w-8"></div>
-                  </td>
-                  <td className="table-cell">
+                  </TableCell>
+                  <TableCell>
                     <div className="h-4 bg-gray-200 rounded w-24"></div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))
             ) : table.rows.length > 0 ? (
               table.rows.map((order) => (
-                <tr key={order._id} className="hover:bg-gray-50">
-                  <td className="table-cell font-medium text-gray-900">
+                <TableRow key={order._id}>
+                  <TableCell className="font-medium text-gray-900">
                     {order._id}
-                  </td>
-                  <td className="table-cell">
+                  </TableCell>
+                  <TableCell>
                     <div>
                       <div className="font-medium text-gray-900">
                         {order.customerName}
@@ -226,8 +251,8 @@ export function AdminOrderDashboardPage() {
                         {order.customerEmail}
                       </div>
                     </div>
-                  </td>
-                  <td className="table-cell">
+                  </TableCell>
+                  <TableCell>
                     <span
                       className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                         order.status === "delivered"
@@ -242,39 +267,39 @@ export function AdminOrderDashboardPage() {
                       {order.status.charAt(0).toUpperCase() +
                         order.status.slice(1)}
                     </span>
-                  </td>
-                  <td className="table-cell font-medium text-gray-900">
+                  </TableCell>
+                  <TableCell className="font-medium text-gray-900">
                     $
                     {typeof order.total === "object"
                       ? order.total.value.toFixed(2)
                       : "0.00"}
-                  </td>
-                  <td className="table-cell font-medium text-green-600">
+                  </TableCell>
+                  <TableCell className="font-medium text-green-600">
                     $
                     {order.profit && typeof order.profit === "object"
                       ? order.profit.value.toFixed(2)
                       : "0.00"}
-                  </td>
-                  <td className="table-cell text-gray-500">
+                  </TableCell>
+                  <TableCell className="text-gray-500">
                     {order.itemCount}
-                  </td>
-                  <td className="table-cell text-gray-500">
+                  </TableCell>
+                  <TableCell className="text-gray-500">
                     {new Date(order._created_at).toLocaleDateString()}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))
             ) : (
-              <tr>
-                <td
+              <TableRow>
+                <TableCell
                   colSpan={7}
-                  className="table-cell text-center text-gray-500"
+                  className="text-center text-gray-500"
                 >
                   No orders found.
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       {/* Pagination */}

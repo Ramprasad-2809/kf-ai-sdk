@@ -1,5 +1,14 @@
 import { useTable } from "kf-ai-sdk";
 import { OrderForRole, Roles } from "../../../../app";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export function UserOrderHistoryPage() {
   const table = useTable<OrderForRole<typeof Roles.User>>({
@@ -82,21 +91,33 @@ export function UserOrderHistoryPage() {
 
       {/* User Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <h3 className="text-sm font-medium text-gray-500">Total Orders</h3>
-          <p className="text-xl font-bold text-blue-600">{table.totalItems}</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <h3 className="text-sm font-medium text-gray-500">Total Spent</h3>
-          <p className="text-xl font-bold text-green-600">
-            ${totalSpent.toFixed(2)}
-          </p>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <h3 className="text-sm font-medium text-gray-500">Recent Orders</h3>
-          <p className="text-xl font-bold text-orange-600">{recentOrders}</p>
-          <p className="text-xs text-gray-500">Last 30 days</p>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-gray-500">Total Orders</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xl font-bold text-blue-600">{table.totalItems}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-gray-500">Total Spent</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xl font-bold text-green-600">
+              ${totalSpent.toFixed(2)}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-gray-500">Recent Orders</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xl font-bold text-orange-600">{recentOrders}</p>
+            <p className="text-xs text-gray-500">Last 30 days</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Search */}
@@ -119,12 +140,12 @@ export function UserOrderHistoryPage() {
       </div>
 
       {/* Orders Table */}
-      <div className="table-container">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th
-                className="table-header cursor-pointer hover:bg-gray-100"
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead
+                className="cursor-pointer hover:bg-gray-100"
                 onClick={() => table.sort.toggle("_id")}
               >
                 Order #
@@ -133,12 +154,12 @@ export function UserOrderHistoryPage() {
                     {table.sort.direction === "asc" ? "↑" : "↓"}
                   </span>
                 )}
-              </th>
-              <th className="table-header">Status</th>
-              <th className="table-header">Total</th>
-              <th className="table-header">Items</th>
-              <th
-                className="table-header cursor-pointer hover:bg-gray-100"
+              </TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Total</TableHead>
+              <TableHead>Items</TableHead>
+              <TableHead
+                className="cursor-pointer hover:bg-gray-100"
                 onClick={() => table.sort.toggle("_created_at")}
               >
                 Date
@@ -147,42 +168,42 @@ export function UserOrderHistoryPage() {
                     {table.sort.direction === "asc" ? "↑" : "↓"}
                   </span>
                 )}
-              </th>
-              <th className="table-header">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+              </TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {table.isLoading ? (
               // Loading state - show skeleton rows
               Array.from({ length: 5 }).map((_, idx) => (
-                <tr key={`loading-${idx}`} className="animate-pulse">
-                  <td className="table-cell">
+                <TableRow key={`loading-${idx}`} className="animate-pulse">
+                  <TableCell>
                     <div className="h-4 bg-gray-200 rounded w-20"></div>
-                  </td>
-                  <td className="table-cell">
+                  </TableCell>
+                  <TableCell>
                     <div className="h-6 bg-gray-200 rounded-full w-20"></div>
-                  </td>
-                  <td className="table-cell">
+                  </TableCell>
+                  <TableCell>
                     <div className="h-4 bg-gray-200 rounded w-24"></div>
-                  </td>
-                  <td className="table-cell">
+                  </TableCell>
+                  <TableCell>
                     <div className="h-4 bg-gray-200 rounded w-8"></div>
-                  </td>
-                  <td className="table-cell">
+                  </TableCell>
+                  <TableCell>
                     <div className="h-4 bg-gray-200 rounded w-24"></div>
-                  </td>
-                  <td className="table-cell">
+                  </TableCell>
+                  <TableCell>
                     <div className="h-8 bg-gray-200 rounded w-16"></div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))
             ) : table.rows.length > 0 ? (
               table.rows.map((order) => (
-                <tr key={order._id} className="hover:bg-gray-50">
-                  <td className="table-cell font-medium text-blue-600">
+                <TableRow key={order._id}>
+                  <TableCell className="font-medium text-blue-600">
                     #{order._id.replace("order_", "")}
-                  </td>
-                  <td className="table-cell">
+                  </TableCell>
+                  <TableCell>
                     <span
                       className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                         order.status === "delivered"
@@ -199,32 +220,32 @@ export function UserOrderHistoryPage() {
                       {order.status.charAt(0).toUpperCase() +
                         order.status.slice(1)}
                     </span>
-                  </td>
-                  <td className="table-cell font-medium text-gray-900">
+                  </TableCell>
+                  <TableCell className="font-medium text-gray-900">
                     $
                     {(typeof order.total === "object"
                       ? order.total.value
                       : 0
                     ).toFixed(2)}
-                  </td>
-                  <td className="table-cell text-gray-500">
+                  </TableCell>
+                  <TableCell className="text-gray-500">
                     {order.itemCount} item{order.itemCount !== 1 ? "s" : ""}
-                  </td>
-                  <td className="table-cell text-gray-500">
+                  </TableCell>
+                  <TableCell className="text-gray-500">
                     {new Date(order._created_at).toLocaleDateString()}
-                  </td>
-                  <td className="table-cell">
+                  </TableCell>
+                  <TableCell>
                     <button className="text-blue-600 hover:text-blue-800 text-sm">
                       View Details
                     </button>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))
             ) : (
-              <tr>
-                <td
+              <TableRow>
+                <TableCell
                   colSpan={6}
-                  className="table-cell text-center text-gray-500"
+                  className="text-center text-gray-500"
                 >
                   <div className="py-8">
                     <p className="text-lg font-medium">No orders found</p>
@@ -232,11 +253,11 @@ export function UserOrderHistoryPage() {
                       You haven't placed any orders yet.
                     </p>
                   </div>
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       {/* Pagination */}
