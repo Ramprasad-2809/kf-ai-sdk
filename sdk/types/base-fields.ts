@@ -20,8 +20,8 @@ export type IdField = string;
  */
 export type StringField<
   T extends string = string,
-  MinLength extends number = never,
-  MaxLength extends number = never
+  _MinLength extends number = never,
+  _MaxLength extends number = never
 > = T;
 
 /**
@@ -46,7 +46,7 @@ export type TextAreaField = string;
  * NumberField // => number
  * NumberField<2> // => number with 2 decimal places
  */
-export type NumberField<Precision extends number = never> = number;
+export type NumberField<_Precision extends number = never> = number;
 
 /**
  * Large integer field for big numbers

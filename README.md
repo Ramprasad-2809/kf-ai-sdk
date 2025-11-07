@@ -4,49 +4,61 @@ A type-safe, AI-driven SDK for building modern web applications with role-based 
 
 ## Architecture Overview
 
-The KF AI SDK is built on three integrated layers:
+The KF AI SDK is built on a clear separation between reusable SDK core and user-configurable application logic:
 
-### 🎯 App Layer (`app/`)
+### 🔧 SDK Core (`sdk/`)
 
-**Type-Safe Contracts with Role-Based Access Control**
+**Fixed, Reusable Components**
 
-- AI-readable type definitions and schemas
-- Role-based field access enforcement
-- Single source of truth for data models and permissions
-- Compile-time validation of AI-generated code
+- **Types**: 11 Backend BO field types (IdField, StringField, CurrencyField, etc.)
+- **API Client**: Runtime CRUD operations with structured filtering and sorting
+- **Utilities**: Validation and formatting helpers
+- **Components**: React hooks for forms and tables (Phase 2)
 
-### 🔗 API Layer (`api/`)
+### 🏗️ App Layer (`app/`)
 
-**Runtime CRUD API Client**
+**User-Configurable Business Logic**
 
-- Business Object API client: `api('user').list()`, `api('leave').get()`, etc.
-- 5 core operations: get, create, update, delete, list
-- Full Runtime API compatibility with structured filtering and sorting
-- Automatic datetime encoding/decoding for API formats
-- Clean separation from business logic
+- **Roles**: User-defined role system (Admin, Manager, User, etc.)
+- **Sources**: Business object definitions (Product, Order, etc.)
+- **Role-based Access**: Type-safe field visibility per role
+- **AI-readable Contracts**: Single source of truth for code generation
 
-### 🧩 Components Layer (`components/`)
+### 📁 Project Structure
 
-**Headless React Components**
-
-- Dynamic forms with backend-driven validation
-- Data tables with sorting, filtering, and pagination
-- React Query integration for optimal caching
-- Type-safe integration with App and API layers
+```
+kf-ai-sdk/
+├── sdk/                    # Fixed SDK core
+│   ├── types/              # Field types and common interfaces
+│   ├── api/                # API client and utilities
+│   ├── utils/              # Validation and formatting
+│   └── index.ts            # SDK exports
+├── app/                    # User-configurable layer
+│   ├── types/roles.ts      # Role definitions
+│   ├── sources/            # Business objects
+│   └── index.ts            # App exports
+├── config/                 # Development configuration
+└── examples/               # Usage examples
+```
 
 ## Quick Start
 
-### Three-Layer Integration Example
+### Usage Example
 
 ```tsx
-// 1. AI reads App Layer for type-safe code generation
-import { Order, Roles, AdminOrder } from "@kf-ai-sdk/app";
+// 1. Import SDK core utilities
+import { api, formatCurrency, isValidCurrencyField } from "./sdk";
 
-// 2. Components use API Layer for data operations
-import { api } from "@kf-ai-sdk/api";
+// 2. Import app-specific business logic  
+import { Order, Roles, AdminOrder } from "./app";
 
-// 3. UI components integrate both layers
-import { useTable, useForm } from "@kf-ai-sdk/components";
+// 3. Use together for type-safe operations
+const order = new Order(Roles.Admin);
+const orderData = await order.list();
+
+// SDK utilities work with app types
+const isValid = isValidCurrencyField(orderData.Data[0].totalAmount);
+const formatted = formatCurrency(orderData.Data[0].totalAmount);
 
 function AdminOrderManagement() {
   // Type-safe order client with role-based access
@@ -151,7 +163,7 @@ function UserOrderList() {
 ### Runtime API Operations
 
 ```tsx
-import { api } from "@kf-ai-sdk/api";
+import { api } from "./sdk";
 
 // Runtime CRUD operations
 async function orderOperations() {
@@ -211,7 +223,7 @@ The KF AI SDK supports comprehensive filtering and sorting through the Runtime A
 ### Basic Filtering Examples
 
 ```tsx
-import { Order, Product, Roles } from "@kf-ai-sdk/app";
+import { Order, Product, Roles } from "./app";
 
 // Simple equality filter
 const completedOrders = await new Order(Roles.Admin).list({
@@ -638,11 +650,47 @@ async function getOrderDashboard(dateRange: { start: string, end: string }, minA
 
 ## Documentation
 
+## Development Setup
+
+### Prerequisites
+- Node.js 18+
+- npm or yarn
+
+### Installation
+```bash
+# Clone or download the SDK template
+git clone kf-ai-sdk my-project
+cd my-project
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+### Development Commands
+```bash
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run typecheck    # Run TypeScript checks
+npm run lint         # Run ESLint
+npm run format       # Format code with Prettier
+npm run test         # Run tests
+```
+
+### Configuration
+The SDK uses configuration files in the `config/` directory:
+- `tsconfig.json` - TypeScript configuration with path mapping
+- `vite.config.js` - Build and development server config
+- `eslint.config.js` - Code linting rules
+- `prettier.config.js` - Code formatting rules
+
 ### Layer Documentation
 
-- **[App SDK](app/README.md)** - Type-safe contracts, roles, and AI code generation
-- **[API Client](api/README.md)** - Simple CRUD operations and HTTP client
-- **[Components](components/README.md)** - React hooks for forms and tables
+- **[SDK Core](docs/sdk-core.md)** - Field types, API client, and utilities
+- **[App Layer](docs/app-layer.md)** - Roles and business object creation
+- **[Examples](docs/examples.md)** - Usage patterns and best practices
 
 ### Migration Guide
 
@@ -650,31 +698,31 @@ async function getOrderDashboard(dateRange: { start: string, end: string }, minA
 
 ## Features
 
-### App Layer (`sdk/app`)
+### SDK Core (`sdk/`)
+
+- ✅ **Field Type System** - 11 Backend BO field types with semantic meaning
+- ✅ **Runtime API Client** - Full CRUD operations with structured filtering
+- ✅ **Datetime Handling** - Automatic encoding/decoding of API formats
+- ✅ **Validation Utilities** - Runtime type checking and field validation
+- ✅ **Formatting Helpers** - Display formatting for all field types
+- ✅ **TypeScript Support** - Full type safety across all operations
+
+### App Layer (`app/`)
 
 - ✅ **Role-Based Access Control** - Compile-time enforcement of field visibility
 - ✅ **AI Code Generation** - Single source of truth for AI-readable contracts
+- ✅ **Dynamic Business Objects** - User-configurable source definitions
+- ✅ **Custom Role System** - User-defined role hierarchies
 - ✅ **Type Safety** - TypeScript validation of all generated code
-- ✅ **Semantic Types** - Field types that convey meaning (IdField, StringField, etc.)
 - ✅ **Single File Per Source** - All logic for a data model in one place
 
-### API Layer (`api/`)
+### Development Experience
 
-- ✅ **Runtime CRUD Operations** - get, create, update, delete, list
-- ✅ **Business Object Interface** - Clean `api('bo_id').method()` syntax
-- ✅ **Structured Filtering** - Complex filters with AND/OR/nested conditions
-- ✅ **Advanced Sorting** - Multi-field sorting with ASC/DESC directions
-- ✅ **Datetime Handling** - Automatic encoding/decoding of API datetime formats
-- ✅ **Error Handling** - Consistent error handling across operations
-- ✅ **TypeScript Support** - Full type safety for API operations
-
-### Components Layer (`sdk/components`)
-
-- ✅ **Backend-Driven Forms** - Automatic validation schema loading
-- ✅ **Data Tables** - Sorting, pagination, and search functionality
-- ✅ **React Query Integration** - Optimal caching and background updates
-- ✅ **Type-Safe Integration** - Uses App layer types for compile-time safety
-- ✅ **Headless UI** - Unstyled components for complete design control
+- ✅ **Modern Build Tools** - Vite, TypeScript, ESLint, Prettier
+- ✅ **Path Mapping** - Clean imports with `@sdk/` and `@app/` aliases
+- ✅ **Hot Reload** - Fast development with instant feedback
+- ✅ **Type Checking** - Comprehensive TypeScript validation
+- ✅ **Code Quality** - Automated linting and formatting
 
 ## Key Benefits
 

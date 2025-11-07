@@ -1,0 +1,48 @@
+{
+  "name": "kf-ai-sdk",
+  "version": "1.0.0",
+  "description": "Type-safe, AI-driven SDK for building modern web applications with role-based access control",
+  "type": "module",
+  "main": "sdk/index.ts",
+  "module": "sdk/index.ts",
+  "exports": {
+    ".": {
+      "import": "./sdk/index.ts",
+      "require": "./sdk/index.ts"
+    }
+  },
+  "scripts": {
+    "dev": "vite --config config/vite.config.js",
+    "build": "tsc && vite build --config config/vite.config.js",
+    "preview": "vite preview --config config/vite.config.js",
+    "lint": "eslint . --ext .ts,.tsx",
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.17.0"
+  },
+  "peerDependencies": {
+    "react": ">=16.8.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/react": "^18.2.0",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
+    "@typescript-eslint/parser": "^6.19.0",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.2.4",
+    "react": "^18.2.0",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.0",
+    "vitest": "^1.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
