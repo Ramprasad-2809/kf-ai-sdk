@@ -28,11 +28,11 @@
   },
   "include": [
     "sdk/**/*",
-    "app/**/*",
-    "examples/**/*"
+    "app/**/*"
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "examples"
   ]
 }

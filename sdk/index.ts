@@ -8,3 +8,6 @@ export * from './api';
 
 // Utilities
 export * from './utils';
+
+// Components
+export * from './components';

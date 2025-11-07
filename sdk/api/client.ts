@@ -2,14 +2,14 @@
 // API Client - Simple CRUD Operations
 // ============================================================
 
-import type { 
-  ListOptions, 
-  ListResponse, 
-  ReadResponse, 
-  CreateUpdateResponse, 
+import type {
+  ListOptions,
+  ListResponse,
+  ReadResponse,
+  CreateUpdateResponse,
   DeleteResponse,
   DateTimeEncoded,
-  DateEncoded 
+  DateEncoded,
 } from "../types/common";
 
 /**
@@ -18,16 +18,16 @@ import type {
 export interface ResourceClient<T = any> {
   /** Get single record by ID */
   get(id: string): Promise<T>;
-  
+
   /** Create new record */
   create(data: Partial<T> & { _id?: string }): Promise<CreateUpdateResponse>;
-  
+
   /** Update existing record */
   update(id: string, data: Partial<T>): Promise<CreateUpdateResponse>;
-  
+
   /** Delete record by ID */
   delete(id: string): Promise<DeleteResponse>;
-  
+
   /** List records with optional filtering, sorting, and pagination */
   list(options?: ListOptions): Promise<ListResponse<T>>;
 }
@@ -44,7 +44,7 @@ interface ApiConfig {
  * Global API configuration
  */
 let apiConfig: ApiConfig = {
-  baseUrl: process.env.API_BASE_URL || "http://localhost:3000/api/app",
+  baseUrl: "",
   headers: {
     "Content-Type": "application/json",
   },
@@ -71,22 +71,22 @@ function decodeResponseData<T>(data: any): T {
   if (data === null || data === undefined) {
     return data;
   }
-  
+
   if (Array.isArray(data)) {
-    return data.map(item => decodeResponseData(item)) as T;
+    return data.map((item) => decodeResponseData(item)) as T;
   }
-  
-  if (typeof data === 'object') {
+
+  if (typeof data === "object") {
     // Check for datetime encoding
-    if ('$__dt__' in data) {
+    if ("$__dt__" in data) {
       return new Date((data as DateTimeEncoded).$__dt__ * 1000) as T;
     }
-    
+
     // Check for date encoding
-    if ('$__d__' in data) {
+    if ("$__d__" in data) {
       return new Date((data as DateEncoded).$__d__) as T;
     }
-    
+
     // Recursively process object properties
     const result: any = {};
     for (const [key, value] of Object.entries(data)) {
@@ -94,7 +94,7 @@ function decodeResponseData<T>(data: any): T {
     }
     return result as T;
   }
-  
+
   return data as T;
 }
 
@@ -122,7 +122,9 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
       return decodeResponseData<T>(responseData.Data);
     },
 
-    async create(data: Partial<T> & { _id?: string }): Promise<CreateUpdateResponse> {
+    async create(
+      data: Partial<T> & { _id?: string }
+    ): Promise<CreateUpdateResponse> {
       const response = await fetch(`${baseUrl}/${bo_id}/create`, {
         method: "POST",
         headers: defaultHeaders,
@@ -144,7 +146,9 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to update ${bo_id} ${id}: ${response.statusText}`);
+        throw new Error(
+          `Failed to update ${bo_id} ${id}: ${response.statusText}`
+        );
       }
 
       return response.json();
@@ -157,7 +161,9 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to delete ${bo_id} ${id}: ${response.statusText}`);
+        throw new Error(
+          `Failed to delete ${bo_id} ${id}: ${response.statusText}`
+        );
       }
 
       return response.json();
@@ -168,7 +174,7 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
         Type: "List",
         ...options,
       };
-      
+
       const response = await fetch(`${baseUrl}/${bo_id}/list`, {
         method: "POST",
         headers: defaultHeaders,
@@ -181,7 +187,7 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
 
       const responseData: ListResponse<any> = await response.json();
       return {
-        Data: responseData.Data.map(item => decodeResponseData<T>(item)),
+        Data: responseData.Data.map((item) => decodeResponseData<T>(item)),
       };
     },
   };
