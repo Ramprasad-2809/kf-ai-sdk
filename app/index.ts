@@ -3,13 +3,14 @@
 // ============================================================
 // This is the main entry point for the App layer of the KF AI SDK.
 // It provides type-safe, role-based access to all business entities.
+//
+// Note: Base field types and API client are now in the SDK core.
+// This app layer contains only user-configurable business logic.
 
 // ============================================================
-// BASE TYPES
+// APP-SPECIFIC TYPES
 // ============================================================
-export * from "./types/base-fields";
 export * from "./types/roles";
-export * from "./types/common";
 
 // ============================================================
 // SOURCES (Business Entities)

@@ -10,25 +10,7 @@ import type {
   DeleteResponse,
   DateTimeEncoded,
   DateEncoded 
-} from "../app/types/common";
-
-// Re-export types from app layer for consistency
-export type {
-  SortDirection,
-  SortOption,
-  Sort,
-  Filter,
-  FilterCondition,
-  FilterOperator,
-  FilterRHSType,
-  ListOptions,
-  ListResponse,
-  ReadResponse,
-  CreateUpdateResponse,
-  DeleteResponse,
-  DateTimeEncoded,
-  DateEncoded,
-} from "../app/types/common";
+} from "../types/common";
 
 /**
  * API client interface for a specific Business Object
@@ -83,38 +65,6 @@ export function setDefaultHeaders(headers: Record<string, string>): void {
 }
 
 /**
- * Utility functions for datetime encoding/decoding
- */
-
-/**
- * Encode a Date object to API datetime format
- */
-export function encodeDatetime(date: Date): DateTimeEncoded {
-  return { $__dt__: date.getTime() / 1000 };
-}
-
-/**
- * Decode API datetime format to Date object
- */
-export function decodeDatetime(encoded: DateTimeEncoded): Date {
-  return new Date(encoded.$__dt__ * 1000);
-}
-
-/**
- * Encode a Date object to API date format (YYYY-MM-DD)
- */
-export function encodeDate(date: Date): DateEncoded {
-  return { $__d__: date.toISOString().split('T')[0] };
-}
-
-/**
- * Decode API date format to Date object
- */
-export function decodeDate(encoded: DateEncoded): Date {
-  return new Date(encoded.$__d__);
-}
-
-/**
  * Recursively process an object to decode datetime fields
  */
 function decodeResponseData<T>(data: any): T {
@@ -129,12 +79,12 @@ function decodeResponseData<T>(data: any): T {
   if (typeof data === 'object') {
     // Check for datetime encoding
     if ('$__dt__' in data) {
-      return decodeDatetime(data as DateTimeEncoded) as T;
+      return new Date((data as DateTimeEncoded).$__dt__ * 1000) as T;
     }
     
     // Check for date encoding
     if ('$__d__' in data) {
-      return decodeDate(data as DateEncoded) as T;
+      return new Date((data as DateEncoded).$__d__) as T;
     }
     
     // Recursively process object properties
