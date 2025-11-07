@@ -18,6 +18,7 @@ export function Navigation() {
     
     // Testing routes
     { path: '/error-testing', label: '🧪 Error Testing', adminOnly: false },
+    { path: '/filter-test', label: '🔍 Filter Test', adminOnly: false },
   ];
 
   const isActiveRoute = (path: string) => {

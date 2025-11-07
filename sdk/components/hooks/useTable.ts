@@ -2,6 +2,12 @@ import { useState, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api";
 import type { ListResponse, ListOptions } from "../../types/common";
+import { useFilter } from "./useFilter";
+import type { 
+  FilterConditionWithId,
+  ValidationError,
+  FieldDefinition 
+} from "./useFilter";
 
 // ============================================================
 // TYPE DEFINITIONS
@@ -31,6 +37,8 @@ export interface UseTableOptions<T> {
   enableFiltering?: boolean;
   /** Enable pagination */
   enablePagination?: boolean;
+  /** Field definitions for filter validation */
+  fieldDefinitions?: Record<keyof T, FieldDefinition>;
   /** Initial state */
   initialState?: {
     pagination?: {
@@ -42,11 +50,15 @@ export interface UseTableOptions<T> {
       direction: "asc" | "desc";
     };
     globalFilter?: string;
+    filters?: FilterConditionWithId[];
+    filterOperator?: "AND" | "OR";
   };
   /** Error callback */
   onError?: (error: Error) => void;
   /** Success callback */
   onSuccess?: (data: T[]) => void;
+  /** Filter error callback */
+  onFilterError?: (errors: ValidationError[]) => void;
 }
 
 export interface UseTableReturn<T> {
@@ -76,11 +88,47 @@ export interface UseTableReturn<T> {
     clear: () => void;
   };
 
-  // Filtering (Flat Access)
-  filter: {
-    global: string;
-    setGlobal: (value: string) => void;
+  // Legacy Global Filtering (Flat Access)
+  globalFilter: {
+    value: string;
+    setValue: (value: string) => void;
     clear: () => void;
+  };
+
+  // Advanced Filtering (Filter Conditions)
+  filter: {
+    // State
+    conditions: FilterConditionWithId[];
+    logicalOperator: "AND" | "OR";
+    isValid: boolean;
+    validationErrors: ValidationError[];
+    hasConditions: boolean;
+    
+    // Condition Management
+    addCondition: (condition: Omit<FilterConditionWithId, 'id' | 'isValid'>) => string;
+    updateCondition: (id: string, updates: Partial<FilterConditionWithId>) => boolean;
+    removeCondition: (id: string) => boolean;
+    clearConditions: () => void;
+    getCondition: (id: string) => FilterConditionWithId | undefined;
+    
+    // Logical Operator
+    setLogicalOperator: (operator: "AND" | "OR") => void;
+    
+    // Bulk Operations
+    setConditions: (conditions: FilterConditionWithId[]) => void;
+    replaceCondition: (id: string, newCondition: Omit<FilterConditionWithId, 'id' | 'isValid'>) => boolean;
+    
+    // Validation
+    validateCondition: (condition: Partial<FilterConditionWithId>) => any;
+    validateAllConditions: () => any;
+    
+    // State Management
+    exportState: () => any;
+    importState: (state: any) => void;
+    resetToInitial: () => void;
+    
+    // Utilities
+    getConditionCount: () => number;
   };
 
   // Pagination (Flat Access)
@@ -182,6 +230,30 @@ export function useTable<T = any>(
   });
 
   // ============================================================
+  // FILTER HOOK INTEGRATION
+  // ============================================================
+
+  const filterHook = useFilter<T>({
+    initialConditions: options.initialState?.filters,
+    initialLogicalOperator: options.initialState?.filterOperator || "AND",
+    fieldDefinitions: options.fieldDefinitions,
+    validateOnChange: true,
+    onValidationError: options.onFilterError,
+    onConditionAdd: () => {
+      // Reset to first page when adding filters
+      setPagination((prev) => ({ ...prev, pageNo: 1 }));
+    },
+    onConditionUpdate: () => {
+      // Reset to first page when updating filters
+      setPagination((prev) => ({ ...prev, pageNo: 1 }));
+    },
+    onConditionRemove: () => {
+      // Reset to first page when removing filters
+      setPagination((prev) => ({ ...prev, pageNo: 1 }));
+    }
+  });
+
+  // ============================================================
   // API OPTIONS BUILDER
   // ============================================================
 
@@ -203,6 +275,11 @@ export function useTable<T = any>(
       opts.Search = search.query;
     }
 
+    // Add filter conditions
+    if (filterHook.filterPayload) {
+      opts.Filter = filterHook.filterPayload;
+    }
+
     // Add pagination
     if (options.enablePagination) {
       opts.Page = pagination.pageNo; // Already 1-indexed
@@ -213,6 +290,7 @@ export function useTable<T = any>(
   }, [
     sorting,
     search.query,
+    filterHook.filterPayload,
     pagination,
     options.enablePagination,
   ]);
@@ -406,11 +484,47 @@ export function useTable<T = any>(
       clear: clearSort,
     },
 
-    // Filtering (Flat Access)
-    filter: {
-      global: filtering.global,
-      setGlobal: setGlobalFilter,
+    // Legacy Global Filtering (Flat Access)
+    globalFilter: {
+      value: filtering.global,
+      setValue: setGlobalFilter,
       clear: clearFilter,
+    },
+
+    // Advanced Filtering (Filter Conditions)
+    filter: {
+      // State
+      conditions: filterHook.conditions,
+      logicalOperator: filterHook.logicalOperator,
+      isValid: filterHook.isValid,
+      validationErrors: filterHook.validationErrors,
+      hasConditions: filterHook.hasConditions,
+      
+      // Condition Management
+      addCondition: filterHook.addCondition,
+      updateCondition: filterHook.updateCondition,
+      removeCondition: filterHook.removeCondition,
+      clearConditions: filterHook.clearConditions,
+      getCondition: filterHook.getCondition,
+      
+      // Logical Operator
+      setLogicalOperator: filterHook.setLogicalOperator,
+      
+      // Bulk Operations
+      setConditions: filterHook.setConditions,
+      replaceCondition: filterHook.replaceCondition,
+      
+      // Validation
+      validateCondition: filterHook.validateCondition,
+      validateAllConditions: filterHook.validateAllConditions,
+      
+      // State Management
+      exportState: filterHook.exportState,
+      importState: filterHook.importState,
+      resetToInitial: filterHook.resetToInitial,
+      
+      // Utilities
+      getConditionCount: filterHook.getConditionCount,
     },
 
     // Pagination (Flat Access)
