@@ -19,6 +19,7 @@ export type {
   ReadResponse,
   CreateUpdateResponse,
   DeleteResponse,
+  CountResponse,
   DateTimeEncoded,
   DateEncoded,
 } from '../types/common';

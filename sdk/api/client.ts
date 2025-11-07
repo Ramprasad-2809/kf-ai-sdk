@@ -8,6 +8,7 @@ import type {
   ReadResponse,
   CreateUpdateResponse,
   DeleteResponse,
+  CountResponse,
   DateTimeEncoded,
   DateEncoded,
 } from "../types/common";
@@ -30,6 +31,9 @@ export interface ResourceClient<T = any> {
 
   /** List records with optional filtering, sorting, and pagination */
   list(options?: ListOptions): Promise<ListResponse<T>>;
+
+  /** Get count of records matching the same criteria as list */
+  count(options?: ListOptions): Promise<CountResponse>;
 }
 
 /**
@@ -189,6 +193,25 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
       return {
         Data: responseData.Data.map((item) => decodeResponseData<T>(item)),
       };
+    },
+
+    async count(options?: ListOptions): Promise<CountResponse> {
+      const requestBody: ListOptions = {
+        Type: "List",
+        ...options,
+      };
+
+      const response = await fetch(`${baseUrl}/${bo_id}/count`, {
+        method: "POST",
+        headers: defaultHeaders,
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to count ${bo_id}: ${response.statusText}`);
+      }
+
+      return response.json();
     },
   };
 }

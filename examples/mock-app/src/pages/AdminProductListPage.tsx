@@ -20,7 +20,7 @@ export function AdminProductListPage() {
     enablePagination: true,
     initialState: {
       pagination: {
-        pageIndex: 0,
+        pageNo: 1,
         pageSize: 10,
       },
       sorting: {

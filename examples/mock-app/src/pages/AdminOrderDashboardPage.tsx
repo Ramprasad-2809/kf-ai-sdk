@@ -19,7 +19,7 @@ export function AdminOrderDashboardPage() {
     enablePagination: true,
     initialState: {
       pagination: {
-        pageIndex: 0,
+        pageNo: 1,
         pageSize: 15,
       },
       sorting: {
