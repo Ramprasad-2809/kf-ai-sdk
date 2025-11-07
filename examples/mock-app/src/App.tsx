@@ -6,6 +6,7 @@ import { UserProductListPage } from './pages/UserProductListPage';
 import { AdminOrderDashboardPage } from './pages/AdminOrderDashboardPage';
 import { UserOrderHistoryPage } from './pages/UserOrderHistoryPage';
 import { ErrorTestingPage } from './pages/ErrorTestingPage';
+import { FilterTestPage } from './pages/FilterTestPage';
 import { initializeMockApi } from './utils/mockApiClient';
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
           <Route path="/admin/orders" element={<AdminOrderDashboardPage />} />
           <Route path="/user/orders" element={<UserOrderHistoryPage />} />
           <Route path="/error-testing" element={<ErrorTestingPage />} />
+          <Route path="/filter-test" element={<FilterTestPage />} />
         </Routes>
       </main>
     </div>

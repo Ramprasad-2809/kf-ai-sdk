@@ -184,10 +184,7 @@ export function UserProductListPage() {
               ))
             ) : (
               <TableRow>
-                <TableCell
-                  colSpan={5}
-                  className="text-center text-gray-500"
-                >
+                <TableCell colSpan={5} className="text-center text-gray-500">
                   No products found.
                 </TableCell>
               </TableRow>
