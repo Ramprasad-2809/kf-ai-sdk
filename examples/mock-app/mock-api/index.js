@@ -215,7 +215,8 @@ export function setupMockAPI(middlewares) {
       return;
     }
 
-    if (url.match(/\/product\/[^/]+$/i) && method === 'GET') {
+    // Product read endpoint - exclude /field and /read paths
+    if (url.match(/\/product\/[^/]+$/i) && !url.includes('/field') && !url.includes('/read') && method === 'GET') {
       const productId = url.split('/').pop();
       const role = req.headers['x-user-role'] || 'admin';
       
@@ -398,7 +399,8 @@ export function setupMockAPI(middlewares) {
       return;
     }
 
-    if (url.match(/\/order\/[^/]+$/i) && method === 'GET') {
+    // Order read endpoint - exclude /field and /read paths  
+    if (url.match(/\/order\/[^/]+$/i) && !url.includes('/field') && !url.includes('/read') && method === 'GET') {
       const orderId = url.split('/').pop();
       const role = req.headers['x-user-role'] || 'admin';
       
@@ -423,6 +425,493 @@ export function setupMockAPI(middlewares) {
         Data: order,
         Success: true,
         Timestamp: new Date().toISOString()
+      });
+      return;
+    }
+
+    // ==================== READ ENDPOINTS ====================
+    // Product read endpoint: /api/bo/product/{item_id}/read
+    if (url.match(/\/api\/bo\/product\/[^/]+\/read$/i) && method === 'GET') {
+      const pathParts = url.split('/');
+      const productId = pathParts[pathParts.length - 2]; // Get the ID before '/read'
+      const role = req.headers['x-user-role'] || 'admin';
+      
+      const products = filterProductsByRole(mockProducts, role);
+      const product = products.find(p => p._id === productId);
+      
+      if (product) {
+        sendJSON({
+          Data: product,
+          Success: true,
+          Timestamp: new Date().toISOString()
+        });
+      } else {
+        sendError(`Product with ID ${productId} not found`, 404);
+      }
+      return;
+    }
+
+    // Order read endpoint: /api/bo/order/{item_id}/read
+    if (url.match(/\/api\/bo\/order\/[^/]+\/read$/i) && method === 'GET') {
+      const pathParts = url.split('/');
+      const orderId = pathParts[pathParts.length - 2]; // Get the ID before '/read'
+      const role = req.headers['x-user-role'] || 'admin';
+      
+      const orders = filterOrdersByRole(mockOrders, role);
+      const order = orders.find(o => o._id === orderId);
+      
+      if (order) {
+        sendJSON({
+          Data: order,
+          Success: true,
+          Timestamp: new Date().toISOString()
+        });
+      } else {
+        sendError(`Order with ID ${orderId} not found`, 404);
+      }
+      return;
+    }
+
+    // ==================== CREATE/UPDATE ENDPOINTS ====================
+    // Product create endpoint: /api/bo/product/create
+    if (url.match(/\/api\/bo\/product\/create$/i) && method === 'POST') {
+      parseBody().then(async (body) => {
+        await sendJSON({
+          Success: true,
+          Data: { ...body, _id: `product_${Date.now()}` },
+          Message: 'Product created successfully',
+          Timestamp: new Date().toISOString()
+        });
+      });
+      return;
+    }
+
+    // Product update endpoint: /api/bo/product/{id}/update  
+    if (url.match(/\/api\/bo\/product\/[^/]+\/update$/i) && method === 'POST') {
+      parseBody().then(async (body) => {
+        const pathParts = url.split('/');
+        const productId = pathParts[pathParts.length - 2]; // Get the ID before '/update'
+        
+        await sendJSON({
+          Success: true,
+          Data: { ...body, _id: productId },
+          Message: 'Product updated successfully',
+          Timestamp: new Date().toISOString()
+        });
+      });
+      return;
+    }
+
+    // Order create endpoint: /api/bo/order/create
+    if (url.match(/\/api\/bo\/order\/create$/i) && method === 'POST') {
+      parseBody().then(async (body) => {
+        await sendJSON({
+          Success: true,
+          Data: { ...body, _id: `order_${Date.now()}` },
+          Message: 'Order created successfully',
+          Timestamp: new Date().toISOString()
+        });
+      });
+      return;
+    }
+
+    // Order update endpoint: /api/bo/order/{id}/update
+    if (url.match(/\/api\/bo\/order\/[^/]+\/update$/i) && method === 'POST') {
+      parseBody().then(async (body) => {
+        const pathParts = url.split('/');
+        const orderId = pathParts[pathParts.length - 2]; // Get the ID before '/update'
+        
+        await sendJSON({
+          Success: true,
+          Data: { ...body, _id: orderId },
+          Message: 'Order updated successfully',
+          Timestamp: new Date().toISOString()
+        });
+      });
+      return;
+    }
+
+    // ==================== FORM SCHEMA ENDPOINTS ====================
+    if (url.includes('/api/bo/product/field') && method === 'GET') {
+      sendJSON({
+        "name": {
+          "Type": "String",
+          "Required": true,
+          "Validation": [
+            {
+              "Id": "VAL_PRODUCT_NAME_001",
+              "Type": "Expression",
+              "Condition": {
+                "Expression": "LENGTH(TRIM(name)) >= 2",
+                "ExpressionTree": {
+                  "Type": "BinaryExpression",
+                  "Operator": ">=",
+                  "Arguments": [
+                    {
+                      "Type": "CallExpression",
+                      "Callee": "LENGTH",
+                      "Arguments": [
+                        {
+                          "Type": "CallExpression",
+                          "Callee": "TRIM",
+                          "Arguments": [
+                            {
+                              "Type": "Identifier",
+                              "Name": "name",
+                              "Source": "BO_Product"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "Type": "Literal",
+                      "Value": 2
+                    }
+                  ]
+                }
+              },
+              "Message": "Product name must be at least 2 characters"
+            }
+          ]
+        },
+        "description": {
+          "Type": "String",
+          "Required": true,
+          "Validation": [
+            {
+              "Id": "VAL_PRODUCT_DESC_001",
+              "Type": "Expression",
+              "Condition": {
+                "Expression": "LENGTH(TRIM(description)) >= 10",
+                "ExpressionTree": {
+                  "Type": "BinaryExpression",
+                  "Operator": ">=",
+                  "Arguments": [
+                    {
+                      "Type": "CallExpression",
+                      "Callee": "LENGTH",
+                      "Arguments": [
+                        {
+                          "Type": "CallExpression",
+                          "Callee": "TRIM",
+                          "Arguments": [
+                            {
+                              "Type": "Identifier",
+                              "Name": "description",
+                              "Source": "BO_Product"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "Type": "Literal",
+                      "Value": 10
+                    }
+                  ]
+                }
+              },
+              "Message": "Description must be at least 10 characters"
+            }
+          ]
+        },
+        "price": {
+          "Type": "Number",
+          "Required": true,
+          "Validation": [
+            {
+              "Id": "VAL_PRODUCT_PRICE_001",
+              "Type": "Expression",
+              "Condition": {
+                "Expression": "price > 0 AND price <= 10000",
+                "ExpressionTree": {
+                  "Type": "LogicalExpression",
+                  "Operator": "AND",
+                  "Arguments": [
+                    {
+                      "Type": "BinaryExpression",
+                      "Operator": ">",
+                      "Arguments": [
+                        {
+                          "Type": "Identifier",
+                          "Name": "price",
+                          "Source": "BO_Product"
+                        },
+                        {
+                          "Type": "Literal",
+                          "Value": 0
+                        }
+                      ]
+                    },
+                    {
+                      "Type": "BinaryExpression",
+                      "Operator": "<=",
+                      "Arguments": [
+                        {
+                          "Type": "Identifier",
+                          "Name": "price",
+                          "Source": "BO_Product"
+                        },
+                        {
+                          "Type": "Literal",
+                          "Value": 10000
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "Message": "Price must be between $0.01 and $10,000"
+            }
+          ]
+        },
+        "category": {
+          "Type": "String",
+          "Required": true,
+          "Values": {
+            "Mode": "Static",
+            "Items": [
+              {"Value": "electronics", "Label": "Electronics"},
+              {"Value": "clothing", "Label": "Clothing"},
+              {"Value": "books", "Label": "Books"},
+              {"Value": "home", "Label": "Home & Garden"},
+              {"Value": "sports", "Label": "Sports"}
+            ]
+          }
+        },
+        "inStock": {
+          "Type": "Boolean",
+          "DefaultValue": {
+            "Expression": "true",
+            "ExpressionTree": {
+              "Type": "AssignmentExpression",
+              "Arguments": [
+                {
+                  "Type": "Literal",
+                  "Value": true
+                }
+              ]
+            }
+          }
+        }
+      });
+      return;
+    }
+
+    if (url.includes('/api/bo/order/field') && method === 'GET') {
+      sendJSON({
+        "customerName": {
+          "Type": "String",
+          "Required": true,
+          "Validation": [
+            {
+              "Id": "VAL_ORDER_CUSTOMER_001",
+              "Type": "Expression",
+              "Condition": {
+                "Expression": "LENGTH(TRIM(customerName)) >= 2",
+                "ExpressionTree": {
+                  "Type": "BinaryExpression",
+                  "Operator": ">=",
+                  "Arguments": [
+                    {
+                      "Type": "CallExpression",
+                      "Callee": "LENGTH",
+                      "Arguments": [
+                        {
+                          "Type": "CallExpression",
+                          "Callee": "TRIM",
+                          "Arguments": [
+                            {
+                              "Type": "Identifier",
+                              "Name": "customerName",
+                              "Source": "BO_Order"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "Type": "Literal",
+                      "Value": 2
+                    }
+                  ]
+                }
+              },
+              "Message": "Customer name must be at least 2 characters"
+            }
+          ]
+        },
+        "customerEmail": {
+          "Type": "String",
+          "Required": true,
+          "Validation": [
+            {
+              "Id": "VAL_ORDER_EMAIL_001",
+              "Type": "Expression",
+              "Condition": {
+                "Expression": "CONTAINS(customerEmail, '@')",
+                "ExpressionTree": {
+                  "Type": "CallExpression",
+                  "Callee": "CONTAINS",
+                  "Arguments": [
+                    {
+                      "Type": "Identifier",
+                      "Name": "customerEmail",
+                      "Source": "BO_Order"
+                    },
+                    {
+                      "Type": "Literal",
+                      "Value": "@"
+                    }
+                  ]
+                }
+              },
+              "Message": "Please enter a valid email address"
+            }
+          ]
+        },
+        "status": {
+          "Type": "String",
+          "Required": true,
+          "Values": {
+            "Mode": "Static",
+            "Items": [
+              {"Value": "pending", "Label": "Pending"},
+              {"Value": "processing", "Label": "Processing"},
+              {"Value": "shipped", "Label": "Shipped"},
+              {"Value": "delivered", "Label": "Delivered"},
+              {"Value": "cancelled", "Label": "Cancelled"}
+            ]
+          },
+          "DefaultValue": {
+            "Expression": "pending",
+            "ExpressionTree": {
+              "Type": "AssignmentExpression",
+              "Arguments": [
+                {
+                  "Type": "Literal",
+                  "Value": "pending"
+                }
+              ]
+            }
+          }
+        },
+        "total": {
+          "Type": "Number",
+          "Required": true,
+          "Validation": [
+            {
+              "Id": "VAL_ORDER_TOTAL_001",
+              "Type": "Expression",
+              "Condition": {
+                "Expression": "total > 0",
+                "ExpressionTree": {
+                  "Type": "BinaryExpression",
+                  "Operator": ">",
+                  "Arguments": [
+                    {
+                      "Type": "Identifier",
+                      "Name": "total",
+                      "Source": "BO_Order"
+                    },
+                    {
+                      "Type": "Literal",
+                      "Value": 0
+                    }
+                  ]
+                }
+              },
+              "Message": "Order total must be greater than $0"
+            }
+          ]
+        },
+        "itemCount": {
+          "Type": "Number",
+          "Required": true,
+          "Validation": [
+            {
+              "Id": "VAL_ORDER_ITEMS_001",
+              "Type": "Expression",
+              "Condition": {
+                "Expression": "itemCount >= 1 AND itemCount <= 100",
+                "ExpressionTree": {
+                  "Type": "LogicalExpression",
+                  "Operator": "AND",
+                  "Arguments": [
+                    {
+                      "Type": "BinaryExpression",
+                      "Operator": ">=",
+                      "Arguments": [
+                        {
+                          "Type": "Identifier",
+                          "Name": "itemCount",
+                          "Source": "BO_Order"
+                        },
+                        {
+                          "Type": "Literal",
+                          "Value": 1
+                        }
+                      ]
+                    },
+                    {
+                      "Type": "BinaryExpression",
+                      "Operator": "<=",
+                      "Arguments": [
+                        {
+                          "Type": "Identifier",
+                          "Name": "itemCount",
+                          "Source": "BO_Order"
+                        },
+                        {
+                          "Type": "Literal",
+                          "Value": 100
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "Message": "Item count must be between 1 and 100"
+            }
+          ]
+        },
+        "orderSummary": {
+          "Type": "String",
+          "Formula": {
+            "Expression": "CONCAT(itemCount, ' items totaling $', total, ' for ', customerName)",
+            "ExpressionTree": {
+              "Type": "CallExpression",
+              "Callee": "CONCAT",
+              "Arguments": [
+                {
+                  "Type": "Identifier",
+                  "Name": "itemCount",
+                  "Source": "BO_Order"
+                },
+                {
+                  "Type": "Literal",
+                  "Value": " items totaling $"
+                },
+                {
+                  "Type": "Identifier",
+                  "Name": "total",
+                  "Source": "BO_Order"
+                },
+                {
+                  "Type": "Literal",
+                  "Value": " for "
+                },
+                {
+                  "Type": "Identifier",
+                  "Name": "customerName",
+                  "Source": "BO_Order"
+                }
+              ]
+            }
+          },
+          "Computed": true
+        }
       });
       return;
     }

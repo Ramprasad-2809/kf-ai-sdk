@@ -7,6 +7,9 @@ import { AdminOrderDashboardPage } from './pages/AdminOrderDashboardPage';
 import { UserOrderHistoryPage } from './pages/UserOrderHistoryPage';
 import { ErrorTestingPage } from './pages/ErrorTestingPage';
 import { FilterTestPage } from './pages/FilterTestPage';
+import { FormTestPage } from './pages/FormTestPage';
+import { ProductManagementPage } from './pages/ProductManagementPage';
+import { OrderManagementPage } from './pages/OrderManagementPage';
 import { initializeMockApi } from './utils/mockApiClient';
 
 function App() {
@@ -26,6 +29,9 @@ function App() {
           <Route path="/user/orders" element={<UserOrderHistoryPage />} />
           <Route path="/error-testing" element={<ErrorTestingPage />} />
           <Route path="/filter-test" element={<FilterTestPage />} />
+          <Route path="/form-test" element={<FormTestPage />} />
+          <Route path="/product-management" element={<ProductManagementPage />} />
+          <Route path="/order-management" element={<OrderManagementPage />} />
         </Routes>
       </main>
     </div>

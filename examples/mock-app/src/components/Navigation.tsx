@@ -16,6 +16,10 @@ export function Navigation() {
     { path: '/user/products', label: 'Browse Products', adminOnly: false },
     { path: '/user/orders', label: 'My Orders', adminOnly: false },
     
+    // Management routes with useForm
+    { path: '/product-management', label: '📦 Product Management', adminOnly: false },
+    { path: '/order-management', label: '📋 Order Management', adminOnly: false },
+    
     // Testing routes
     { path: '/error-testing', label: '🧪 Error Testing', adminOnly: false },
     { path: '/filter-test', label: '🔍 Filter Test', adminOnly: false },
