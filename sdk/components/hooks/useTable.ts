@@ -3,10 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api";
 import type { ListResponse, ListOptions } from "../../types/common";
 import { useFilter } from "./useFilter";
-import type { 
+import type {
   FilterConditionWithId,
   ValidationError,
-  FieldDefinition 
+  FieldDefinition,
 } from "./useFilter";
 
 // ============================================================
@@ -103,30 +103,38 @@ export interface UseTableReturn<T> {
     isValid: boolean;
     validationErrors: ValidationError[];
     hasConditions: boolean;
-    
+
     // Condition Management
-    addCondition: (condition: Omit<FilterConditionWithId, 'id' | 'isValid'>) => string;
-    updateCondition: (id: string, updates: Partial<FilterConditionWithId>) => boolean;
+    addCondition: (
+      condition: Omit<FilterConditionWithId, "id" | "isValid">
+    ) => string;
+    updateCondition: (
+      id: string,
+      updates: Partial<FilterConditionWithId>
+    ) => boolean;
     removeCondition: (id: string) => boolean;
     clearConditions: () => void;
     getCondition: (id: string) => FilterConditionWithId | undefined;
-    
+
     // Logical Operator
     setLogicalOperator: (operator: "AND" | "OR") => void;
-    
+
     // Bulk Operations
     setConditions: (conditions: FilterConditionWithId[]) => void;
-    replaceCondition: (id: string, newCondition: Omit<FilterConditionWithId, 'id' | 'isValid'>) => boolean;
-    
+    replaceCondition: (
+      id: string,
+      newCondition: Omit<FilterConditionWithId, "id" | "isValid">
+    ) => boolean;
+
     // Validation
     validateCondition: (condition: Partial<FilterConditionWithId>) => any;
     validateAllConditions: () => any;
-    
+
     // State Management
     exportState: () => any;
     importState: (state: any) => void;
     resetToInitial: () => void;
-    
+
     // Utilities
     getConditionCount: () => number;
   };
@@ -250,7 +258,7 @@ export function useTable<T = any>(
     onConditionRemove: () => {
       // Reset to first page when removing filters
       setPagination((prev) => ({ ...prev, pageNo: 1 }));
-    }
+    },
   });
 
   // ============================================================
@@ -321,6 +329,8 @@ export function useTable<T = any>(
         throw err;
       }
     },
+    staleTime: 0,
+    gcTime: 0,
   });
 
   // Count query for accurate total items
@@ -342,6 +352,8 @@ export function useTable<T = any>(
         throw err;
       }
     },
+    staleTime: 0,
+    gcTime: 0,
   });
 
   // ============================================================
@@ -446,10 +458,7 @@ export function useTable<T = any>(
   // ============================================================
 
   const refetch = useCallback(async (): Promise<ListResponse<T>> => {
-    const [listResult] = await Promise.all([
-      queryRefetch(),
-      countRefetch(),
-    ]);
+    const [listResult] = await Promise.all([queryRefetch(), countRefetch()]);
     return listResult.data || { Data: [] };
   }, [queryRefetch, countRefetch]);
 
@@ -499,30 +508,30 @@ export function useTable<T = any>(
       isValid: filterHook.isValid,
       validationErrors: filterHook.validationErrors,
       hasConditions: filterHook.hasConditions,
-      
+
       // Condition Management
       addCondition: filterHook.addCondition,
       updateCondition: filterHook.updateCondition,
       removeCondition: filterHook.removeCondition,
       clearConditions: filterHook.clearConditions,
       getCondition: filterHook.getCondition,
-      
+
       // Logical Operator
       setLogicalOperator: filterHook.setLogicalOperator,
-      
+
       // Bulk Operations
       setConditions: filterHook.setConditions,
       replaceCondition: filterHook.replaceCondition,
-      
+
       // Validation
       validateCondition: filterHook.validateCondition,
       validateAllConditions: filterHook.validateAllConditions,
-      
+
       // State Management
       exportState: filterHook.exportState,
       importState: filterHook.importState,
       resetToInitial: filterHook.resetToInitial,
-      
+
       // Utilities
       getConditionCount: filterHook.getConditionCount,
     },

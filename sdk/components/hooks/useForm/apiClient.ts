@@ -3,7 +3,7 @@
 // ============================================================
 // Handles schema fetching and form submissions
 
-import { api } from '../../../api';
+import { api, getDefaultHeaders, getApiBaseUrl } from '../../../api';
 import type { BackendSchema, FormOperation, SubmissionResult } from './types';
 
 // ============================================================
@@ -15,12 +15,13 @@ import type { BackendSchema, FormOperation, SubmissionResult } from './types';
  */
 export async function fetchFormSchema(source: string): Promise<BackendSchema> {
   try {
+    const baseUrl = getApiBaseUrl();
+    const headers = getDefaultHeaders();
+    
     // Updated endpoint based on user requirement: /api/bo/{source}/field
-    const response = await fetch(`/api/bo/${source}/field`, {
+    const response = await fetch(`${baseUrl}/${source}/field`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
     });
 
     if (!response.ok) {

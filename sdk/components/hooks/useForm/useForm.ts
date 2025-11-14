@@ -99,7 +99,8 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
         : fetchFormSchemaWithCache(source),
     enabled: enabled && (!skipSchemaFetch || !!manualSchema),
     retry: 3,
-    staleTime: 30 * 60 * 1000, // 30 minutes
+    staleTime: 0,
+    gcTime: 0,
     throwOnError: false,
   });
 
@@ -116,6 +117,8 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     queryFn: () => fetchRecord<T>(source, recordId!),
     enabled: enabled && operation === "update" && !!recordId,
     retry: 3,
+    staleTime: 0,
+    gcTime: 0,
     throwOnError: false,
   });
 

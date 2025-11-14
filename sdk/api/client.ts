@@ -69,6 +69,20 @@ export function setDefaultHeaders(headers: Record<string, string>): void {
 }
 
 /**
+ * Get current default headers
+ */
+export function getDefaultHeaders(): Record<string, string> {
+  return { ...apiConfig.headers };
+}
+
+/**
+ * Get current base URL
+ */
+export function getApiBaseUrl(): string {
+  return apiConfig.baseUrl || "";
+}
+
+/**
  * Recursively process an object to decode datetime fields
  */
 function decodeResponseData<T>(data: any): T {

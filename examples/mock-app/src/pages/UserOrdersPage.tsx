@@ -1,6 +1,13 @@
-import { useTable } from "kf-ai-sdk";
+import { useState } from "react";
+import { useTable, useForm } from "kf-ai-sdk";
 import { OrderForRole, Roles } from "../../../../app";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -9,16 +16,26 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
-export function UserOrderHistoryPage() {
-  const table = useTable<OrderForRole<typeof Roles.User>>({
+type Order = OrderForRole<typeof Roles.User>;
+
+export function UserOrdersPage() {
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
+
+  const table = useTable<Order>({
     source: "order",
     columns: [
-      { fieldId: "_id", enableSorting: true },
-      { fieldId: "status", enableSorting: true },
-      { fieldId: "total", enableSorting: true },
-      { fieldId: "itemCount", enableSorting: true },
-      { fieldId: "_created_at", enableSorting: true },
+      { fieldId: "_id", label: "Order ID", enableSorting: true },
+      { fieldId: "customerName", label: "Customer", enableSorting: true },
+      { fieldId: "customerEmail", label: "Email", enableSorting: true },
+      { fieldId: "status", label: "Status", enableSorting: true },
+      { fieldId: "total", label: "Total", enableSorting: true },
+      { fieldId: "itemCount", label: "Items", enableSorting: true },
+      { fieldId: "_created_at", label: "Created", enableSorting: true },
+      { fieldId: "_modified_at", label: "Modified", enableSorting: true },
     ],
     enableSorting: true,
     enableFiltering: true,
@@ -40,6 +57,53 @@ export function UserOrderHistoryPage() {
       console.error("Failed to load orders:", error);
     },
   });
+
+  // Form for viewing order details
+  const detailsForm = useForm<Order>({
+    source: "order",
+    operation: "update",
+    recordId: selectedOrder?._id,
+    enabled: showDetails && !!selectedOrder,
+  });
+
+  const handleRowClick = (order: Order) => {
+    setSelectedOrder(order);
+    setShowDetails(true);
+  };
+
+  const handleCloseDetails = () => {
+    setShowDetails(false);
+    setSelectedOrder(null);
+  };
+
+  const formatCurrency = (
+    value: { value: number; currency: string } | number | string
+  ) => {
+    if (typeof value === "object" && value !== null && "value" in value) {
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: value.currency,
+      }).format(value.value);
+    }
+    if (typeof value === "number") {
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+      }).format(value);
+    }
+    return value;
+  };
+
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, "default" | "secondary" | "outline"> = {
+      pending: "secondary",
+      processing: "outline",
+      shipped: "default",
+      delivered: "default",
+      cancelled: "secondary",
+    };
+    return variants[status] || "outline";
+  };
 
   if (table.error) {
     return (
@@ -93,15 +157,21 @@ export function UserOrderHistoryPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-gray-500">Total Orders</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-500">
+              Total Orders
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xl font-bold text-blue-600">{table.totalItems}</p>
+            <p className="text-xl font-bold text-blue-600">
+              {table.totalItems}
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-gray-500">Total Spent</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-500">
+              Total Spent
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-xl font-bold text-green-600">
@@ -111,7 +181,9 @@ export function UserOrderHistoryPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-gray-500">Recent Orders</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-500">
+              Recent Orders
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-xl font-bold text-orange-600">{recentOrders}</p>
@@ -199,34 +271,22 @@ export function UserOrderHistoryPage() {
               ))
             ) : table.rows.length > 0 ? (
               table.rows.map((order) => (
-                <TableRow key={order._id}>
+                <TableRow
+                  key={order._id}
+                  className="cursor-pointer hover:bg-gray-50"
+                  onClick={() => handleRowClick(order)}
+                >
                   <TableCell className="font-medium text-blue-600">
                     #{order._id.replace("order_", "")}
                   </TableCell>
                   <TableCell>
-                    <span
-                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        order.status === "delivered"
-                          ? "bg-green-100 text-green-800"
-                          : order.status === "pending"
-                            ? "bg-orange-100 text-orange-800"
-                            : order.status === "cancelled"
-                              ? "bg-red-100 text-red-800"
-                              : order.status === "shipped"
-                                ? "bg-purple-100 text-purple-800"
-                                : "bg-blue-100 text-blue-800"
-                      }`}
-                    >
+                    <Badge variant={getStatusBadge(order.status)}>
                       {order.status.charAt(0).toUpperCase() +
                         order.status.slice(1)}
-                    </span>
+                    </Badge>
                   </TableCell>
                   <TableCell className="font-medium text-gray-900">
-                    $
-                    {(typeof order.total === "object"
-                      ? order.total.value
-                      : 0
-                    ).toFixed(2)}
+                    {formatCurrency(order.total)}
                   </TableCell>
                   <TableCell className="text-gray-500">
                     {order.itemCount} item{order.itemCount !== 1 ? "s" : ""}
@@ -235,18 +295,22 @@ export function UserOrderHistoryPage() {
                     {new Date(order._created_at).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
-                    <button className="text-blue-600 hover:text-blue-800 text-sm">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRowClick(order);
+                      }}
+                    >
                       View Details
-                    </button>
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell
-                  colSpan={6}
-                  className="text-center text-gray-500"
-                >
+                <TableCell colSpan={6} className="text-center text-gray-500">
                   <div className="py-8">
                     <p className="text-lg font-medium">No orders found</p>
                     <p className="text-sm">
@@ -297,6 +361,101 @@ export function UserOrderHistoryPage() {
           visible.
         </p>
       </div>
+
+      {/* Order Details Modal */}
+      {showDetails && selectedOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <Card className="max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <CardHeader>
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle>Order Details</CardTitle>
+                  <CardDescription>
+                    Order #{selectedOrder._id.replace("order_", "")}
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCloseDetails}
+                >
+                  Close
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {detailsForm.isLoading ? (
+                <div className="text-center py-8">Loading details...</div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                  {Object.values(detailsForm.getFields()).map((field) => {
+                    const fieldValue = detailsForm.watch(
+                      field.name as keyof Order
+                    );
+                    return (
+                      <div
+                        key={field.name}
+                        className={
+                          field.name === "shippingAddress" ||
+                          field.name === "items"
+                            ? "col-span-2"
+                            : ""
+                        }
+                      >
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          {field.label}
+                        </label>
+                        <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-gray-900">
+                          {field.name === "total" ? (
+                            formatCurrency(fieldValue as any)
+                          ) : field.name === "status" ? (
+                            <Badge variant={getStatusBadge(String(fieldValue))}>
+                              {String(fieldValue)}
+                            </Badge>
+                          ) : field.name === "_created_at" ||
+                            field.name === "_updated_at" ? (
+                            new Date(fieldValue as string).toLocaleString()
+                          ) : field.name === "items" &&
+                            Array.isArray(fieldValue) ? (
+                            <div className="space-y-2">
+                              {fieldValue.map((item: any, idx: number) => (
+                                <div
+                                  key={idx}
+                                  className="flex justify-between items-center p-2 bg-white rounded border"
+                                >
+                                  <span>
+                                    {item.productName || item.name || "Product"}
+                                  </span>
+                                  <span className="text-gray-600">
+                                    Qty: {item.quantity} ×{" "}
+                                    {formatCurrency(item.price)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            String(fieldValue || "-")
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="mt-6 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleCloseDetails}
+                >
+                  Close
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

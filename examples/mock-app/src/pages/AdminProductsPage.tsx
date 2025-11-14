@@ -1,6 +1,8 @@
 // ============================================================
-// PRODUCT MANAGEMENT PAGE - Table + Form Integration
+// ADMIN PRODUCTS PAGE - Full CRUD Product Management
 // ============================================================
+// Merged from: ProductManagementPage + AdminProductListPage
+// Admin role with access to all fields including cost, supplier, margin
 
 import { useState, useCallback } from "react";
 import { useTable } from "../../../../sdk/components/hooks/useTable";
@@ -28,7 +30,7 @@ import {
 // Use Admin role for full access to all product fields
 type Product = ProductForRole<typeof Roles.Admin>;
 
-export function ProductManagementPage() {
+export function AdminProductsPage() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [formMode, setFormMode] = useState<"create" | "update">("create");
@@ -38,10 +40,20 @@ export function ProductManagementPage() {
     source: "product",
     columns: [
       { fieldId: "_id", label: "ID", enableSorting: true },
-      { fieldId: "name", label: "Product Name", enableSorting: true },
-      { fieldId: "category", label: "Category", enableSorting: true },
+      { fieldId: "name", label: "Name", enableSorting: true },
       { fieldId: "price", label: "Price", enableSorting: true },
-      { fieldId: "inStock", label: "In Stock" },
+      { fieldId: "cost", label: "Cost (Admin)", enableSorting: true },
+      { fieldId: "margin", label: "Margin % (Admin)", enableSorting: true },
+      { fieldId: "supplier", label: "Supplier (Admin)", enableSorting: true },
+      { fieldId: "category", label: "Category", enableSorting: true },
+      { fieldId: "inStock", label: "In Stock", enableSorting: true },
+      {
+        fieldId: "lastRestocked",
+        label: "Last Restocked (Admin)",
+        enableSorting: true,
+      },
+      { fieldId: "_created_at", label: "Created", enableSorting: true },
+      { fieldId: "_modified_at", label: "Modified", enableSorting: true },
     ],
     enableSorting: true,
     enableFiltering: true,
@@ -183,12 +195,9 @@ export function ProductManagementPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            Product Management
-          </h1>
+          <h1 className="text-3xl font-bold text-gray-900">Manage Products</h1>
           <p className="text-gray-600">
-            Manage your product catalog with integrated table and form • Admin
-            Access
+            Full product catalog management with CRUD operations • Admin Access
           </p>
         </div>
         <Button onClick={handleCreateNew} disabled={showForm}>
