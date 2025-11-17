@@ -12,7 +12,13 @@ import {
   CurrencyField,
 } from "../../sdk/types/base-fields";
 import { Role, Roles } from "../types/roles";
-import { ListResponse, ListOptions, CreateUpdateResponse, DeleteResponse, api } from "../../sdk";
+import {
+  ListResponse,
+  ListOptions,
+  CreateUpdateResponse,
+  DeleteResponse,
+  api,
+} from "../../sdk";
 
 // ============================================================
 // TYPE DEFINITION (using field types for semantic meaning)
@@ -43,6 +49,9 @@ export type ProductType = {
 
   /** Whether product is in stock */
   inStock: BooleanField;
+
+  /** Profit margin percentage (computed: (price - cost) / cost * 100) */
+  profitMargin: NumberField;
 
   /** When the product was created */
   _created_at: DateTimeField;
@@ -95,7 +104,19 @@ export type AdminProduct = ProductType;
  */
 export type UserProduct = Pick<
   ProductType,
-  "_id" | "name" | "price" | "description" | "category" | "inStock" | "_created_at" | "_modified_at" | "_created_by" | "_modified_by" | "_version" | "_m_version"
+  | "_id"
+  | "name"
+  | "price"
+  | "description"
+  | "category"
+  | "inStock"
+  | "profitMargin"
+  | "_created_at"
+  | "_modified_at"
+  | "_created_by"
+  | "_modified_by"
+  | "_version"
+  | "_m_version"
 >;
 
 // ============================================================
@@ -110,9 +131,8 @@ export type ProductForRole<TRole extends Role> =
   TRole extends typeof Roles.Admin
     ? AdminProduct
     : TRole extends typeof Roles.User
-    ? UserProduct
-    : never;
-
+      ? UserProduct
+      : never;
 
 // ============================================================
 // CLASS IMPLEMENTATION
@@ -187,5 +207,4 @@ export class Product<TRole extends Role = typeof Roles.Admin> {
 
     return api("product").delete(id);
   }
-
 }

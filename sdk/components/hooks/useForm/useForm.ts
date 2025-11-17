@@ -6,7 +6,12 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useForm as useReactHookForm, useWatch } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
-import type { Path, PathValue, SetValueConfig, FieldError } from "react-hook-form";
+import type {
+  Path,
+  PathValue,
+  SetValueConfig,
+  FieldError,
+} from "react-hook-form";
 
 import type {
   UseFormOptions,
@@ -16,10 +21,7 @@ import type {
   ProcessedField,
 } from "./types";
 
-import {
-  processSchema,
-  extractReferenceFields,
-} from "./schemaParser";
+import { processSchema, extractReferenceFields } from "./schemaParser";
 
 import {
   fetchFormSchemaWithCache,
@@ -29,7 +31,11 @@ import {
   cleanFormData,
 } from "./apiClient";
 
-import { validateCrossField, validateField, calculateComputedValue } from "./expressionValidator";
+import {
+  validateCrossField,
+  validateField,
+  calculateComputedValue,
+} from "./expressionValidator";
 
 // ============================================================
 // MAIN HOOK IMPLEMENTATION
@@ -99,7 +105,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     enabled: enabled && (!skipSchemaFetch || !!manualSchema),
     retry: 3,
     staleTime: 30 * 60 * 1000, // 30 minutes - schemas don't change frequently
-    gcTime: 60 * 60 * 1000,     // 1 hour - keep schemas in cache longer
+    gcTime: 60 * 60 * 1000, // 1 hour - keep schemas in cache longer
     throwOnError: false,
   });
 
@@ -116,8 +122,8 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     queryFn: () => fetchRecord<T>(source, recordId!),
     enabled: enabled && operation === "update" && !!recordId,
     retry: 3,
-    staleTime: 5 * 60 * 1000,   // 5 minutes - records can change more frequently
-    gcTime: 15 * 60 * 1000,     // 15 minutes - keep records for a reasonable time
+    staleTime: 5 * 60 * 1000, // 5 minutes - records can change more frequently
+    gcTime: 15 * 60 * 1000, // 15 minutes - keep records for a reasonable time
     throwOnError: false,
   });
 
@@ -203,17 +209,18 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
   // Extract computed field dependencies to optimize watching
   const computedFieldDependencies = useMemo(() => {
     if (!processedSchema) return [];
-    
+
     const dependencies = new Set<string>();
     processedSchema.computedFields.forEach((fieldName: string) => {
       const field = processedSchema.fields[fieldName];
       if (field.backendField.Formula) {
         // Simple extraction - look for field references in the expression tree
         // This is a simplified version that extracts common field dependencies
-        const expressionStr = field.backendField.Formula.Expression || '';
-        
+        const expressionStr = field.backendField.Formula.Expression || "";
+
         // Extract field names from the expression (basic approach)
-        const fieldMatches = expressionStr.match(/\b[A-Za-z][A-Za-z0-9_]*\b/g) || [];
+        const fieldMatches =
+          expressionStr.match(/\b[A-Za-z][A-Za-z0-9_]*\b/g) || [];
         fieldMatches.forEach((match: string) => {
           if (processedSchema.fields[match] && match !== fieldName) {
             dependencies.add(match);
@@ -221,23 +228,30 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
         });
       }
     });
-    
+
     return Array.from(dependencies) as Array<Path<T>>;
   }, [processedSchema]);
 
   // Only watch dependency fields for computed field updates
   const watchedDependencies = rhfForm.watch(computedFieldDependencies);
 
+  // Stringify watched values to prevent infinite loops from array reference changes
+  const watchedDependenciesStr = JSON.stringify(watchedDependencies);
+
   // Optimized computed field updates - only when dependencies change
   useEffect(() => {
-    if (!processedSchema || !watchedDependencies || computedFieldDependencies.length === 0) {
+    if (
+      !processedSchema ||
+      !watchedDependencies ||
+      computedFieldDependencies.length === 0
+    ) {
       return;
     }
-    
+
     const currentValues = rhfForm.getValues();
     const updates: Array<{ field: Path<T>; value: any }> = [];
-    
-    processedSchema.computedFields.forEach(fieldName => {
+
+    processedSchema.computedFields.forEach((fieldName) => {
       const field = processedSchema.fields[fieldName];
       if (field.backendField.Formula) {
         try {
@@ -246,12 +260,20 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
             currentValues,
             referenceData
           );
-          
+
           const currentValue = currentValues[fieldName as keyof T];
-          if (currentValue !== computedValue) {
-            updates.push({ 
-              field: fieldName as Path<T>, 
-              value: computedValue 
+
+          // Skip update if computed value is NaN, null, or undefined to prevent infinite loops
+          // Also use deep equality check to avoid unnecessary updates
+          const isValidValue =
+            computedValue !== null &&
+            computedValue !== undefined &&
+            !(typeof computedValue === "number" && isNaN(computedValue));
+
+          if (isValidValue && currentValue !== computedValue) {
+            updates.push({
+              field: fieldName as Path<T>,
+              value: computedValue,
             });
           }
         } catch (error) {
@@ -259,17 +281,23 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
         }
       }
     });
-    
+
     // Batch update computed fields to avoid multiple re-renders
     if (updates.length > 0) {
       updates.forEach(({ field, value }) => {
-        rhfForm.setValue(field, value, { 
+        rhfForm.setValue(field, value, {
           shouldDirty: false,
-          shouldValidate: false 
+          shouldValidate: false,
         });
       });
     }
-  }, [processedSchema, watchedDependencies, rhfForm, referenceData, computedFieldDependencies]);
+  }, [
+    processedSchema,
+    watchedDependenciesStr,
+    rhfForm,
+    referenceData,
+    computedFieldDependencies,
+  ]);
 
   // ============================================================
   // VALIDATION
@@ -370,71 +398,65 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     } finally {
       setIsSubmitting(false);
     }
-  }, [
-    processedSchema,
-    validateForm,
-    rhfForm,
-    source,
-    operation,
-    recordId,
-  ]);
+  }, [processedSchema, validateForm, rhfForm, source, operation, recordId]);
 
   // ============================================================
   // HANDLE SUBMIT - Simplified API
   // ============================================================
 
   // Simplified handleSubmit that always uses SDK's submit function
-  const handleSubmit = useCallback(
-    () => {
-      return rhfForm.handleSubmit(async () => {
-        await submit();
-      });
-    },
-    [rhfForm, submit]
-  );
+  const handleSubmit = useCallback(() => {
+    return rhfForm.handleSubmit(async () => {
+      await submit();
+    });
+  }, [rhfForm, submit]);
 
   // ============================================================
   // FIELD HELPERS
   // ============================================================
 
-  const getField = useCallback(<K extends keyof T>(
-    fieldName: K
-  ): ProcessedField | null => {
-    return processedSchema?.fields[fieldName as string] || null;
-  }, [processedSchema]);
+  const getField = useCallback(
+    <K extends keyof T>(fieldName: K): ProcessedField | null => {
+      return processedSchema?.fields[fieldName as string] || null;
+    },
+    [processedSchema]
+  );
 
   const getFields = useCallback((): Record<keyof T, ProcessedField> => {
     if (!processedSchema) return {} as Record<keyof T, ProcessedField>;
-    
+
     const typedFields: Record<keyof T, ProcessedField> = {} as any;
     Object.entries(processedSchema.fields).forEach(([key, field]) => {
       (typedFields as any)[key] = field;
     });
-    
+
     return typedFields;
   }, [processedSchema]);
 
-  const hasField = useCallback(<K extends keyof T>(
-    fieldName: K
-  ): boolean => {
-    return !!processedSchema?.fields[fieldName as string];
-  }, [processedSchema]);
+  const hasField = useCallback(
+    <K extends keyof T>(fieldName: K): boolean => {
+      return !!processedSchema?.fields[fieldName as string];
+    },
+    [processedSchema]
+  );
 
-  const isFieldRequired = useCallback(<K extends keyof T>(
-    fieldName: K
-  ): boolean => {
-    return (
-      processedSchema?.requiredFields.includes(fieldName as string) || false
-    );
-  }, [processedSchema]);
+  const isFieldRequired = useCallback(
+    <K extends keyof T>(fieldName: K): boolean => {
+      return (
+        processedSchema?.requiredFields.includes(fieldName as string) || false
+      );
+    },
+    [processedSchema]
+  );
 
-  const isFieldComputed = useCallback(<K extends keyof T>(
-    fieldName: K
-  ): boolean => {
-    return (
-      processedSchema?.computedFields.includes(fieldName as string) || false
-    );
-  }, [processedSchema]);
+  const isFieldComputed = useCallback(
+    <K extends keyof T>(fieldName: K): boolean => {
+      return (
+        processedSchema?.computedFields.includes(fieldName as string) || false
+      );
+    },
+    [processedSchema]
+  );
 
   // ============================================================
   // OTHER OPERATIONS
@@ -449,7 +471,6 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     setSubmitError(null);
   }, [rhfForm]);
 
-
   // ============================================================
   // COMPUTED PROPERTIES
   // ============================================================
@@ -460,13 +481,13 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
   const loadError = schemaError || recordError;
   const hasError = !!(loadError || submitError);
 
-  const computedFields = useMemo<Array<keyof T>>(() => 
-    processedSchema?.computedFields as Array<keyof T> || [], 
+  const computedFields = useMemo<Array<keyof T>>(
+    () => (processedSchema?.computedFields as Array<keyof T>) || [],
     [processedSchema]
   );
-  
-  const requiredFields = useMemo<Array<keyof T>>(() => 
-    processedSchema?.requiredFields as Array<keyof T> || [], 
+
+  const requiredFields = useMemo<Array<keyof T>>(
+    () => (processedSchema?.requiredFields as Array<keyof T>) || [],
     [processedSchema]
   );
 
@@ -477,30 +498,33 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
   // Create validation rules from processed schema
   const validationRules = useMemo(() => {
     if (!processedSchema) return {};
-    
+
     const rules: Record<string, any> = {};
-    
+
     Object.entries(processedSchema.fields).forEach(([fieldName, field]) => {
       const fieldRules: any = {};
-      
+
       // Required validation
       if (field.required) {
         fieldRules.required = `${field.label} is required`;
       }
-      
+
       // Type-specific validation
       switch (field.type) {
-        case 'number':
+        case "number":
           fieldRules.valueAsNumber = true;
           break;
-        case 'date':
-        case 'datetime-local':
+        case "date":
+        case "datetime-local":
           fieldRules.valueAsDate = true;
           break;
       }
-      
+
       // Expression tree validation
-      if (field.backendField.Validation && field.backendField.Validation.length > 0) {
+      if (
+        field.backendField.Validation &&
+        field.backendField.Validation.length > 0
+      ) {
         fieldRules.validate = {
           expressionValidation: (value: any) => {
             const currentValues = rhfForm.getValues();
@@ -511,28 +535,28 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
               currentValues,
               referenceData
             );
-            return result.isValid || result.message || 'Invalid value';
-          }
+            return result.isValid || result.message || "Invalid value";
+          },
         };
       }
-      
+
       rules[fieldName] = fieldRules;
     });
-    
+
     return rules;
   }, [processedSchema, rhfForm, referenceData]);
 
   // Enhanced register function with automatic validation
-  const register = useCallback(<K extends Path<T>>(
-    name: K,
-    options?: any
-  ) => {
-    const fieldValidation = validationRules[name as string];
-    return rhfForm.register(name, {
-      ...fieldValidation,
-      ...options
-    });
-  }, [rhfForm, validationRules]);
+  const register = useCallback(
+    <K extends Path<T>>(name: K, options?: any) => {
+      const fieldValidation = validationRules[name as string];
+      return rhfForm.register(name, {
+        ...fieldValidation,
+        ...options,
+      });
+    },
+    [rhfForm, validationRules]
+  );
 
   return {
     // Form methods with strict typing
@@ -574,7 +598,6 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     hasField,
     isFieldRequired,
     isFieldComputed,
-
 
     // Operations
     submit,

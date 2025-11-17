@@ -484,6 +484,29 @@ export function AdminProductsPage() {
                   </label>
                 </div>
 
+                {/* Profit Margin - Computed Field */}
+                <div className="space-y-2">
+                  <label
+                    htmlFor="profitMargin"
+                    className="block text-sm font-medium text-purple-700"
+                  >
+                    Profit Margin % (Computed)
+                  </label>
+                  <Input
+                    id="profitMargin"
+                    type="number"
+                    step="0.01"
+                    {...form.register("profitMargin")}
+                    readOnly
+                    disabled
+                    className="bg-purple-50 border-purple-300 text-purple-900 cursor-not-allowed font-medium"
+                    title="This field is automatically calculated from (price - cost) / cost * 100"
+                  />
+                  <p className="text-xs text-purple-600">
+                    ✨ Auto-calculated: (price - cost) / cost * 100
+                  </p>
+                </div>
+
                 {/* Submit Error */}
                 {form.submitError && (
                   <div className="rounded-lg bg-red-50 border border-red-200 p-3">

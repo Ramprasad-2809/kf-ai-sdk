@@ -603,6 +603,52 @@ export function AdminOrdersPage() {
                       )}
                     </div>
 
+                    {/* Customer Full Info - Computed Field */}
+                    <div className="col-span-2">
+                      <label
+                        htmlFor="customerFullInfo"
+                        className="block text-sm font-medium text-purple-700 mb-2"
+                      >
+                        Customer Full Info (Computed)
+                      </label>
+                      <input
+                        id="customerFullInfo"
+                        type="text"
+                        {...detailsForm.register("customerFullInfo")}
+                        readOnly
+                        disabled
+                        className="w-full px-3 py-2 bg-purple-50 border border-purple-300 rounded-md text-purple-900 cursor-not-allowed"
+                        title="This field is automatically calculated from customerName and customerEmail"
+                      />
+                      <p className="mt-1 text-xs text-purple-600">
+                        ✨ Auto-calculated: CONCAT(customerName, ' &lt;',
+                        customerEmail, '&gt;')
+                      </p>
+                    </div>
+
+                    {/* Total With Shipping - Computed Field */}
+                    <div>
+                      <label
+                        htmlFor="totalWithShipping"
+                        className="block text-sm font-medium text-purple-700 mb-2"
+                      >
+                        Total With Shipping (Computed)
+                      </label>
+                      <input
+                        id="totalWithShipping"
+                        type="number"
+                        step="0.01"
+                        {...detailsForm.register("totalWithShipping")}
+                        readOnly
+                        disabled
+                        className="w-full px-3 py-2 bg-purple-50 border border-purple-300 rounded-md text-purple-900 cursor-not-allowed font-medium"
+                        title="This field is automatically calculated from total + shippingCost"
+                      />
+                      <p className="mt-1 text-xs text-purple-600">
+                        ✨ Auto-calculated: total + shippingCost
+                      </p>
+                    </div>
+
                     {/* Internal Notes - Wide field (Admin only) */}
                     <div className="col-span-2">
                       <label

@@ -10,7 +10,13 @@ import {
   CurrencyField,
 } from "../../sdk/types/base-fields";
 import { Role, Roles } from "../types/roles";
-import { ListResponse, ListOptions, CreateUpdateResponse, DeleteResponse, api } from "../../sdk";
+import {
+  ListResponse,
+  ListOptions,
+  CreateUpdateResponse,
+  DeleteResponse,
+  api,
+} from "../../sdk";
 
 // ============================================================
 // TYPE DEFINITION (using field types for semantic meaning)
@@ -31,13 +37,21 @@ export type OrderType = {
   customerEmail: StringField;
 
   /** Order status */
-  status: SelectField<'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled'>;
+  status: SelectField<
+    "pending" | "processing" | "shipped" | "delivered" | "cancelled"
+  >;
 
   /** Order total amount */
   total: CurrencyField;
 
   /** Number of items in order */
   itemCount: NumberField;
+
+  /** Customer full info (computed: name + email) */
+  customerFullInfo: StringField;
+
+  /** Total with shipping (computed: total + shippingCost) */
+  totalWithShipping: NumberField;
 
   /** When the order was created */
   _created_at: DateTimeField;
@@ -87,7 +101,20 @@ export type AdminOrder = OrderType;
  */
 export type UserOrder = Pick<
   OrderType,
-  "_id" | "customerName" | "customerEmail" | "status" | "total" | "itemCount" | "_created_at" | "_modified_at" | "_created_by" | "_modified_by" | "_version" | "_m_version"
+  | "_id"
+  | "customerName"
+  | "customerEmail"
+  | "status"
+  | "total"
+  | "itemCount"
+  | "customerFullInfo"
+  | "totalWithShipping"
+  | "_created_at"
+  | "_modified_at"
+  | "_created_by"
+  | "_modified_by"
+  | "_version"
+  | "_m_version"
 >;
 
 // ============================================================
@@ -98,10 +125,9 @@ export type UserOrder = Pick<
  * Maps role to appropriate view type
  * This is how TypeScript knows which fields to allow
  */
-export type OrderForRole<TRole extends Role> =
-  TRole extends typeof Roles.Admin
-    ? AdminOrder
-    : TRole extends typeof Roles.User
+export type OrderForRole<TRole extends Role> = TRole extends typeof Roles.Admin
+  ? AdminOrder
+  : TRole extends typeof Roles.User
     ? UserOrder
     : never;
 

@@ -770,6 +770,50 @@ export function setupMockAPI(middlewares) {
             },
           },
         },
+        profitMargin: {
+          Type: "Number",
+          Formula: {
+            Expression: "(price - cost) / cost * 100",
+            ExpressionTree: {
+              Type: "BinaryExpression",
+              Operator: "*",
+              Arguments: [
+                {
+                  Type: "BinaryExpression",
+                  Operator: "/",
+                  Arguments: [
+                    {
+                      Type: "BinaryExpression",
+                      Operator: "-",
+                      Arguments: [
+                        {
+                          Type: "Identifier",
+                          Name: "price",
+                          Source: "BO_Product",
+                        },
+                        {
+                          Type: "Identifier",
+                          Name: "cost",
+                          Source: "BO_Product",
+                        },
+                      ],
+                    },
+                    {
+                      Type: "Identifier",
+                      Name: "cost",
+                      Source: "BO_Product",
+                    },
+                  ],
+                },
+                {
+                  Type: "Literal",
+                  Value: 100,
+                },
+              ],
+            },
+          },
+          Computed: true,
+        },
       };
 
       // Admin-only fields
@@ -1079,6 +1123,60 @@ export function setupMockAPI(middlewares) {
                 {
                   Type: "Identifier",
                   Name: "customerName",
+                  Source: "BO_Order",
+                },
+              ],
+            },
+          },
+          Computed: true,
+        },
+        customerFullInfo: {
+          Type: "String",
+          Formula: {
+            Expression: "CONCAT(customerName, ' <', customerEmail, '>')",
+            ExpressionTree: {
+              Type: "CallExpression",
+              Callee: "CONCAT",
+              Arguments: [
+                {
+                  Type: "Identifier",
+                  Name: "customerName",
+                  Source: "BO_Order",
+                },
+                {
+                  Type: "Literal",
+                  Value: " <",
+                },
+                {
+                  Type: "Identifier",
+                  Name: "customerEmail",
+                  Source: "BO_Order",
+                },
+                {
+                  Type: "Literal",
+                  Value: ">",
+                },
+              ],
+            },
+          },
+          Computed: true,
+        },
+        totalWithShipping: {
+          Type: "Number",
+          Formula: {
+            Expression: "total + shippingCost",
+            ExpressionTree: {
+              Type: "BinaryExpression",
+              Operator: "+",
+              Arguments: [
+                {
+                  Type: "Identifier",
+                  Name: "total",
+                  Source: "BO_Order",
+                },
+                {
+                  Type: "Identifier",
+                  Name: "shippingCost",
                   Source: "BO_Order",
                 },
               ],
