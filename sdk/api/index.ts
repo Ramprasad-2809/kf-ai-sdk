@@ -1,5 +1,5 @@
 // Main API client
-export { api, setApiBaseUrl, setDefaultHeaders } from './client';
+export { api, setApiBaseUrl, setDefaultHeaders, getDefaultHeaders, getApiBaseUrl } from './client';
 export type { ResourceClient } from './client';
 
 // DateTime utilities

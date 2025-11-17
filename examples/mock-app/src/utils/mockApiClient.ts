@@ -3,7 +3,7 @@ import { setApiBaseUrl, setDefaultHeaders } from "kf-ai-sdk";
 // Initialize API client for mock environment
 export function initializeMockApi() {
   // Set base URL to match our Vite mock API
-  setApiBaseUrl("");
+  setApiBaseUrl("/api/bo");
 
   // Set initial role header
   const currentRole = localStorage.getItem("currentRole") || "admin";
