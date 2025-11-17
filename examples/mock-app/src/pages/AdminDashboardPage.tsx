@@ -306,74 +306,227 @@ export function AdminDashboardPage() {
               {detailsForm.isLoading ? (
                 <div className="text-center py-8">Loading details...</div>
               ) : (
-                <div className="grid grid-cols-2 gap-4">
-                  {Object.values(detailsForm.getFields()).map((field) => {
-                    const fieldValue = detailsForm.watch(
-                      field.name as keyof Order
-                    );
-                    return (
-                      <div
-                        key={field.name}
-                        className={
-                          field.name === "shippingAddress" ||
-                          field.name === "internalNotes" ||
-                          field.name === "items"
-                            ? "col-span-2"
-                            : ""
-                        }
-                      >
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          {field.label}
-                        </label>
-                        <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-gray-900">
-                          {field.name === "total" ||
-                          field.name === "profit" ||
-                          field.name === "shippingCost" ? (
-                            formatCurrencyValue(fieldValue as any)
-                          ) : field.name === "status" ? (
-                            <Badge variant={getStatusBadge(String(fieldValue))}>
-                              {String(fieldValue)}
-                            </Badge>
-                          ) : field.name === "_created_at" ||
-                            field.name === "_updated_at" ? (
-                            new Date(fieldValue as string).toLocaleString()
-                          ) : field.name === "items" &&
-                            Array.isArray(fieldValue) ? (
-                            <div className="space-y-2">
-                              {fieldValue.map((item: any, idx: number) => (
-                                <div
-                                  key={idx}
-                                  className="flex justify-between items-center p-2 bg-white rounded border"
-                                >
-                                  <span>
-                                    {item.productName || item.name || "Product"}
-                                  </span>
-                                  <span className="text-gray-600">
-                                    Qty: {item.quantity} ×{" "}
-                                    {formatCurrencyValue(item.price)}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            String(fieldValue || "-")
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              <div className="mt-6 pt-4 border-t">
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={handleCloseDetails}
+                <form
+                  onSubmit={detailsForm.handleSubmit()}
+                  className="space-y-6"
                 >
-                  Close
-                </Button>
-              </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Customer Name */}
+                    <div>
+                      <label
+                        htmlFor="customerName"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Customer Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        id="customerName"
+                        type="text"
+                        {...detailsForm.register("customerName")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Enter customer name"
+                      />
+                      {detailsForm.errors.customerName && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {detailsForm.errors.customerName.message}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Customer Email */}
+                    <div>
+                      <label
+                        htmlFor="customerEmail"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Customer Email <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        id="customerEmail"
+                        type="email"
+                        {...detailsForm.register("customerEmail")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="email@example.com"
+                      />
+                      {detailsForm.errors.customerEmail && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {detailsForm.errors.customerEmail.message}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Status */}
+                    <div>
+                      <label
+                        htmlFor="status"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Status <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        id="status"
+                        {...detailsForm.register("status")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="processing">Processing</option>
+                        <option value="shipped">Shipped</option>
+                        <option value="delivered">Delivered</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                      {detailsForm.errors.status && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {detailsForm.errors.status.message}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Item Count */}
+                    <div>
+                      <label
+                        htmlFor="itemCount"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Item Count
+                      </label>
+                      <input
+                        id="itemCount"
+                        type="number"
+                        {...detailsForm.register("itemCount")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      {detailsForm.errors.itemCount && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {detailsForm.errors.itemCount.message}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Total */}
+                    <div>
+                      <label
+                        htmlFor="total"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Total <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        id="total"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        {...detailsForm.register("total")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="0.00"
+                      />
+                      {detailsForm.errors.total && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {detailsForm.errors.total.message}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Profit (Admin Only) */}
+                    <div>
+                      <label
+                        htmlFor="profit"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Profit (Admin)
+                      </label>
+                      <input
+                        id="profit"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        {...detailsForm.register("profit")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="0.00"
+                      />
+                      {detailsForm.errors.profit && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {detailsForm.errors.profit.message}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Shipping Cost (Admin Only) */}
+                    <div>
+                      <label
+                        htmlFor="shippingCost"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Shipping Cost (Admin)
+                      </label>
+                      <input
+                        id="shippingCost"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        {...detailsForm.register("shippingCost")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="0.00"
+                      />
+                      {detailsForm.errors.shippingCost && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {detailsForm.errors.shippingCost.message}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Internal Notes (Admin Only) */}
+                    <div className="col-span-2">
+                      <label
+                        htmlFor="internalNotes"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Internal Notes (Admin)
+                      </label>
+                      <textarea
+                        id="internalNotes"
+                        rows={4}
+                        {...detailsForm.register("internalNotes")}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Enter internal notes"
+                      />
+                      {detailsForm.errors.internalNotes && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {detailsForm.errors.internalNotes.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Form Actions */}
+                  <div className="flex justify-end space-x-3 pt-4 border-t">
+                    <button
+                      type="button"
+                      onClick={handleCloseDetails}
+                      className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={detailsForm.isSubmitting}
+                      className="px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      {detailsForm.isSubmitting
+                        ? "Updating..."
+                        : "Update Order"}
+                    </button>
+                  </div>
+
+                  {/* Show form errors */}
+                  {detailsForm.submitError && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                      <p className="text-sm text-red-600">
+                        {detailsForm.submitError.message}
+                      </p>
+                    </div>
+                  )}
+                </form>
+              )}
             </CardContent>
           </Card>
         </div>

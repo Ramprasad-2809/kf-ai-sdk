@@ -3,15 +3,18 @@
 // ============================================================
 
 import type {
-  FormState,
   UseFormRegister,
-  UseFormWatch,
-  UseFormSetValue,
-  UseFormReset,
   Mode,
   FieldValues as RHFFieldValues,
   SubmitHandler,
   SubmitErrorHandler,
+  FieldErrors,
+  FieldError,
+  Path,
+  PathValue,
+  RegisterOptions,
+  SetValueConfig,
+  FormState,
 } from "react-hook-form";
 
 // ============================================================
@@ -175,9 +178,9 @@ export type FormOperation = "create" | "update";
 export type FormMode = Mode;
 
 /**
- * useForm hook options
+ * useForm hook options with strict typing
  */
-export interface UseFormOptions<T extends RHFFieldValues = RHFFieldValues> {
+export interface UseFormOptions<T extends Record<string, any> = Record<string, any>> {
   /** Data source identifier (Business Object name) */
   source: string;
 
@@ -193,6 +196,9 @@ export interface UseFormOptions<T extends RHFFieldValues = RHFFieldValues> {
   /** Validation mode */
   mode?: FormMode;
 
+  /** Whether to enable schema fetching and form initialization (default: true) */
+  enabled?: boolean;
+
   /** Success callback */
   onSuccess?: (data: T) => void;
 
@@ -204,12 +210,6 @@ export interface UseFormOptions<T extends RHFFieldValues = RHFFieldValues> {
 
   /** Submit error callback */
   onSubmitError?: (error: Error) => void;
-
-  /** Custom validation rules (merged with backend rules) */
-  customValidation?: Record<keyof T, any>;
-
-  /** Whether to enable schema fetching and form initialization (default: true) */
-  enabled?: boolean;
 
   /** Skip schema fetching (use for testing) */
   skipSchemaFetch?: boolean;
@@ -270,6 +270,7 @@ export interface ProcessedField {
   backendField: BackendFieldDefinition;
 }
 
+
 /**
  * Form schema after processing
  */
@@ -295,39 +296,66 @@ export interface ProcessedSchema {
 // ============================================================
 
 /**
- * useForm hook return type
+ * useForm hook return type with flattened state access and strict typing
  */
-export interface UseFormReturn<T extends RHFFieldValues = RHFFieldValues> {
+export interface UseFormReturn<T extends Record<string, any> = Record<string, any>> {
   // ============================================================
-  // REACT HOOK FORM INTEGRATION
+  // FORM METHODS WITH STRICT TYPING
   // ============================================================
 
-  /** Register field for validation and form handling */
-  register: UseFormRegister<T>;
+  /** Register field for validation and form handling with strict typing */
+  register: <K extends Path<T>>(
+    name: K,
+    options?: RegisterOptions<T, K>
+  ) => ReturnType<UseFormRegister<T>>;
 
-  /**
-   * Handle form submission - React Hook Form compatible
-   * Can be called with optional callbacks, or without arguments to use SDK's auto-submit
-   * @example
-   * // Auto-submit using SDK logic
-   * <form onSubmit={handleSubmit()}>
-   *
-   * // Custom callback
-   * <form onSubmit={handleSubmit((data) => console.log(data))}>
-   */
-  handleSubmit: ExtendedHandleSubmit<T>;
+  /** Handle form submission - automatically uses SDK's submit logic */
+  handleSubmit: () => (e?: React.BaseSyntheticEvent) => Promise<void>;
 
-  /** Form state (errors, validation, etc.) */
-  formState: FormState<T>;
+  /** Watch field values with strict typing */
+  watch: <K extends Path<T> | readonly Path<T>[]>(
+    name?: K
+  ) => K extends Path<T> 
+    ? PathValue<T, K> 
+    : K extends readonly Path<T>[]
+    ? PathValue<T, K[number]>[] 
+    : T;
 
-  /** Watch field values */
-  watch: UseFormWatch<T>;
-
-  /** Set field value programmatically */
-  setValue: UseFormSetValue<T>;
+  /** Set field value programmatically with strict typing */
+  setValue: <K extends Path<T>>(
+    name: K,
+    value: PathValue<T, K>,
+    options?: SetValueConfig
+  ) => void;
 
   /** Reset form to default values */
-  reset: UseFormReset<T>;
+  reset: (values?: T) => void;
+
+  // ============================================================
+  // FLATTENED FORM STATE (NO NESTED formState)
+  // ============================================================
+
+  /** Form validation errors - direct access */
+  errors: FieldErrors<T>;
+
+  /** Form is valid - direct access */
+  isValid: boolean;
+
+  /** Form has been modified - direct access */
+  isDirty: boolean;
+
+  /** Form is currently submitting - direct access */
+  isSubmitting: boolean;
+
+  /** Form submission was successful - direct access */
+  isSubmitSuccessful: boolean;
+
+  // ============================================================
+  // BACKWARD COMPATIBILITY
+  // ============================================================
+
+  /** Form state object (for backward compatibility with existing components) */
+  formState: FormState<T>;
 
   // ============================================================
   // LOADING STATES
@@ -338,9 +366,6 @@ export interface UseFormReturn<T extends RHFFieldValues = RHFFieldValues> {
 
   /** Loading record data for update */
   isLoadingRecord: boolean;
-
-  /** Submitting form */
-  isSubmitting: boolean;
 
   /** Any loading state active */
   isLoading: boolean;
@@ -359,7 +384,7 @@ export interface UseFormReturn<T extends RHFFieldValues = RHFFieldValues> {
   hasError: boolean;
 
   // ============================================================
-  // SCHEMA INFORMATION
+  // SCHEMA INFORMATION WITH STRICT TYPING
   // ============================================================
 
   /** Raw backend schema */
@@ -368,30 +393,31 @@ export interface UseFormReturn<T extends RHFFieldValues = RHFFieldValues> {
   /** Processed schema for rendering */
   processedSchema: ProcessedSchema | null;
 
-  /** Computed field names */
-  computedFields: string[];
+  /** Computed field names as typed array */
+  computedFields: Array<keyof T>;
 
-  /** Required field names */
-  requiredFields: string[];
+  /** Required field names as typed array */
+  requiredFields: Array<keyof T>;
 
   // ============================================================
-  // FIELD HELPERS
+  // FIELD HELPERS WITH STRICT TYPING
   // ============================================================
 
-  /** Get field metadata */
-  getField: (fieldName: keyof T) => ProcessedField | null;
+  /** Get field metadata with strict typing */
+  getField: <K extends keyof T>(fieldName: K) => ProcessedField | null;
 
-  /** Get all fields */
-  getFields: () => Record<string, ProcessedField>;
+  /** Get all fields with strict typing */
+  getFields: () => Record<keyof T, ProcessedField>;
 
-  /** Check if field exists */
-  hasField: (fieldName: keyof T) => boolean;
+  /** Check if field exists with strict typing */
+  hasField: <K extends keyof T>(fieldName: K) => boolean;
 
-  /** Check if field is required */
-  isFieldRequired: (fieldName: keyof T) => boolean;
+  /** Check if field is required with strict typing */
+  isFieldRequired: <K extends keyof T>(fieldName: K) => boolean;
 
-  /** Check if field is computed */
-  isFieldComputed: (fieldName: keyof T) => boolean;
+  /** Check if field is computed with strict typing */
+  isFieldComputed: <K extends keyof T>(fieldName: K) => boolean;
+
 
   // ============================================================
   // OPERATIONS
@@ -415,23 +441,23 @@ export interface UseFormReturn<T extends RHFFieldValues = RHFFieldValues> {
 // ============================================================
 
 /**
- * Expression evaluation context
+ * Expression evaluation context with strict typing
  */
-export interface EvaluationContext {
+export interface EvaluationContext<T = Record<string, any>> {
   /** Current form values */
-  formValues: Record<string, any>;
+  formValues: Partial<T>;
 
   /** System values (NOW, TODAY, CURRENT_USER, etc.) */
   systemValues: Record<string, any>;
 
   /** Reference data cache */
-  referenceData: Record<string, any>;
+  referenceData: Record<string, any[]>;
 }
 
 /**
- * Validation result
+ * Validation result with strict typing
  */
-export interface ValidationResult {
+export interface ValidationResult<T = Record<string, any>> {
   /** Is validation passing */
   isValid: boolean;
 
@@ -439,7 +465,7 @@ export interface ValidationResult {
   message?: string;
 
   /** Field name that caused error */
-  fieldName?: string;
+  fieldName?: keyof T;
 }
 
 /**

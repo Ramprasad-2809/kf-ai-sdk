@@ -299,13 +299,13 @@ export function evaluateExpression(
 /**
  * Validate a field using backend validation rules
  */
-export function validateField(
+export function validateField<T = Record<string, any>>(
   fieldName: string,
   fieldValue: any,
   validationRules: Array<{ Id: string; Condition: { ExpressionTree: ExpressionTree }; Message: string }>,
-  formValues: Record<string, any>,
+  formValues: T,
   referenceData: Record<string, any> = {}
-): ValidationResult {
+): ValidationResult<T> {
   // If no validation rules, field is valid
   if (!validationRules || validationRules.length === 0) {
     return { isValid: true };
@@ -327,7 +327,7 @@ export function validateField(
         return {
           isValid: false,
           message: rule.Message,
-          fieldName
+          fieldName: fieldName as keyof T
         };
       }
     } catch (error) {
@@ -342,18 +342,18 @@ export function validateField(
 /**
  * Validate all cross-field validation rules
  */
-export function validateCrossField(
+export function validateCrossField<T = Record<string, any>>(
   validationRules: Array<{ Id: string; Condition: { ExpressionTree: ExpressionTree }; Message: string }>,
-  formValues: Record<string, any>,
+  formValues: T,
   referenceData: Record<string, any> = {}
-): ValidationResult[] {
-  const results: ValidationResult[] = [];
+): ValidationResult<T>[] {
+  const results: ValidationResult<T>[] = [];
 
   for (const rule of validationRules) {
     try {
       const isValid = evaluateExpression(
         rule.Condition.ExpressionTree,
-        formValues,
+        formValues as Record<string, any>,
         referenceData
       );
 
@@ -361,7 +361,7 @@ export function validateCrossField(
         results.push({
           isValid: false,
           message: rule.Message,
-          fieldName: rule.Id
+          fieldName: rule.Id as keyof T
         });
       }
     } catch (error) {

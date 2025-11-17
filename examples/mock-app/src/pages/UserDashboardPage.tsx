@@ -347,58 +347,117 @@ export function UserDashboardPage() {
               {productDetailsForm.isLoading ? (
                 <div className="text-center py-8">Loading details...</div>
               ) : (
-                <div className="grid grid-cols-2 gap-4">
-                  {Object.values(productDetailsForm.getFields()).map(
-                    (field) => {
-                      const fieldValue = productDetailsForm.watch(
-                        field.name as keyof Product
-                      );
-                      return (
-                        <div
-                          key={field.name}
-                          className={
-                            field.name === "description" ? "col-span-2" : ""
-                          }
+                <form className="space-y-6">
+                  <fieldset disabled>
+                    <legend className="text-lg font-medium text-gray-900 mb-4">
+                      Product Information (Read Only)
+                    </legend>
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Product Name */}
+                      <div>
+                        <label
+                          htmlFor="product-name"
+                          className="block text-sm font-medium text-gray-700 mb-2"
                         >
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            {field.label}
-                          </label>
-                          <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-gray-900">
-                            {field.name === "price" ? (
-                              formatCurrency(fieldValue as any)
-                            ) : field.name === "inStock" ? (
-                              fieldValue ? (
-                                "In Stock"
-                              ) : (
-                                "Out of Stock"
-                              )
-                            ) : field.name === "_created_at" ||
-                              field.name === "_updated_at" ? (
-                              new Date(fieldValue as string).toLocaleString()
-                            ) : field.name === "category" ? (
-                              <Badge variant="outline">
-                                {String(fieldValue)}
-                              </Badge>
-                            ) : (
-                              String(fieldValue || "-")
-                            )}
-                          </div>
-                        </div>
-                      );
-                    }
-                  )}
-                </div>
-              )}
+                          Product Name
+                        </label>
+                        <input
+                          id="product-name"
+                          type="text"
+                          {...productDetailsForm.register("name")}
+                          readOnly
+                          className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-900 cursor-not-allowed"
+                        />
+                      </div>
 
-              <div className="mt-6 pt-4 border-t">
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={handleCloseProductDetails}
-                >
-                  Close
-                </Button>
-              </div>
+                      {/* Price */}
+                      <div>
+                        <label
+                          htmlFor="product-price"
+                          className="block text-sm font-medium text-gray-700 mb-2"
+                        >
+                          Price
+                        </label>
+                        <input
+                          id="product-price"
+                          type="number"
+                          step="0.01"
+                          {...productDetailsForm.register("price.value")}
+                          readOnly
+                          className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-900 cursor-not-allowed"
+                        />
+                      </div>
+
+                      {/* Category */}
+                      <div>
+                        <label
+                          htmlFor="product-category"
+                          className="block text-sm font-medium text-gray-700 mb-2"
+                        >
+                          Category
+                        </label>
+                        <input
+                          id="product-category"
+                          type="text"
+                          {...productDetailsForm.register("category")}
+                          readOnly
+                          className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-900 cursor-not-allowed"
+                        />
+                      </div>
+
+                      {/* In Stock */}
+                      <div>
+                        <label
+                          htmlFor="product-inStock"
+                          className="block text-sm font-medium text-gray-700 mb-2"
+                        >
+                          Availability
+                        </label>
+                        <div className="flex items-center space-x-2 h-10">
+                          <input
+                            id="product-inStock"
+                            type="checkbox"
+                            {...productDetailsForm.register("inStock")}
+                            disabled
+                            className="rounded border-gray-300 text-blue-600 cursor-not-allowed"
+                          />
+                          <span className="text-sm text-gray-700">
+                            In Stock
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Description */}
+                      <div className="col-span-2">
+                        <label
+                          htmlFor="product-description"
+                          className="block text-sm font-medium text-gray-700 mb-2"
+                        >
+                          Description
+                        </label>
+                        <textarea
+                          id="product-description"
+                          rows={4}
+                          {...productDetailsForm.register("description")}
+                          readOnly
+                          className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-900 cursor-not-allowed"
+                        />
+                      </div>
+                    </div>
+                  </fieldset>
+
+                  {/* Form Actions */}
+                  <div className="flex justify-center pt-4 border-t">
+                    <button
+                      type="button"
+                      onClick={handleCloseProductDetails}
+                      className="px-6 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </form>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -429,71 +488,170 @@ export function UserDashboardPage() {
               {orderDetailsForm.isLoading ? (
                 <div className="text-center py-8">Loading details...</div>
               ) : (
-                <div className="grid grid-cols-2 gap-4">
-                  {Object.values(orderDetailsForm.getFields()).map((field) => {
-                    const fieldValue = orderDetailsForm.watch(
-                      field.name as keyof Order
-                    );
-                    return (
-                      <div
-                        key={field.name}
-                        className={
-                          field.name === "shippingAddress" ||
-                          field.name === "items"
-                            ? "col-span-2"
-                            : ""
-                        }
-                      >
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          {field.label}
-                        </label>
-                        <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-gray-900">
-                          {field.name === "total" ? (
-                            formatCurrency(fieldValue as any)
-                          ) : field.name === "status" ? (
-                            <Badge variant={getStatusBadge(String(fieldValue))}>
-                              {String(fieldValue)}
-                            </Badge>
-                          ) : field.name === "_created_at" ||
-                            field.name === "_updated_at" ? (
-                            new Date(fieldValue as string).toLocaleString()
-                          ) : field.name === "items" &&
-                            Array.isArray(fieldValue) ? (
-                            <div className="space-y-2">
-                              {fieldValue.map((item: any, idx: number) => (
-                                <div
-                                  key={idx}
-                                  className="flex justify-between items-center p-2 bg-white rounded border"
-                                >
-                                  <span>
-                                    {item.productName || item.name || "Product"}
-                                  </span>
-                                  <span className="text-gray-600">
-                                    Qty: {item.quantity} ×{" "}
-                                    {formatCurrency(item.price)}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            String(fieldValue || "-")
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              <div className="mt-6 pt-4 border-t">
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={handleCloseOrderDetails}
+                <form
+                  onSubmit={orderDetailsForm.handleSubmit()}
+                  className="space-y-6"
                 >
-                  Close
-                </Button>
-              </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Order ID */}
+                    <div>
+                      <label
+                        htmlFor="order-id"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Order ID
+                      </label>
+                      <input
+                        id="order-id"
+                        type="text"
+                        {...orderDetailsForm.register("_id")}
+                        readOnly
+                        className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-900 cursor-not-allowed"
+                      />
+                    </div>
+
+                    {/* Status */}
+                    <div>
+                      <label
+                        htmlFor="order-status"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Status
+                      </label>
+                      <input
+                        id="order-status"
+                        type="text"
+                        {...orderDetailsForm.register("status")}
+                        readOnly
+                        className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-900 cursor-not-allowed"
+                      />
+                    </div>
+
+                    {/* Customer Name */}
+                    <div>
+                      <label
+                        htmlFor="order-customerName"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Customer Name
+                      </label>
+                      <input
+                        id="order-customerName"
+                        type="text"
+                        {...orderDetailsForm.register("customerName")}
+                        readOnly
+                        className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-900 cursor-not-allowed"
+                      />
+                    </div>
+
+                    {/* Customer Email */}
+                    <div>
+                      <label
+                        htmlFor="order-customerEmail"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Customer Email
+                      </label>
+                      <input
+                        id="order-customerEmail"
+                        type="email"
+                        {...orderDetailsForm.register("customerEmail")}
+                        readOnly
+                        className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-900 cursor-not-allowed"
+                      />
+                    </div>
+
+                    {/* Total */}
+                    <div>
+                      <label
+                        htmlFor="order-total"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Total
+                      </label>
+                      <input
+                        id="order-total"
+                        type="number"
+                        step="0.01"
+                        {...orderDetailsForm.register("total.value")}
+                        readOnly
+                        className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-900 cursor-not-allowed"
+                      />
+                    </div>
+
+                    {/* Item Count */}
+                    <div>
+                      <label
+                        htmlFor="order-itemCount"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Item Count
+                      </label>
+                      <input
+                        id="order-itemCount"
+                        type="number"
+                        {...orderDetailsForm.register("itemCount")}
+                        readOnly
+                        className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-900 cursor-not-allowed"
+                      />
+                    </div>
+
+                    {/* Created At */}
+                    <div>
+                      <label
+                        htmlFor="order-created"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Created
+                      </label>
+                      <input
+                        id="order-created"
+                        type="datetime-local"
+                        {...orderDetailsForm.register("_created_at")}
+                        readOnly
+                        className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-900 cursor-not-allowed"
+                      />
+                    </div>
+
+                    {/* Modified At */}
+                    <div>
+                      <label
+                        htmlFor="order-modified"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Last Modified
+                      </label>
+                      <input
+                        id="order-modified"
+                        type="datetime-local"
+                        {...orderDetailsForm.register("_modified_at")}
+                        readOnly
+                        className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-900 cursor-not-allowed"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Form Actions - Read-only for users */}
+                  <div className="flex justify-center pt-4 border-t">
+                    <button
+                      type="button"
+                      onClick={handleCloseOrderDetails}
+                      className="px-6 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
+                    >
+                      Close
+                    </button>
+                  </div>
+
+                  {/* Show form errors */}
+                  {orderDetailsForm.submitError && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                      <p className="text-sm text-red-600">
+                        {orderDetailsForm.submitError.message}
+                      </p>
+                    </div>
+                  )}
+                </form>
+              )}
             </CardContent>
           </Card>
         </div>
