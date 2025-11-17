@@ -547,7 +547,7 @@ export function AdminOrdersPage() {
                         type="number"
                         step="0.01"
                         min="0"
-                        {...detailsForm.register("total", {
+                        {...detailsForm.register("total.value", {
                           required: "Total is required",
                         })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -571,7 +571,7 @@ export function AdminOrdersPage() {
                         id="profit"
                         type="number"
                         step="0.01"
-                        {...detailsForm.register("profit")}
+                        {...detailsForm.register("profit.value")}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                       {detailsForm.errors.profit && (
@@ -593,7 +593,7 @@ export function AdminOrdersPage() {
                         id="shippingCost"
                         type="number"
                         step="0.01"
-                        {...detailsForm.register("shippingCost")}
+                        {...detailsForm.register("shippingCost.value")}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                       {detailsForm.errors.shippingCost && (

@@ -415,7 +415,7 @@ export function AdminDashboardPage() {
                         type="number"
                         step="0.01"
                         min="0"
-                        {...detailsForm.register("total")}
+                        {...detailsForm.register("total.value")}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         placeholder="0.00"
                       />
@@ -439,7 +439,7 @@ export function AdminDashboardPage() {
                         type="number"
                         step="0.01"
                         min="0"
-                        {...detailsForm.register("profit")}
+                        {...detailsForm.register("profit.value")}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         placeholder="0.00"
                       />
@@ -463,7 +463,7 @@ export function AdminDashboardPage() {
                         type="number"
                         step="0.01"
                         min="0"
-                        {...detailsForm.register("shippingCost")}
+                        {...detailsForm.register("shippingCost.value")}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         placeholder="0.00"
                       />
