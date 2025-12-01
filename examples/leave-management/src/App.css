@@ -1,0 +1,12 @@
+/* Role badge styles */
+.role-badge {
+  @apply px-2 py-1 rounded-md text-xs font-medium;
+}
+
+.role-badge-manager {
+  @apply bg-purple-100 text-purple-700;
+}
+
+.role-badge-employee {
+  @apply bg-green-100 text-green-700;
+}

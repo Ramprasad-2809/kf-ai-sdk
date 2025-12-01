@@ -21,7 +21,7 @@ export type IdField = string;
 export type StringField<
   T extends string = string,
   _MinLength extends number = never,
-  _MaxLength extends number = never
+  _MaxLength extends number = never,
 > = T;
 
 /**
@@ -51,7 +51,7 @@ export type NumberField<_Precision extends number = never> = number;
 /**
  * Large integer field for big numbers
  * Resolves to: number
- * Storage: BIGINT in database  
+ * Storage: BIGINT in database
  * Use this for large counters, timestamps, file sizes
  *
  * @example
@@ -107,9 +107,9 @@ export type CurrencyField = CurrencyValue;
 /**
  * Currency value format - supports both object and string representations
  */
-export type CurrencyValue = 
-  | { value: number; currency: string }  // Object format: {value: 100.50, currency: "USD"}
-  | string;                              // String format: "100.50 USD" or "USD 100.50"
+export type CurrencyValue =
+  | { value: number; currency: string } // Object format: {value: 100.50, currency: "USD"}
+  | string; // String format: "100.50 USD" or "USD 100.50"
 
 /**
  * JSON field for structured data
@@ -124,10 +124,12 @@ export type CurrencyValue =
  */
 export type JSONField<T = JSONValue> = T;
 
+export type ReferenceField = string;
+
 /**
  * Valid JSON value types
  */
-export type JSONValue = 
+export type JSONValue =
   | string
   | number
   | boolean
@@ -221,11 +223,15 @@ export type ExtractFieldType<T> = T extends OptionalField<infer U> ? U : T;
 /**
  * Type guard to check if a value is a valid currency object
  */
-export function isCurrencyObject(value: any): value is { value: number; currency: string } {
-  return typeof value === 'object' && 
-         value !== null && 
-         typeof value.value === 'number' && 
-         typeof value.currency === 'string';
+export function isCurrencyObject(
+  value: any
+): value is { value: number; currency: string } {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof value.value === "number" &&
+    typeof value.currency === "string"
+  );
 }
 
 /**

@@ -8,11 +8,17 @@ export const Roles = {
 
   /** Standard user access - can only see public data */
   User: "user",
+
+  /** Manager role - can approve leave requests for their team */
+  Manager: "manager",
+
+  /** Employee role - can create and manage their own leave requests */
+  Employee: "employee",
 } as const;
 
 /**
  * Role type derived from Roles constant
- * Results in: 'admin' | 'user'
+ * Results in: 'admin' | 'user' | 'manager' | 'employee'
  */
 export type Role = (typeof Roles)[keyof typeof Roles];
 
