@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   Search,
   Filter,
@@ -37,6 +38,7 @@ export function ManagerLeaveApprovalsPage() {
     null
   );
   const [showDetails, setShowDetails] = useState(false);
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState("");
 
   const table = useTable<LeaveRequest>({
     source: "leave-request",
@@ -239,6 +241,61 @@ export function ManagerLeaveApprovalsPage() {
             </div>
           </CardHeader>
           <CardContent>
+            {/* Search and Filter - Always visible */}
+            <div className="mb-6 flex gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 z-10" />
+                <Input
+                  type="text"
+                  placeholder="Search by employee, request ID, or type..."
+                  value={table.search.query || ""}
+                  onChange={(e) => table.search.setQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <div className="relative">
+                <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <select
+                  value={selectedStatusFilter}
+                  className="pl-10 pr-8 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white appearance-none min-w-[180px]"
+                  onChange={(e) => {
+                    const statusValue = e.target.value;
+                    setSelectedStatusFilter(statusValue);
+                    
+                    // Clear existing status filters first
+                    table.filter.clearConditions();
+                    
+                    // Add new status filter if a value is selected
+                    if (statusValue) {
+                      table.filter.addCondition({
+                        lhsField: "CurrentStatus",
+                        operator: "EQ",
+                        rhsValue: statusValue,
+                      });
+                    }
+                  }}
+                >
+                  <option value="">All Statuses</option>
+                  <option value="MANAGER_APPROVAL">Pending Approval</option>
+                  <option value="FINANCE_APPROVAL">Finance Review</option>
+                  <option value="HR_PROCESS">HR Processing</option>
+                  <option value="COMPLETED">Completed</option>
+                </select>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  table.search.clear();
+                  table.filter.clearConditions();
+                  setSelectedStatusFilter(""); // Reset the UI state
+                }}
+                className="px-4"
+              >
+                Clear
+              </Button>
+            </div>
+
+            {/* Table Content with Loading States */}
             {table.isLoading ? (
               <div className="flex justify-center py-8">
                 <div className="text-gray-600">Loading requests...</div>
@@ -248,37 +305,7 @@ export function ManagerLeaveApprovalsPage() {
                 Error loading requests: {table.error.message}
               </div>
             ) : (
-              <div>
-                {/* Search and Filter */}
-                <div className="mb-6 flex gap-4">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <input
-                      type="text"
-                      placeholder="Search by employee, request ID, or type..."
-                      value={table.search.query || ""}
-                      onChange={(e) => table.search.setQuery(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200"
-                    />
-                  </div>
-                  <div className="relative">
-                    <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <select
-                      className="pl-10 pr-8 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white appearance-none min-w-[180px]"
-                      onChange={(e) => {
-                        console.log("Filter by status:", e.target.value);
-                      }}
-                    >
-                      <option value="">All Statuses</option>
-                      <option value="MANAGER_APPROVAL">Pending Approval</option>
-                      <option value="FINANCE_APPROVAL">Finance Review</option>
-                      <option value="HR_PROCESS">HR Processing</option>
-                      <option value="COMPLETED">Completed</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="rounded-lg border border-gray-200 overflow-hidden">
+              <div className="rounded-lg border border-gray-200 overflow-hidden">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -351,41 +378,40 @@ export function ManagerLeaveApprovalsPage() {
                       )}
                     </TableBody>
                   </Table>
-                </div>
 
-                {/* Pagination */}
-                {table.pagination && (
-                  <div className="mt-6 flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div className="text-sm text-gray-600 font-medium">
-                      Showing {table.pagination.currentPage} to{" "}
-                      {table.pagination.totalPages} of{" "}
-                      {table.pagination.totalItems} results
+                  {/* Pagination */}
+                  {table.pagination && (
+                    <div className="mt-6 flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                      <div className="text-sm text-gray-600 font-medium">
+                        Showing {table.pagination.currentPage} to{" "}
+                        {table.pagination.totalPages} of{" "}
+                        {table.pagination.totalItems} results
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => table.pagination.goToPrevious()}
+                          disabled={!table.pagination.canGoPrevious}
+                          className="border-gray-300 hover:border-orange-400 hover:bg-orange-50 transition-all duration-200"
+                        >
+                          <ChevronLeft className="h-4 w-4 mr-1" />
+                          Previous
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => table.pagination.goToNext()}
+                          disabled={!table.pagination.canGoNext}
+                          className="border-gray-300 hover:border-orange-400 hover:bg-orange-50 transition-all duration-200"
+                        >
+                          Next
+                          <ChevronRight className="h-4 w-4 ml-1" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => table.pagination.goToPrevious()}
-                        disabled={!table.pagination.canGoPrevious}
-                        className="border-gray-300 hover:border-orange-400 hover:bg-orange-50 transition-all duration-200"
-                      >
-                        <ChevronLeft className="h-4 w-4 mr-1" />
-                        Previous
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => table.pagination.goToNext()}
-                        disabled={!table.pagination.canGoNext}
-                        className="border-gray-300 hover:border-orange-400 hover:bg-orange-50 transition-all duration-200"
-                      >
-                        Next
-                        <ChevronRight className="h-4 w-4 ml-1" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
             )}
           </CardContent>
         </Card>

@@ -110,10 +110,12 @@ export function setupMockAPI(middlewares) {
             requests = requests.filter((request) => {
               return body.Filter.Condition.some((condition) => {
                 const value = request[condition.LHSField];
-                const searchValue = condition.RHSValue.toLowerCase();
+                const searchValue = condition.RHSValue;
 
                 if (condition.Operator === "Contains") {
-                  return String(value).toLowerCase().includes(searchValue);
+                  return String(value).toLowerCase().includes(String(searchValue).toLowerCase());
+                } else if (condition.Operator === "EQ") {
+                  return String(value) === String(searchValue);
                 }
                 return false;
               });
@@ -158,10 +160,12 @@ export function setupMockAPI(middlewares) {
             requests = requests.filter((request) => {
               return body.Filter.Condition.some((condition) => {
                 const value = request[condition.LHSField];
-                const searchValue = condition.RHSValue.toLowerCase();
+                const searchValue = condition.RHSValue;
 
                 if (condition.Operator === "Contains") {
-                  return String(value).toLowerCase().includes(searchValue);
+                  return String(value).toLowerCase().includes(String(searchValue).toLowerCase());
+                } else if (condition.Operator === "EQ") {
+                  return String(value) === String(searchValue);
                 }
                 return false;
               });
