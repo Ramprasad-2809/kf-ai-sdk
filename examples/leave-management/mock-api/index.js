@@ -349,6 +349,36 @@ export function setupMockAPI(middlewares) {
             {
               Id: "VAL_REASON_001",
               Type: "Expression",
+              Condition: {
+                Expression: "LENGTH(TRIM(Reason)) >= 10",
+                ExpressionTree: {
+                  Type: "BinaryExpression",
+                  Operator: ">=",
+                  Arguments: [
+                    {
+                      Type: "CallExpression",
+                      Callee: "LENGTH",
+                      Arguments: [
+                        {
+                          Type: "CallExpression",
+                          Callee: "TRIM",
+                          Arguments: [
+                            {
+                              Type: "Identifier",
+                              Name: "Reason",
+                              Source: "BO_LeaveRequest",
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                    {
+                      Type: "Literal",
+                      Value: 10,
+                    },
+                  ],
+                },
+              },
               Message: "Reason must be at least 10 characters",
             },
           ],

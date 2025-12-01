@@ -1,6 +1,9 @@
-import { useState } from "react";
 import { useTable } from "../../../../sdk/components/hooks/useTable";
-import { LeaveRequestForRole, LeaveBalanceForRole, Roles } from "../../../../app";
+import {
+  LeaveRequestForRole,
+  LeaveBalanceForRole,
+  Roles,
+} from "../../../../app";
 import {
   Card,
   CardContent,
@@ -19,7 +22,16 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { Calendar, Clock, CheckCircle, AlertCircle, FileText, PlusCircle, BarChart3, TrendingUp } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  FileText,
+  PlusCircle,
+  BarChart3,
+  TrendingUp,
+} from "lucide-react";
 
 type LeaveRequest = LeaveRequestForRole<typeof Roles.Employee>;
 type LeaveBalance = LeaveBalanceForRole<typeof Roles.Employee>;
@@ -61,7 +73,7 @@ export function EmployeeDashboardPage() {
     const variants: Record<string, "default" | "secondary" | "outline"> = {
       INITIATE: "secondary",
       MANAGER_APPROVAL: "outline",
-      FINANCE_APPROVAL: "outline", 
+      FINANCE_APPROVAL: "outline",
       HR_PROCESS: "outline",
       COMPLETED: "default",
     };
@@ -88,11 +100,20 @@ export function EmployeeDashboardPage() {
   };
 
   // Calculate summary statistics
-  const totalAllocated = leaveBalances.rows.reduce((sum, balance) => sum + balance.AllocatedDays, 0);
-  const totalUsed = leaveBalances.rows.reduce((sum, balance) => sum + balance.UsedDays, 0);
-  const totalRemaining = leaveBalances.rows.reduce((sum, balance) => sum + balance.RemainingDays, 0);
-  const pendingRequests = recentRequests.rows.filter(req => 
-    req.CurrentStatus !== "COMPLETED" && !req.CancelRequested
+  const totalAllocated = leaveBalances.rows.reduce(
+    (sum, balance) => sum + balance.AllocatedDays,
+    0
+  );
+  const totalUsed = leaveBalances.rows.reduce(
+    (sum, balance) => sum + balance.UsedDays,
+    0
+  );
+  const totalRemaining = leaveBalances.rows.reduce(
+    (sum, balance) => sum + balance.RemainingDays,
+    0
+  );
+  const pendingRequests = recentRequests.rows.filter(
+    (req) => req.CurrentStatus !== "COMPLETED" && !req.CancelRequested
   ).length;
 
   return (
@@ -125,7 +146,9 @@ export function EmployeeDashboardPage() {
               </div>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="text-3xl font-bold text-blue-600">{totalAllocated}</div>
+              <div className="text-3xl font-bold text-blue-600">
+                {totalAllocated}
+              </div>
               <div className="flex items-center pt-1">
                 <BarChart3 className="h-3 w-3 text-blue-600 mr-1" />
                 <span className="text-xs text-blue-600 font-medium">
@@ -142,7 +165,9 @@ export function EmployeeDashboardPage() {
                   Days Used
                 </CardTitle>
                 <CardDescription className="text-xs text-green-600">
-                  {totalAllocated > 0 ? `${Math.round((totalUsed / totalAllocated) * 100)}% of allocation` : "No allocation"}
+                  {totalAllocated > 0
+                    ? `${Math.round((totalUsed / totalAllocated) * 100)}% of allocation`
+                    : "No allocation"}
                 </CardDescription>
               </div>
               <div className="h-10 w-10 rounded-lg bg-green-500 flex items-center justify-center">
@@ -150,7 +175,9 @@ export function EmployeeDashboardPage() {
               </div>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="text-3xl font-bold text-green-600">{totalUsed}</div>
+              <div className="text-3xl font-bold text-green-600">
+                {totalUsed}
+              </div>
               <div className="flex items-center pt-1">
                 <TrendingUp className="h-3 w-3 text-green-600 mr-1" />
                 <span className="text-xs text-green-600 font-medium">
@@ -175,7 +202,9 @@ export function EmployeeDashboardPage() {
               </div>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="text-3xl font-bold text-emerald-600">{totalRemaining}</div>
+              <div className="text-3xl font-bold text-emerald-600">
+                {totalRemaining}
+              </div>
               <div className="flex items-center pt-1">
                 <Calendar className="h-3 w-3 text-emerald-600 mr-1" />
                 <span className="text-xs text-emerald-600 font-medium">
@@ -200,7 +229,9 @@ export function EmployeeDashboardPage() {
               </div>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="text-3xl font-bold text-orange-600">{pendingRequests}</div>
+              <div className="text-3xl font-bold text-orange-600">
+                {pendingRequests}
+              </div>
               <div className="flex items-center pt-1">
                 <Clock className="h-3 w-3 text-orange-600 mr-1" />
                 <span className="text-xs text-orange-600 font-medium">
@@ -224,16 +255,16 @@ export function EmployeeDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Button 
-                size="lg" 
+              <Button
+                size="lg"
                 onClick={() => navigate("/my-leaves")}
                 className="h-12 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg hover:shadow-xl transition-all duration-300"
               >
                 <PlusCircle className="h-5 w-5 mr-2" />
                 Apply for Leave
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="lg"
                 onClick={() => navigate("/my-leaves")}
                 className="h-12 border-2 border-blue-200 hover:border-blue-400 hover:bg-blue-50 transition-all duration-300"
@@ -256,72 +287,77 @@ export function EmployeeDashboardPage() {
               Your current leave balance by type
             </CardDescription>
           </CardHeader>
-        <CardContent>
-          {leaveBalances.isLoading ? (
-            <div className="flex justify-center py-8">
-              <div className="text-gray-600">Loading balances...</div>
-            </div>
-          ) : leaveBalances.error ? (
-            <div className="text-red-600 text-center py-8">
-              Error loading balances: {leaveBalances.error.message}
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Leave Type</TableHead>
-                  <TableHead className="text-center">Allocated</TableHead>
-                  <TableHead className="text-center">Used</TableHead>
-                  <TableHead className="text-center">Remaining</TableHead>
-                  <TableHead className="text-center">Utilization</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {leaveBalances.rows.length > 0 ? (
-                  leaveBalances.rows.map((balance) => (
-                    <TableRow key={balance._id}>
-                      <TableCell className="font-medium">
-                        <Badge variant="outline">
-                          {balance.LeaveType}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-center">{balance.AllocatedDays}</TableCell>
-                      <TableCell className="text-center">{balance.UsedDays}</TableCell>
-                      <TableCell className="text-center font-semibold text-green-600">
-                        {balance.RemainingDays}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex items-center justify-center">
-                          <div className="w-16 bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-blue-600 h-2 rounded-full"
-                              style={{
-                                width: `${Math.min((balance.UsedDays / balance.AllocatedDays) * 100, 100)}%`,
-                              }}
-                            ></div>
+          <CardContent>
+            {leaveBalances.isLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="text-gray-600">Loading balances...</div>
+              </div>
+            ) : leaveBalances.error ? (
+              <div className="text-red-600 text-center py-8">
+                Error loading balances: {leaveBalances.error.message}
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Leave Type</TableHead>
+                    <TableHead className="text-center">Allocated</TableHead>
+                    <TableHead className="text-center">Used</TableHead>
+                    <TableHead className="text-center">Remaining</TableHead>
+                    <TableHead className="text-center">Utilization</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {leaveBalances.rows.length > 0 ? (
+                    leaveBalances.rows.map((balance) => (
+                      <TableRow key={balance._id}>
+                        <TableCell className="font-medium">
+                          <Badge variant="outline">{balance.LeaveType}</Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {balance.AllocatedDays}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {balance.UsedDays}
+                        </TableCell>
+                        <TableCell className="text-center font-semibold text-green-600">
+                          {balance.RemainingDays}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center">
+                            <div className="w-16 bg-gray-200 rounded-full h-2">
+                              <div
+                                className="bg-blue-600 h-2 rounded-full"
+                                style={{
+                                  width: `${Math.min((balance.UsedDays / balance.AllocatedDays) * 100, 100)}%`,
+                                }}
+                              ></div>
+                            </div>
+                            <span className="ml-2 text-xs text-gray-600">
+                              {Math.round(
+                                (balance.UsedDays / balance.AllocatedDays) * 100
+                              )}
+                              %
+                            </span>
                           </div>
-                          <span className="ml-2 text-xs text-gray-600">
-                            {Math.round((balance.UsedDays / balance.AllocatedDays) * 100)}%
-                          </span>
-                        </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell
+                        colSpan={5}
+                        className="text-center text-gray-500"
+                      >
+                        No leave balances found
                       </TableCell>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="text-center text-gray-500"
-                    >
-                      No leave balances found
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                  )}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Recent Leave Requests */}
         <Card className="border-0 shadow-lg bg-white/90 backdrop-blur-sm">
@@ -336,8 +372,8 @@ export function EmployeeDashboardPage() {
                   Your latest 3 leave requests
                 </CardDescription>
               </div>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => navigate("/my-leaves")}
                 className="border-green-200 hover:border-green-400 hover:bg-green-50 transition-all duration-300"
               >
@@ -345,63 +381,64 @@ export function EmployeeDashboardPage() {
               </Button>
             </div>
           </CardHeader>
-        <CardContent>
-          {recentRequests.isLoading ? (
-            <div className="flex justify-center py-8">
-              <div className="text-gray-600">Loading requests...</div>
-            </div>
-          ) : recentRequests.error ? (
-            <div className="text-red-600 text-center py-8">
-              Error loading requests: {recentRequests.error.message}
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Request ID</TableHead>
-                  <TableHead>Dates</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Days</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentRequests.rows.length > 0 ? (
-                  recentRequests.rows.map((request) => (
-                    <TableRow key={request._id}>
-                      <TableCell className="font-medium">
-                        {request.LeaveRequestId}
-                      </TableCell>
-                      <TableCell>
-                        {formatDate(request.StartDate)} - {formatDate(request.EndDate)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {request.LeaveType}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{request.LeaveDays}</TableCell>
-                      <TableCell>
-                        <Badge variant={getStatusBadge(request.CurrentStatus)}>
-                          {getStatusLabel(request.CurrentStatus)}
-                        </Badge>
+          <CardContent>
+            {recentRequests.isLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="text-gray-600">Loading requests...</div>
+              </div>
+            ) : recentRequests.error ? (
+              <div className="text-red-600 text-center py-8">
+                Error loading requests: {recentRequests.error.message}
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Request ID</TableHead>
+                    <TableHead>Dates</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Days</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentRequests.rows.length > 0 ? (
+                    recentRequests.rows.map((request) => (
+                      <TableRow key={request._id}>
+                        <TableCell className="font-medium">
+                          {request.LeaveRequestId}
+                        </TableCell>
+                        <TableCell>
+                          {formatDate(request.StartDate)} -{" "}
+                          {formatDate(request.EndDate)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{request.LeaveType}</Badge>
+                        </TableCell>
+                        <TableCell>{request.LeaveDays}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={getStatusBadge(request.CurrentStatus)}
+                          >
+                            {getStatusLabel(request.CurrentStatus)}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell
+                        colSpan={5}
+                        className="text-center text-gray-500"
+                      >
+                        No leave requests found
                       </TableCell>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="text-center text-gray-500"
-                    >
-                      No leave requests found
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
+                  )}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
         </Card>
       </div>
     </div>

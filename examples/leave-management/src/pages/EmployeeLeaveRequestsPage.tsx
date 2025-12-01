@@ -57,21 +57,6 @@ export function EmployeeLeaveRequestsPage() {
     },
   });
 
-  // Form for viewing/editing leave request details
-  const detailsForm = useForm<LeaveRequest>({
-    source: "leave-request",
-    operation: "update",
-    recordId: selectedRequest?._id,
-    enabled: showDetails && !!selectedRequest,
-  });
-
-  // Form for creating new leave requests
-  const createForm = useForm<LeaveRequest>({
-    source: "leave-request",
-    operation: "create",
-    enabled: showCreateForm,
-  });
-
   const handleRowClick = (request: LeaveRequest) => {
     setSelectedRequest(request);
     setShowDetails(true);
@@ -94,6 +79,22 @@ export function EmployeeLeaveRequestsPage() {
     setShowCreateForm(false);
     table.refetch(); // Refresh the table
   };
+
+  // Form for viewing/editing leave request details
+  const detailsForm = useForm<LeaveRequest>({
+    source: "leave-request",
+    operation: "update",
+    recordId: selectedRequest?._id,
+    enabled: showDetails && !!selectedRequest,
+  });
+
+  // Form for creating new leave requests
+  const createForm = useForm<LeaveRequest>({
+    source: "leave-request",
+    operation: "create",
+    enabled: showCreateForm,
+    onSuccess: handleCreateSuccess,
+  });
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "outline"> = {
@@ -130,10 +131,6 @@ export function EmployeeLeaveRequestsPage() {
     return request.CurrentStatus === "INITIATE";
   };
 
-  const createLeaveRequest = async () => {
-    await createForm.handleSubmit();
-    handleCreateSuccess();
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-green-50/30 p-6">
@@ -537,7 +534,7 @@ export function EmployeeLeaveRequestsPage() {
                 {createForm.isLoading ? (
                   <div className="text-center py-8">Loading form...</div>
                 ) : (
-                  <form onSubmit={createLeaveRequest} className="space-y-6">
+                  <form onSubmit={createForm.handleSubmit()} className="space-y-6">
                     <div className="grid grid-cols-2 gap-4">
                       {/* Start Date */}
                       <div>
