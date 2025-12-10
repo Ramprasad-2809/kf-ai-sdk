@@ -5,6 +5,7 @@ type EcommerceRole = "buyer" | "seller";
 interface RoleContextType {
   currentRole: EcommerceRole;
   setRole: (role: EcommerceRole) => void;
+  logout: () => void;
   userId: string;
   isBuyer: boolean;
   isSeller: boolean;
@@ -31,9 +32,17 @@ export function RoleProvider({ children }: RoleProviderProps) {
   // User ID based on role (for demo purposes)
   const userId = currentRole === "buyer" ? "buyer_001" : "seller_001";
 
+  const logout = () => {
+    localStorage.removeItem("currentRole");
+    // We can't use useNavigate here directly as it might be outside Router context depending on where Provider is placed,
+    // but in this app App.tsx wraps everything. However, to be safe and simple:
+    window.location.href = "/"; 
+  };
+
   const value: RoleContextType = {
     currentRole,
     setRole,
+    logout,
     userId,
     isBuyer: currentRole === "buyer",
     isSeller: currentRole === "seller",

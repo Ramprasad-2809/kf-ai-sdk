@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Filter } from "lucide-react";
+import {
+  Search,
+  Filter,
+  SlidersHorizontal,
+  ChevronRight,
+  Star,
+} from "lucide-react";
 import { useTable } from "kf-ai-sdk";
 import { useCart } from "../providers/CartProvider";
 import { ProductCard } from "../components/ProductCard";
@@ -13,6 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
+import { Checkbox } from "../components/ui/checkbox";
+import { Separator } from "../components/ui/separator";
 
 interface BuyerProduct {
   _id: string;
@@ -26,7 +34,6 @@ interface BuyerProduct {
 }
 
 const categories = [
-  { value: "all", label: "All Categories" },
   { value: "electronics", label: "Electronics" },
   { value: "clothing", label: "Clothing" },
   { value: "books", label: "Books" },
@@ -63,7 +70,6 @@ export function BuyerProductListPage() {
       await addToCart(product, 1);
     } catch (error) {
       console.error("Failed to add to cart from list:", error);
-      // Optional: Add toast notification here
     } finally {
       setAddingToCart(null);
     }
@@ -74,142 +80,254 @@ export function BuyerProductListPage() {
   };
 
   const handleCategoryChange = (value: string) => {
-    setSelectedCategory(value);
-    if (value === "all") {
-      table.filter.clearConditions();
-    } else {
-      table.filter.clearConditions();
+    // If clicking same category, toggle off to 'all'
+    const newValue = selectedCategory === value ? "all" : value;
+    setSelectedCategory(newValue);
+
+    table.filter.clearConditions();
+    if (newValue !== "all") {
       table.filter.addCondition({
         lhsField: "category",
         operator: "EQ",
-        rhsValue: value,
+        rhsValue: newValue,
         rhsType: "Constant",
       });
     }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Products</h1>
-          <p className="text-gray-500">
-            {table.totalItems} products available
-          </p>
+    <div className="flex flex-col md:flex-row gap-8">
+      {/* Sidebar Filters */}
+      <aside className="w-full md:w-64 flex-shrink-0 space-y-6">
+        {/* Mobile Filter Header (only visible on small screens) */}
+        <div className="md:hidden flex items-center justify-between font-bold text-lg mb-4">
+          <span>Filters</span>
+          <SlidersHorizontal className="h-5 w-5" />
         </div>
-      </div>
 
-      {/* Search and Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Search products..."
-            className="pl-10"
-            value={table.search.query}
-            onChange={(e) => table.search.setQuery(e.target.value)}
-          />
-        </div>
-        <div className="flex gap-2">
-          <Select value={selectedCategory} onValueChange={handleCategoryChange}>
-            <SelectTrigger className="w-48">
-              <Filter className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent>
-              {categories.map((cat) => (
-                <SelectItem key={cat.value} value={cat.value}>
-                  {cat.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* Loading State and Error State */}
-      {table.error ? (
-        <div className="text-center py-12 bg-red-50 rounded-lg">
-          <h3 className="text-xl font-medium text-red-800 mb-2">Error loading products</h3>
-          <p className="text-red-600 mb-6">{table.error.message}</p>
-          <Button onClick={() => table.refetch()} variant="outline">
-            Try Again
-          </Button>
-        </div>
-      ) : table.isLoading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        </div>
-      ) : table.rows.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-gray-500">No products found</p>
-          <Button
-            variant="link"
-            onClick={() => {
-              table.search.clear();
-              table.filter.clearConditions();
-              setSelectedCategory("all");
-            }}
-          >
-            Clear filters
-          </Button>
-        </div>
-      ) : (
-        <>
-          {/* Product Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {table.rows.map((product) => (
-              <div key={product._id} className="relative">
-                <ProductCard
-                  product={product}
-                  onAddToCart={handleAddToCart}
-                  onClick={handleProductClick}
-                  showAddToCart={true}
-                />
-                {addingToCart === product._id && (
-                  <div className="absolute inset-0 bg-white/50 flex items-center justify-center rounded-xl">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                  </div>
+        {/* Categories Group */}
+        <div className="space-y-3">
+          <h3 className="font-bold text-gray-900 text-sm">Departments</h3>
+          <div className="flex flex-col space-y-2">
+            <button
+              onClick={() => handleCategoryChange("all")}
+              className={`text-sm text-left hover:text-blue-600 transition-colors ${selectedCategory === "all" ? "font-bold text-blue-600" : "text-gray-600"}`}
+            >
+              All Departments
+            </button>
+            {categories.map((cat) => (
+              <button
+                key={cat.value}
+                onClick={() => handleCategoryChange(cat.value)}
+                className={`text-sm text-left hover:text-blue-600 transition-colors flex items-center gap-2 ${selectedCategory === cat.value ? "font-bold text-blue-600" : "text-gray-600"}`}
+              >
+                {selectedCategory === cat.value && (
+                  <ChevronRight className="h-3 w-3" />
                 )}
+                {cat.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Price Range (Mock UI) */}
+        <div className="space-y-3">
+          <h3 className="font-bold text-gray-900 text-sm">Price</h3>
+          <div className="space-y-2">
+            {[
+              "Under $25",
+              "$25 to $50",
+              "$50 to $100",
+              "$100 to $200",
+              "$200 & Above",
+            ].map((range) => (
+              <div key={range} className="flex items-center space-x-2">
+                <Checkbox id={range} />
+                <label
+                  htmlFor={range}
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-gray-600"
+                >
+                  {range}
+                </label>
               </div>
             ))}
           </div>
+        </div>
 
-          {/* Pagination */}
-          <div className="flex items-center justify-between pt-4 border-t">
-            <div className="text-sm text-gray-500">
-              Showing {(table.pagination.currentPage - 1) * table.pagination.pageSize + 1} to{" "}
-              {Math.min(
-                table.pagination.currentPage * table.pagination.pageSize,
-                table.totalItems
-              )}{" "}
-              of {table.totalItems} products
+        <Separator />
+
+        {/* Customer Reviews (Mock UI) */}
+        <div className="space-y-3">
+          <h3 className="font-bold text-gray-900 text-sm">Customer Review</h3>
+          <div className="space-y-2">
+            {[4, 3, 2, 1].map((rating) => (
+              <button
+                key={rating}
+                className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
+              >
+                <div className="flex text-yellow-400">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star
+                      key={i}
+                      className={`h-4 w-4 ${i < rating ? "fill-current" : "text-gray-200"}`}
+                    />
+                  ))}
+                </div>
+                <span>& Up</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <div className="flex-1 min-w-0">
+        <div className="mb-6 space-y-4">
+          {/* Results Header */}
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">
+                {selectedCategory === "all"
+                  ? "All Products"
+                  : categories.find((c) => c.value === selectedCategory)?.label}
+              </h1>
+              <p className="text-sm text-gray-500">
+                {table.totalItems} results found
+              </p>
             </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={table.pagination.goToPrevious}
-                disabled={!table.pagination.canGoPrevious}
-              >
-                Previous
-              </Button>
-              <span className="flex items-center px-3 text-sm">
-                Page {table.pagination.currentPage} of {table.pagination.totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={table.pagination.goToNext}
-                disabled={!table.pagination.canGoNext}
-              >
-                Next
-              </Button>
+
+            <div className="flex items-center gap-4">
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search within results..."
+                  className="pl-10 h-9"
+                  value={table.search.query}
+                  onChange={(e) => table.search.setQuery(e.target.value)}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500 whitespace-nowrap hidden sm:block">
+                  Sort by:
+                </span>
+                <Select value="featured">
+                  <SelectTrigger className="w-[140px] h-9">
+                    <SelectValue placeholder="Sort" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="featured">Featured</SelectItem>
+                    <SelectItem value="price-asc">
+                      Price: Low to High
+                    </SelectItem>
+                    <SelectItem value="price-desc">
+                      Price: High to Low
+                    </SelectItem>
+                    <SelectItem value="newest">Newest Arrivals</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
-        </>
-      )}
+        </div>
+
+        {/* Loading & Error States */}
+        {table.error ? (
+          <div className="p-12 text-center bg-red-50 rounded-lg">
+            <h3 className="text-red-800 font-medium">Something went wrong</h3>
+            <p className="text-red-600 text-sm mt-1">{table.error.message}</p>
+            <Button
+              onClick={() => table.refetch()}
+              variant="outline"
+              className="mt-4"
+            >
+              Try Again
+            </Button>
+          </div>
+        ) : table.isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div
+                key={i}
+                className="aspect-[2/3] bg-gray-100 rounded-lg animate-pulse"
+              />
+            ))}
+          </div>
+        ) : table.rows.length === 0 ? (
+          <div className="py-20 text-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+            <Filter className="h-10 w-10 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-gray-900 font-medium text-lg">
+              No products found
+            </h3>
+            <p className="text-gray-500 mb-6 max-w-sm mx-auto">
+              We couldn't find any products matching your current filters. Try
+              adjusting your search or categories.
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => {
+                table.search.clear();
+                table.filter.clearConditions();
+                setSelectedCategory("all");
+              }}
+            >
+              Clear All Filters
+            </Button>
+          </div>
+        ) : (
+          /* Product Grid */
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {table.rows.map((product) => (
+                <div key={product._id} className="relative group">
+                  <ProductCard
+                    product={product}
+                    onAddToCart={handleAddToCart}
+                    onClick={handleProductClick}
+                    showAddToCart={true}
+                  />
+                  {addingToCart === product._id && (
+                    <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center rounded-xl z-10">
+                      <div className="bg-white p-3 rounded-full shadow-lg">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Pagination */}
+            <div className="mt-8 flex items-center justify-center border-t border-gray-200 pt-8">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={table.pagination.goToPrevious}
+                  disabled={!table.pagination.canGoPrevious}
+                  className="w-24"
+                >
+                  Previous
+                </Button>
+                <div className="hidden sm:flex items-center gap-1 font-medium text-sm text-gray-600 px-4">
+                  Page {table.pagination.currentPage} of{" "}
+                  {table.pagination.totalPages}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={table.pagination.goToNext}
+                  disabled={!table.pagination.canGoNext}
+                  className="w-24"
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
