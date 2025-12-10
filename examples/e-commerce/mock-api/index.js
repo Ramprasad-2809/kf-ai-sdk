@@ -466,7 +466,7 @@ export function setupMockAPI(middlewares) {
     }
 
     // Cart delete item
-    if (url.match(/\/api\/bo\/cart\/[^/]+\/delete$/i) && method === "POST") {
+    if (url.match(/\/api\/bo\/cart\/[^/]+\/delete$/i) && (method === "POST" || method === "DELETE")) {
       if (role !== "buyer") {
         sendError("Only buyers can remove from cart", 403);
         return;
