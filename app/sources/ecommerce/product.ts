@@ -26,7 +26,7 @@ import {
 /**
  * Complete E-Commerce Product type with all fields
  */
-export type EcommerceProductType = {
+export type ProductType = {
   /** Unique product identifier */
   _id: IdField;
 
@@ -89,7 +89,7 @@ export type EcommerceProductType = {
  * Buyer view - can see public product information
  */
 export type BuyerProduct = Pick<
-  EcommerceProductType,
+  ProductType,
   | "_id"
   | "name"
   | "price"
@@ -107,7 +107,7 @@ export type BuyerProduct = Pick<
 /**
  * Seller view - can see all fields (filtered to own products on API side)
  */
-export type SellerProduct = EcommerceProductType;
+export type SellerProduct = ProductType;
 
 // ============================================================
 // CONDITIONAL TYPE MAPPER
@@ -116,7 +116,7 @@ export type SellerProduct = EcommerceProductType;
 /**
  * Maps role to appropriate view type
  */
-export type EcommerceProductForRole<TRole extends Role> =
+export type ProductForRole<TRole extends Role> =
   TRole extends typeof Roles.Buyer
     ? BuyerProduct
     : TRole extends typeof Roles.Seller
@@ -130,7 +130,7 @@ export type EcommerceProductForRole<TRole extends Role> =
 /**
  * E-Commerce Product client with role-based access control
  */
-export class EcommerceProduct<TRole extends Role = typeof Roles.Seller> {
+export class Product<TRole extends Role = typeof Roles.Seller> {
   constructor(private role: TRole) {}
 
   /**
@@ -138,14 +138,14 @@ export class EcommerceProduct<TRole extends Role = typeof Roles.Seller> {
    */
   async list(
     options?: ListOptions
-  ): Promise<ListResponse<EcommerceProductForRole<TRole>>> {
+  ): Promise<ListResponse<ProductForRole<TRole>>> {
     return api("product").list(options);
   }
 
   /**
    * Get single product by ID
    */
-  async get(id: IdField): Promise<EcommerceProductForRole<TRole>> {
+  async get(id: IdField): Promise<ProductForRole<TRole>> {
     return api("product").get(id);
   }
 
@@ -153,7 +153,7 @@ export class EcommerceProduct<TRole extends Role = typeof Roles.Seller> {
    * Create new product (Seller only)
    */
   async create(
-    data: Partial<EcommerceProductForRole<TRole>>
+    data: Partial<ProductForRole<TRole>>
   ): Promise<CreateUpdateResponse> {
     if (this.role !== Roles.Seller) {
       throw new Error("Only sellers can create products");
@@ -166,7 +166,7 @@ export class EcommerceProduct<TRole extends Role = typeof Roles.Seller> {
    */
   async update(
     id: IdField,
-    data: Partial<EcommerceProductForRole<TRole>>
+    data: Partial<ProductForRole<TRole>>
   ): Promise<CreateUpdateResponse> {
     if (this.role !== Roles.Seller) {
       throw new Error("Only sellers can update products");
