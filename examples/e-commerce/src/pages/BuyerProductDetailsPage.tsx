@@ -1,12 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, ShoppingCart, Minus, Plus } from "lucide-react";
 import { api } from "kf-ai-sdk"; // keeping api for product fetch
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { Card, CardContent } from "../components/ui/card";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Cart } from "../../../../app/sources/ecommerce/cart";
+import { EcommerceProduct } from "../../../../app/sources/ecommerce/product";
 import { Roles } from "../../../../app/types/roles";
 
 interface Product {
@@ -25,13 +26,24 @@ export function BuyerProductDetailsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const [product, setProduct] = useState<Product | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
-  // const [isAddingToCart, setIsAddingToCart] = useState(false); // Handled by mutation
   const [addedToCart, setAddedToCart] = useState(false);
   const [cartError, setCartError] = useState<string | null>(null);
+
+  const {
+    data: product,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["product", id],
+    queryFn: async () => {
+      if (!id) throw new Error("Product ID is required");
+      const productClient = new EcommerceProduct(Roles.Buyer);
+      const productData = await productClient.get(id);
+      return productData as unknown as Product;
+    },
+    enabled: !!id,
+  });
 
   const addToCartMutation = useMutation({
     mutationFn: async ({ product, qty }: { product: Product; qty: number }) => {
@@ -57,25 +69,6 @@ export function BuyerProductDetailsPage() {
     },
   });
 
-  useEffect(() => {
-    const fetchProduct = async () => {
-      if (!id) return;
-
-      setIsLoading(true);
-      try {
-        const response = await api("product").get(id);
-        setProduct(response.Data as Product);
-      } catch (error) {
-        console.error("Failed to fetch product:", error);
-        setError("Failed to load product details. Please try again later.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchProduct();
-  }, [id]);
-
   const formatPrice = (price: { value: number; currency: string }) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -90,13 +83,13 @@ export function BuyerProductDetailsPage() {
 
   const incrementQuantity = () => {
     if (product && quantity < product.availableQuantity) {
-      setQuantity(q => q + 1);
+      setQuantity((q) => q + 1);
     }
   };
 
   const decrementQuantity = () => {
     if (quantity > 1) {
-      setQuantity(q => q - 1);
+      setQuantity((q) => q - 1);
     }
   };
 
@@ -111,11 +104,11 @@ export function BuyerProductDetailsPage() {
   if (error) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-xl font-semibold text-red-600 mb-2">
-          Error
-        </h2>
+        <h2 className="text-xl font-semibold text-red-600 mb-2">Error</h2>
         <p className="text-gray-500 mb-4">
-          {error}
+          {error instanceof Error
+            ? error.message
+            : "Failed to load product details. Please try again later."}
         </p>
         <Button onClick={() => navigate("/products")}>
           <ArrowLeft className="h-4 w-4 mr-2" />
@@ -210,7 +203,9 @@ export function BuyerProductDetailsPage() {
           {/* Description */}
           <div>
             <h3 className="font-semibold text-gray-900 mb-2">Description</h3>
-            <p className="text-gray-600 leading-relaxed">{product.description}</p>
+            <p className="text-gray-600 leading-relaxed">
+              {product.description}
+            </p>
           </div>
 
           {/* Seller */}
@@ -280,7 +275,9 @@ export function BuyerProductDetailsPage() {
                   )}
                 </Button>
                 {cartError && (
-                  <p className="text-sm text-red-600 text-center mt-2">{cartError}</p>
+                  <p className="text-sm text-red-600 text-center mt-2">
+                    {cartError}
+                  </p>
                 )}
               </CardContent>
             </Card>
