@@ -1,103 +1,135 @@
 // Mock product data generator for e-commerce
-const categories = ["electronics", "clothing", "books", "home", "sports"];
+// 2 Items per category with realistic Unsplash images
 
-const productNames = {
-  electronics: [
-    "Smartphone",
-    "Laptop",
-    "Headphones",
-    "Tablet",
-    "Smart Watch",
-    "Camera",
-    "Speaker",
-  ],
-  clothing: [
-    "T-Shirt",
-    "Jeans",
-    "Sneakers",
-    "Jacket",
-    "Dress",
-    "Sweater",
-    "Pants",
-  ],
-  books: [
-    "Programming Guide",
-    "Novel",
-    "Textbook",
-    "Biography",
-    "Manual",
-    "Dictionary",
-    "Cookbook",
-  ],
-  home: [
-    "Coffee Maker",
-    "Lamp",
-    "Chair",
-    "Table",
-    "Pillow",
-    "Vase",
-    "Mirror",
-  ],
-  sports: [
-    "Basketball",
-    "Soccer Ball",
-    "Tennis Racket",
-    "Running Shoes",
-    "Yoga Mat",
-    "Dumbbells",
-    "Bicycle",
-  ],
-};
+const curatedProducts = [
+  // Electronics
+  {
+    name: "Pro Wireless Noise-Canceling Headphones",
+    category: "electronics",
+    price: 299.99,
+    image:
+      "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80",
+    description:
+      "Experience premium sound quality with active noise cancellation and 30-hour battery life.",
+  },
+  {
+    name: "Smart Watch Series 5",
+    category: "electronics",
+    price: 399.0,
+    image:
+      "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80",
+    description:
+      "Track your fitness, heart rate, and notifications on your wrist with the latest Series 5.",
+  },
 
-const productImages = {
-  electronics: "https://picsum.photos/seed/electronics/400/300",
-  clothing: "https://picsum.photos/seed/clothing/400/300",
-  books: "https://picsum.photos/seed/books/400/300",
-  home: "https://picsum.photos/seed/home/400/300",
-  sports: "https://picsum.photos/seed/sports/400/300",
-};
+  // Clothing
+  {
+    name: "Classic Denim Jacket",
+    category: "clothing",
+    price: 79.5,
+    image:
+      "https://images.unsplash.com/photo-1543076447-215ad9ba6923?w=500&q=80",
+    description:
+      "Timeless style meets comfort. This durable denim jacket is perfect for any casual outfit.",
+  },
+  {
+    name: "Performance Running Sneakers",
+    category: "clothing",
+    price: 120.0,
+    image:
+      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&q=80",
+    description:
+      "Lightweight, breathable, and responsive. Designed for the serious runner.",
+  },
 
-const sellers = [
-  { id: "seller_001", name: "Tech Store" },
-  { id: "seller_002", name: "Fashion Hub" },
-  { id: "seller_003", name: "Book World" },
-  { id: "seller_004", name: "Home Essentials" },
-  { id: "seller_005", name: "Sports Zone" },
+  // Books
+  {
+    name: "The Art of Code",
+    category: "books",
+    price: 49.99,
+    image:
+      "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=500&q=80",
+    description:
+      "Unlock the secrets of software creation. A masterpiece for developers and designers.",
+  },
+  {
+    name: "Culinary Journey Cookbook",
+    category: "books",
+    price: 35.0,
+    image:
+      "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?w=500&q=80",
+    description:
+      "Explore world flavors with over 100 authentic recipes from around the globe.",
+  },
+
+  // Home
+  {
+    name: "Minimalist Desk Lamp",
+    category: "home",
+    price: 45.0,
+    image:
+      "https://plus.unsplash.com/premium_photo-1685287731216-a7a0fae7a41a?w=500&q=80",
+    description:
+      "Brighten your workspace with this sleek, adjustable LED desk lamp.",
+  },
+  {
+    name: "Ceramic Artisan Vase",
+    category: "home",
+    price: 28.0,
+    image:
+      "https://images.unsplash.com/photo-1581783342308-f792dbdd27c5?w=500&q=80",
+    description:
+      "Handcrafted ceramic vase, perfect for displaying fresh flowers or as a standalone piece.",
+  },
+
+  // Sports
+  {
+    name: "Pro Court Basketball",
+    category: "sports",
+    price: 29.99,
+    image:
+      "https://images.unsplash.com/photo-1519861531473-9200262188bf?w=500&q=80",
+    description:
+      "Official size and weight. Superior grip for indoor and outdoor play.",
+  },
+  {
+    name: "Premium Yoga Mat",
+    category: "sports",
+    price: 24.99,
+    image:
+      "https://images.unsplash.com/photo-1601925260368-ae2f83cf8b7f?w=500&q=80",
+    description:
+      "Non-slip surface with extra cushioning for joint support during yoga practices.",
+  },
 ];
 
-export function generateProducts(count = 50) {
-  const products = [];
+const sellers = [
+  { id: "seller_001", name: "Prime Tech" },
+  { id: "seller_002", name: "Fashion Forward" },
+];
 
-  for (let i = 1; i <= count; i++) {
-    const category = categories[Math.floor(Math.random() * categories.length)];
-    const nameOptions = productNames[category];
-    const baseName = nameOptions[Math.floor(Math.random() * nameOptions.length)];
-    const name = `${baseName} ${i}`;
+export function generateProducts() {
+  // count ignored in this fixed version
+  return curatedProducts.map((item, index) => {
+    const seller = sellers[index % sellers.length];
+    const i = index + 1;
+    const createdAt = new Date().toISOString();
 
-    const basePrice = Math.random() * 500 + 10; // $10-$510
-    const seller = sellers[Math.floor(Math.random() * sellers.length)];
-
-    const createdAt = new Date(
-      Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000
-    );
-
-    products.push({
+    return {
       _id: `product_${i.toString().padStart(3, "0")}`,
-      name,
+      name: item.name,
       price: {
-        value: Math.round(basePrice * 100) / 100,
+        value: item.price,
         currency: "USD",
       },
-      description: `High-quality ${baseName.toLowerCase()} with excellent features and durability. Perfect for everyday use. This ${category} item is a customer favorite with great reviews.`,
-      category,
-      availableQuantity: Math.floor(Math.random() * 100) + 1,
-      imageUrl: `${productImages[category]}${i}`,
+      description: item.description,
+      category: item.category,
+      availableQuantity: 50, // Fixed stock
+      imageUrl: item.image,
       sellerId: seller.id,
       sellerName: seller.name,
-      _created_at: createdAt.toISOString(),
-      _modified_at: new Date(
-        createdAt.getTime() + Math.random() * 7 * 24 * 60 * 60 * 1000
-      ).toISOString(),
+      _created_at: createdAt,
+      _modified_at: createdAt,
       _created_by: {
         _id: seller.id,
         username: seller.name,
@@ -108,10 +140,8 @@ export function generateProducts(count = 50) {
       },
       _version: "1.0",
       _m_version: "1.0",
-    });
-  }
-
-  return products;
+    };
+  });
 }
 
 // Filter products based on role
@@ -124,12 +154,7 @@ export function filterProductsByRole(products, role, userId = null) {
   if (role === "buyer") {
     // Buyer sees all products but with limited fields
     return products.map((product) => {
-      const {
-        sellerId,
-        _created_by,
-        _modified_by,
-        ...buyerProduct
-      } = product;
+      const { sellerId, _created_by, _modified_by, ...buyerProduct } = product;
       return {
         ...buyerProduct,
         sellerName: product.sellerName,
@@ -141,4 +166,4 @@ export function filterProductsByRole(products, role, userId = null) {
 }
 
 // Generate products on module load
-export const mockProducts = generateProducts(50);
+export const mockProducts = generateProducts();

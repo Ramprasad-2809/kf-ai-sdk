@@ -4,25 +4,9 @@
 const cartsByBuyer = new Map();
 
 // Initialize with some sample cart items
+// Initialize with some sample cart items
 function initializeSampleCart() {
-  cartsByBuyer.set("buyer_001", [
-    {
-      _id: "cart_001",
-      productId: "product_001",
-      productName: "Sample Product 1",
-      productPrice: { value: 99.99, currency: "USD" },
-      productImage: "https://picsum.photos/seed/electronics1/400/300",
-      quantity: 2,
-      subtotal: { value: 199.98, currency: "USD" },
-      buyerId: "buyer_001",
-      _created_at: new Date().toISOString(),
-      _modified_at: new Date().toISOString(),
-      _created_by: { _id: "buyer_001", username: "buyer" },
-      _modified_by: { _id: "buyer_001", username: "buyer" },
-      _version: "1.0",
-      _m_version: "1.0",
-    },
-  ]);
+  cartsByBuyer.set("buyer_001", []);
 }
 
 initializeSampleCart();
