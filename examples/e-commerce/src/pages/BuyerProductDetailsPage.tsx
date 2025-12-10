@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, ShoppingCart, Minus, Plus } from "lucide-react";
-import { api } from "kf-ai-sdk";
-import { useCart } from "../providers/CartProvider";
+import { api } from "kf-ai-sdk"; // keeping api for product fetch
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { Card, CardContent } from "../components/ui/card";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Cart } from "../../../../app/sources/ecommerce/cart";
+import { Roles } from "../../../../app/types/roles";
 
 interface Product {
   _id: string;
@@ -21,15 +23,39 @@ interface Product {
 export function BuyerProductDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { addToCart } = useCart();
+  const queryClient = useQueryClient();
 
   const [product, setProduct] = useState<Product | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
-  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  // const [isAddingToCart, setIsAddingToCart] = useState(false); // Handled by mutation
   const [addedToCart, setAddedToCart] = useState(false);
   const [cartError, setCartError] = useState<string | null>(null);
+
+  const addToCartMutation = useMutation({
+    mutationFn: async ({ product, qty }: { product: Product; qty: number }) => {
+      const payload = {
+        productId: product._id,
+        productName: product.name,
+        productPrice: product.price,
+        productImage: product.imageUrl,
+        quantity: qty,
+      };
+      const cart = new Cart(Roles.Buyer);
+      return cart.create(payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cart-count"] });
+      setAddedToCart(true);
+      setTimeout(() => setAddedToCart(false), 2000);
+      setCartError(null);
+    },
+    onError: (error) => {
+      console.error("Failed to add to cart:", error);
+      setCartError("Failed to add item to cart.");
+    },
+  });
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -57,21 +83,9 @@ export function BuyerProductDetailsPage() {
     }).format(price.value);
   };
 
-  const handleAddToCart = async () => {
+  const handleAddToCart = () => {
     if (!product) return;
-
-    setIsAddingToCart(true);
-    try {
-      await addToCart(product, quantity);
-      setAddedToCart(true);
-      setTimeout(() => setAddedToCart(false), 2000);
-      setCartError(null);
-    } catch (error) {
-      console.error("Failed to add to cart:", error);
-      setCartError("Failed to add item to cart.");
-    } finally {
-      setIsAddingToCart(false);
-    }
+    addToCartMutation.mutate({ product, qty: quantity });
   };
 
   const incrementQuantity = () => {
@@ -252,9 +266,9 @@ export function BuyerProductDetailsPage() {
                   className="w-full"
                   size="lg"
                   onClick={handleAddToCart}
-                  disabled={isAddingToCart}
+                  disabled={addToCartMutation.isPending}
                 >
-                  {isAddingToCart ? (
+                  {addToCartMutation.isPending ? (
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                   ) : addedToCart ? (
                     <>Added to Cart!</>

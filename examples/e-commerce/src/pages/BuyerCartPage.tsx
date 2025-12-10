@@ -1,15 +1,113 @@
 import { Link } from "react-router-dom";
 import { ShoppingBag, Trash2, Minus, Plus, ArrowLeft } from "lucide-react";
-import { useCart } from "../providers/CartProvider";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Cart, BuyerCartItem } from "../../../../app/sources/ecommerce/cart";
+import { Roles } from "../../../../app/types/roles";
+import { CurrencyValue, isCurrencyObject } from "../../../../sdk/types/base-fields";
+
 
 export function BuyerCartPage() {
-  const { items, itemCount, total, isLoading, error, updateQuantity, removeFromCart, clearCart } = useCart();
+  const queryClient = useQueryClient();
 
-  const formatPrice = (price: { value: number; currency: string } | number) => {
-    const value = typeof price === "number" ? price : price.value;
-    const currency = typeof price === "number" ? "USD" : price.currency;
+  // Fetch Cart Items
+  const { data: items = [], isLoading, error: queryError } = useQuery({
+    queryKey: ["cart-items"],
+    queryFn: async () => {
+      const cart = new Cart(Roles.Buyer);
+      const res = await cart.list();
+       // Assuming list returns { Data: [...] } or array, SDK usually returns Response object
+       // Checking app/sources/ecommerce/cart.ts, list returns Promise<ListResponse<BuyerCartItem>> which has Data property
+      return (res.Data || []) as BuyerCartItem[];
+    },
+  });
+  
+  const error = queryError ? "Failed to load cart." : null;
+
+  // Derive totals
+  const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
+  const totalValue = items.reduce((sum, item) => {
+    let val = 0;
+    if (isCurrencyObject(item.subtotal)) {
+      val = item.subtotal.value;
+    } else if (typeof item.subtotal === "string") {
+       val = parseFloat(item.subtotal.split(" ")[0] || "0");
+    }
+    return sum + val;
+  }, 0);
+  const total = { value: totalValue, currency: "USD" };
+
+  // Update Quantity Mutation
+  const updateQuantityMutation = useMutation({
+    mutationFn: async ({ itemId, quantity }: { itemId: string; quantity: number }) => {
+      const cart = new Cart(Roles.Buyer);
+      return cart.update(itemId, { quantity });
+    },
+    onSuccess: () => {
+       queryClient.invalidateQueries({ queryKey: ["cart-items"] });
+       queryClient.invalidateQueries({ queryKey: ["cart-count"] });
+    }
+  });
+
+  // Remove Item Mutation
+  const removeItemMutation = useMutation({
+    mutationFn: async (itemId: string) => {
+       const cart = new Cart(Roles.Buyer);
+       return cart.delete(itemId);
+    },
+    onSuccess: () => {
+       queryClient.invalidateQueries({ queryKey: ["cart-items"] });
+       queryClient.invalidateQueries({ queryKey: ["cart-count"] });
+    }
+  });
+
+  // Clear Cart Mutation (Loop Delete)
+  const clearCartMutation = useMutation({
+     mutationFn: async (currentItems: BuyerCartItem[]) => {
+       const cart = new Cart(Roles.Buyer);
+       const promises = currentItems.map(item => cart.delete(item._id));
+       await Promise.all(promises);
+       return true;
+    },
+    onSuccess: () => {
+       queryClient.invalidateQueries({ queryKey: ["cart-items"] });
+       queryClient.invalidateQueries({ queryKey: ["cart-count"] });
+    }
+  });
+
+  const updateQuantity = (itemId: string, quantity: number) => {
+     if (quantity < 1) return;
+     updateQuantityMutation.mutate({ itemId, quantity });
+  };
+
+  const removeFromCart = (itemId: string) => {
+     removeItemMutation.mutate(itemId);
+  };
+
+  const clearCart = () => {
+     // Pass current items to mutation to delete them
+     if (items.length > 0) {
+       clearCartMutation.mutate(items);
+     }
+  };
+
+  const formatPrice = (price: CurrencyValue | number) => {
+    let value = 0;
+    let currency = "USD";
+
+    if (typeof price === "number") {
+      value = price;
+    } else if (isCurrencyObject(price)) {
+      value = price.value;
+      currency = price.currency;
+    } else if (typeof price === "string") {
+      // Crude parsing for "100.5 USD" format
+      const parts = price.split(" ");
+      value = parseFloat(parts[0]);
+      if (parts[1]) currency = parts[1];
+    }
+
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency,

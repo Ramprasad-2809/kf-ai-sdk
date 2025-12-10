@@ -7,8 +7,7 @@ import {
   ChevronRight,
   Star,
 } from "lucide-react";
-import { useTable } from "kf-ai-sdk";
-import { useCart } from "../providers/CartProvider";
+import { useTable } from "kf-ai-sdk"; // api used for useTable? No, useTable uses api internally. api is not used explicitly except for cart? No, lines 10 uses api.
 import { ProductCard } from "../components/ProductCard";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
@@ -21,6 +20,9 @@ import {
 } from "../components/ui/select";
 import { Checkbox } from "../components/ui/checkbox";
 import { Separator } from "../components/ui/separator";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Cart } from "../../../../app/sources/ecommerce/cart";
+import { Roles } from "../../../../app/types/roles";
 
 interface BuyerProduct {
   _id: string;
@@ -43,7 +45,7 @@ const categories = [
 
 export function BuyerProductListPage() {
   const navigate = useNavigate();
-  const { addToCart } = useCart();
+  const queryClient = useQueryClient();
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [addingToCart, setAddingToCart] = useState<string | null>(null);
 
@@ -64,12 +66,34 @@ export function BuyerProductListPage() {
     },
   });
 
+  const addToCartMutation = useMutation({
+    mutationFn: async (product: BuyerProduct) => {
+      // Assuming a quantity of 1 for now as per typical 'add to cart' behavior on list
+      const payload = {
+         productId: product._id,
+         productName: product.name,
+         productPrice: product.price,
+         productImage: product.imageUrl,
+         quantity: 1
+      };
+      
+      const cart = new Cart(Roles.Buyer);
+      return cart.create(payload);
+    },
+    onSuccess: () => {
+       // Invalidate cart count to update navigation
+       queryClient.invalidateQueries({ queryKey: ["cart-count"] });
+    },
+    onError: (error) => {
+      console.error("Failed to add to cart:", error);
+      // Optional: Toast error
+    }
+  });
+
   const handleAddToCart = async (product: BuyerProduct) => {
     setAddingToCart(product._id);
     try {
-      await addToCart(product, 1);
-    } catch (error) {
-      console.error("Failed to add to cart from list:", error);
+      await addToCartMutation.mutateAsync(product);
     } finally {
       setAddingToCart(null);
     }

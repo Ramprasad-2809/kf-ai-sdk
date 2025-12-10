@@ -1,14 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
-import {
-  ShoppingCart,
-  Search,
-  Menu,
-  User,
-  LogOut,
-  Package,
-} from "lucide-react";
-import { useRole } from "../providers/RoleProvider";
-import { useCart } from "../providers/CartProvider";
+import { ShoppingCart, Search, Menu, User, LogOut, Package } from "lucide-react";
+// import { Badge } from "./ui/badge"; // Removed 
+// import { Badge } from "./ui/badge"; // Removed
 import { Button } from "./ui/button";
 import {
   DropdownMenu,
@@ -18,15 +11,31 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
+import { useQuery } from "@tanstack/react-query";
+import { Cart } from "../../../../app/sources/ecommerce/cart";
+import { Roles } from "../../../../app/types/roles";
 
-export function Navigation() {
-  const { currentRole, logout, isBuyer } = useRole();
-  const { itemCount } = useCart();
+interface NavigationProps {
+  currentRole: "buyer" | "seller";
+  onLogout: () => void;
+}
+
+export function Navigation({ currentRole, onLogout }: NavigationProps) {
   const location = useLocation();
 
-  // If on login page, show a minimal or no header?
-  // For now we keep it but maybe simplified.
-  // Actually, usually app headers are consistent.
+  // Fetch cart count using React Query (only for buyers)
+  const { data: cartCount = 0 } = useQuery({
+    queryKey: ["cart-count"],
+    queryFn: async () => {
+      if (currentRole === "buyer") {
+        const cart = new Cart(Roles.Buyer);
+        return await cart.count();
+      }
+      return 0;
+    },
+    enabled: currentRole === "buyer",
+    refetchInterval: 30000,
+  });
 
   if (location.pathname === "/") return null;
 
@@ -34,13 +43,10 @@ export function Navigation() {
     <header className="bg-slate-900 text-white sticky top-0 z-50">
       {/* Top Bar - Main Navigation */}
       <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-4">
+        
         {/* Logo & Mobile Menu */}
         <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden text-white hover:bg-slate-800"
-          >
+          <Button variant="ghost" size="icon" className="lg:hidden text-white hover:bg-slate-800">
             <Menu className="h-6 w-6" />
           </Button>
           <Link to="/products" className="flex items-center gap-2">
@@ -48,12 +54,8 @@ export function Navigation() {
               <Package className="h-6 w-6 text-white" />
             </div>
             <div className="flex flex-col">
-              <span className="font-bold text-xl leading-none tracking-tight">
-                PrimeStore
-              </span>
-              <span className="text-[10px] text-slate-400 font-medium">
-                KF AI SDK DEMO
-              </span>
+              <span className="font-bold text-xl leading-none tracking-tight">PrimeStore</span>
+              <span className="text-[10px] text-slate-400 font-medium">KF AI SDK DEMO</span>
             </div>
           </Link>
         </div>
@@ -74,13 +76,12 @@ export function Navigation() {
 
         {/* Right Actions */}
         <div className="flex items-center gap-6">
+          
           {/* User Account Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex flex-col items-start leading-tight hover:outline-none group">
-                <span className="text-xs text-slate-400 group-hover:text-blue-400 transition-colors">
-                  Hello, {currentRole === "buyer" ? "Buyer" : "Seller"}
-                </span>
+                <span className="text-xs text-slate-400 group-hover:text-blue-400 transition-colors">Hello, {currentRole === 'buyer' ? 'Buyer' : 'Seller'}</span>
                 <span className="font-bold text-sm flex items-center gap-1 group-hover:underline">
                   Account & Lists
                 </span>
@@ -98,10 +99,7 @@ export function Navigation() {
                 <span>Orders</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={logout}
-                className="text-red-600 focus:text-red-600 focus:bg-red-50"
-              >
+              <DropdownMenuItem onClick={onLogout} className="text-red-600 focus:text-red-600 focus:bg-red-50">
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Log out</span>
               </DropdownMenuItem>
@@ -109,41 +107,30 @@ export function Navigation() {
           </DropdownMenu>
 
           {/* Cart */}
-          {isBuyer && (
-            <Link
-              to="/cart"
-              className="flex items-center gap-2 hover:text-blue-400 transition-colors relative"
-            >
+          {currentRole === "buyer" && (
+            <Link to="/cart" className="flex items-center gap-2 hover:text-blue-400 transition-colors relative">
               <div className="relative">
                 <ShoppingCart className="h-8 w-8" />
                 <span className="absolute -top-1 -right-1 h-5 w-5 bg-blue-600 text-white text-xs font-bold rounded-full flex items-center justify-center border-2 border-slate-900">
-                  {itemCount}
+                  {cartCount}
                 </span>
               </div>
-              <span className="font-bold text-sm hidden sm:block mt-3">
-                Cart
-              </span>
+              <span className="font-bold text-sm hidden sm:block mt-3">Cart</span>
             </Link>
           )}
         </div>
       </div>
-
+      
       {/* Secondary Bar (Categories - Visual Only) */}
       <div className="bg-slate-800 h-10 hidden md:flex items-center px-4 text-sm text-slate-200 gap-6 overflow-x-auto">
         <button className="flex items-center gap-1 font-bold hover:text-white transition-colors">
           <Menu className="h-4 w-4" />
           All
         </button>
-        <button className="hover:text-white transition-colors">
-          Today's Deals
-        </button>
-        <button className="hover:text-white transition-colors">
-          Customer Service
-        </button>
+        <button className="hover:text-white transition-colors">Today's Deals</button>
+        <button className="hover:text-white transition-colors">Customer Service</button>
         <button className="hover:text-white transition-colors">Registry</button>
-        <button className="hover:text-white transition-colors">
-          Gift Cards
-        </button>
+        <button className="hover:text-white transition-colors">Gift Cards</button>
         <button className="hover:text-white transition-colors">Sell</button>
       </div>
     </header>

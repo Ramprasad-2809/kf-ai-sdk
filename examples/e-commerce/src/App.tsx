@@ -1,7 +1,6 @@
-import { useMemo } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { useState, useMemo, useEffect } from "react";
+import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { Navigation } from "./components/Navigation";
-import { RoleBasedRoute } from "./components/RoleBasedRoute";
 import { LoginPage } from "./pages/LoginPage";
 import { BuyerProductListPage } from "./pages/BuyerProductListPage";
 import { BuyerProductDetailsPage } from "./pages/BuyerProductDetailsPage";
@@ -9,32 +8,73 @@ import { BuyerCartPage } from "./pages/BuyerCartPage";
 import { SellerProductsPage } from "./pages/SellerProductsPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { initializeMockApi } from "./utils/mockApiClient";
-import { useRole } from "./providers/RoleProvider";
+import { setDefaultHeaders } from "kf-ai-sdk";
 
-function AppContent() {
-  const { currentRole } = useRole();
+export default function App() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [currentRole, setCurrentRole] = useState<"buyer" | "seller" | null>(
+    () => (localStorage.getItem("currentRole") as "buyer" | "seller" | null)
+  );
+
+  // Initialize Mock API once
+  useMemo(() => {
+    initializeMockApi();
+  }, []);
+
+  // Update headers whenever role changes
+  useEffect(() => {
+     if (currentRole) {
+         const userId = currentRole === "buyer" ? "buyer_001" : "seller_001";
+         setDefaultHeaders({
+             "Content-Type": "application/json",
+             "x-user-role": currentRole,
+             "x-user-id": userId,
+         });
+         localStorage.setItem("currentRole", currentRole);
+     } else {
+         localStorage.removeItem("currentRole");
+     }
+  }, [currentRole]);
+
+  const handleLogin = (role: "buyer" | "seller") => {
+    setCurrentRole(role);
+    navigate("/products");
+  };
+
+  const handleLogout = () => {
+    setCurrentRole(null);
+    navigate("/");
+  };
+
+  // If not logged in, only allow access to login page
+  if (!currentRole) {
+      // If manually trying to access other routes, redirect to login
+      if (location.pathname !== "/") {
+          return <Navigate to="/" replace />;
+      }
+      return <LoginPage onLogin={handleLogin} />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navigation />
+      <Navigation currentRole={currentRole} onLogout={handleLogout} />
 
       <main className="container mx-auto px-4 py-8">
         <Routes>
-          {/* Login / Landing Page */}
-          <Route path="/" element={<LoginPage />} />
-
-          {/* Products - Role-based product listing/management */}
+          <Route path="/" element={<Navigate to="/products" replace />} />
+          
           <Route
             path="/products"
             element={
-              <RoleBasedRoute
-                buyerPage={<BuyerProductListPage />}
-                sellerPage={<SellerProductsPage />}
-              />
+              currentRole === "buyer" ? (
+                <BuyerProductListPage />
+              ) : (
+                <SellerProductsPage />
+              )
             }
           />
 
-          {/* Product Details - Buyer only */}
           <Route
             path="/products/:id"
             element={
@@ -46,32 +86,20 @@ function AppContent() {
             }
           />
 
-          {/* Cart - Buyer only */}
           <Route
             path="/cart"
             element={
-              currentRole === "buyer" ? (
-                <BuyerCartPage />
-              ) : (
-                <Navigate to="/products" replace />
-              )
+               currentRole === "buyer" ? (
+                 <BuyerCartPage />
+               ) : (
+                 <Navigate to="/products" replace />
+               )
             }
           />
 
-          {/* 404 - Not Found */}
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
     </div>
   );
 }
-
-function App() {
-  useMemo(() => {
-    initializeMockApi();
-  }, []);
-
-  return <AppContent />;
-}
-
-export default App;

@@ -15,6 +15,8 @@ import {
   CreateUpdateResponse,
   DeleteResponse,
   api,
+  getApiBaseUrl,
+  getDefaultHeaders,
 } from "../../../sdk";
 
 // ============================================================
@@ -144,5 +146,24 @@ export class Cart<TRole extends Role = typeof Roles.Buyer> {
       throw new Error("Only buyers can remove from cart");
     }
     return api("cart").delete(id);
+  }
+
+  /**
+   * Get cart item count
+   */
+  async count(): Promise<number> {
+    if (this.role !== Roles.Buyer) {
+      throw new Error("Only buyers can access cart count");
+    }
+    
+    // api("cart") does not expose custom methods, using fetch
+    const response = await fetch(`${getApiBaseUrl()}/cart/count`, {
+      method: "POST",
+      headers: getDefaultHeaders(),
+      body: JSON.stringify({}),
+    });
+    
+    const data = await response.json();
+    return data.Count || 0;
   }
 }

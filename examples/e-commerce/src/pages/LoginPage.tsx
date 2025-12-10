@@ -1,16 +1,15 @@
-import { useNavigate } from "react-router-dom";
 import { ShoppingBag, Store } from "lucide-react";
-import { useRole } from "../providers/RoleProvider";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 
-export function LoginPage() {
-  const { setRole } = useRole();
-  const navigate = useNavigate();
+interface LoginPageProps {
+  onLogin: (role: "buyer" | "seller") => void;
+}
+
+export function LoginPage({ onLogin }: LoginPageProps) {
 
   const handleLogin = (role: "buyer" | "seller") => {
-    setRole(role);
-    navigate("/products");
+    onLogin(role);
   };
 
   return (
