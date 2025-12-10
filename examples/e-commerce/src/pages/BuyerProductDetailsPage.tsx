@@ -6,7 +6,7 @@ import { Badge } from "../components/ui/badge";
 import { Card, CardContent } from "../components/ui/card";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Cart } from "../../../../app/sources/ecommerce/cart";
-import { Product } from "../../../../app/sources/ecommerce/product";
+import { Product as ProductClient } from "../../../../app/sources/ecommerce/product";
 import { Roles } from "../../../../app/types/roles";
 
 interface Product {
@@ -24,7 +24,7 @@ export function BuyerProductDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const productClient = new Product(Roles.Buyer);
+  const productClient = new ProductClient(Roles.Buyer);
   const cart = new Cart(Roles.Buyer);
 
   const [quantity, setQuantity] = useState(1);
