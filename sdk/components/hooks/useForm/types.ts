@@ -9,7 +9,6 @@ import type {
   SubmitHandler,
   SubmitErrorHandler,
   FieldErrors,
-  FieldError,
   Path,
   PathValue,
   RegisterOptions,

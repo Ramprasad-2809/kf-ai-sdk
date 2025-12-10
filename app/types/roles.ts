@@ -14,6 +14,12 @@ export const Roles = {
 
   /** Employee role - can create and manage their own leave requests */
   Employee: "employee",
+
+  /** Buyer role - can browse products and manage their cart */
+  Buyer: "buyer",
+
+  /** Seller role - can manage their own products */
+  Seller: "seller",
 } as const;
 
 /**

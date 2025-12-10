@@ -8,9 +8,6 @@ import { useForm as useReactHookForm, useWatch } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import type {
   Path,
-  PathValue,
-  SetValueConfig,
-  FieldError,
 } from "react-hook-form";
 
 import type {
