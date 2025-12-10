@@ -1,28 +1,39 @@
 import { Link } from "react-router-dom";
 import { ShoppingBag, Trash2, Minus, Plus, ArrowLeft } from "lucide-react";
 import { Button } from "../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Cart, BuyerCartItem } from "../../../../app/sources/ecommerce/cart";
 import { Roles } from "../../../../app/types/roles";
-import { CurrencyValue, isCurrencyObject } from "../../../../sdk/types/base-fields";
-
+import {
+  CurrencyValue,
+  isCurrencyObject,
+} from "../../../../sdk/types/base-fields";
 
 export function BuyerCartPage() {
   const queryClient = useQueryClient();
+  const cart = new Cart(Roles.Buyer);
 
   // Fetch Cart Items
-  const { data: items = [], isLoading, error: queryError } = useQuery({
+  const {
+    data: items = [],
+    isLoading,
+    error: queryError,
+  } = useQuery({
     queryKey: ["cart-items"],
     queryFn: async () => {
-      const cart = new Cart(Roles.Buyer);
       const res = await cart.list();
-       // Assuming list returns { Data: [...] } or array, SDK usually returns Response object
-       // Checking app/sources/ecommerce/cart.ts, list returns Promise<ListResponse<BuyerCartItem>> which has Data property
+      // Assuming list returns { Data: [...] } or array, SDK usually returns Response object
+      // Checking app/sources/ecommerce/cart.ts, list returns Promise<ListResponse<BuyerCartItem>> which has Data property
       return (res.Data || []) as BuyerCartItem[];
     },
   });
-  
+
   const error = queryError ? "Failed to load cart." : null;
 
   // Derive totals
@@ -32,7 +43,7 @@ export function BuyerCartPage() {
     if (isCurrencyObject(item.subtotal)) {
       val = item.subtotal.value;
     } else if (typeof item.subtotal === "string") {
-       val = parseFloat(item.subtotal.split(" ")[0] || "0");
+      val = parseFloat(item.subtotal.split(" ")[0] || "0");
     }
     return sum + val;
   }, 0);
@@ -40,56 +51,59 @@ export function BuyerCartPage() {
 
   // Update Quantity Mutation
   const updateQuantityMutation = useMutation({
-    mutationFn: async ({ itemId, quantity }: { itemId: string; quantity: number }) => {
-      const cart = new Cart(Roles.Buyer);
+    mutationFn: async ({
+      itemId,
+      quantity,
+    }: {
+      itemId: string;
+      quantity: number;
+    }) => {
       return cart.update(itemId, { quantity });
     },
     onSuccess: () => {
-       queryClient.invalidateQueries({ queryKey: ["cart-items"] });
-       queryClient.invalidateQueries({ queryKey: ["cart-count"] });
-    }
+      queryClient.invalidateQueries({ queryKey: ["cart-items"] });
+      queryClient.invalidateQueries({ queryKey: ["cart-count"] });
+    },
   });
 
   // Remove Item Mutation
   const removeItemMutation = useMutation({
     mutationFn: async (itemId: string) => {
-       const cart = new Cart(Roles.Buyer);
-       return cart.delete(itemId);
+      return cart.delete(itemId);
     },
     onSuccess: () => {
-       queryClient.invalidateQueries({ queryKey: ["cart-items"] });
-       queryClient.invalidateQueries({ queryKey: ["cart-count"] });
-    }
+      queryClient.invalidateQueries({ queryKey: ["cart-items"] });
+      queryClient.invalidateQueries({ queryKey: ["cart-count"] });
+    },
   });
 
   // Clear Cart Mutation (Loop Delete)
   const clearCartMutation = useMutation({
-     mutationFn: async (currentItems: BuyerCartItem[]) => {
-       const cart = new Cart(Roles.Buyer);
-       const promises = currentItems.map(item => cart.delete(item._id));
-       await Promise.all(promises);
-       return true;
+    mutationFn: async (currentItems: BuyerCartItem[]) => {
+      const promises = currentItems.map((item) => cart.delete(item._id));
+      await Promise.all(promises);
+      return true;
     },
     onSuccess: () => {
-       queryClient.invalidateQueries({ queryKey: ["cart-items"] });
-       queryClient.invalidateQueries({ queryKey: ["cart-count"] });
-    }
+      queryClient.invalidateQueries({ queryKey: ["cart-items"] });
+      queryClient.invalidateQueries({ queryKey: ["cart-count"] });
+    },
   });
 
   const updateQuantity = (itemId: string, quantity: number) => {
-     if (quantity < 1) return;
-     updateQuantityMutation.mutate({ itemId, quantity });
+    if (quantity < 1) return;
+    updateQuantityMutation.mutate({ itemId, quantity });
   };
 
   const removeFromCart = (itemId: string) => {
-     removeItemMutation.mutate(itemId);
+    removeItemMutation.mutate(itemId);
   };
 
   const clearCart = () => {
-     // Pass current items to mutation to delete them
-     if (items.length > 0) {
-       clearCartMutation.mutate(items);
-     }
+    // Pass current items to mutation to delete them
+    if (items.length > 0) {
+      clearCartMutation.mutate(items);
+    }
   };
 
   const formatPrice = (price: CurrencyValue | number) => {
@@ -199,7 +213,9 @@ export function BuyerCartPage() {
                         variant="outline"
                         size="sm"
                         className="h-8 w-8 p-0"
-                        onClick={() => updateQuantity(item._id, item.quantity - 1)}
+                        onClick={() =>
+                          updateQuantity(item._id, item.quantity - 1)
+                        }
                       >
                         <Minus className="h-3 w-3" />
                       </Button>
@@ -210,7 +226,9 @@ export function BuyerCartPage() {
                         variant="outline"
                         size="sm"
                         className="h-8 w-8 p-0"
-                        onClick={() => updateQuantity(item._id, item.quantity + 1)}
+                        onClick={() =>
+                          updateQuantity(item._id, item.quantity + 1)
+                        }
                       >
                         <Plus className="h-3 w-3" />
                       </Button>
@@ -255,7 +273,9 @@ export function BuyerCartPage() {
             <CardContent className="space-y-4">
               {/* Subtotal */}
               <div className="flex justify-between">
-                <span className="text-gray-600">Subtotal ({itemCount} items)</span>
+                <span className="text-gray-600">
+                  Subtotal ({itemCount} items)
+                </span>
                 <span className="font-medium">{formatPrice(total)}</span>
               </div>
 

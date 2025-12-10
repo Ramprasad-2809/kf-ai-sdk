@@ -48,6 +48,7 @@ export function BuyerProductListPage() {
   const queryClient = useQueryClient();
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [addingToCart, setAddingToCart] = useState<string | null>(null);
+  const cart = new Cart(Roles.Buyer);
 
   const table = useTable<BuyerProduct>({
     source: "product",
@@ -70,24 +71,23 @@ export function BuyerProductListPage() {
     mutationFn: async (product: BuyerProduct) => {
       // Assuming a quantity of 1 for now as per typical 'add to cart' behavior on list
       const payload = {
-         productId: product._id,
-         productName: product.name,
-         productPrice: product.price,
-         productImage: product.imageUrl,
-         quantity: 1
+        productId: product._id,
+        productName: product.name,
+        productPrice: product.price,
+        productImage: product.imageUrl,
+        quantity: 1,
       };
-      
-      const cart = new Cart(Roles.Buyer);
+
       return cart.create(payload);
     },
     onSuccess: () => {
-       // Invalidate cart count to update navigation
-       queryClient.invalidateQueries({ queryKey: ["cart-count"] });
+      // Invalidate cart count to update navigation
+      queryClient.invalidateQueries({ queryKey: ["cart-count"] });
     },
     onError: (error) => {
       console.error("Failed to add to cart:", error);
       // Optional: Toast error
-    }
+    },
   });
 
   const handleAddToCart = async (product: BuyerProduct) => {

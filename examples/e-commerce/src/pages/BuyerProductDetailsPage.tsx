@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, ShoppingCart, Minus, Plus } from "lucide-react";
-import { api } from "kf-ai-sdk"; // keeping api for product fetch
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { Card, CardContent } from "../components/ui/card";
@@ -25,6 +24,8 @@ export function BuyerProductDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const productClient = new EcommerceProduct(Roles.Buyer);
+  const cart = new Cart(Roles.Buyer);
 
   const [quantity, setQuantity] = useState(1);
   const [addedToCart, setAddedToCart] = useState(false);
@@ -38,7 +39,6 @@ export function BuyerProductDetailsPage() {
     queryKey: ["product", id],
     queryFn: async () => {
       if (!id) throw new Error("Product ID is required");
-      const productClient = new EcommerceProduct(Roles.Buyer);
       const productData = await productClient.get(id);
       return productData as unknown as Product;
     },
@@ -54,7 +54,6 @@ export function BuyerProductDetailsPage() {
         productImage: product.imageUrl,
         quantity: qty,
       };
-      const cart = new Cart(Roles.Buyer);
       return cart.create(payload);
     },
     onSuccess: () => {
