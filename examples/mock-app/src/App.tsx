@@ -8,6 +8,7 @@ import { AdminProductsPage } from "./pages/AdminProductsPage";
 import { UserProductsPage } from "./pages/UserProductsPage";
 import { AdminOrdersPage } from "./pages/AdminOrdersPage";
 import { UserOrdersPage } from "./pages/UserOrdersPage";
+import { KanbanExamplePage } from "./pages/KanbanExamplePage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { initializeMockApi } from "./utils/mockApiClient";
 
@@ -54,6 +55,9 @@ function App() {
               />
             }
           />
+
+          {/* Kanban Example - Public demo page */}
+          <Route path="/kanban" element={<KanbanExamplePage />} />
 
           {/* 404 - Not Found */}
           <Route path="*" element={<NotFoundPage />} />

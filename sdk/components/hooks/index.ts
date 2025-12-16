@@ -16,3 +16,14 @@ export type {
   ValidationResult,
   SubmissionResult
 } from './useForm';
+
+// Kanban hook
+export { useKanban } from './useKanban';
+export type {
+  UseKanbanOptions,
+  UseKanbanReturn,
+  KanbanCard,
+  KanbanColumn,
+  ColumnDefinition as KanbanColumnDefinition,
+  DragDropManager,
+} from './useKanban';

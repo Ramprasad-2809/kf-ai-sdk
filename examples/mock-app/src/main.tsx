@@ -5,6 +5,7 @@ import { QueryProvider } from './providers/QueryProvider';
 import { RoleProvider } from './providers/RoleProvider';
 import App from './App';
 import './styles/index.css';
+import './kanban.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
