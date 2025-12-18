@@ -1,6 +1,37 @@
-# KF AI SDK
+# KF AI SDK - Enhanced Business Object Framework
 
-A type-safe, AI-driven SDK for building modern web applications with role-based access control, dynamic forms, and data tables. Built on a three-layer architecture for optimal AI code generation and developer experience.
+A comprehensive TypeScript SDK for building enterprise applications with sophisticated business rules, role-based access control, and optimized client-side validation. Features complete BDO (Business Data Object) support with rule classification, field permissions, and expression evaluation.
+
+## 🚀 Latest Enhancements
+
+### ✅ **Complete Rule System (NEW)**
+- **Rule Classification**: Validation (client-side), Computation (server-side), Business Logic (server-side)
+- **Smart Execution**: Automatic determination of client vs server rule execution
+- **Expression Caching**: LRU cache with dependency tracking for optimized performance
+- **BDO Schema Support**: Full compatibility with Business Data Object schemas
+
+### ✅ **Role-Based Field Permissions (NEW)**  
+- **Field-Level Control**: Editable, readable, and hidden field permissions per role
+- **Compile-Time Safety**: TypeScript enforcement of permission boundaries
+- **Dynamic UI**: Automatic form field disable/hide based on permissions
+
+### ✅ **Optimized API Integration (NEW)**
+- **POST-Based Operations**: Correct implementation per BDO specification  
+- **Enhanced Count API**: Efficient counting with same payload structure as list
+- **Advanced Filtering**: Complex filter conditions with logical operators
+- **Type-Safe Responses**: Full TypeScript coverage for all operations
+
+### ✅ **Amazon Product Master Implementation (NEW)**
+- **Complete BDO Example**: Full implementation of Amazon Product Master schema
+- **Business Rules**: Auto-calculations, validation, and permission enforcement  
+- **Role-Based Views**: Admin, Seller, Buyer, InventoryManager, WarehouseStaff access levels
+- **Real-World Example**: Production-ready e-commerce product management
+
+## 📚 Documentation
+
+- **[Implementation Guide](./IMPLEMENTATION_GUIDE.md)** - Comprehensive setup and usage guide
+- **[Quick Reference](./QUICK_REFERENCE.md)** - Developer cheat sheet and API reference
+- **[Examples](./examples/)** - Real-world usage examples including Amazon Product demo
 
 ## Architecture Overview
 

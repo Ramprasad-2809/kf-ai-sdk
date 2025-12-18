@@ -5,12 +5,16 @@ import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { Card, CardContent } from "../components/ui/card";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Cart } from "../../../../app/sources/ecommerce/cart";
-import { Product as ProductClient } from "../../../../app/sources/ecommerce/product";
+import {
+  Cart,
+  AmazonProductMaster,
+  AmazonProductForRole,
+} from "../../../../app";
 import { Roles } from "../../../../app/types/roles";
 
-interface Product {
+type Product = AmazonProductForRole<typeof Roles.Buyer> & {
   _id: string;
+  // Legacy compatibility fields
   name: string;
   price: { value: number; currency: string };
   description: string;
@@ -18,13 +22,13 @@ interface Product {
   availableQuantity: number;
   imageUrl: string;
   sellerName: string;
-}
+};
 
 export function BuyerProductDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const productClient = new ProductClient(Roles.Buyer);
+  const product = new AmazonProductMaster(Roles.Buyer);
   const cart = new Cart(Roles.Buyer);
 
   const [quantity, setQuantity] = useState(1);
@@ -32,15 +36,15 @@ export function BuyerProductDetailsPage() {
   const [cartError, setCartError] = useState<string | null>(null);
 
   const {
-    data: product,
+    data: productData,
     isLoading,
     error,
   } = useQuery({
     queryKey: ["product", id],
     queryFn: async () => {
       if (!id) throw new Error("Product ID is required");
-      const productData = await productClient.get(id);
-      return productData as unknown as Product;
+      const data = await product.get(id);
+      return data as unknown as Product;
     },
     enabled: !!id,
   });
@@ -76,12 +80,12 @@ export function BuyerProductDetailsPage() {
   };
 
   const handleAddToCart = () => {
-    if (!product) return;
-    addToCartMutation.mutate({ product, qty: quantity });
+    if (!productData) return;
+    addToCartMutation.mutate({ product: productData, qty: quantity });
   };
 
   const incrementQuantity = () => {
-    if (product && quantity < product.availableQuantity) {
+    if (productData && quantity < productData.availableQuantity) {
       setQuantity((q) => q + 1);
     }
   };
@@ -117,7 +121,7 @@ export function BuyerProductDetailsPage() {
     );
   }
 
-  if (!product) {
+  if (!productData) {
     return (
       <div className="text-center py-12">
         <h2 className="text-xl font-semibold text-gray-900 mb-2">
@@ -134,7 +138,7 @@ export function BuyerProductDetailsPage() {
     );
   }
 
-  const isInStock = product.availableQuantity > 0;
+  const isInStock = productData.availableQuantity > 0;
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -152,8 +156,8 @@ export function BuyerProductDetailsPage() {
         <Card className="overflow-hidden">
           <div className="aspect-square bg-gray-100 relative">
             <img
-              src={product.imageUrl}
-              alt={product.name}
+              src={productData.imageUrl}
+              alt={productData.name}
               className="w-full h-full object-cover"
               onError={(e) => {
                 (e.target as HTMLImageElement).src =
@@ -174,15 +178,17 @@ export function BuyerProductDetailsPage() {
         <div className="space-y-6">
           {/* Category */}
           <Badge variant="secondary" className="capitalize">
-            {product.category}
+            {productData.category}
           </Badge>
 
           {/* Name */}
-          <h1 className="text-3xl font-bold text-gray-900">{product.name}</h1>
+          <h1 className="text-3xl font-bold text-gray-900">
+            {productData.name}
+          </h1>
 
           {/* Price */}
           <div className="text-3xl font-bold text-blue-600">
-            {formatPrice(product.price)}
+            {formatPrice(productData.price)}
           </div>
 
           {/* Stock Status */}
@@ -191,7 +197,7 @@ export function BuyerProductDetailsPage() {
               <>
                 <Badge variant="success">In Stock</Badge>
                 <span className="text-gray-500">
-                  {product.availableQuantity} available
+                  {productData.availableQuantity} available
                 </span>
               </>
             ) : (
@@ -203,13 +209,14 @@ export function BuyerProductDetailsPage() {
           <div>
             <h3 className="font-semibold text-gray-900 mb-2">Description</h3>
             <p className="text-gray-600 leading-relaxed">
-              {product.description}
+              {productData.description}
             </p>
           </div>
 
           {/* Seller */}
           <div className="text-sm text-gray-500">
-            Sold by: <span className="font-medium">{product.sellerName}</span>
+            Sold by:{" "}
+            <span className="font-medium">{productData.sellerName}</span>
           </div>
 
           {/* Quantity Selector and Add to Cart */}
@@ -237,7 +244,7 @@ export function BuyerProductDetailsPage() {
                       variant="outline"
                       size="icon"
                       onClick={incrementQuantity}
-                      disabled={quantity >= product.availableQuantity}
+                      disabled={quantity >= productData.availableQuantity}
                     >
                       <Plus className="h-4 w-4" />
                     </Button>
@@ -249,8 +256,8 @@ export function BuyerProductDetailsPage() {
                   <span className="text-gray-600">Subtotal:</span>
                   <span className="text-xl font-bold">
                     {formatPrice({
-                      value: product.price.value * quantity,
-                      currency: product.price.currency,
+                      value: productData.price.value * quantity,
+                      currency: productData.price.currency,
                     })}
                   </span>
                 </div>

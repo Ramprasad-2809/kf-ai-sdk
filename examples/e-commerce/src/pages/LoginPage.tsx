@@ -3,12 +3,12 @@ import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 
 interface LoginPageProps {
-  onLogin: (role: "buyer" | "seller") => void;
+  onLogin: (role: "Buyer" | "Seller") => void;
 }
 
 export function LoginPage({ onLogin }: LoginPageProps) {
 
-  const handleLogin = (role: "buyer" | "seller") => {
+  const handleLogin = (role: "Buyer" | "Seller") => {
     onLogin(role);
   };
 
@@ -28,7 +28,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
         {/* Role Selection Cards */}
         <div className="grid md:grid-cols-2 gap-6">
           {/* Buyer Card */}
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleLogin("buyer")}>
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleLogin("Buyer")}>
             <CardHeader className="text-center pb-2">
               <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
                 <ShoppingBag className="h-8 w-8 text-blue-600" />
@@ -53,7 +53,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
           </Card>
 
           {/* Seller Card */}
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleLogin("seller")}>
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleLogin("Seller")}>
             <CardHeader className="text-center pb-2">
               <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
                 <Store className="h-8 w-8 text-green-600" />

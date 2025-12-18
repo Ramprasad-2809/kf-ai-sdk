@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import { useTable, useForm, api } from "kf-ai-sdk";
+import { AmazonProductForRole, Roles } from "../../../../app";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
@@ -19,8 +20,9 @@ import {
   SelectValue,
 } from "../components/ui/select";
 
-interface SellerProduct {
+type SellerProduct = AmazonProductForRole<"Seller"> & {
   _id: string;
+  // Legacy compatibility fields
   name: string;
   price: { value: number; currency: string };
   description: string;
@@ -29,50 +31,58 @@ interface SellerProduct {
   imageUrl: string;
   sellerId: string;
   sellerName: string;
-}
+};
 
 const categories = [
-  { value: "electronics", label: "Electronics" },
-  { value: "clothing", label: "Clothing" },
-  { value: "books", label: "Books" },
-  { value: "home", label: "Home & Garden" },
-  { value: "sports", label: "Sports" },
+  { value: "Electronics", label: "Electronics" },
+  { value: "Clothing", label: "Clothing" },
+  { value: "Books", label: "Books" },
+  { value: "Home", label: "Home & Garden" },
+  { value: "Sports", label: "Sports" },
+  { value: "Toys", label: "Toys & Games" },
 ];
 
 export function SellerProductsPage() {
   const [showForm, setShowForm] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<SellerProduct | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<SellerProduct | null>(
+    null
+  );
   const [formMode, setFormMode] = useState<"create" | "update">("create");
   const [generalError, setGeneralError] = useState<string | null>(null);
 
   const table = useTable<SellerProduct>({
-    source: "product",
+    source: "BDO_AmazonProductMaster",
     columns: [
-      { fieldId: "name", label: "Name", enableSorting: true },
-      { fieldId: "price", label: "Price", enableSorting: true },
-      { fieldId: "category", label: "Category", enableSorting: true },
-      { fieldId: "availableQuantity", label: "Stock", enableSorting: true },
+      { fieldId: "Title", label: "Name", enableSorting: true },
+      { fieldId: "Price", label: "Price", enableSorting: true },
+      { fieldId: "Category", label: "Category", enableSorting: true },
+      { fieldId: "Stock", label: "Stock", enableSorting: true },
     ],
     enableSorting: true,
     enableFiltering: true,
     enablePagination: true,
     initialState: {
       pagination: { pageNo: 1, pageSize: 10 },
-      sorting: { field: "name", direction: "asc" },
+      sorting: { field: "Title", direction: "asc" },
     },
   });
 
   const form = useForm<SellerProduct>({
-    source: "product",
+    source: "BDO_AmazonProductMaster",
     operation: formMode,
     recordId: selectedProduct?._id,
     enabled: showForm,
     defaultValues: {
-      name: "",
-      description: "",
-      category: "electronics",
-      availableQuantity: 0,
-      imageUrl: "",
+      Title: "",
+      Description: "",
+      Category: "Electronics",
+      Price: 0,
+      MRP: 0,
+      Brand: "",
+      Stock: 0,
+      Warehouse: "Warehouse_A",
+      ReorderLevel: 10,
+      IsActive: true,
     },
     onSuccess: () => {
       setShowForm(false);
@@ -81,8 +91,10 @@ export function SellerProductsPage() {
       table.refetch();
     },
     onError: (error) => setGeneralError(error.message),
-    onSchemaError: (error) => setGeneralError(`Configuration Error: ${error.message}`),
-    onSubmitError: (error) => setGeneralError(`Submission Failed: ${error.message}`),
+    onSchemaError: (error) =>
+      setGeneralError(`Configuration Error: ${error.message}`),
+    onSubmitError: (error) =>
+      setGeneralError(`Submission Failed: ${error.message}`),
   });
 
   const formatPrice = (price: { value: number; currency: string }) => {
@@ -107,9 +119,13 @@ export function SellerProductsPage() {
   };
 
   const handleDelete = async (product: SellerProduct) => {
-    if (window.confirm(`Are you sure you want to delete "${product.name}"?`)) {
+    if (
+      window.confirm(
+        `Are you sure you want to delete "${product.Title || product.name}"?`
+      )
+    ) {
       try {
-        await api("product").delete(product._id);
+        await api("BDO_AmazonProductMaster").delete(product._id);
         table.refetch();
       } catch (error) {
         console.error("Failed to delete product:", error);
@@ -128,9 +144,7 @@ export function SellerProductsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">My Products</h1>
-          <p className="text-gray-500">
-            Manage your product listings
-          </p>
+          <p className="text-gray-500">Manage your product listings</p>
         </div>
         <Button onClick={handleCreate}>
           <Plus className="h-4 w-4 mr-2" />
@@ -152,7 +166,9 @@ export function SellerProductsPage() {
       {/* Products Table */}
       {table.error ? (
         <div className="text-center py-12 bg-red-50 rounded-lg">
-          <h3 className="text-xl font-medium text-red-800 mb-2">Error loading products</h3>
+          <h3 className="text-xl font-medium text-red-800 mb-2">
+            Error loading products
+          </h3>
           <p className="text-red-600 mb-6">{table.error.message}</p>
           <Button onClick={() => table.refetch()} variant="outline">
             Try Again
@@ -210,26 +226,41 @@ export function SellerProductsPage() {
                           />
                         </div>
                         <div>
-                          <p className="font-medium text-gray-900">{product.name}</p>
+                          <p className="font-medium text-gray-900">
+                            {product.Title || product.name}
+                          </p>
                           <p className="text-xs text-gray-500 truncate max-w-xs">
-                            {product.description}
+                            {product.Description || product.description}
                           </p>
                         </div>
                       </div>
                     </td>
                     <td className="px-4 py-3">
                       <Badge variant="secondary" className="capitalize">
-                        {product.category}
+                        {product.Category || product.category}
                       </Badge>
                     </td>
                     <td className="px-4 py-3 font-medium">
-                      {formatPrice(product.price)}
+                      {product.Price
+                        ? `$${product.Price.toFixed(2)}`
+                        : formatPrice(product.price)}
+                      {product.LowStock && (
+                        <Badge variant="destructive" className="ml-2 text-xs">
+                          Low Stock
+                        </Badge>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <Badge
-                        variant={product.availableQuantity > 10 ? "success" : product.availableQuantity > 0 ? "warning" : "destructive"}
+                        variant={
+                          (product.Stock || product.availableQuantity) > 10
+                            ? "success"
+                            : (product.Stock || product.availableQuantity) > 0
+                              ? "warning"
+                              : "destructive"
+                        }
                       >
-                        {product.availableQuantity} in stock
+                        {product.Stock || product.availableQuantity} in stock
                       </Badge>
                     </td>
                     <td className="px-4 py-3">
@@ -260,7 +291,10 @@ export function SellerProductsPage() {
           {/* Pagination */}
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-500">
-              Showing {(table.pagination.currentPage - 1) * table.pagination.pageSize + 1} to{" "}
+              Showing{" "}
+              {(table.pagination.currentPage - 1) * table.pagination.pageSize +
+                1}{" "}
+              to{" "}
               {Math.min(
                 table.pagination.currentPage * table.pagination.pageSize,
                 table.totalItems
@@ -301,7 +335,9 @@ export function SellerProductsPage() {
           {form.isLoadingInitialData ? (
             <div className="flex flex-col items-center justify-center py-12 space-y-4">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <p className="text-sm text-gray-500">Loading form configuration...</p>
+              <p className="text-sm text-gray-500">
+                Loading form configuration...
+              </p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -310,121 +346,304 @@ export function SellerProductsPage() {
                   {generalError}
                 </div>
               )}
-              
+
               {/* Root Errors (e.g. Cross-Field Validation) */}
               {form.formState.errors.root && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm mb-4">
                   <p className="font-medium">Validation Error</p>
                   <ul className="list-disc list-inside mt-1">
-                    {Object.values(form.formState.errors.root).map((err, idx) => (
-                      <li key={idx}>{(err as any).message}</li>
-                    ))}
+                    {Object.values(form.formState.errors.root).map(
+                      (err, idx) => (
+                        <li key={idx}>{(err as any).message}</li>
+                      )
+                    )}
                   </ul>
                 </div>
               )}
-            {/* Name */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Product Name
-              </label>
-              <Input
-                {...form.register("name")}
-                placeholder="Enter product name"
-                defaultValue={selectedProduct?.name || ""}
-              />
-            </div>
-
-            {/* Description */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Description
-              </label>
-              <textarea
-                {...form.register("description")}
-                className="flex w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                rows={3}
-                placeholder="Enter product description"
-                defaultValue={selectedProduct?.description || ""}
-              />
-            </div>
-
-            {/* Category */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Category
-              </label>
-              <Select
-                defaultValue={selectedProduct?.category || "electronics"}
-                onValueChange={(value) => form.setValue("category", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.value} value={cat.value}>
-                      {cat.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Price */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Price (USD)
-              </label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                {...form.register("price")}
-                placeholder="0.00"
-                defaultValue={selectedProduct?.price?.value || ""}
-              />
-            </div>
-
-            {/* Available Quantity */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Available Quantity
-              </label>
-              <Input
-                type="number"
-                min="0"
-                {...form.register("availableQuantity")}
-                placeholder="0"
-                defaultValue={selectedProduct?.availableQuantity || ""}
-              />
-            </div>
-
-            {/* Image URL */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Image URL
-              </label>
-              <Input
-                {...form.register("imageUrl")}
-                placeholder="https://..."
-                defaultValue={selectedProduct?.imageUrl || ""}
-              />
-            </div>
-
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={form.isSubmitting}>
-                {form.isSubmitting ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                ) : formMode === "create" ? (
-                  "Add Product"
-                ) : (
-                  "Save Changes"
+              {/* Title */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Product Title *
+                </label>
+                <Input
+                  {...form.register("Title")}
+                  placeholder="Enter product title"
+                  defaultValue={
+                    selectedProduct?.Title || selectedProduct?.name || ""
+                  }
+                  className={
+                    form.formState.errors.Title
+                      ? "border-red-500 focus:ring-red-500"
+                      : ""
+                  }
+                />
+                {form.formState.errors.Title && (
+                  <p className="text-red-600 text-sm mt-1">
+                    {form.formState.errors.Title.message}
+                  </p>
                 )}
-              </Button>
-            </DialogFooter>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description
+                </label>
+                <textarea
+                  {...form.register("Description")}
+                  className="flex w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                  rows={3}
+                  placeholder="Enter product description"
+                  defaultValue={
+                    selectedProduct?.Description ||
+                    selectedProduct?.description ||
+                    ""
+                  }
+                />
+              </div>
+
+              {/* Brand */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Brand
+                </label>
+                <Input
+                  {...form.register("Brand")}
+                  placeholder="Enter brand name"
+                  defaultValue={selectedProduct?.Brand || ""}
+                />
+              </div>
+
+              {/* Category */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Category
+                </label>
+                <Select
+                  defaultValue={
+                    selectedProduct?.Category ||
+                    selectedProduct?.category ||
+                    "Electronics"
+                  }
+                  onValueChange={(value) =>
+                    form.setValue(
+                      "Category",
+                      value as
+                        | "Electronics"
+                        | "Books"
+                        | "Clothing"
+                        | "Home"
+                        | "Sports"
+                        | "Toys"
+                    )
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Price */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Selling Price (USD) *
+                </label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  {...form.register("Price")}
+                  placeholder="0.00"
+                  defaultValue={
+                    selectedProduct?.Price ||
+                    selectedProduct?.price?.value ||
+                    ""
+                  }
+                  className={
+                    form.formState.errors.Price
+                      ? "border-red-500 focus:ring-red-500"
+                      : ""
+                  }
+                />
+                {form.formState.errors.Price && (
+                  <p className="text-red-600 text-sm mt-1">
+                    {form.formState.errors.Price.message}
+                  </p>
+                )}
+              </div>
+
+              {/* MRP */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Maximum Retail Price (USD) *
+                </label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  {...form.register("MRP")}
+                  placeholder="0.00"
+                  defaultValue={selectedProduct?.MRP || ""}
+                  className={
+                    form.formState.errors.MRP
+                      ? "border-red-500 focus:ring-red-500"
+                      : ""
+                  }
+                />
+                {form.formState.errors.MRP && (
+                  <p className="text-red-600 text-sm mt-1">
+                    {form.formState.errors.MRP.message}
+                  </p>
+                )}
+              </div>
+
+              {/* Stock */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Stock Quantity *
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  {...form.register("Stock")}
+                  placeholder="0"
+                  defaultValue={
+                    selectedProduct?.Stock ||
+                    selectedProduct?.availableQuantity ||
+                    ""
+                  }
+                  className={
+                    form.formState.errors.Stock
+                      ? "border-red-500 focus:ring-red-500"
+                      : ""
+                  }
+                />
+                {form.formState.errors.Stock && (
+                  <p className="text-red-600 text-sm mt-1">
+                    {form.formState.errors.Stock.message}
+                  </p>
+                )}
+              </div>
+
+              {/* Warehouse */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Warehouse
+                </label>
+                <Select
+                  defaultValue={selectedProduct?.Warehouse || "Warehouse_A"}
+                  onValueChange={(value) =>
+                    form.setValue(
+                      "Warehouse",
+                      value as "Warehouse_A" | "Warehouse_B" | "Warehouse_C"
+                    )
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select warehouse" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Warehouse_A">
+                      Warehouse A - North
+                    </SelectItem>
+                    <SelectItem value="Warehouse_B">
+                      Warehouse B - South
+                    </SelectItem>
+                    <SelectItem value="Warehouse_C">
+                      Warehouse C - East
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Reorder Level */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Reorder Level
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  {...form.register("ReorderLevel")}
+                  placeholder="10"
+                  defaultValue={selectedProduct?.ReorderLevel || "10"}
+                />
+              </div>
+
+              {/* Computed Fields Section */}
+              <div className="border-t border-gray-200 pt-4 mt-4">
+                <h4 className="text-sm font-medium text-gray-900 mb-3">
+                  Computed Fields (Auto-calculated)
+                </h4>
+
+                {/* Discount Percentage */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Discount %
+                    </label>
+                    <Input
+                      value={(form.watch("Discount") || 0).toFixed(2)}
+                      readOnly
+                      disabled
+                      className="bg-gray-50 cursor-not-allowed"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Auto-calculated from (MRP - Price) ÷ MRP × 100
+                    </p>
+                  </div>
+
+                  {/* Low Stock Indicator */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Stock Status
+                    </label>
+                    <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-sm">
+                      <span
+                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          form.watch("LowStock")
+                            ? "bg-red-100 text-red-800"
+                            : "bg-green-100 text-green-800"
+                        }`}
+                      >
+                        {form.watch("LowStock")
+                          ? "⚠️ Low Stock"
+                          : "✅ Good Stock"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Auto-calculated: Stock ≤ Reorder Level
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowForm(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={form.isSubmitting}>
+                  {form.isSubmitting ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : formMode === "create" ? (
+                    "Add Product"
+                  ) : (
+                    "Save Changes"
+                  )}
+                </Button>
+              </DialogFooter>
             </form>
           )}
         </DialogContent>

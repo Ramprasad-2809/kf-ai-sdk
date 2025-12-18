@@ -13,8 +13,8 @@ import { setDefaultHeaders } from "kf-ai-sdk";
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [currentRole, setCurrentRole] = useState<"buyer" | "seller" | null>(
-    () => (localStorage.getItem("currentRole") as "buyer" | "seller" | null)
+  const [currentRole, setCurrentRole] = useState<"Buyer" | "Seller" | null>(
+    () => (localStorage.getItem("currentRole") as "Buyer" | "Seller" | null)
   );
 
   // Initialize Mock API once
@@ -25,7 +25,7 @@ export default function App() {
   // Update headers whenever role changes
   useEffect(() => {
      if (currentRole) {
-         const userId = currentRole === "buyer" ? "buyer_001" : "seller_001";
+         const userId = currentRole === "Buyer" ? "buyer_001" : "seller_001";
          setDefaultHeaders({
              "Content-Type": "application/json",
              "x-user-role": currentRole,
@@ -37,7 +37,7 @@ export default function App() {
      }
   }, [currentRole]);
 
-  const handleLogin = (role: "buyer" | "seller") => {
+  const handleLogin = (role: "Buyer" | "Seller") => {
     setCurrentRole(role);
     navigate("/products");
   };
@@ -67,7 +67,7 @@ export default function App() {
           <Route
             path="/products"
             element={
-              currentRole === "buyer" ? (
+              currentRole === "Buyer" ? (
                 <BuyerProductListPage />
               ) : (
                 <SellerProductsPage />
@@ -78,7 +78,7 @@ export default function App() {
           <Route
             path="/products/:id"
             element={
-              currentRole === "buyer" ? (
+              currentRole === "Buyer" ? (
                 <BuyerProductDetailsPage />
               ) : (
                 <Navigate to="/products" replace />
@@ -89,7 +89,7 @@ export default function App() {
           <Route
             path="/cart"
             element={
-               currentRole === "buyer" ? (
+               currentRole === "Buyer" ? (
                  <BuyerCartPage />
                ) : (
                  <Navigate to="/products" replace />

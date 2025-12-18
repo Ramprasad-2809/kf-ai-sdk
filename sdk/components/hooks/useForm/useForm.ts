@@ -6,9 +6,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useForm as useReactHookForm, useWatch } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
-import type {
-  Path,
-} from "react-hook-form";
+import type { Path } from "react-hook-form";
 
 import type {
   UseFormOptions,
@@ -28,11 +26,19 @@ import {
   cleanFormData,
 } from "./apiClient";
 
+import { getApiBaseUrl, getDefaultHeaders } from "../../../api";
+
 import {
   validateCrossField,
   validateField,
   calculateComputedValue,
 } from "./expressionValidator";
+import {
+  validateFieldOptimized,
+  calculateComputedValueOptimized,
+  getFieldDependencies,
+  buildDependencyGraph,
+} from "./optimizedExpressionValidator";
 
 // ============================================================
 // MAIN HOOK IMPLEMENTATION
@@ -48,10 +54,12 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     defaultValues = {},
     mode = "onBlur",
     enabled = true,
+    userRole,
     onSuccess,
     onError,
     onSchemaError,
     onSubmitError,
+    onComputationRule,
     skipSchemaFetch = false,
     schema: manualSchema,
   } = options;
@@ -65,11 +73,19 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
   const [referenceData, setReferenceData] = useState<Record<string, any[]>>({});
   const [submitError, setSubmitError] = useState<Error | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [lastFormValues, setLastFormValues] = useState<Partial<T>>({});
+
+  // Prevent infinite loop in API calls
+  const isComputingRef = useRef(false);
+  const computeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastWatchedValuesRef = useRef<string>("");
+  const hasInitializedRef = useRef(false);
 
   // Stable callback refs to prevent dependency loops
   const onSuccessRef = useRef(onSuccess);
   const onErrorRef = useRef(onError);
   const onSubmitErrorRef = useRef(onSubmitError);
+  const onSchemaErrorRef = useRef(onSchemaError);
 
   // Update refs when callbacks change
   useEffect(() => {
@@ -83,6 +99,10 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
   useEffect(() => {
     onSubmitErrorRef.current = onSubmitError;
   }, [onSubmitError]);
+
+  useEffect(() => {
+    onSchemaErrorRef.current = onSchemaError;
+  }, [onSchemaError]);
 
   // ============================================================
   // SCHEMA FETCHING
@@ -167,8 +187,9 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     if (schema) {
       try {
         const processed = processSchema(
-          schema as BackendSchema,
-          watchedValues as any
+          schema as any,
+          {}, // Pass empty object - validation functions get live values from react-hook-form
+          userRole
         );
         setProcessedSchema(processed);
 
@@ -181,46 +202,179 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
         }
       } catch (error) {
         console.error("Schema processing failed:", error);
-        onSchemaError?.(error as Error);
+        onSchemaErrorRef.current?.(error as Error);
       }
     }
-  }, [schema, watchedValues, onSchemaError]);
+  }, [schema, userRole]); // Removed onSchemaError - using ref instead
 
   // Handle schema and record errors
   useEffect(() => {
     if (schemaError) {
-      onSchemaError?.(schemaError);
+      onSchemaErrorRef.current?.(schemaError);
     }
-  }, [schemaError, onSchemaError]);
+  }, [schemaError]);
 
   useEffect(() => {
     if (recordError) {
-      onError?.(recordError);
+      onErrorRef.current?.(recordError);
     }
-  }, [recordError, onError]);
+  }, [recordError]);
 
   // ============================================================
   // COMPUTED FIELD DEPENDENCY TRACKING AND OPTIMIZATION
   // ============================================================
 
-  // Extract computed field dependencies to optimize watching
+  // Compute initial values when form loads or recordData changes
+  useEffect(() => {
+    // Only run once - skip if already initialized
+    if (hasInitializedRef.current) {
+      return;
+    }
+
+    if (!processedSchema) return;
+
+    // Wait for form to be initialized with values
+    const values = rhfForm.getValues();
+    if (Object.keys(values).length === 0) return;
+
+    // Prevent concurrent calls
+    if (isComputingRef.current) {
+      return;
+    }
+
+    // Call draft API to compute initial fields
+    const computeInitialFields = async () => {
+      isComputingRef.current = true;
+
+      try {
+        const baseUrl = getApiBaseUrl();
+        const headers = getDefaultHeaders();
+
+        const draftUrl =
+          operation === "update" && recordId
+            ? `${source}/${recordId}/draft`
+            : `${source}/draft`;
+
+        const response = await fetch(`${baseUrl}/${draftUrl}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            ...headers,
+          },
+          body: JSON.stringify(values),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Draft API call failed: ${response.statusText}`);
+        }
+
+        const computedFields = await response.json();
+
+        // Apply computed fields
+        if (computedFields && typeof computedFields === "object") {
+          Object.entries(computedFields).forEach(([fieldName, value]) => {
+            rhfForm.setValue(fieldName as Path<T>, value as any, {
+              shouldDirty: false,
+              shouldValidate: false,
+            });
+          });
+        }
+      } catch (error) {
+        console.warn("Failed to compute initial fields via API:", error);
+        // Fallback to client-side computation
+        const updates: Array<{ field: Path<T>; value: any }> = [];
+
+        Object.entries(processedSchema.fieldRules).forEach(
+          ([fieldName, rules]) => {
+            if (rules.computation.length === 0) return;
+
+            rules.computation.forEach((ruleId) => {
+              const rule = processedSchema.rules.computation[ruleId];
+              if (!rule?.ExpressionTree) return;
+
+              try {
+                const computedValue = calculateComputedValue(
+                  rule.ExpressionTree,
+                  values
+                );
+
+                if (computedValue !== null && computedValue !== undefined) {
+                  updates.push({
+                    field: fieldName as Path<T>,
+                    value: computedValue,
+                  });
+                }
+              } catch (error) {
+                console.warn(
+                  `Failed to compute initial value for ${fieldName}:`,
+                  error
+                );
+              }
+            });
+          }
+        );
+
+        // Apply initial computed values
+        if (updates.length > 0) {
+          updates.forEach(({ field, value }) => {
+            rhfForm.setValue(field, value, {
+              shouldDirty: false,
+              shouldValidate: false,
+            });
+          });
+        }
+      } finally {
+        isComputingRef.current = false;
+        hasInitializedRef.current = true; // Mark initial computation as complete
+      }
+    };
+
+    computeInitialFields();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [processedSchema]); // Only depend on processedSchema - run once when schema is ready
+
+  // Extract computed field dependencies using optimized analyzer
   const computedFieldDependencies = useMemo(() => {
     if (!processedSchema) return [];
 
     const dependencies = new Set<string>();
+    const computedFieldNames = new Set(processedSchema.computedFields);
+
+    // Analyze dependencies from computation rules
+    Object.entries(processedSchema.fieldRules).forEach(([fieldName, rules]) => {
+      rules.computation.forEach((ruleId) => {
+        const rule = processedSchema.rules.computation[ruleId];
+        if (rule?.ExpressionTree) {
+          const ruleDeps = getFieldDependencies(rule.ExpressionTree);
+          ruleDeps.forEach((dep) => {
+            // Only add non-computed fields as dependencies
+            if (
+              processedSchema.fields[dep] &&
+              dep !== fieldName &&
+              !computedFieldNames.has(dep)
+            ) {
+              dependencies.add(dep);
+            }
+          });
+        }
+      });
+    });
+
+    // Also check formulas (legacy support)
     processedSchema.computedFields.forEach((fieldName: string) => {
       const field = processedSchema.fields[fieldName];
       if (field.backendField.Formula) {
-        // Simple extraction - look for field references in the expression tree
-        // This is a simplified version that extracts common field dependencies
-        const expressionStr = field.backendField.Formula.Expression || "";
-
-        // Extract field names from the expression (basic approach)
-        const fieldMatches =
-          expressionStr.match(/\b[A-Za-z][A-Za-z0-9_]*\b/g) || [];
-        fieldMatches.forEach((match: string) => {
-          if (processedSchema.fields[match] && match !== fieldName) {
-            dependencies.add(match);
+        const fieldDeps = getFieldDependencies(
+          field.backendField.Formula.ExpressionTree
+        );
+        fieldDeps.forEach((dep) => {
+          // Only add non-computed fields as dependencies
+          if (
+            processedSchema.fields[dep] &&
+            dep !== fieldName &&
+            !computedFieldNames.has(dep)
+          ) {
+            dependencies.add(dep);
           }
         });
       }
@@ -229,72 +383,280 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     return Array.from(dependencies) as Array<Path<T>>;
   }, [processedSchema]);
 
-  // Only watch dependency fields for computed field updates
-  const watchedDependencies = rhfForm.watch(computedFieldDependencies);
+  // Watch dependencies are tracked but not used for automatic computation
+  // Computation is triggered manually on blur after validation passes
 
-  // Stringify watched values to prevent infinite loops from array reference changes
-  const watchedDependenciesStr = JSON.stringify(watchedDependencies);
+  // ============================================================
+  // COMPUTATION RULE HANDLING
+  // ============================================================
 
-  // Optimized computed field updates - only when dependencies change
-  useEffect(() => {
-    if (
-      !processedSchema ||
-      !watchedDependencies ||
-      computedFieldDependencies.length === 0
-    ) {
-      return;
-    }
+  // Handle computation and business logic rules
+  const executeComputationRules = useCallback(
+    async (fieldName: string, fieldValue: any): Promise<void> => {
+      if (!processedSchema) return;
 
-    const currentValues = rhfForm.getValues();
-    const updates: Array<{ field: Path<T>; value: any }> = [];
-
-    processedSchema.computedFields.forEach((fieldName) => {
       const field = processedSchema.fields[fieldName];
-      if (field.backendField.Formula) {
-        try {
-          const computedValue = calculateComputedValue(
-            field.backendField.Formula.ExpressionTree,
-            currentValues,
-            referenceData
-          );
+      if (!field) return;
 
-          const currentValue = currentValues[fieldName as keyof T];
+      const computationRules = field.rules.computation;
+      const businessLogicRules = field.rules.businessLogic;
 
-          // Skip update if computed value is NaN, null, or undefined to prevent infinite loops
-          // Also use deep equality check to avoid unnecessary updates
-          const isValidValue =
-            computedValue !== null &&
-            computedValue !== undefined &&
-            !(typeof computedValue === "number" && isNaN(computedValue));
+      // Execute computation rules
+      for (const ruleId of computationRules) {
+        const rule = processedSchema.rules.computation[ruleId];
+        if (rule && onComputationRule) {
+          try {
+            const context = {
+              ruleType: "Computation" as const,
+              ruleId,
+              fieldName: fieldName as keyof T,
+              fieldValue,
+              formValues: rhfForm.getValues(),
+              rule,
+            };
 
-          if (isValidValue && currentValue !== computedValue) {
-            updates.push({
-              field: fieldName as Path<T>,
-              value: computedValue,
+            const updates = await onComputationRule(context);
+
+            // Apply updates to form
+            Object.entries(updates).forEach(([field, value]) => {
+              rhfForm.setValue(field as Path<T>, value as any, {
+                shouldDirty: true,
+                shouldValidate: false,
+              });
             });
+          } catch (error) {
+            console.warn(
+              `Failed to execute computation rule ${ruleId}:`,
+              error
+            );
           }
-        } catch (error) {
-          console.warn(`Failed to compute value for ${fieldName}:`, error);
         }
       }
-    });
 
-    // Batch update computed fields to avoid multiple re-renders
-    if (updates.length > 0) {
-      updates.forEach(({ field, value }) => {
-        rhfForm.setValue(field, value, {
-          shouldDirty: false,
-          shouldValidate: false,
-        });
-      });
-    }
-  }, [
-    processedSchema,
-    watchedDependenciesStr,
-    rhfForm,
-    referenceData,
-    computedFieldDependencies,
-  ]);
+      // Execute business logic rules
+      for (const ruleId of businessLogicRules) {
+        const rule = processedSchema.rules.businessLogic[ruleId];
+        if (rule && onComputationRule) {
+          try {
+            const context = {
+              ruleType: "BusinessLogic" as const,
+              ruleId,
+              fieldName: fieldName as keyof T,
+              fieldValue,
+              formValues: rhfForm.getValues(),
+              rule,
+            };
+
+            const updates = await onComputationRule(context);
+
+            // Apply updates to form
+            Object.entries(updates).forEach(([field, value]) => {
+              rhfForm.setValue(field as Path<T>, value as any, {
+                shouldDirty: true,
+                shouldValidate: true,
+              });
+            });
+          } catch (error) {
+            console.warn(
+              `Failed to execute business logic rule ${ruleId}:`,
+              error
+            );
+          }
+        }
+      }
+    },
+    [processedSchema, rhfForm, onComputationRule]
+  );
+
+  // Manual computation trigger - called on blur after validation passes
+  const triggerComputationAfterValidation = useCallback(
+    async (fieldName: string) => {
+      if (!processedSchema || computedFieldDependencies.length === 0) {
+        return;
+      }
+
+      // Check if this field is a dependency for any computed fields
+      if (!computedFieldDependencies.includes(fieldName as Path<T>)) {
+        return;
+      }
+
+      // Prevent concurrent API calls
+      if (isComputingRef.current) {
+        return;
+      }
+
+      // Debounce API calls
+      if (computeTimeoutRef.current) {
+        clearTimeout(computeTimeoutRef.current);
+      }
+
+      computeTimeoutRef.current = setTimeout(() => {
+        // Additional safety check
+        if (!processedSchema) return;
+
+        // Prevent concurrent API calls
+        if (isComputingRef.current) {
+          return;
+        }
+
+        const currentValues = rhfForm.getValues();
+
+        // Call draft API to compute fields on server
+        const computeFieldsViaAPI = async () => {
+          isComputingRef.current = true;
+
+          try {
+            const baseUrl = getApiBaseUrl();
+            const headers = getDefaultHeaders();
+
+            // Build draft URL based on operation mode
+            const draftUrl =
+              operation === "update" && recordId
+                ? `${source}/${recordId}/draft`
+                : `${source}/draft`;
+
+            // Call draft endpoint with current form values
+            const response = await fetch(`${baseUrl}/${draftUrl}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                ...headers,
+              },
+              body: JSON.stringify(currentValues),
+            });
+
+            if (!response.ok) {
+              throw new Error(`Draft API call failed: ${response.statusText}`);
+            }
+
+            const computedFields = await response.json();
+
+            // Apply computed fields returned from API
+            if (computedFields && typeof computedFields === "object") {
+              Object.entries(computedFields).forEach(([fieldName, value]) => {
+                const currentValue = currentValues[fieldName as keyof T];
+                if (currentValue !== value) {
+                  rhfForm.setValue(fieldName as Path<T>, value as any, {
+                    shouldDirty: false,
+                    shouldValidate: false,
+                  });
+                }
+              });
+            }
+          } catch (error) {
+            console.warn("Failed to compute fields via API:", error);
+            // Fallback to client-side computation if API fails
+            computeFieldsClientSide();
+          } finally {
+            isComputingRef.current = false;
+          }
+        };
+
+        // Client-side computation fallback for offline/error scenarios
+        const computeFieldsClientSide = () => {
+          const updates: Array<{ field: Path<T>; value: any }> = [];
+
+          Object.entries(processedSchema.fieldRules).forEach(
+            ([fieldName, rules]) => {
+              if (rules.computation.length === 0) return;
+
+              // Execute all computation rules for this field
+              rules.computation.forEach((ruleId) => {
+                const rule = processedSchema.rules.computation[ruleId];
+                if (!rule?.ExpressionTree) return;
+
+                try {
+                  // Evaluate the expression tree
+                  const computedValue = calculateComputedValueOptimized(
+                    rule.ExpressionTree,
+                    currentValues,
+                    lastFormValues
+                  );
+
+                  const currentValue = currentValues[fieldName as keyof T];
+
+                  const isValidValue =
+                    computedValue !== null &&
+                    computedValue !== undefined &&
+                    !(
+                      typeof computedValue === "number" && isNaN(computedValue)
+                    );
+
+                  if (isValidValue && currentValue !== computedValue) {
+                    updates.push({
+                      field: fieldName as Path<T>,
+                      value: computedValue,
+                    });
+                  }
+                } catch (error) {
+                  console.warn(
+                    `Failed to compute ${fieldName} using rule ${ruleId}:`,
+                    error
+                  );
+                }
+              });
+            }
+          );
+
+          // Also handle legacy Formula-based computed fields
+          processedSchema.computedFields.forEach((fieldName) => {
+            const field = processedSchema.fields[fieldName];
+            if (
+              field.backendField.Formula &&
+              field.rules.computation.length === 0
+            ) {
+              try {
+                const computedValue = calculateComputedValueOptimized(
+                  field.backendField.Formula.ExpressionTree,
+                  currentValues,
+                  lastFormValues
+                );
+
+                const currentValue = currentValues[fieldName as keyof T];
+                const isValidValue =
+                  computedValue !== null &&
+                  computedValue !== undefined &&
+                  !(typeof computedValue === "number" && isNaN(computedValue));
+
+                if (isValidValue && currentValue !== computedValue) {
+                  updates.push({
+                    field: fieldName as Path<T>,
+                    value: computedValue,
+                  });
+                }
+              } catch (error) {
+                console.warn(
+                  `Failed to compute value for ${fieldName}:`,
+                  error
+                );
+              }
+            }
+          });
+
+          // Batch update computed fields
+          if (updates.length > 0) {
+            updates.forEach(({ field, value }) => {
+              rhfForm.setValue(field, value, {
+                shouldDirty: false,
+                shouldValidate: false,
+              });
+            });
+          }
+        };
+
+        // Call API for computation
+        computeFieldsViaAPI();
+      }, 300); // 300ms debounce
+    },
+    [
+      processedSchema,
+      operation,
+      recordId,
+      source,
+      rhfForm,
+      computedFieldDependencies,
+    ]
+  );
 
   // ============================================================
   // VALIDATION
@@ -492,7 +854,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
   // RETURN OBJECT
   // ============================================================
 
-  // Create validation rules from processed schema
+  // Create validation rules from processed schema (client-side only)
   const validationRules = useMemo(() => {
     if (!processedSchema) return {};
 
@@ -506,6 +868,11 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
         fieldRules.required = `${field.label} is required`;
       }
 
+      // Permission-based validation (read-only fields)
+      if (!field.permission.editable) {
+        fieldRules.disabled = true;
+      }
+
       // Type-specific validation
       switch (field.type) {
         case "number":
@@ -517,22 +884,30 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
           break;
       }
 
-      // Expression tree validation
-      if (
-        field.backendField.Validation &&
-        field.backendField.Validation.length > 0
-      ) {
+      // Client-side validation rules only
+      const validationRuleIds = field.rules.validation;
+      if (validationRuleIds.length > 0) {
         fieldRules.validate = {
           expressionValidation: (value: any) => {
             const currentValues = rhfForm.getValues();
-            const result = validateField<T>(
-              fieldName,
-              value,
-              field.backendField.Validation!,
-              currentValues,
-              referenceData
-            );
-            return result.isValid || result.message || "Invalid value";
+
+            // Execute client-side validation rules with optimization
+            for (const ruleId of validationRuleIds) {
+              const rule = processedSchema.rules.validation[ruleId];
+              if (rule) {
+                const result = validateFieldOptimized<T>(
+                  fieldName,
+                  value,
+                  [rule],
+                  currentValues,
+                  lastFormValues
+                );
+                if (!result.isValid) {
+                  return result.message || rule.Message || "Invalid value";
+                }
+              }
+            }
+            return true;
           },
         };
       }
@@ -543,16 +918,35 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     return rules;
   }, [processedSchema, rhfForm, referenceData]);
 
-  // Enhanced register function with automatic validation
+  // Enhanced register function with validation-first computation
   const register = useCallback(
     <K extends Path<T>>(name: K, options?: any) => {
       const fieldValidation = validationRules[name as string];
+
+      // Create custom onBlur handler
+      const originalOnBlur = options?.onBlur;
+      const enhancedOnBlur = async (e: any) => {
+        // Call original onBlur if provided
+        if (originalOnBlur) {
+          await originalOnBlur(e);
+        }
+
+        // Trigger validation first
+        const isValid = await rhfForm.trigger(name);
+
+        // Only trigger computation if validation passes
+        if (isValid) {
+          await triggerComputationAfterValidation(name as string);
+        }
+      };
+
       return rhfForm.register(name, {
         ...fieldValidation,
         ...options,
+        onBlur: enhancedOnBlur,
       });
     },
-    [rhfForm, validationRules]
+    [rhfForm, validationRules, triggerComputationAfterValidation]
   );
 
   return {

@@ -5,12 +5,24 @@
 
 import type {
   BackendSchema,
+  BDOSchema,
   BackendFieldDefinition,
   ProcessedField,
   ProcessedSchema,
-  ValidationRule
-} from './types';
-import { validateField, calculateDefaultValue, calculateComputedValue } from './expressionValidator';
+  ValidationRule,
+  FieldPermission,
+} from "./types";
+import {
+  validateField,
+  calculateDefaultValue,
+  calculateComputedValue,
+} from "./expressionValidator";
+import {
+  classifyRules,
+  createFieldRuleMapping,
+  calculateFieldPermissions,
+  convertLegacySchema,
+} from "./ruleClassifier";
 
 // ============================================================
 // FIELD TYPE MAPPING
@@ -21,37 +33,37 @@ import { validateField, calculateDefaultValue, calculateComputedValue } from './
  */
 function mapFieldType(backendType: string, fieldName: string): string {
   switch (backendType) {
-    case 'String':
+    case "String":
       // Infer specific string types from field name
-      if (fieldName.toLowerCase().includes('email')) {
-        return 'email';
+      if (fieldName.toLowerCase().includes("email")) {
+        return "email";
       }
-      if (fieldName.toLowerCase().includes('password')) {
-        return 'password';
+      if (fieldName.toLowerCase().includes("password")) {
+        return "password";
       }
-      return 'text';
-    
-    case 'Number':
-      return 'number';
-    
-    case 'Boolean':
-      return 'checkbox';
-    
-    case 'Date':
-      return 'date';
-    
-    case 'DateTime':
-      return 'datetime-local';
-    
-    case 'Reference':
-      return 'reference';
-    
-    case 'Array':
-    case 'Object':
-      return 'textarea'; // JSON string representation
-    
+      return "text";
+
+    case "Number":
+      return "number";
+
+    case "Boolean":
+      return "checkbox";
+
+    case "Date":
+      return "date";
+
+    case "DateTime":
+      return "datetime-local";
+
+    case "Reference":
+      return "reference";
+
+    case "Array":
+    case "Object":
+      return "textarea"; // JSON string representation
+
     default:
-      return 'text';
+      return "text";
   }
 }
 
@@ -60,10 +72,45 @@ function mapFieldType(backendType: string, fieldName: string): string {
  */
 function generateLabel(fieldName: string): string {
   return fieldName
-    .replace(/([A-Z])/g, ' $1') // Add space before capital letters
-    .replace(/^./, str => str.toUpperCase()) // Capitalize first letter
-    .replace(/_/g, ' ') // Replace underscores with spaces
+    .replace(/([A-Z])/g, " $1") // Add space before capital letters
+    .replace(/^./, (str) => str.toUpperCase()) // Capitalize first letter
+    .replace(/_/g, " ") // Replace underscores with spaces
     .trim();
+}
+
+/**
+ * Infer which field each computation rule targets
+ * by analyzing rule ID or expression tree
+ */
+function inferComputationRuleTargets(
+  schema: BDOSchema
+): Record<string, string> {
+  const ruleToField: Record<string, string> = {};
+
+  if (!schema.Rules?.Computation) return ruleToField;
+
+  Object.entries(schema.Rules.Computation).forEach(([ruleId, rule]) => {
+    // Strategy 1: Rule ID contains field name (e.g., RULE_CALC_DISCOUNT -> Discount)
+    for (const fieldName of Object.keys(schema.Fields)) {
+      const upperFieldName = fieldName.toUpperCase();
+      if (ruleId.toUpperCase().includes(upperFieldName)) {
+        ruleToField[ruleId] = fieldName;
+        return;
+      }
+    }
+
+    // Strategy 2: Check rule description for field name
+    if (rule.Description) {
+      for (const fieldName of Object.keys(schema.Fields)) {
+        if (rule.Description.toLowerCase().includes(fieldName.toLowerCase())) {
+          ruleToField[ruleId] = fieldName;
+          return;
+        }
+      }
+    }
+  });
+
+  return ruleToField;
 }
 
 // ============================================================
@@ -84,18 +131,18 @@ function convertValidationRules(
   if (fieldDef.Required) {
     validation.required = {
       value: true,
-      message: `${generateLabel(fieldName)} is required`
+      message: `${generateLabel(fieldName)} is required`,
     };
   }
 
   // Type-specific validation
   switch (fieldDef.Type) {
-    case 'Number':
+    case "Number":
       validation.valueAsNumber = true;
       break;
-    
-    case 'Date':
-    case 'DateTime':
+
+    case "Date":
+    case "DateTime":
       validation.valueAsDate = true;
       break;
   }
@@ -109,8 +156,8 @@ function convertValidationRules(
         fieldDef.Validation!,
         formValues
       );
-      
-      return result.isValid || result.message || 'Invalid value';
+
+      return result.isValid || result.message || "Invalid value";
     };
   }
 
@@ -124,21 +171,23 @@ function convertValidationRules(
 /**
  * Process field options for select/reference fields
  */
-function processFieldOptions(fieldDef: BackendFieldDefinition): Array<{value: any; label: string}> {
+function processFieldOptions(
+  fieldDef: BackendFieldDefinition
+): Array<{ value: any; label: string }> {
   if (!fieldDef.Values) {
     return [];
   }
 
   // Static options
-  if (fieldDef.Values.Mode === 'Static' && fieldDef.Values.Items) {
+  if (fieldDef.Values.Mode === "Static" && fieldDef.Values.Items) {
     return fieldDef.Values.Items.map((item: any) => ({
       value: item.Value,
-      label: item.Label
+      label: item.Label,
     }));
   }
 
   // Dynamic options (reference field)
-  if (fieldDef.Values.Mode === 'Dynamic' && fieldDef.Values.Reference) {
+  if (fieldDef.Values.Mode === "Dynamic" && fieldDef.Values.Reference) {
     // For now, return empty array - will be populated by form hook
     return [];
   }
@@ -160,15 +209,15 @@ function processDefaultValue(
   if (!fieldDef.DefaultValue) {
     // Type-specific defaults
     switch (fieldDef.Type) {
-      case 'Boolean':
+      case "Boolean":
         return false;
-      case 'Number':
+      case "Number":
         return 0;
-      case 'String':
-        return '';
-      case 'Array':
+      case "String":
+        return "";
+      case "Array":
         return [];
-      case 'Object':
+      case "Object":
         return {};
       default:
         return undefined;
@@ -192,19 +241,52 @@ function processField(
   fieldName: string,
   fieldDef: BackendFieldDefinition,
   allFields: Record<string, BackendFieldDefinition>,
-  formValues: Record<string, any> = {}
+  formValues: Record<string, any> = {},
+  permission?: FieldPermission,
+  rules?: {
+    validation: string[];
+    computation: string[];
+    businessLogic: string[];
+  }
 ): ProcessedField {
+  const defaultPermission: FieldPermission = {
+    editable: true,
+    readable: true,
+    hidden: false,
+  };
+
+  const defaultRules = {
+    validation: [],
+    computation: [],
+    businessLogic: [],
+  };
+
+  const fieldRules = rules || defaultRules;
+  const isComputed =
+    fieldDef.Computed ||
+    !!fieldDef.Formula ||
+    fieldRules.computation.length > 0;
+
+  const validation = convertValidationRules(fieldName, fieldDef, allFields);
+
+  // Mark computed fields as disabled so they cannot be manually edited
+  if (isComputed) {
+    validation.disabled = true;
+  }
+
   return {
     name: fieldName,
     type: mapFieldType(fieldDef.Type, fieldName) as any,
-    label: generateLabel(fieldName),
+    label: fieldDef.Name || generateLabel(fieldName),
     required: fieldDef.Required || false,
-    computed: fieldDef.Computed || false,
+    computed: isComputed,
     defaultValue: processDefaultValue(fieldDef, formValues),
     options: processFieldOptions(fieldDef),
-    validation: convertValidationRules(fieldName, fieldDef, allFields),
+    validation,
     description: fieldDef.Description,
-    backendField: fieldDef
+    backendField: fieldDef,
+    permission: permission || defaultPermission,
+    rules: fieldRules,
   };
 }
 
@@ -216,31 +298,64 @@ function processField(
  * Process complete backend schema
  */
 export function processSchema(
-  backendSchema: BackendSchema,
-  formValues: Record<string, any> = {}
+  schema: BackendSchema | BDOSchema,
+  formValues: Record<string, any> = {},
+  userRole?: string
 ): ProcessedSchema {
+  // Convert legacy schema to BDO format if needed
+  const bdoSchema: BDOSchema =
+    "Kind" in schema && schema.Kind === "BusinessObject"
+      ? schema
+      : convertLegacySchema(schema as BackendSchema);
+
   const fields: Record<string, ProcessedField> = {};
   const fieldOrder: string[] = [];
   const computedFields: string[] = [];
   const requiredFields: string[] = [];
   const crossFieldValidation: ValidationRule[] = [];
 
+  // Classify rules by type
+  const classifiedRules = classifyRules(bdoSchema);
+
+  // Create field-to-rule mapping
+  const fieldRules = createFieldRuleMapping(bdoSchema, classifiedRules);
+
+  // Calculate field permissions
+  const fieldPermissions = calculateFieldPermissions(bdoSchema, userRole);
+
   // Process each field
-  for (const [fieldName, fieldDef] of Object.entries(backendSchema)) {
+  for (const [fieldName, fieldDef] of Object.entries(bdoSchema.Fields)) {
     // Skip system fields that shouldn't be in forms
-    if (fieldName.startsWith('_') && !['_id'].includes(fieldName)) {
+    if (fieldName.startsWith("_") && !["_id"].includes(fieldName)) {
       continue;
     }
 
-    const processedField = processField(fieldName, fieldDef, backendSchema, formValues);
-    
+    // Skip hidden fields
+    const permission = fieldPermissions[fieldName];
+    if (permission.hidden) {
+      continue;
+    }
+
+    const processedField = processField(
+      fieldName,
+      fieldDef,
+      bdoSchema.Fields,
+      formValues,
+      permission,
+      fieldRules[fieldName] || {
+        validation: [],
+        computation: [],
+        businessLogic: [],
+      }
+    );
+
     fields[fieldName] = processedField;
     fieldOrder.push(fieldName);
-    
+
     if (processedField.computed) {
       computedFields.push(fieldName);
     }
-    
+
     if (processedField.required) {
       requiredFields.push(fieldName);
     }
@@ -251,7 +366,10 @@ export function processSchema(
     fieldOrder,
     computedFields,
     requiredFields,
-    crossFieldValidation
+    crossFieldValidation,
+    rules: classifiedRules,
+    fieldRules,
+    rolePermissions: bdoSchema.RolePermission,
   };
 }
 
@@ -278,7 +396,7 @@ export function updateComputedFields(
           backendField.Formula.ExpressionTree,
           currentValues
         );
-        
+
         computedValues[fieldName] = computedValue;
       } catch (error) {
         console.warn(`Failed to compute value for ${fieldName}:`, error);
@@ -300,11 +418,11 @@ function extractFieldDependencies(expressionTree: any): string[] {
   const dependencies: Set<string> = new Set();
 
   function traverse(node: any): void {
-    if (!node || typeof node !== 'object') {
+    if (!node || typeof node !== "object") {
       return;
     }
 
-    if (node.Type === 'Identifier' && node.Name) {
+    if (node.Type === "Identifier" && node.Name) {
       dependencies.add(node.Name);
     }
 
@@ -324,7 +442,9 @@ function extractFieldDependencies(expressionTree: any): string[] {
 /**
  * Build field dependency map
  */
-export function buildDependencyMap(processedSchema: ProcessedSchema): Record<string, string[]> {
+export function buildDependencyMap(
+  processedSchema: ProcessedSchema
+): Record<string, string[]> {
   const dependencyMap: Record<string, string[]> = {};
 
   for (const [fieldName, field] of Object.entries(processedSchema.fields)) {
@@ -332,22 +452,28 @@ export function buildDependencyMap(processedSchema: ProcessedSchema): Record<str
 
     // Check formula dependencies
     if (field.backendField.Formula) {
-      const formulaDeps = extractFieldDependencies(field.backendField.Formula.ExpressionTree);
-      formulaDeps.forEach(dep => dependencies.add(dep));
+      const formulaDeps = extractFieldDependencies(
+        field.backendField.Formula.ExpressionTree
+      );
+      formulaDeps.forEach((dep) => dependencies.add(dep));
     }
 
     // Check validation dependencies
     if (field.backendField.Validation) {
       for (const rule of field.backendField.Validation) {
-        const validationDeps = extractFieldDependencies(rule.Condition.ExpressionTree);
-        validationDeps.forEach(dep => dependencies.add(dep));
+        const validationDeps = extractFieldDependencies(
+          rule.Condition.ExpressionTree
+        );
+        validationDeps.forEach((dep) => dependencies.add(dep));
       }
     }
 
     // Check default value dependencies
     if (field.backendField.DefaultValue) {
-      const defaultDeps = extractFieldDependencies(field.backendField.DefaultValue.ExpressionTree);
-      defaultDeps.forEach(dep => dependencies.add(dep));
+      const defaultDeps = extractFieldDependencies(
+        field.backendField.DefaultValue.ExpressionTree
+      );
+      defaultDeps.forEach((dep) => dependencies.add(dep));
     }
 
     dependencyMap[fieldName] = Array.from(dependencies);
@@ -363,17 +489,20 @@ export function buildDependencyMap(processedSchema: ProcessedSchema): Record<str
 /**
  * Validate processed schema
  */
-export function validateSchema(processedSchema: ProcessedSchema): { isValid: boolean; errors: string[] } {
+export function validateSchema(processedSchema: ProcessedSchema): {
+  isValid: boolean;
+  errors: string[];
+} {
   const errors: string[] = [];
 
   // Check for required fields
   if (processedSchema.fieldOrder.length === 0) {
-    errors.push('Schema contains no fields');
+    errors.push("Schema contains no fields");
   }
 
   // Check for circular dependencies in computed fields
   const dependencyMap = buildDependencyMap(processedSchema);
-  
+
   for (const [fieldName, dependencies] of Object.entries(dependencyMap)) {
     if (dependencies.includes(fieldName)) {
       errors.push(`Field ${fieldName} has circular dependency`);
@@ -382,7 +511,7 @@ export function validateSchema(processedSchema: ProcessedSchema): { isValid: boo
 
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
   };
 }
 
@@ -394,28 +523,30 @@ export function validateSchema(processedSchema: ProcessedSchema): { isValid: boo
  * Build reference field configuration for API calls
  */
 export function buildReferenceFieldConfig(field: ProcessedField): any {
-  if (field.type !== 'reference' || !field.backendField.Values?.Reference) {
+  if (field.type !== "reference" || !field.backendField.Values?.Reference) {
     return null;
   }
 
   const ref = field.backendField.Values.Reference;
-  
+
   return {
     businessObject: ref.BusinessObject,
-    fields: ref.Fields || ['_id'], // Default to ID field
+    fields: ref.Fields || ["_id"], // Default to ID field
     filters: ref.Filters,
-    sort: ref.Sort
+    sort: ref.Sort,
   };
 }
 
 /**
  * Extract all reference field configurations from schema
  */
-export function extractReferenceFields(processedSchema: ProcessedSchema): Record<string, any> {
+export function extractReferenceFields(
+  processedSchema: ProcessedSchema
+): Record<string, any> {
   const referenceFields: Record<string, any> = {};
 
   for (const [fieldName, field] of Object.entries(processedSchema.fields)) {
-    if (field.type === 'reference') {
+    if (field.type === "reference") {
       const config = buildReferenceFieldConfig(field);
       if (config) {
         referenceFields[fieldName] = config;

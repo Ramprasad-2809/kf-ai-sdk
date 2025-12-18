@@ -1,105 +1,237 @@
-// Mock product data generator for e-commerce
-// 2 Items per category with realistic Unsplash images
+// BDO-compliant Amazon Product Master mock data
+// Following the exact schema structure from BDO_AmazonProductMaster
 
-const curatedProducts = [
+const amazonProducts = [
   // Electronics
   {
-    name: "Pro Wireless Noise-Canceling Headphones",
-    category: "electronics",
-    price: 299.99,
-    image:
-      "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80",
-    description:
-      "Experience premium sound quality with active noise cancellation and 30-hour battery life.",
+    ProductId: "PROD-2024-0001",
+    ASIN: "B08N5WRWNW",
+    SKU: "ECHO-DOT-4TH",
+    Title: "Echo Dot (4th Gen) | Smart speaker with Alexa | Charcoal",
+    Description:
+      "Meet Echo Dot - Our most popular smart speaker with a fabric design. It is our most compact smart speaker that fits perfectly into small space.",
+    imageUrl:
+      "https://images.unsplash.com/photo-1543512214-318c7553f230?w=400&h=400&fit=crop",
+    Price: 49.99,
+    MRP: 59.99,
+    Cost: 25.0,
+    Category: "Electronics",
+    Brand: "Amazon",
+    Tags: ["smart speaker", "alexa", "echo", "voice control"],
+    Stock: 150,
+    Warehouse: "Warehouse_A",
+    ReorderLevel: 20,
+    IsActive: true,
   },
   {
-    name: "Smart Watch Series 5",
-    category: "electronics",
-    price: 399.0,
-    image:
-      "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80",
-    description:
-      "Track your fitness, heart rate, and notifications on your wrist with the latest Series 5.",
-  },
-
-  // Clothing
-  {
-    name: "Classic Denim Jacket",
-    category: "clothing",
-    price: 79.5,
-    image:
-      "https://images.unsplash.com/photo-1543076447-215ad9ba6923?w=500&q=80",
-    description:
-      "Timeless style meets comfort. This durable denim jacket is perfect for any casual outfit.",
-  },
-  {
-    name: "Performance Running Sneakers",
-    category: "clothing",
-    price: 120.0,
-    image:
-      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&q=80",
-    description:
-      "Lightweight, breathable, and responsive. Designed for the serious runner.",
+    ProductId: "PROD-2024-0002",
+    ASIN: "B07XJ8C8F7",
+    SKU: "FIRE-TV-STICK",
+    Title: "Fire TV Stick with Alexa Voice Remote (includes TV controls)",
+    Description:
+      "The most powerful streaming media stick with a new Wi-Fi antenna design optimized for 4K Ultra HD streaming.",
+    imageUrl:
+      "https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=400&h=400&fit=crop",
+    Price: 39.99,
+    MRP: 49.99,
+    Cost: 20.0,
+    Category: "Electronics",
+    Brand: "Amazon",
+    Tags: ["streaming", "fire tv", "alexa", "4k"],
+    Stock: 200,
+    Warehouse: "Warehouse_B",
+    ReorderLevel: 30,
+    IsActive: true,
   },
 
   // Books
   {
-    name: "The Art of Code",
-    category: "books",
-    price: 49.99,
-    image:
-      "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=500&q=80",
-    description:
-      "Unlock the secrets of software creation. A masterpiece for developers and designers.",
+    ProductId: "PROD-2024-0003",
+    ASIN: "B09X5HJKL3",
+    SKU: "COOKBOOK-WORLD",
+    Title: "The Complete Guide to World Cuisines: 300 Authentic Recipes",
+    Description:
+      "Explore culinary traditions from around the globe with this comprehensive cookbook featuring 300 time-tested recipes from professional chefs.",
+    imageUrl:
+      "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400&h=400&fit=crop",
+    Price: 24.99,
+    MRP: 34.99,
+    Cost: 12.5,
+    Category: "Books",
+    Brand: "Culinary Press",
+    Tags: ["cookbook", "recipes", "international", "cooking"],
+    Stock: 75,
+    Warehouse: "Warehouse_A",
+    ReorderLevel: 15,
+    IsActive: true,
   },
   {
-    name: "Culinary Journey Cookbook",
-    category: "books",
-    price: 35.0,
-    image:
-      "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?w=500&q=80",
-    description:
-      "Explore world flavors with over 100 authentic recipes from around the globe.",
+    ProductId: "PROD-2024-0004",
+    ASIN: "B08M3N2P5Q",
+    SKU: "TECH-CODE-ART",
+    Title: "The Art of Clean Code: A Developer's Guide to Excellence",
+    Description:
+      "Master the principles of writing maintainable, elegant code that stands the test of time. Essential reading for developers at all levels.",
+    imageUrl:
+      "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?w=400&h=400&fit=crop",
+    Price: 39.99,
+    MRP: 49.99,
+    Cost: 18.0,
+    Category: "Books",
+    Brand: "Tech Publishers",
+    Tags: ["programming", "software", "development", "coding"],
+    Stock: 50,
+    Warehouse: "Warehouse_C",
+    ReorderLevel: 10,
+    IsActive: true,
   },
 
-  // Home
+  // Clothing
   {
-    name: "Minimalist Desk Lamp",
-    category: "home",
-    price: 45.0,
-    image:
-      "https://plus.unsplash.com/premium_photo-1685287731216-a7a0fae7a41a?w=500&q=80",
-    description:
-      "Brighten your workspace with this sleek, adjustable LED desk lamp.",
+    ProductId: "PROD-2024-0005",
+    ASIN: "B07Y4K9L8M",
+    SKU: "DENIM-CLASSIC",
+    Title: "Classic Vintage Denim Jacket - Unisex Casual Outerwear",
+    Description:
+      "Timeless denim jacket crafted from premium cotton blend. Features classic styling with modern comfort for everyday wear.",
+    imageUrl:
+      "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=400&h=400&fit=crop",
+    Price: 79.99,
+    MRP: 99.99,
+    Cost: 40.0,
+    Category: "Clothing",
+    Brand: "Vintage Co",
+    Tags: ["denim", "jacket", "casual", "unisex"],
+    Stock: 30,
+    Warehouse: "Warehouse_B",
+    ReorderLevel: 8,
+    IsActive: true,
   },
   {
-    name: "Ceramic Artisan Vase",
-    category: "home",
-    price: 28.0,
-    image:
-      "https://images.unsplash.com/photo-1581783342308-f792dbdd27c5?w=500&q=80",
-    description:
-      "Handcrafted ceramic vase, perfect for displaying fresh flowers or as a standalone piece.",
+    ProductId: "PROD-2024-0006",
+    ASIN: "B09A1B2C3D",
+    SKU: "SNEAKER-SPORT",
+    Title: "Performance Running Sneakers - Lightweight Athletic Shoes",
+    Description:
+      "Engineered for comfort and performance. Breathable mesh upper with responsive cushioning for serious runners.",
+    imageUrl:
+      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=400&fit=crop",
+    Price: 129.99,
+    MRP: 149.99,
+    Cost: 65.0,
+    Category: "Clothing",
+    Brand: "SportMax",
+    Tags: ["sneakers", "running", "athletic", "performance"],
+    Stock: 45,
+    Warehouse: "Warehouse_A",
+    ReorderLevel: 12,
+    IsActive: true,
   },
 
-  // Sports
+  // Home & Kitchen
   {
-    name: "Pro Court Basketball",
-    category: "sports",
-    price: 29.99,
-    image:
-      "https://images.unsplash.com/photo-1519861531473-9200262188bf?w=500&q=80",
-    description:
-      "Official size and weight. Superior grip for indoor and outdoor play.",
+    ProductId: "PROD-2024-0007",
+    ASIN: "B08F5G6H7I",
+    SKU: "LAMP-DESK-LED",
+    Title: "Modern LED Desk Lamp with Wireless Charging Base",
+    Description:
+      "Sleek minimalist design with adjustable brightness levels and built-in wireless charging pad for smartphones.",
+    imageUrl:
+      "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=400&h=400&fit=crop",
+    Price: 89.99,
+    MRP: 109.99,
+    Cost: 45.0,
+    Category: "Home",
+    Brand: "Modern Living",
+    Tags: ["desk lamp", "led", "wireless charging", "modern"],
+    Stock: 25,
+    Warehouse: "Warehouse_C",
+    ReorderLevel: 5,
+    IsActive: true,
   },
   {
-    name: "Premium Yoga Mat",
-    category: "sports",
-    price: 24.99,
-    image:
-      "https://images.unsplash.com/photo-1601925260368-ae2f83cf8b7f?w=500&q=80",
-    description:
-      "Non-slip surface with extra cushioning for joint support during yoga practices.",
+    ProductId: "PROD-2024-0008",
+    ASIN: "B07P8Q9R0S",
+    SKU: "VASE-CERAMIC",
+    Title: "Handcrafted Ceramic Vase - Contemporary Design",
+    Description:
+      "Beautiful artisan-made ceramic vase with contemporary styling. Perfect for fresh flowers or as a standalone decorative piece.",
+    imageUrl:
+      "https://images.unsplash.com/photo-1578500494198-246f612d3b3d?w=400&h=400&fit=crop",
+    Price: 34.99,
+    MRP: 44.99,
+    Cost: 15.0,
+    Category: "Home",
+    Brand: "Artisan Craft",
+    Tags: ["vase", "ceramic", "handcrafted", "decor"],
+    Stock: 20,
+    Warehouse: "Warehouse_A",
+    ReorderLevel: 5,
+    IsActive: true,
+  },
+
+  // Sports & Outdoors
+  {
+    ProductId: "PROD-2024-0009",
+    ASIN: "B09T1U2V3W",
+    SKU: "BASKETBALL-PRO",
+    Title: "Professional Court Basketball - Official Size and Weight",
+    Description:
+      "High-quality leather basketball with superior grip and bounce. Meets all official standards for competitive play.",
+    imageUrl:
+      "https://images.unsplash.com/photo-1546519638-68e109498ffc?w=400&h=400&fit=crop",
+    Price: 34.99,
+    MRP: 39.99,
+    Cost: 18.0,
+    Category: "Sports",
+    Brand: "Pro Sports",
+    Tags: ["basketball", "professional", "official", "leather"],
+    Stock: 60,
+    Warehouse: "Warehouse_B",
+    ReorderLevel: 15,
+    IsActive: true,
+  },
+  {
+    ProductId: "PROD-2024-0010",
+    ASIN: "B08X4Y5Z6A",
+    SKU: "YOGA-MAT-PREMIUM",
+    Title: "Premium Non-Slip Yoga Mat with Alignment Lines",
+    Description:
+      "Extra-thick 6mm yoga mat with superior grip and cushioning. Features alignment lines to perfect your poses.",
+    imageUrl:
+      "https://images.unsplash.com/photo-1601925260368-ae2f83cf8b7f?w=400&h=400&fit=crop",
+    Price: 49.99,
+    MRP: 59.99,
+    Cost: 22.0,
+    Category: "Sports",
+    Brand: "Zen Fitness",
+    Tags: ["yoga mat", "non-slip", "premium", "alignment"],
+    Stock: 40,
+    Warehouse: "Warehouse_C",
+    ReorderLevel: 10,
+    IsActive: true,
+  },
+
+  // Toys & Games
+  {
+    ProductId: "PROD-2024-0011",
+    ASIN: "B07L3M4N5O",
+    SKU: "PUZZLE-WORLD",
+    Title: "World Landmarks 1000-Piece Jigsaw Puzzle",
+    Description:
+      "Challenging 1000-piece puzzle featuring famous landmarks from around the world. High-quality printing with vibrant colors.",
+    imageUrl:
+      "https://images.unsplash.com/photo-1594301872815-12b5e0b9a3b0?w=400&h=400&fit=crop",
+    Price: 19.99,
+    MRP: 24.99,
+    Cost: 8.0,
+    Category: "Toys",
+    Brand: "Puzzle Master",
+    Tags: ["puzzle", "jigsaw", "landmarks", "1000-piece"],
+    Stock: 35,
+    Warehouse: "Warehouse_A",
+    ReorderLevel: 8,
+    IsActive: true,
   },
 ];
 
@@ -108,28 +240,50 @@ const sellers = [
   { id: "seller_002", name: "Fashion Forward" },
 ];
 
+// Apply business rules to calculate computed fields
+function calculateComputedFields(product) {
+  const computed = { ...product };
+
+  // Calculate discount: IF(MRP > 0, ((MRP - Price) / MRP) * 100, 0)
+  if (computed.MRP > 0) {
+    computed.Discount = ((computed.MRP - computed.Price) / computed.MRP) * 100;
+  } else {
+    computed.Discount = 0;
+  }
+
+  // Check low stock: Stock <= ReorderLevel
+  computed.LowStock = computed.Stock <= computed.ReorderLevel;
+
+  return computed;
+}
+
 export function generateProducts() {
-  // count ignored in this fixed version
-  return curatedProducts.map((item, index) => {
+  const timestamp = new Date().toISOString();
+
+  return amazonProducts.map((product, index) => {
     const seller = sellers[index % sellers.length];
-    const i = index + 1;
-    const createdAt = new Date().toISOString();
+    const processedProduct = calculateComputedFields(product);
 
     return {
-      _id: `product_${i.toString().padStart(3, "0")}`,
-      name: item.name,
+      // Core product data
+      ...processedProduct,
+
+      // Legacy compatibility fields
+      name: processedProduct.Title,
       price: {
-        value: item.price,
+        value: processedProduct.Price,
         currency: "USD",
       },
-      description: item.description,
-      category: item.category,
-      availableQuantity: 50, // Fixed stock
-      imageUrl: item.image,
+      description: processedProduct.Description,
+      category: processedProduct.Category.toLowerCase(),
+      availableQuantity: processedProduct.Stock,
+
+      // System fields
+      _id: product.ProductId,
       sellerId: seller.id,
       sellerName: seller.name,
-      _created_at: createdAt,
-      _modified_at: createdAt,
+      _created_at: timestamp,
+      _modified_at: timestamp,
       _created_by: {
         _id: seller.id,
         username: seller.name,
@@ -144,25 +298,172 @@ export function generateProducts() {
   });
 }
 
-// Filter products based on role
+// Role-based filtering following BDO RolePermission schema
 export function filterProductsByRole(products, role, userId = null) {
-  if (role === "seller" && userId) {
-    // Seller only sees their own products
-    return products.filter((product) => product.sellerId === userId);
-  }
+  return products
+    .map((product) => {
+      const filtered = { ...product };
 
-  if (role === "buyer") {
-    // Buyer sees all products but with limited fields
-    return products.map((product) => {
-      const { sellerId, _created_by, _modified_by, ...buyerProduct } = product;
-      return {
-        ...buyerProduct,
-        sellerName: product.sellerName,
-      };
-    });
-  }
+      switch (role) {
+        case "Admin":
+          // Admin can see all fields
+          return filtered;
 
-  return products; // Admin gets all fields
+        case "Seller":
+          // Seller can see most fields but not internal costs
+          const { Cost, ...sellerView } = filtered;
+          return sellerView;
+
+        case "Buyer":
+          // Buyer can only see public product information
+          const {
+            ProductId,
+            ASIN,
+            SKU,
+            Title,
+            Description,
+            Price,
+            MRP,
+            Discount,
+            Category,
+            Brand,
+            Tags,
+            Stock,
+            IsActive,
+            _created_at,
+            _modified_at,
+            _version,
+            _m_version,
+            _id,
+            // Legacy compatibility fields
+            name,
+            price: legacyPrice,
+            description: legacyDesc,
+            category: legacyCat,
+            availableQuantity,
+            imageUrl,
+            sellerName,
+          } = filtered;
+
+          return {
+            ProductId,
+            ASIN,
+            SKU,
+            Title,
+            Description,
+            Price,
+            MRP,
+            Discount,
+            Category,
+            Brand,
+            Tags,
+            Stock,
+            IsActive,
+            _id,
+            _created_at,
+            _modified_at,
+            _version,
+            _m_version,
+            // Legacy fields for backward compatibility
+            name,
+            price: legacyPrice,
+            description: legacyDesc,
+            category: legacyCat,
+            availableQuantity,
+            imageUrl,
+            sellerName,
+          };
+
+        case "InventoryManager":
+          // InventoryManager focuses on inventory fields
+          const {
+            ProductId: invProdId,
+            SKU: invSKU,
+            Title: invTitle,
+            Stock: invStock,
+            Warehouse,
+            ReorderLevel,
+            LowStock,
+            _created_at: invCreated,
+            _modified_at: invModified,
+            _id: invId,
+          } = filtered;
+
+          return {
+            ProductId: invProdId,
+            SKU: invSKU,
+            Title: invTitle,
+            Stock: invStock,
+            Warehouse,
+            ReorderLevel,
+            LowStock,
+            _id: invId,
+            _created_at: invCreated,
+            _modified_at: invModified,
+          };
+
+        case "WarehouseStaff":
+          // WarehouseStaff only sees basic product and stock info
+          const {
+            ProductId: whsProdId,
+            SKU: whsSKU,
+            Title: whsTitle,
+            Stock: whsStock,
+            Warehouse: whsWarehouse,
+            ReorderLevel: whsReorder,
+            LowStock: whsLowStock,
+            _id: whsId,
+          } = filtered;
+
+          return {
+            ProductId: whsProdId,
+            SKU: whsSKU,
+            Title: whsTitle,
+            Stock: whsStock,
+            Warehouse: whsWarehouse,
+            ReorderLevel: whsReorder,
+            LowStock: whsLowStock,
+            _id: whsId,
+          };
+
+        default:
+          // Legacy role handling for backward compatibility
+          if (role === "seller" && userId) {
+            // Legacy seller role - filter by sellerId
+            return product.sellerId === userId ? filtered : null;
+          }
+
+          if (role === "buyer") {
+            // Legacy buyer role - return buyer view
+            const {
+              sellerId,
+              _created_by,
+              _modified_by,
+              Cost,
+              ...buyerProduct
+            } = filtered;
+            return {
+              ...buyerProduct,
+              sellerName: product.sellerName,
+            };
+          }
+
+          // Unknown role - return minimal view
+          const {
+            ProductId: defProdId,
+            Title: defTitle,
+            Price: defPrice,
+            _id: defId,
+          } = filtered;
+          return {
+            ProductId: defProdId,
+            Title: defTitle,
+            Price: defPrice,
+            _id: defId,
+          };
+      }
+    })
+    .filter(Boolean); // Remove null entries from legacy filtering
 }
 
 // Generate products on module load

@@ -1,11 +1,11 @@
 import { setApiBaseUrl, setDefaultHeaders } from "kf-ai-sdk";
 
 export function initializeMockApi() {
-  setApiBaseUrl("/api/bo");
+  setApiBaseUrl("/api");
 
   // Get initial role from localStorage or default to buyer
-  const currentRole = localStorage.getItem("currentRole") || "buyer";
-  const userId = currentRole === "buyer" ? "buyer_001" : "seller_001";
+  const currentRole = localStorage.getItem("currentRole") || "Buyer";
+  const userId = getRoleUserId(currentRole);
 
   setDefaultHeaders({
     "Content-Type": "application/json",
@@ -16,7 +16,7 @@ export function initializeMockApi() {
   // Listen for role changes and update headers
   window.addEventListener("roleChanged", ((event: CustomEvent) => {
     const { role } = event.detail;
-    const newUserId = role === "buyer" ? "buyer_001" : "seller_001";
+    const newUserId = getRoleUserId(role);
 
     localStorage.setItem("currentRole", role);
     setDefaultHeaders({
@@ -27,4 +27,21 @@ export function initializeMockApi() {
 
     console.log(`[API] Role changed to: ${role}, User ID: ${newUserId}`);
   }) as EventListener);
+}
+
+function getRoleUserId(role: string): string {
+  switch (role) {
+    case "Buyer":
+      return "buyer_001";
+    case "Seller":
+      return "seller_001";
+    case "Admin":
+      return "admin_001";
+    case "InventoryManager":
+      return "inventory_001";
+    case "WarehouseStaff":
+      return "warehouse_001";
+    default:
+      return "buyer_001";
+  }
 }

@@ -21,11 +21,12 @@ import {
 import { Checkbox } from "../components/ui/checkbox";
 import { Separator } from "../components/ui/separator";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Cart } from "../../../../app/sources/ecommerce/cart";
+import { Cart, AmazonProductForRole } from "../../../../app";
 import { Roles } from "../../../../app/types/roles";
 
-interface BuyerProduct {
+type BuyerProduct = AmazonProductForRole<typeof Roles.Buyer> & {
   _id: string;
+  // Legacy compatibility fields
   name: string;
   price: { value: number; currency: string };
   description: string;
@@ -33,14 +34,15 @@ interface BuyerProduct {
   availableQuantity: number;
   imageUrl: string;
   sellerName?: string;
-}
+};
 
 const categories = [
-  { value: "electronics", label: "Electronics" },
-  { value: "clothing", label: "Clothing" },
-  { value: "books", label: "Books" },
-  { value: "home", label: "Home & Garden" },
-  { value: "sports", label: "Sports" },
+  { value: "Electronics", label: "Electronics" },
+  { value: "Clothing", label: "Clothing" },
+  { value: "Books", label: "Books" },
+  { value: "Home", label: "Home & Garden" },
+  { value: "Sports", label: "Sports" },
+  { value: "Toys", label: "Toys & Games" },
 ];
 
 export function BuyerProductListPage() {
@@ -51,19 +53,19 @@ export function BuyerProductListPage() {
   const cart = new Cart(Roles.Buyer);
 
   const table = useTable<BuyerProduct>({
-    source: "product",
+    source: "BDO_AmazonProductMaster",
     columns: [
-      { fieldId: "name", label: "Name", enableSorting: true },
-      { fieldId: "price", label: "Price", enableSorting: true },
-      { fieldId: "category", label: "Category", enableSorting: true },
-      { fieldId: "availableQuantity", label: "Stock", enableSorting: true },
+      { fieldId: "Title", label: "Name", enableSorting: true },
+      { fieldId: "Price", label: "Price", enableSorting: true },
+      { fieldId: "Category", label: "Category", enableSorting: true },
+      { fieldId: "Stock", label: "Stock", enableSorting: true },
     ],
     enableSorting: true,
     enableFiltering: true,
     enablePagination: true,
     initialState: {
       pagination: { pageNo: 1, pageSize: 12 },
-      sorting: { field: "name", direction: "asc" },
+      sorting: { field: "Title", direction: "asc" },
     },
   });
 
@@ -111,7 +113,7 @@ export function BuyerProductListPage() {
     table.filter.clearConditions();
     if (newValue !== "all") {
       table.filter.addCondition({
-        lhsField: "category",
+        lhsField: "Category",
         operator: "EQ",
         rhsValue: newValue,
         rhsType: "Constant",

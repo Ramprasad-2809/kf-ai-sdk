@@ -16,7 +16,7 @@ import { Cart } from "../../../../app/sources/ecommerce/cart";
 import { Roles } from "../../../../app/types/roles";
 
 interface NavigationProps {
-  currentRole: "buyer" | "seller";
+  currentRole: "Buyer" | "Seller";
   onLogout: () => void;
 }
 
@@ -27,13 +27,13 @@ export function Navigation({ currentRole, onLogout }: NavigationProps) {
   const { data: cartCount = 0 } = useQuery({
     queryKey: ["cart-count"],
     queryFn: async () => {
-      if (currentRole === "buyer") {
+      if (currentRole === "Buyer") {
         const cart = new Cart(Roles.Buyer);
         return await cart.count();
       }
       return 0;
     },
-    enabled: currentRole === "buyer",
+    enabled: currentRole === "Buyer",
     refetchInterval: 30000,
   });
 
@@ -81,7 +81,7 @@ export function Navigation({ currentRole, onLogout }: NavigationProps) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex flex-col items-start leading-tight hover:outline-none group">
-                <span className="text-xs text-slate-400 group-hover:text-blue-400 transition-colors">Hello, {currentRole === 'buyer' ? 'Buyer' : 'Seller'}</span>
+                <span className="text-xs text-slate-400 group-hover:text-blue-400 transition-colors">Hello, {currentRole}</span>
                 <span className="font-bold text-sm flex items-center gap-1 group-hover:underline">
                   Account & Lists
                 </span>
@@ -107,7 +107,7 @@ export function Navigation({ currentRole, onLogout }: NavigationProps) {
           </DropdownMenu>
 
           {/* Cart */}
-          {currentRole === "buyer" && (
+          {currentRole === "Buyer" && (
             <Link to="/cart" className="flex items-center gap-2 hover:text-blue-400 transition-colors relative">
               <div className="relative">
                 <ShoppingCart className="h-8 w-8" />

@@ -2,9 +2,11 @@ import { Star } from "lucide-react";
 import { Card, CardContent, CardFooter } from "./ui/card";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
+import { AmazonProductForRole, Roles } from "../../../../app";
 
-interface Product {
+type BuyerProduct = AmazonProductForRole<typeof Roles.Buyer> & {
   _id: string;
+  // Legacy compatibility fields
   name: string;
   price: { value: number; currency: string };
   description: string;
@@ -12,12 +14,12 @@ interface Product {
   availableQuantity: number;
   imageUrl: string;
   sellerName?: string;
-}
+};
 
 interface ProductCardProps {
-  product: Product;
-  onAddToCart?: (product: Product) => void;
-  onClick?: (product: Product) => void;
+  product: BuyerProduct;
+  onAddToCart?: (product: BuyerProduct) => void;
+  onClick?: (product: BuyerProduct) => void;
   showAddToCart?: boolean;
 }
 

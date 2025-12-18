@@ -102,7 +102,7 @@ export class Cart<TRole extends Role = typeof Roles.Buyer> {
     if (this.role !== Roles.Buyer) {
       throw new Error("Only buyers can access cart");
     }
-    return api("cart").list(options);
+    return api("BDO_Cart").list(options);
   }
 
   /**
@@ -112,7 +112,7 @@ export class Cart<TRole extends Role = typeof Roles.Buyer> {
     if (this.role !== Roles.Buyer) {
       throw new Error("Only buyers can access cart");
     }
-    return api("cart").get(id);
+    return api("BDO_Cart").get(id);
   }
 
   /**
@@ -122,7 +122,7 @@ export class Cart<TRole extends Role = typeof Roles.Buyer> {
     if (this.role !== Roles.Buyer) {
       throw new Error("Only buyers can add to cart");
     }
-    return api("cart").create(data);
+    return api("BDO_Cart").create(data);
   }
 
   /**
@@ -135,7 +135,7 @@ export class Cart<TRole extends Role = typeof Roles.Buyer> {
     if (this.role !== Roles.Buyer) {
       throw new Error("Only buyers can update cart");
     }
-    return api("cart").update(id, data);
+    return api("BDO_Cart").update(id, data);
   }
 
   /**
@@ -145,7 +145,7 @@ export class Cart<TRole extends Role = typeof Roles.Buyer> {
     if (this.role !== Roles.Buyer) {
       throw new Error("Only buyers can remove from cart");
     }
-    return api("cart").delete(id);
+    return api("BDO_Cart").delete(id);
   }
 
   /**
@@ -156,8 +156,8 @@ export class Cart<TRole extends Role = typeof Roles.Buyer> {
       throw new Error("Only buyers can access cart count");
     }
     
-    // api("cart") does not expose custom methods, using fetch
-    const response = await fetch(`${getApiBaseUrl()}/cart/count`, {
+    // api("BDO_Cart") does not expose custom methods, using fetch
+    const response = await fetch(`${getApiBaseUrl()}/BDO_Cart/count`, {
       method: "POST",
       headers: getDefaultHeaders(),
       body: JSON.stringify({}),

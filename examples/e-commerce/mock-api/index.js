@@ -9,14 +9,16 @@ import {
 } from "./data/cart.js";
 
 export function setupMockAPI(middlewares) {
-  console.log("[Mock API] Setting up e-commerce mock API handlers...");
+  console.log(
+    "[Mock API] Setting up BDO-compliant e-commerce mock API handlers..."
+  );
 
   middlewares.use((req, res, next) => {
     const url = req.url || "";
     const method = req.method || "GET";
 
-    // Only handle /api/bo routes
-    if (!url.startsWith("/api/bo")) {
+    // Handle /api and /meta routes following BDO pattern
+    if (!url.startsWith("/api/") && !url.startsWith("/meta/")) {
       next();
       return;
     }
@@ -26,7 +28,7 @@ export function setupMockAPI(middlewares) {
     // Add delay to simulate network
     const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-    // Parse body for POST/PUT
+    // Parse body for POST/PUT/PATCH
     const parseBody = () => {
       return new Promise((resolve) => {
         let body = "";
@@ -67,8 +69,11 @@ export function setupMockAPI(middlewares) {
       res.setHeader("Access-Control-Allow-Origin", "*");
       res.end(
         JSON.stringify({
-          error: message,
-          timestamp: new Date().toISOString(),
+          Error: {
+            Code: status,
+            Message: message,
+            Timestamp: new Date().toISOString(),
+          },
         })
       );
     };
@@ -93,25 +98,13 @@ export function setupMockAPI(middlewares) {
     const role = req.headers["x-user-role"] || "buyer";
     const userId = req.headers["x-user-id"] || "buyer_001";
 
-    // ==================== PRODUCT ENDPOINTS ====================
+    // ==================== BDO PRODUCT ENDPOINTS ====================
 
-    // Product count
-    if (url.includes("/product/count") && method === "POST") {
-      parseBody().then(async (body) => {
-        let products = filterProductsByRole(mockProducts, role, userId);
-        products = applyFiltersAndSearch(products, body);
-
-        await sendJSON({
-          Count: products.length,
-          Success: true,
-          Timestamp: new Date().toISOString(),
-        });
-      });
-      return;
-    }
-
-    // Product list
-    if (url.includes("/product/list") && method === "POST") {
+    // BDO Pattern: POST /api/BDO_AmazonProductMaster/list
+    if (
+      url.match(/^\/api\/BDO_AmazonProductMaster\/list$/i) &&
+      method === "POST"
+    ) {
       parseBody().then(async (body) => {
         let products = filterProductsByRole(mockProducts, role, userId);
         products = applyFiltersAndSearch(products, body);
@@ -125,8 +118,8 @@ export function setupMockAPI(middlewares) {
             let aVal = a[Field];
             let bVal = b[Field];
 
-            // Handle price object
-            if (Field === "price") {
+            // Handle nested objects
+            if (Field === "price" && typeof aVal === "object") {
               aVal = aVal?.value || 0;
               bVal = bVal?.value || 0;
             }
@@ -147,17 +140,36 @@ export function setupMockAPI(middlewares) {
 
         await sendJSON({
           Data: paginatedProducts,
-          Success: true,
-          Timestamp: new Date().toISOString(),
         });
       });
       return;
     }
 
-    // Product read
-    if (url.match(/\/api\/bo\/product\/[^/]+\/read$/i) && method === "GET") {
-      const pathParts = url.split("/");
-      const productId = pathParts[pathParts.length - 2];
+    // BDO Pattern: POST /api/BDO_AmazonProductMaster/count
+    if (
+      url.match(/^\/api\/BDO_AmazonProductMaster\/count$/i) &&
+      method === "POST"
+    ) {
+      parseBody().then(async (body) => {
+        let products = filterProductsByRole(mockProducts, role, userId);
+        products = applyFiltersAndSearch(products, body);
+
+        await sendJSON({
+          Count: products.length,
+        });
+      });
+      return;
+    }
+
+    // BDO Pattern: GET /api/BDO_AmazonProductMaster/{instance_id}/read
+    if (
+      url.match(/^\/api\/BDO_AmazonProductMaster\/([^/]+)\/read$/i) &&
+      method === "GET"
+    ) {
+      const match = url.match(
+        /^\/api\/BDO_AmazonProductMaster\/([^/]+)\/read$/i
+      );
+      const productId = match[1];
 
       const products = filterProductsByRole(mockProducts, role, userId);
       const product = products.find((p) => p._id === productId);
@@ -165,8 +177,6 @@ export function setupMockAPI(middlewares) {
       if (product) {
         sendJSON({
           Data: product,
-          Success: true,
-          Timestamp: new Date().toISOString(),
         });
       } else {
         sendError(`Product with ID ${productId} not found`, 404);
@@ -174,15 +184,20 @@ export function setupMockAPI(middlewares) {
       return;
     }
 
-    // Product create
-    if (url.match(/\/api\/bo\/product\/create$/i) && method === "POST") {
-      if (role !== "seller") {
-        sendError("Only sellers can create products", 403);
+    // BDO Pattern: POST /api/BDO_AmazonProductMaster/create
+    if (
+      url.match(/^\/api\/BDO_AmazonProductMaster\/create$/i) &&
+      method === "POST"
+    ) {
+      // Check permissions
+      const allowedRoles = ["Admin", "Seller"];
+      if (!allowedRoles.includes(role)) {
+        sendError("Insufficient permissions to create products", 403);
         return;
       }
 
       parseBody().then(async (body) => {
-        const newId = `product_${Date.now()}`;
+        const newId = body._id || `PROD-${Date.now()}`;
         const newProduct = {
           _id: newId,
           ...body,
@@ -190,33 +205,188 @@ export function setupMockAPI(middlewares) {
           sellerName: "My Store",
           _created_at: new Date().toISOString(),
           _modified_at: new Date().toISOString(),
-          _created_by: { _id: userId, username: "seller" },
-          _modified_by: { _id: userId, username: "seller" },
+          _created_by: { _id: userId, username: role.toLowerCase() },
+          _modified_by: { _id: userId, username: role.toLowerCase() },
           _version: "1.0",
           _m_version: "1.0",
         };
 
+        // Apply business rules
+        if (newProduct.MRP && newProduct.Price) {
+          // Calculate discount: IF(MRP > 0, ((MRP - Price) / MRP) * 100, 0)
+          newProduct.Discount =
+            newProduct.MRP > 0
+              ? ((newProduct.MRP - newProduct.Price) / newProduct.MRP) * 100
+              : 0;
+        }
+
+        if (
+          newProduct.Stock !== undefined &&
+          newProduct.ReorderLevel !== undefined
+        ) {
+          // Check low stock: Stock <= ReorderLevel
+          newProduct.LowStock = newProduct.Stock <= newProduct.ReorderLevel;
+        }
+
         mockProducts.push(newProduct);
 
         await sendJSON({
+          _id: newId,
           Success: true,
-          Data: { _id: newId },
           Message: "Product created successfully",
-          Timestamp: new Date().toISOString(),
         });
       });
       return;
     }
 
-    // Product update
-    if (url.match(/\/api\/bo\/product\/[^/]+\/update$/i) && method === "POST") {
-      if (role !== "seller") {
-        sendError("Only sellers can update products", 403);
+    // BDO Pattern: PATCH /api/BDO_AmazonProductMaster/{instance_id}/draft
+    // Interactive mode - returns only computed fields without persisting changes
+    if (
+      url.match(/^\/api\/BDO_AmazonProductMaster\/([^/]+)\/draft$/i) &&
+      method === "PATCH"
+    ) {
+      const match = url.match(
+        /^\/api\/BDO_AmazonProductMaster\/([^/]+)\/draft$/i
+      );
+      const productId = match[1];
+
+      // Check permissions
+      const allowedRoles = [
+        "Admin",
+        "Seller",
+        "InventoryManager",
+        "WarehouseStaff",
+      ];
+      if (!allowedRoles.includes(role)) {
+        sendError("Insufficient permissions to update products", 403);
         return;
       }
 
-      const pathParts = url.split("/");
-      const productId = pathParts[pathParts.length - 2];
+      let product = mockProducts.find((p) => p._id === productId);
+
+      // For create operations, productId might be "new" or draft ID
+      if (!product && productId !== "new") {
+        sendError(`Product with ID ${productId} not found`, 404);
+        return;
+      }
+
+      parseBody().then(async (body) => {
+        // Get current or default values
+        const currentValues = product ? { ...product } : {};
+        const updatedFields = { ...body };
+
+        // Apply business rules for computed fields
+        const computedFields = {};
+
+        // RULE_CALC_DISCOUNT: Calculate discount percentage
+        if (
+          updatedFields.MRP !== undefined ||
+          updatedFields.Price !== undefined
+        ) {
+          const mrp =
+            updatedFields.MRP !== undefined
+              ? updatedFields.MRP
+              : currentValues.MRP || 0;
+          const price =
+            updatedFields.Price !== undefined
+              ? updatedFields.Price
+              : currentValues.Price || 0;
+
+          // IF(MRP > 0, ((MRP - Price) / MRP) * 100, 0)
+          computedFields.Discount = mrp > 0 ? ((mrp - price) / mrp) * 100 : 0;
+        }
+
+        // RULE_CHECK_LOW_STOCK: Check if stock is below reorder level
+        if (
+          updatedFields.Stock !== undefined ||
+          updatedFields.ReorderLevel !== undefined
+        ) {
+          const stock =
+            updatedFields.Stock !== undefined
+              ? updatedFields.Stock
+              : currentValues.Stock || 0;
+          const reorderLevel =
+            updatedFields.ReorderLevel !== undefined
+              ? updatedFields.ReorderLevel
+              : currentValues.ReorderLevel || 10;
+
+          // Stock <= ReorderLevel
+          computedFields.LowStock = stock <= reorderLevel;
+        }
+
+        // Return ONLY computed fields (don't persist changes)
+        await sendJSON(computedFields);
+      });
+      return;
+    }
+
+    // BDO Pattern: PATCH /api/BDO_AmazonProductMaster/draft (for create operations)
+    if (
+      url.match(/^\/api\/BDO_AmazonProductMaster\/draft$/i) &&
+      method === "PATCH"
+    ) {
+      // Check permissions
+      const allowedRoles = ["Admin", "Seller"];
+      if (!allowedRoles.includes(role)) {
+        sendError("Insufficient permissions to create products", 403);
+        return;
+      }
+
+      parseBody().then(async (body) => {
+        const updatedFields = { ...body };
+
+        // Apply business rules for computed fields
+        const computedFields = {};
+
+        // RULE_CALC_DISCOUNT: Calculate discount percentage
+        if (
+          updatedFields.MRP !== undefined ||
+          updatedFields.Price !== undefined
+        ) {
+          const mrp = updatedFields.MRP || 0;
+          const price = updatedFields.Price || 0;
+
+          computedFields.Discount = mrp > 0 ? ((mrp - price) / mrp) * 100 : 0;
+        }
+
+        // RULE_CHECK_LOW_STOCK: Check if stock is below reorder level
+        if (
+          updatedFields.Stock !== undefined ||
+          updatedFields.ReorderLevel !== undefined
+        ) {
+          const stock = updatedFields.Stock || 0;
+          const reorderLevel = updatedFields.ReorderLevel || 10;
+
+          computedFields.LowStock = stock <= reorderLevel;
+        }
+
+        // Return ONLY computed fields
+        await sendJSON(computedFields);
+      });
+      return;
+    }
+
+    // BDO Pattern: POST /api/BDO_AmazonProductMaster/{instance_id}/update
+    if (
+      url.match(/^\/api\/BDO_AmazonProductMaster\/([^/]+)\/update$/i) &&
+      method === "POST"
+    ) {
+      const match = url.match(
+        /^\/api\/BDO_AmazonProductMaster\/([^/]+)\/update$/i
+      );
+      const productId = match[1];
+
+      // Check permissions
+      const allowedRoles = [
+        "Admin",
+        "Seller",
+        "InventoryManager",
+        "WarehouseStaff",
+      ];
+      if (!allowedRoles.includes(role)) {
+        sendError("Insufficient permissions to update products", 403);
+        return;
+      }
 
       const product = mockProducts.find((p) => p._id === productId);
 
@@ -225,36 +395,86 @@ export function setupMockAPI(middlewares) {
         return;
       }
 
-      if (product.sellerId !== userId) {
+      // Additional permission checks for sellers
+      if (role === "Seller" && product.sellerId !== userId) {
         sendError("You can only update your own products", 403);
         return;
       }
 
       parseBody().then(async (body) => {
-        Object.assign(product, body, {
+        // Apply updates
+        const updatedFields = { ...body };
+
+        // Apply business rules for computed fields
+        const computedFields = {};
+
+        if (
+          updatedFields.MRP !== undefined ||
+          updatedFields.Price !== undefined
+        ) {
+          const mrp =
+            updatedFields.MRP !== undefined ? updatedFields.MRP : product.MRP;
+          const price =
+            updatedFields.Price !== undefined
+              ? updatedFields.Price
+              : product.Price;
+
+          // Calculate discount
+          if (mrp && price) {
+            computedFields.Discount = mrp > 0 ? ((mrp - price) / mrp) * 100 : 0;
+          }
+        }
+
+        if (
+          updatedFields.Stock !== undefined ||
+          updatedFields.ReorderLevel !== undefined
+        ) {
+          const stock =
+            updatedFields.Stock !== undefined
+              ? updatedFields.Stock
+              : product.Stock;
+          const reorderLevel =
+            updatedFields.ReorderLevel !== undefined
+              ? updatedFields.ReorderLevel
+              : product.ReorderLevel;
+
+          // Check low stock
+          if (stock !== undefined && reorderLevel !== undefined) {
+            computedFields.LowStock = stock <= reorderLevel;
+          }
+        }
+
+        // Apply all updates
+        Object.assign(product, updatedFields, computedFields, {
           _modified_at: new Date().toISOString(),
-          _modified_by: { _id: userId, username: "seller" },
+          _modified_by: { _id: userId, username: role.toLowerCase() },
         });
 
         await sendJSON({
+          _id: productId,
           Success: true,
-          Data: { _id: productId },
           Message: "Product updated successfully",
-          Timestamp: new Date().toISOString(),
+          computedFields, // Return computed fields for client update
         });
       });
       return;
     }
 
-    // Product delete
-    if (url.match(/\/api\/bo\/product\/[^/]+\/delete$/i) && (method === "POST" || method === "DELETE")) {
-      if (role !== "seller") {
-        sendError("Only sellers can delete products", 403);
+    // BDO Pattern: DELETE /api/BDO_AmazonProductMaster/{instance_id}/delete
+    if (
+      url.match(/^\/api\/BDO_AmazonProductMaster\/([^/]+)\/delete$/i) &&
+      method === "DELETE"
+    ) {
+      const match = url.match(
+        /^\/api\/BDO_AmazonProductMaster\/([^/]+)\/delete$/i
+      );
+      const productId = match[1];
+
+      // Only admins can delete
+      if (role !== "Admin") {
+        sendError("Only admins can delete products", 403);
         return;
       }
-
-      const pathParts = url.split("/");
-      const productId = pathParts[pathParts.length - 2];
 
       const productIndex = mockProducts.findIndex((p) => p._id === productId);
 
@@ -263,119 +483,421 @@ export function setupMockAPI(middlewares) {
         return;
       }
 
-      if (mockProducts[productIndex].sellerId !== userId) {
-        sendError("You can only delete your own products", 403);
-        return;
-      }
-
       mockProducts.splice(productIndex, 1);
 
       sendJSON({
         Success: true,
         Message: "Product deleted successfully",
-        Timestamp: new Date().toISOString(),
       });
       return;
     }
 
-    // Product field schema
-    if (url.includes("/api/bo/product/field") && method === "GET") {
+    // ==================== BDO METADATA ENDPOINTS ====================
+
+    // BDO Pattern: GET /meta/bdo/BDO_AmazonProductMaster
+    if (
+      url.match(/^\/meta\/bdo\/BDO_AmazonProductMaster$/i) &&
+      method === "GET"
+    ) {
       const schema = {
-        name: {
-          Type: "String",
-          Required: true,
-          Validation: [
-            {
-              Id: "VAL_PRODUCT_NAME_001",
-              Type: "Expression",
-              Condition: {
-                Expression: "LENGTH(TRIM(name)) >= 2",
-                ExpressionTree: {
-                  Type: "BinaryExpression",
-                  Operator: ">=",
-                  Arguments: [
-                    {
-                      Type: "CallExpression",
-                      Callee: "LENGTH",
-                      Arguments: [
-                        {
-                          Type: "CallExpression",
-                          Callee: "TRIM",
-                          Arguments: [
-                            { Type: "Identifier", Name: "name", Source: "BO_Product" },
-                          ],
-                        },
-                      ],
-                    },
-                    { Type: "Literal", Value: 2 },
-                  ],
-                },
+        Id: "BDO_AmazonProductMaster",
+        Name: "Amazon Product Master",
+        Kind: "BusinessObject",
+        Description:
+          "Comprehensive product master data with inventory and pricing",
+        Rules: {
+          Computation: {
+            RULE_CALC_DISCOUNT: {
+              Id: "RULE_CALC_DISCOUNT",
+              Name: "Calculate Discount Percentage",
+              Description: "Calculates discount percentage from MRP and Price",
+              Expression: "IF(MRP > 0, ((MRP - Price) / MRP) * 100, 0)",
+              ExpressionTree: {
+                Type: "CallExpression",
+                Callee: "IF",
+                Arguments: [
+                  {
+                    Type: "BinaryExpression",
+                    Operator: ">",
+                    Arguments: [
+                      {
+                        Type: "Identifier",
+                        Name: "MRP",
+                        Source: "BDO_AmazonProductMaster",
+                      },
+                      { Type: "Literal", Value: 0 },
+                    ],
+                  },
+                  {
+                    Type: "BinaryExpression",
+                    Operator: "*",
+                    Arguments: [
+                      {
+                        Type: "BinaryExpression",
+                        Operator: "/",
+                        Arguments: [
+                          {
+                            Type: "BinaryExpression",
+                            Operator: "-",
+                            Arguments: [
+                              {
+                                Type: "Identifier",
+                                Name: "MRP",
+                                Source: "BDO_AmazonProductMaster",
+                              },
+                              {
+                                Type: "Identifier",
+                                Name: "Price",
+                                Source: "BDO_AmazonProductMaster",
+                              },
+                            ],
+                          },
+                          {
+                            Type: "Identifier",
+                            Name: "MRP",
+                            Source: "BDO_AmazonProductMaster",
+                          },
+                        ],
+                      },
+                      { Type: "Literal", Value: 100 },
+                    ],
+                  },
+                  { Type: "Literal", Value: 0 },
+                ],
               },
-              Message: "Product name must be at least 2 characters",
+              ResultType: "Number",
             },
-          ],
-        },
-        description: {
-          Type: "String",
-          Required: true,
-        },
-        price: {
-          Type: "Number",
-          Required: true,
-          Validation: [
-            {
-              Id: "VAL_PRODUCT_PRICE_001",
-              Type: "Expression",
-              Condition: {
-                Expression: "price > 0",
-                ExpressionTree: {
-                  Type: "BinaryExpression",
-                  Operator: ">",
-                  Arguments: [
-                    { Type: "Identifier", Name: "price", Source: "BO_Product" },
-                    { Type: "Literal", Value: 0 },
-                  ],
-                },
+            RULE_CHECK_LOW_STOCK: {
+              Id: "RULE_CHECK_LOW_STOCK",
+              Name: "Check Low Stock",
+              Description: "Determines if stock is below reorder level",
+              Expression: "Stock <= ReorderLevel",
+              ExpressionTree: {
+                Type: "BinaryExpression",
+                Operator: "<=",
+                Arguments: [
+                  {
+                    Type: "Identifier",
+                    Name: "Stock",
+                    Source: "BDO_AmazonProductMaster",
+                  },
+                  {
+                    Type: "Identifier",
+                    Name: "ReorderLevel",
+                    Source: "BDO_AmazonProductMaster",
+                  },
+                ],
               },
-              Message: "Price must be greater than $0",
+              ResultType: "Boolean",
             },
-          ],
-        },
-        category: {
-          Type: "String",
-          Required: true,
-          Values: {
-            Mode: "Static",
-            Items: [
-              { Value: "electronics", Label: "Electronics" },
-              { Value: "clothing", Label: "Clothing" },
-              { Value: "books", Label: "Books" },
-              { Value: "home", Label: "Home & Garden" },
-              { Value: "sports", Label: "Sports" },
-            ],
+          },
+          Validation: {
+            RULE_ASIN_REQUIRED: {
+              Id: "RULE_ASIN_REQUIRED",
+              Name: "ASIN Required",
+              Description: "ASIN field must have a value",
+              Expression: "ASIN != null AND TRIM(ASIN) != ''",
+              ExpressionTree: {
+                Type: "LogicalExpression",
+                Operator: "AND",
+                Arguments: [
+                  {
+                    Type: "BinaryExpression",
+                    Operator: "!=",
+                    Arguments: [
+                      {
+                        Type: "Identifier",
+                        Name: "ASIN",
+                        Source: "BDO_AmazonProductMaster",
+                      },
+                      { Type: "Literal", Value: null },
+                    ],
+                  },
+                  {
+                    Type: "BinaryExpression",
+                    Operator: "!=",
+                    Arguments: [
+                      {
+                        Type: "CallExpression",
+                        Callee: "TRIM",
+                        Arguments: [
+                          {
+                            Type: "Identifier",
+                            Name: "ASIN",
+                            Source: "BDO_AmazonProductMaster",
+                          },
+                        ],
+                      },
+                      { Type: "Literal", Value: "" },
+                    ],
+                  },
+                ],
+              },
+              Message: "ASIN is required",
+            },
+            RULE_ASIN_FORMAT: {
+              Id: "RULE_ASIN_FORMAT",
+              Name: "ASIN Format Validation",
+              Description: "Validates ASIN is 10 alphanumeric characters",
+              Expression:
+                "LENGTH(ASIN) == 10 AND MATCHES(ASIN, '^[A-Z0-9]{10}$')",
+              ExpressionTree: {
+                Type: "LogicalExpression",
+                Operator: "AND",
+                Arguments: [
+                  {
+                    Type: "BinaryExpression",
+                    Operator: "==",
+                    Arguments: [
+                      {
+                        Type: "CallExpression",
+                        Callee: "LENGTH",
+                        Arguments: [
+                          {
+                            Type: "Identifier",
+                            Name: "ASIN",
+                            Source: "BDO_AmazonProductMaster",
+                          },
+                        ],
+                      },
+                      { Type: "Literal", Value: 10 },
+                    ],
+                  },
+                  {
+                    Type: "CallExpression",
+                    Callee: "MATCHES",
+                    Arguments: [
+                      {
+                        Type: "Identifier",
+                        Name: "ASIN",
+                        Source: "BDO_AmazonProductMaster",
+                      },
+                      { Type: "Literal", Value: "^[A-Z0-9]{10}$" },
+                    ],
+                  },
+                ],
+              },
+              Message: "ASIN must be exactly 10 alphanumeric characters",
+            },
           },
         },
-        availableQuantity: {
-          Type: "Number",
-          Required: true,
-          Validation: [
-            {
-              Id: "VAL_PRODUCT_QTY_001",
-              Type: "Expression",
-              Condition: {
-                Expression: "availableQuantity >= 0",
-                ExpressionTree: {
-                  Type: "BinaryExpression",
-                  Operator: ">=",
-                  Arguments: [
-                    { Type: "Identifier", Name: "availableQuantity", Source: "BO_Product" },
-                    { Type: "Literal", Value: 0 },
-                  ],
-                },
-              },
-              Message: "Quantity must be 0 or greater",
+        Fields: {
+          ProductId: {
+            Id: "ProductId",
+            Name: "Product ID",
+            Type: "String",
+            Unique: true,
+          },
+          ASIN: {
+            Id: "ASIN",
+            Name: "Amazon Standard Identification Number",
+            Type: "String",
+            Unique: true,
+            Validation: ["RULE_ASIN_REQUIRED", "RULE_ASIN_FORMAT"],
+          },
+          SKU: {
+            Id: "SKU",
+            Name: "Stock Keeping Unit",
+            Type: "String",
+            Unique: true,
+          },
+          Title: {
+            Id: "Title",
+            Name: "Product Title",
+            Type: "String",
+            Required: true,
+          },
+          Description: {
+            Id: "Description",
+            Name: "Product Description",
+            Type: "String",
+          },
+          Price: {
+            Id: "Price",
+            Name: "Selling Price",
+            Type: "Number",
+            Required: true,
+          },
+          MRP: {
+            Id: "MRP",
+            Name: "Maximum Retail Price",
+            Type: "Number",
+            Required: true,
+          },
+          Cost: { Id: "Cost", Name: "Product Cost", Type: "Number" },
+          Discount: {
+            Id: "Discount",
+            Name: "Discount Percentage",
+            Type: "Number",
+            Computed: true,
+          },
+          Category: {
+            Id: "Category",
+            Name: "Product Category",
+            Type: "String",
+            Required: true,
+            Values: {
+              Mode: "Static",
+              Items: [
+                { Value: "Electronics", Label: "Electronics" },
+                { Value: "Books", Label: "Books" },
+                { Value: "Clothing", Label: "Clothing & Accessories" },
+                { Value: "Home", Label: "Home & Kitchen" },
+                { Value: "Sports", Label: "Sports & Outdoors" },
+                { Value: "Toys", Label: "Toys & Games" },
+              ],
             },
-          ],
+          },
+          Brand: { Id: "Brand", Name: "Brand Name", Type: "String" },
+          Tags: {
+            Id: "Tags",
+            Name: "Product Tags",
+            Type: "Array",
+            Items: { Type: "String" },
+          },
+          Stock: {
+            Id: "Stock",
+            Name: "Stock Quantity",
+            Type: "Number",
+            Required: true,
+          },
+          Warehouse: {
+            Id: "Warehouse",
+            Name: "Warehouse Location",
+            Type: "String",
+            Values: {
+              Mode: "Static",
+              Items: [
+                { Value: "Warehouse_A", Label: "Warehouse A - North" },
+                { Value: "Warehouse_B", Label: "Warehouse B - South" },
+                { Value: "Warehouse_C", Label: "Warehouse C - East" },
+              ],
+            },
+          },
+          ReorderLevel: {
+            Id: "ReorderLevel",
+            Name: "Reorder Level",
+            Type: "Number",
+          },
+          LowStock: {
+            Id: "LowStock",
+            Name: "Low Stock Indicator",
+            Type: "Boolean",
+            Computed: true,
+          },
+          IsActive: { Id: "IsActive", Name: "Is Active", Type: "Boolean" },
+        },
+        RolePermission: {
+          Admin: {
+            Editable: ["*"],
+            ReadOnly: ["*"],
+            Methods: ["*"],
+          },
+          Seller: {
+            Editable: [
+              "Title",
+              "Description",
+              "Price",
+              "MRP",
+              "Category",
+              "Brand",
+              "Tags",
+              "Stock",
+              "Warehouse",
+            ],
+            ReadOnly: [
+              "ProductId",
+              "ASIN",
+              "SKU",
+              "Cost",
+              "Discount",
+              "LowStock",
+              "_created_at",
+              "_modified_at",
+            ],
+            Methods: ["create", "read", "update", "list"],
+          },
+          Buyer: {
+            Editable: [],
+            ReadOnly: [
+              "ProductId",
+              "ASIN",
+              "SKU",
+              "Title",
+              "Description",
+              "Price",
+              "MRP",
+              "Discount",
+              "Category",
+              "Brand",
+              "Tags",
+              "Stock",
+              "IsActive",
+            ],
+            Filters: {
+              Operator: "AND",
+              Condition: [
+                {
+                  LhsField: "IsActive",
+                  Operator: "EQ",
+                  RhsType: "Literal",
+                  RhsValue: true,
+                },
+              ],
+            },
+            Methods: ["read", "list"],
+          },
+          InventoryManager: {
+            Editable: ["Stock", "Warehouse", "ReorderLevel"],
+            ReadOnly: ["*"],
+            Methods: ["read", "update", "list"],
+          },
+          WarehouseStaff: {
+            Editable: ["Stock"],
+            ReadOnly: [
+              "ProductId",
+              "SKU",
+              "Title",
+              "Stock",
+              "Warehouse",
+              "ReorderLevel",
+              "LowStock",
+            ],
+            Filters: {
+              Operator: "AND",
+              Condition: [
+                {
+                  LhsField: "Warehouse",
+                  Operator: "EQ",
+                  RhsType: "Field",
+                  RhsValue: { Expression: "CURRENT_USER.Warehouse" },
+                },
+              ],
+            },
+            Methods: ["read", "update", "list"],
+          },
+        },
+        Roles: {
+          Admin: {
+            Name: "Admin",
+            Description: "System Administrator with full access",
+          },
+          Seller: {
+            Name: "Seller",
+            Description: "Product seller with create and update permissions",
+          },
+          Buyer: {
+            Name: "Buyer",
+            Description: "Product buyer with read-only access",
+          },
+          InventoryManager: {
+            Name: "Inventory Manager",
+            Description: "Manages inventory levels and warehouse assignments",
+          },
+          WarehouseStaff: {
+            Name: "Warehouse Staff",
+            Description: "Updates stock for assigned warehouse",
+          },
         },
       };
 
@@ -383,11 +905,11 @@ export function setupMockAPI(middlewares) {
       return;
     }
 
-    // ==================== CART ENDPOINTS ====================
+    // ==================== BDO CART ENDPOINTS ====================
 
-    // Cart count
-    if (url.includes("/cart/count") && method === "POST") {
-      if (role !== "buyer") {
+    // BDO Pattern: POST /api/BDO_Cart/count
+    if (url.match(/^\/api\/BDO_Cart\/count$/i) && method === "POST") {
+      if (role !== "Buyer") {
         sendError("Only buyers can access cart", 403);
         return;
       }
@@ -395,15 +917,13 @@ export function setupMockAPI(middlewares) {
       const count = getCartCount(userId);
       sendJSON({
         Count: count,
-        Success: true,
-        Timestamp: new Date().toISOString(),
       });
       return;
     }
 
-    // Cart list
-    if (url.includes("/cart/list") && method === "POST") {
-      if (role !== "buyer") {
+    // BDO Pattern: POST /api/BDO_Cart/list
+    if (url.match(/^\/api\/BDO_Cart\/list$/i) && method === "POST") {
+      if (role !== "Buyer") {
         sendError("Only buyers can access cart", 403);
         return;
       }
@@ -411,15 +931,13 @@ export function setupMockAPI(middlewares) {
       const items = getCartItems(userId);
       sendJSON({
         Data: items,
-        Success: true,
-        Timestamp: new Date().toISOString(),
       });
       return;
     }
 
-    // Cart add (create)
-    if (url.match(/\/api\/bo\/cart\/create$/i) && method === "POST") {
-      if (role !== "buyer") {
+    // BDO Pattern: POST /api/BDO_Cart/create
+    if (url.match(/^\/api\/BDO_Cart\/create$/i) && method === "POST") {
+      if (role !== "Buyer") {
         sendError("Only buyers can add to cart", 403);
         return;
       }
@@ -428,24 +946,23 @@ export function setupMockAPI(middlewares) {
         const item = addToCart(userId, body);
 
         await sendJSON({
+          _id: item._id,
           Success: true,
-          Data: item,
           Message: "Item added to cart",
-          Timestamp: new Date().toISOString(),
         });
       });
       return;
     }
 
-    // Cart update
-    if (url.match(/\/api\/bo\/cart\/[^/]+\/update$/i) && method === "POST") {
-      if (role !== "buyer") {
+    // BDO Pattern: POST /api/BDO_Cart/{instance_id}/update
+    if (url.match(/^\/api\/BDO_Cart\/([^/]+)\/update$/i) && method === "POST") {
+      if (role !== "Buyer") {
         sendError("Only buyers can update cart", 403);
         return;
       }
 
-      const pathParts = url.split("/");
-      const itemId = pathParts[pathParts.length - 2];
+      const match = url.match(/^\/api\/BDO_Cart\/([^/]+)\/update$/i);
+      const itemId = match[1];
 
       parseBody().then(async (body) => {
         const item = updateCartItem(userId, itemId, body.quantity);
@@ -456,24 +973,26 @@ export function setupMockAPI(middlewares) {
         }
 
         await sendJSON({
+          _id: itemId,
           Success: true,
-          Data: item,
           Message: "Cart updated",
-          Timestamp: new Date().toISOString(),
         });
       });
       return;
     }
 
-    // Cart delete item
-    if (url.match(/\/api\/bo\/cart\/[^/]+\/delete$/i) && (method === "POST" || method === "DELETE")) {
-      if (role !== "buyer") {
+    // BDO Pattern: DELETE /api/BDO_Cart/{instance_id}/delete
+    if (
+      url.match(/^\/api\/BDO_Cart\/([^/]+)\/delete$/i) &&
+      method === "DELETE"
+    ) {
+      if (role !== "Buyer") {
         sendError("Only buyers can remove from cart", 403);
         return;
       }
 
-      const pathParts = url.split("/");
-      const itemId = pathParts[pathParts.length - 2];
+      const match = url.match(/^\/api\/BDO_Cart\/([^/]+)\/delete$/i);
+      const itemId = match[1];
 
       const removed = removeFromCart(userId, itemId);
 
@@ -485,14 +1004,13 @@ export function setupMockAPI(middlewares) {
       sendJSON({
         Success: true,
         Message: "Item removed from cart",
-        Timestamp: new Date().toISOString(),
       });
       return;
     }
 
-    // Cart clear
-    if (url.match(/\/api\/bo\/cart\/clear$/i) && method === "POST") {
-      if (role !== "buyer") {
+    // BDO Pattern: POST /api/BDO_Cart/clear
+    if (url.match(/^\/api\/BDO_Cart\/clear$/i) && method === "POST") {
+      if (role !== "Buyer") {
         sendError("Only buyers can clear cart", 403);
         return;
       }
@@ -502,7 +1020,6 @@ export function setupMockAPI(middlewares) {
       sendJSON({
         Success: true,
         Message: "Cart cleared",
-        Timestamp: new Date().toISOString(),
       });
       return;
     }
@@ -512,7 +1029,7 @@ export function setupMockAPI(middlewares) {
   });
 }
 
-// Helper function to apply filters and search
+// Helper function to apply filters and search - same logic but ensures BDO compliance
 function applyFiltersAndSearch(products, body) {
   let result = [...products];
 
@@ -520,7 +1037,7 @@ function applyFiltersAndSearch(products, body) {
   if (body.Search) {
     const searchValue = body.Search.toLowerCase();
     result = result.filter((product) => {
-      const searchableFields = ["name", "category", "description", "sellerName"];
+      const searchableFields = ["Title", "Category", "Description", "Brand"];
       return searchableFields.some((field) => {
         const value = product[field];
         return value && String(value).toLowerCase().includes(searchValue);
@@ -528,7 +1045,7 @@ function applyFiltersAndSearch(products, body) {
     });
   }
 
-  // Apply filtering
+  // Apply filtering with BDO structure
   if (body.Filter && body.Filter.Condition) {
     result = result.filter((product) => {
       return evaluateFilterConditions(product, body.Filter);
@@ -538,7 +1055,7 @@ function applyFiltersAndSearch(products, body) {
   return result;
 }
 
-// Helper to evaluate filter conditions
+// Helper to evaluate filter conditions - enhanced for BDO compliance
 function evaluateFilterConditions(product, filter) {
   const { Operator, Condition } = filter;
 
@@ -552,8 +1069,10 @@ function evaluateFilterConditions(product, filter) {
       return evaluateFilterConditions(product, cond);
     }
 
-    const value = product[cond.LHSField];
-    const rhsValue = cond.RHSValue;
+    // Use LhsField (BDO pattern) or fallback to LHSField (legacy)
+    const fieldName = cond.LhsField || cond.LHSField;
+    const value = product[fieldName];
+    const rhsValue = cond.RhsValue;
 
     switch (cond.Operator) {
       case "EQ":
@@ -561,17 +1080,26 @@ function evaluateFilterConditions(product, filter) {
       case "NE":
         return value !== rhsValue;
       case "GT":
-        return value > rhsValue;
+        return Number(value) > Number(rhsValue);
       case "GTE":
-        return value >= rhsValue;
+        return Number(value) >= Number(rhsValue);
       case "LT":
-        return value < rhsValue;
+        return Number(value) < Number(rhsValue);
       case "LTE":
-        return value <= rhsValue;
+        return Number(value) <= Number(rhsValue);
       case "Contains":
-        return String(value).toLowerCase().includes(String(rhsValue).toLowerCase());
+        return String(value)
+          .toLowerCase()
+          .includes(String(rhsValue).toLowerCase());
       case "IN":
         return Array.isArray(rhsValue) && rhsValue.includes(value);
+      case "BETWEEN":
+        return (
+          Array.isArray(rhsValue) &&
+          rhsValue.length === 2 &&
+          Number(value) >= Number(rhsValue[0]) &&
+          Number(value) <= Number(rhsValue[1])
+        );
       default:
         return true;
     }

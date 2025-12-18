@@ -67,12 +67,12 @@ export interface ExpressionTree {
  */
 export interface ValidationRule {
   Id: string;
-  Type: "Expression";
-  Condition: {
-    Expression: string;
-    ExpressionTree: ExpressionTree;
-  };
-  Message: string;
+  Name: string;
+  Description: string;
+  Expression: string;
+  ExpressionTree: ExpressionTree;
+  ResultType: string;
+  Message?: string;
 }
 
 /**
@@ -130,6 +130,8 @@ export interface FieldValues {
  * Backend field definition structure
  */
 export interface BackendFieldDefinition {
+  Id: string;
+  Name: string;
   Type:
     | "String"
     | "Number"
@@ -145,7 +147,7 @@ export interface BackendFieldDefinition {
   DefaultValue?: DefaultValue;
   Formula?: Formula;
   Computed?: boolean;
-  Validation?: ValidationRule[];
+  Validation?: string[]; // Array of rule IDs
   Values?: FieldValues;
   Items?: {
     Type: string;
@@ -156,7 +158,51 @@ export interface BackendFieldDefinition {
 }
 
 /**
- * Complete backend schema response structure
+ * Business Object Rule definitions from BDO schema
+ */
+export interface BusinessObjectRules {
+  Computation?: Record<string, ValidationRule>;
+  Validation?: Record<string, ValidationRule>;
+  BusinessLogic?: Record<string, ValidationRule>;
+}
+
+/**
+ * Role permission definition from BDO schema
+ */
+export interface RolePermission {
+  Editable?: string[];
+  ReadOnly?: string[];
+  Methods?: string[];
+  Filters?: {
+    Operator: "AND" | "OR";
+    Condition: Array<{
+      LhsField: string;
+      Operator: string;
+      RhsType: "Literal" | "Field";
+      RhsValue: any;
+    }>;
+  };
+}
+
+/**
+ * Complete BDO schema structure matching your JSON
+ */
+export interface BDOSchema {
+  Id: string;
+  Name: string;
+  Kind: "BusinessObject";
+  Description: string;
+  Rules: BusinessObjectRules;
+  Fields: Record<string, BackendFieldDefinition>;
+  RolePermission: Record<string, RolePermission>;
+  Roles: Record<string, {
+    Name: string;
+    Description: string;
+  }>;
+}
+
+/**
+ * Complete backend schema response structure (legacy support)
  */
 export interface BackendSchema {
   [fieldName: string]: BackendFieldDefinition;
@@ -175,6 +221,23 @@ export type FormOperation = "create" | "update";
  * Form validation mode (from react-hook-form)
  */
 export type FormMode = Mode;
+
+/**
+ * Rule classification types
+ */
+export type RuleType = "Validation" | "Computation" | "BusinessLogic";
+
+/**
+ * Rule execution context
+ */
+export interface RuleExecutionContext<T> {
+  ruleType: RuleType;
+  ruleId: string;
+  fieldName: keyof T;
+  fieldValue: any;
+  formValues: Partial<T>;
+  rule: ValidationRule;
+}
 
 /**
  * useForm hook options with strict typing
@@ -198,6 +261,9 @@ export interface UseFormOptions<T extends Record<string, any> = Record<string, a
   /** Whether to enable schema fetching and form initialization (default: true) */
   enabled?: boolean;
 
+  /** User role for permission enforcement */
+  userRole?: string;
+
   /** Success callback */
   onSuccess?: (data: T) => void;
 
@@ -210,16 +276,33 @@ export interface UseFormOptions<T extends Record<string, any> = Record<string, a
   /** Submit error callback */
   onSubmitError?: (error: Error) => void;
 
+  /** Computation rule callback (called when computation rules are triggered) */
+  onComputationRule?: (context: RuleExecutionContext<T>) => Promise<Partial<T>>;
+
   /** Skip schema fetching (use for testing) */
   skipSchemaFetch?: boolean;
 
   /** Manual schema (use instead of fetching) */
-  schema?: BackendSchema;
+  schema?: BackendSchema | BDOSchema;
 }
 
 // ============================================================
 // PROCESSED FORM TYPES
 // ============================================================
+
+/**
+ * Field permission for current user
+ */
+export interface FieldPermission {
+  /** Can user edit this field */
+  editable: boolean;
+  
+  /** Can user see this field */
+  readable: boolean;
+  
+  /** Is field completely hidden */
+  hidden: boolean;
+}
 
 /**
  * Processed field metadata for form rendering
@@ -267,6 +350,16 @@ export interface ProcessedField {
 
   /** Backend field definition */
   backendField: BackendFieldDefinition;
+
+  /** Field permissions for current user */
+  permission: FieldPermission;
+
+  /** Rule classifications for this field */
+  rules: {
+    validation: string[];
+    computation: string[];
+    businessLogic: string[];
+  };
 }
 
 
@@ -288,6 +381,23 @@ export interface ProcessedSchema {
 
   /** Cross-field validation rules */
   crossFieldValidation: ValidationRule[];
+
+  /** Classified rules by type */
+  rules: {
+    validation: Record<string, ValidationRule>;
+    computation: Record<string, ValidationRule>;
+    businessLogic: Record<string, ValidationRule>;
+  };
+
+  /** Field-to-rule mapping for quick lookup */
+  fieldRules: Record<string, {
+    validation: string[];
+    computation: string[];
+    businessLogic: string[];
+  }>;
+
+  /** Role permissions */
+  rolePermissions?: Record<string, RolePermission>;
 }
 
 // ============================================================

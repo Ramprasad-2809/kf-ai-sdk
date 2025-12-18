@@ -4,27 +4,33 @@
  */
 export const Roles = {
   /** Full system access - can see and modify all data */
-  Admin: "admin",
+  Admin: "Admin",
 
   /** Standard user access - can only see public data */
-  User: "user",
+  User: "User",
 
   /** Manager role - can approve leave requests for their team */
-  Manager: "manager",
+  Manager: "Manager",
 
   /** Employee role - can create and manage their own leave requests */
-  Employee: "employee",
+  Employee: "Employee",
 
   /** Buyer role - can browse products and manage their cart */
-  Buyer: "buyer",
+  Buyer: "Buyer",
 
   /** Seller role - can manage their own products */
-  Seller: "seller",
+  Seller: "Seller",
+
+  /** Inventory Manager role - can manage inventory levels */
+  InventoryManager: "InventoryManager",
+
+  /** Warehouse Staff role - can update stock for assigned warehouse */
+  WarehouseStaff: "WarehouseStaff",
 } as const;
 
 /**
  * Role type derived from Roles constant
- * Results in: 'admin' | 'user' | 'manager' | 'employee'
+ * Results in: 'Admin' | 'User' | 'Manager' | 'Employee' | 'Buyer' | 'Seller' | 'InventoryManager' | 'WarehouseStaff'
  */
 export type Role = (typeof Roles)[keyof typeof Roles];
 

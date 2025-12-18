@@ -7,6 +7,7 @@ import type {
   ExpressionTree,
   EvaluationContext,
   ValidationResult,
+  ValidationRule,
 } from "./types";
 
 // ============================================================
@@ -336,11 +337,7 @@ export function evaluateExpression(
 export function validateField<T = Record<string, any>>(
   fieldName: string,
   fieldValue: any,
-  validationRules: Array<{
-    Id: string;
-    Condition: { ExpressionTree: ExpressionTree };
-    Message: string;
-  }>,
+  validationRules: ValidationRule[],
   formValues: T,
   referenceData: Record<string, any> = {}
 ): ValidationResult<T> {
@@ -356,7 +353,7 @@ export function validateField<T = Record<string, any>>(
   for (const rule of validationRules) {
     try {
       const isValid = evaluateExpression(
-        rule.Condition.ExpressionTree,
+        rule.ExpressionTree,
         currentFormValues,
         referenceData
       );
@@ -364,7 +361,7 @@ export function validateField<T = Record<string, any>>(
       if (!isValid) {
         return {
           isValid: false,
-          message: rule.Message,
+          message: rule.Message || `Validation failed for ${rule.Name}`,
           fieldName: fieldName as keyof T,
         };
       }
