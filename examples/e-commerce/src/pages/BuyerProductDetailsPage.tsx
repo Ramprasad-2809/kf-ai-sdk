@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { toast } from "sonner";
 import { ArrowLeft, ShoppingCart, Minus, Plus } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
@@ -60,15 +61,22 @@ export function BuyerProductDetailsPage() {
       };
       return cart.create(payload);
     },
-    onSuccess: () => {
+    onSuccess: (data, { product, qty }) => {
       queryClient.invalidateQueries({ queryKey: ["cart-count"] });
       setAddedToCart(true);
       setTimeout(() => setAddedToCart(false), 2000);
       setCartError(null);
+      toast.success("Added to cart!", {
+        description: `${qty} x ${product.name} added to your cart.`,
+      });
     },
     onError: (error) => {
       console.error("Failed to add to cart:", error);
-      setCartError("Failed to add item to cart.");
+      const message = "Failed to add item to cart.";
+      setCartError(message);
+      toast.error("Failed to add to cart", {
+        description: error instanceof Error ? error.message : message,
+      });
     },
   });
 
@@ -98,8 +106,38 @@ export function BuyerProductDetailsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="max-w-6xl mx-auto animate-pulse">
+        <div className="h-4 bg-gray-200 rounded w-32 mb-6" />
+        <div className="grid md:grid-cols-2 gap-8">
+          {/* Product Image Skeleton */}
+          <div className="bg-white rounded-lg border overflow-hidden">
+            <div className="aspect-square bg-gray-200" />
+          </div>
+
+          {/* Product Details Skeleton */}
+          <div className="space-y-6">
+            <div className="h-6 bg-gray-200 rounded w-24" />
+            <div className="h-8 bg-gray-200 rounded w-3/4" />
+            <div className="h-8 bg-gray-200 rounded w-1/3" />
+            <div className="space-y-2">
+              <div className="h-6 bg-gray-200 rounded w-32" />
+              <div className="h-4 bg-gray-200 rounded w-24" />
+            </div>
+            <div className="space-y-2">
+              <div className="h-5 bg-gray-200 rounded w-24" />
+              <div className="h-4 bg-gray-200 rounded w-full" />
+              <div className="h-4 bg-gray-200 rounded w-full" />
+              <div className="h-4 bg-gray-200 rounded w-2/3" />
+            </div>
+            <div className="h-4 bg-gray-200 rounded w-48" />
+            <div className="bg-white rounded-lg border p-4 space-y-4">
+              <div className="h-4 bg-gray-200 rounded w-20" />
+              <div className="h-10 bg-gray-200 rounded w-32" />
+              <div className="h-6 bg-gray-200 rounded w-full" />
+              <div className="h-12 bg-gray-200 rounded w-full" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -158,6 +196,7 @@ export function BuyerProductDetailsPage() {
             <img
               src={productData.imageUrl}
               alt={productData.name}
+              loading="lazy"
               className="w-full h-full object-cover"
               onError={(e) => {
                 (e.target as HTMLImageElement).src =

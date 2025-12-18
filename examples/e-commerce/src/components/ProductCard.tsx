@@ -64,6 +64,7 @@ export function ProductCard({
         <img
           src={product.imageUrl}
           alt={product.name}
+          loading="lazy"
           className={`max-h-full w-auto object-contain transition-transform duration-500 group-hover:scale-105 ${
             !isInStock ? "opacity-50 grayscale" : ""
           }`}
