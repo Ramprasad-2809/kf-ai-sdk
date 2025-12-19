@@ -11,10 +11,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Cart, BuyerCartItem } from "../../../../app/sources/ecommerce/cart";
 import { Roles } from "../../../../app/types/roles";
-import {
-  CurrencyValue,
-  isCurrencyObject,
-} from "../../../../sdk/types/base-fields";
+import { CurrencyField } from "../../../../sdk/types/base-fields";
 
 export function BuyerCartPage() {
   const queryClient = useQueryClient();
@@ -39,15 +36,10 @@ export function BuyerCartPage() {
 
   // Derive totals
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
-  const totalValue = items.reduce((sum, item) => {
-    let val = 0;
-    if (isCurrencyObject(item.subtotal)) {
-      val = item.subtotal.value;
-    } else if (typeof item.subtotal === "string") {
-      val = parseFloat(item.subtotal.split(" ")[0] || "0");
-    }
-    return sum + val;
-  }, 0);
+  const totalValue = items.reduce(
+    (sum, item) => sum + (item.subtotal as { value: number; currency: string }).value,
+    0
+  );
   const total = { value: totalValue, currency: "USD" };
 
   // Update Quantity Mutation
@@ -124,26 +116,14 @@ export function BuyerCartPage() {
     }
   };
 
-  const formatPrice = (price: CurrencyValue | number) => {
-    let value = 0;
-    let currency = "USD";
-
-    if (typeof price === "number") {
-      value = price;
-    } else if (isCurrencyObject(price)) {
-      value = price.value;
-      currency = price.currency;
-    } else if (typeof price === "string") {
-      // Crude parsing for "100.5 USD" format
-      const parts = price.split(" ");
-      value = parseFloat(parts[0]);
-      if (parts[1]) currency = parts[1];
-    }
-
+  const formatPrice = (
+    price: CurrencyField | { value: number; currency: string }
+  ) => {
+    const currencyObj = price as { value: number; currency: string };
     return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency,
-    }).format(value);
+      currency: currencyObj.currency,
+    }).format(currencyObj.value);
   };
 
   if (isLoading) {
