@@ -25,7 +25,10 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.17.0",
-    "react-hook-form": "^7.48.2"
+    "@tanstack/react-virtual": "^3.0.0-beta.68",
+    "clsx": "^2.1.1",
+    "react-hook-form": "^7.48.2",
+    "tailwind-merge": "^3.4.0"
   },
   "peerDependencies": {
     "react": ">=16.8.0"

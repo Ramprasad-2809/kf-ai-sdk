@@ -1,0 +1,653 @@
+import { useState } from "react";
+import { Plus, Pencil, Trash2, Search } from "lucide-react";
+import { useTable, useForm, api } from "kf-ai-sdk";
+import { AmazonProductForRole, Roles } from "../../../../app";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Badge } from "../components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "../components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
+
+type SellerProduct = AmazonProductForRole<"Seller"> & {
+  _id: string;
+  // Legacy compatibility fields
+  name: string;
+  price: { value: number; currency: string };
+  description: string;
+  category: string;
+  availableQuantity: number;
+  imageUrl: string;
+  sellerId: string;
+  sellerName: string;
+};
+
+const categories = [
+  { value: "Electronics", label: "Electronics" },
+  { value: "Clothing", label: "Clothing" },
+  { value: "Books", label: "Books" },
+  { value: "Home", label: "Home & Garden" },
+  { value: "Sports", label: "Sports" },
+  { value: "Toys", label: "Toys & Games" },
+];
+
+export function SellerProductsPage() {
+  const [showForm, setShowForm] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<SellerProduct | null>(
+    null
+  );
+  const [formMode, setFormMode] = useState<"create" | "update">("create");
+  const [generalError, setGeneralError] = useState<string | null>(null);
+
+  const table = useTable<SellerProduct>({
+    source: "BDO_AmazonProductMaster",
+    columns: [
+      { fieldId: "Title", label: "Name", enableSorting: true },
+      { fieldId: "Price", label: "Price", enableSorting: true },
+      { fieldId: "Category", label: "Category", enableSorting: true },
+      { fieldId: "Stock", label: "Stock", enableSorting: true },
+    ],
+    enableSorting: true,
+    enableFiltering: true,
+    enablePagination: true,
+    initialState: {
+      pagination: { pageNo: 1, pageSize: 10 },
+      sorting: { field: "Title", direction: "asc" },
+    },
+  });
+
+  const form = useForm<SellerProduct>({
+    source: "BDO_AmazonProductMaster",
+    operation: formMode,
+    recordId: selectedProduct?._id,
+    enabled: showForm,
+    defaultValues: {
+      Title: "",
+      Description: "",
+      Category: "Electronics",
+      Price: 0,
+      MRP: 0,
+      Brand: "",
+      Stock: 0,
+      Warehouse: "Warehouse_A",
+      ReorderLevel: 10,
+      IsActive: true,
+    },
+    onSuccess: () => {
+      setShowForm(false);
+      setSelectedProduct(null);
+      setGeneralError(null);
+      table.refetch();
+    },
+    onError: (error) => setGeneralError(error.message),
+    onSchemaError: (error) =>
+      setGeneralError(`Configuration Error: ${error.message}`),
+    onSubmitError: (error) =>
+      setGeneralError(`Submission Failed: ${error.message}`),
+  });
+
+  const formatPrice = (price: { value: number; currency: string }) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: price.currency,
+    }).format(price.value);
+  };
+
+  const handleCreate = () => {
+    setFormMode("create");
+    setSelectedProduct(null);
+    setGeneralError(null);
+    setShowForm(true);
+  };
+
+  const handleEdit = (product: SellerProduct) => {
+    setFormMode("update");
+    setSelectedProduct(product);
+    setGeneralError(null);
+    setShowForm(true);
+  };
+
+  const handleDelete = async (product: SellerProduct) => {
+    if (
+      window.confirm(
+        `Are you sure you want to delete "${product.Title || product.name}"?`
+      )
+    ) {
+      try {
+        await api("BDO_AmazonProductMaster").delete(product._id);
+        table.refetch();
+      } catch (error) {
+        console.error("Failed to delete product:", error);
+      }
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await form.handleSubmit()();
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">My Products</h1>
+          <p className="text-gray-500">Manage your product listings</p>
+        </div>
+        <Button onClick={handleCreate}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Product
+        </Button>
+      </div>
+
+      {/* Search */}
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <Input
+          placeholder="Search your products..."
+          className="pl-10"
+          value={table.search.query}
+          onChange={(e) => table.search.setQuery(e.target.value)}
+        />
+      </div>
+
+      {/* Products Table */}
+      {table.error ? (
+        <div className="text-center py-12 bg-red-50 rounded-lg">
+          <h3 className="text-xl font-medium text-red-800 mb-2">
+            Error loading products
+          </h3>
+          <p className="text-red-600 mb-6">{table.error.message}</p>
+          <Button onClick={() => table.refetch()} variant="outline">
+            Try Again
+          </Button>
+        </div>
+      ) : table.isLoading ? (
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+      ) : table.rows.length === 0 ? (
+        <div className="text-center py-12 bg-gray-50 rounded-lg">
+          <p className="text-gray-500 mb-4">You don't have any products yet.</p>
+          <Button onClick={handleCreate}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Your First Product
+          </Button>
+        </div>
+      ) : (
+        <>
+          <div className="bg-white rounded-lg border overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">
+                    Product
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">
+                    Category
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">
+                    Price
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">
+                    Stock
+                  </th>
+                  <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {table.rows.map((product) => (
+                  <tr key={product._id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gray-100 rounded overflow-hidden">
+                          <img
+                            src={product.imageUrl}
+                            alt={product.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src =
+                                "https://via.placeholder.com/40x40?text=?";
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            {product.Title || product.name}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate max-w-xs">
+                            {product.Description || product.description}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge variant="secondary" className="capitalize">
+                        {product.Category || product.category}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3 font-medium">
+                      {product.Price
+                        ? `$${product.Price.toFixed(2)}`
+                        : formatPrice(product.price)}
+                      {product.LowStock && (
+                        <Badge variant="destructive" className="ml-2 text-xs">
+                          Low Stock
+                        </Badge>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge
+                        variant={
+                          (product.Stock || product.availableQuantity) > 10
+                            ? "success"
+                            : (product.Stock || product.availableQuantity) > 0
+                              ? "warning"
+                              : "destructive"
+                        }
+                      >
+                        {product.Stock || product.availableQuantity} in stock
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(product)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => handleDelete(product)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-500">
+              Showing{" "}
+              {(table.pagination.currentPage - 1) * table.pagination.pageSize +
+                1}{" "}
+              to{" "}
+              {Math.min(
+                table.pagination.currentPage * table.pagination.pageSize,
+                table.totalItems
+              )}{" "}
+              of {table.totalItems} products
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={table.pagination.goToPrevious}
+                disabled={!table.pagination.canGoPrevious}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={table.pagination.goToNext}
+                disabled={!table.pagination.canGoNext}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Product Form Dialog */}
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {formMode === "create" ? "Add New Product" : "Edit Product"}
+            </DialogTitle>
+          </DialogHeader>
+
+          {form.isLoadingInitialData ? (
+            <div className="flex flex-col items-center justify-center py-12 space-y-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <p className="text-sm text-gray-500">
+                Loading form configuration...
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {generalError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm mb-4">
+                  {generalError}
+                </div>
+              )}
+
+              {/* Root Errors (e.g. Cross-Field Validation) */}
+              {form.formState.errors.root && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm mb-4">
+                  <p className="font-medium">Validation Error</p>
+                  <ul className="list-disc list-inside mt-1">
+                    {Object.values(form.formState.errors.root).map(
+                      (err, idx) => (
+                        <li key={idx}>{(err as any).message}</li>
+                      )
+                    )}
+                  </ul>
+                </div>
+              )}
+              {/* Title */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Product Title *
+                </label>
+                <Input
+                  {...form.register("Title")}
+                  placeholder="Enter product title"
+                  defaultValue={
+                    selectedProduct?.Title || selectedProduct?.name || ""
+                  }
+                  className={
+                    form.formState.errors.Title
+                      ? "border-red-500 focus:ring-red-500"
+                      : ""
+                  }
+                />
+                {form.formState.errors.Title && (
+                  <p className="text-red-600 text-sm mt-1">
+                    {form.formState.errors.Title.message}
+                  </p>
+                )}
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description
+                </label>
+                <textarea
+                  {...form.register("Description")}
+                  className="flex w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                  rows={3}
+                  placeholder="Enter product description"
+                  defaultValue={
+                    selectedProduct?.Description ||
+                    selectedProduct?.description ||
+                    ""
+                  }
+                />
+              </div>
+
+              {/* Brand */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Brand
+                </label>
+                <Input
+                  {...form.register("Brand")}
+                  placeholder="Enter brand name"
+                  defaultValue={selectedProduct?.Brand || ""}
+                />
+              </div>
+
+              {/* Category */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Category
+                </label>
+                <Select
+                  defaultValue={
+                    selectedProduct?.Category ||
+                    selectedProduct?.category ||
+                    "Electronics"
+                  }
+                  onValueChange={(value) =>
+                    form.setValue(
+                      "Category",
+                      value as
+                        | "Electronics"
+                        | "Books"
+                        | "Clothing"
+                        | "Home"
+                        | "Sports"
+                        | "Toys"
+                    )
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Price */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Selling Price (USD) *
+                </label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  {...form.register("Price")}
+                  placeholder="0.00"
+                  defaultValue={
+                    selectedProduct?.Price ||
+                    selectedProduct?.price?.value ||
+                    ""
+                  }
+                  className={
+                    form.formState.errors.Price
+                      ? "border-red-500 focus:ring-red-500"
+                      : ""
+                  }
+                />
+                {form.formState.errors.Price && (
+                  <p className="text-red-600 text-sm mt-1">
+                    {form.formState.errors.Price.message}
+                  </p>
+                )}
+              </div>
+
+              {/* MRP */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Maximum Retail Price (USD) *
+                </label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  {...form.register("MRP")}
+                  placeholder="0.00"
+                  defaultValue={selectedProduct?.MRP || ""}
+                  className={
+                    form.formState.errors.MRP
+                      ? "border-red-500 focus:ring-red-500"
+                      : ""
+                  }
+                />
+                {form.formState.errors.MRP && (
+                  <p className="text-red-600 text-sm mt-1">
+                    {form.formState.errors.MRP.message}
+                  </p>
+                )}
+              </div>
+
+              {/* Stock */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Stock Quantity *
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  {...form.register("Stock")}
+                  placeholder="0"
+                  defaultValue={
+                    selectedProduct?.Stock ||
+                    selectedProduct?.availableQuantity ||
+                    ""
+                  }
+                  className={
+                    form.formState.errors.Stock
+                      ? "border-red-500 focus:ring-red-500"
+                      : ""
+                  }
+                />
+                {form.formState.errors.Stock && (
+                  <p className="text-red-600 text-sm mt-1">
+                    {form.formState.errors.Stock.message}
+                  </p>
+                )}
+              </div>
+
+              {/* Warehouse */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Warehouse
+                </label>
+                <Select
+                  defaultValue={selectedProduct?.Warehouse || "Warehouse_A"}
+                  onValueChange={(value) =>
+                    form.setValue(
+                      "Warehouse",
+                      value as "Warehouse_A" | "Warehouse_B" | "Warehouse_C"
+                    )
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select warehouse" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Warehouse_A">
+                      Warehouse A - North
+                    </SelectItem>
+                    <SelectItem value="Warehouse_B">
+                      Warehouse B - South
+                    </SelectItem>
+                    <SelectItem value="Warehouse_C">
+                      Warehouse C - East
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Reorder Level */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Reorder Level
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  {...form.register("ReorderLevel")}
+                  placeholder="10"
+                  defaultValue={selectedProduct?.ReorderLevel || "10"}
+                />
+              </div>
+
+              {/* Computed Fields Section */}
+              <div className="border-t border-gray-200 pt-4 mt-4">
+                <h4 className="text-sm font-medium text-gray-900 mb-3">
+                  Computed Fields (Auto-calculated)
+                </h4>
+
+                {/* Discount Percentage */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Discount %
+                    </label>
+                    <Input
+                      value={(form.watch("Discount") || 0).toFixed(2)}
+                      readOnly
+                      disabled
+                      className="bg-gray-50 cursor-not-allowed"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Auto-calculated from (MRP - Price) ÷ MRP × 100
+                    </p>
+                  </div>
+
+                  {/* Low Stock Indicator */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Stock Status
+                    </label>
+                    <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-sm">
+                      <span
+                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          form.watch("LowStock")
+                            ? "bg-red-100 text-red-800"
+                            : "bg-green-100 text-green-800"
+                        }`}
+                      >
+                        {form.watch("LowStock")
+                          ? "⚠️ Low Stock"
+                          : "✅ Good Stock"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Auto-calculated: Stock ≤ Reorder Level
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowForm(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={form.isSubmitting}>
+                  {form.isSubmitting ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : formMode === "create" ? (
+                    "Add Product"
+                  ) : (
+                    "Save Changes"
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

@@ -11,15 +11,15 @@ import type { BackendSchema, FormOperation, SubmissionResult } from './types';
 // ============================================================
 
 /**
- * Fetch field schema from backend
+ * Fetch BDO schema from backend metadata endpoint
  */
 export async function fetchFormSchema(source: string): Promise<BackendSchema> {
   try {
     const baseUrl = getApiBaseUrl();
     const headers = getDefaultHeaders();
     
-    // Updated endpoint based on user requirement: /api/bo/{source}/field
-    const response = await fetch(`${baseUrl}/${source}/field`, {
+    // Use BDO metadata endpoint: /meta/bdo/{bdo_id}
+    const response = await fetch(`${baseUrl.replace('/api', '')}/meta/bdo/${source}`, {
       method: 'GET',
       headers,
     });
@@ -28,14 +28,15 @@ export async function fetchFormSchema(source: string): Promise<BackendSchema> {
       throw new Error(`Failed to fetch schema for ${source}: ${response.statusText}`);
     }
 
-    const schema = await response.json();
+    const bdoSchema = await response.json();
     
-    // Validate that response is a valid schema object
-    if (!schema || typeof schema !== 'object') {
-      throw new Error(`Invalid schema response for ${source}`);
+    // Validate that response is a valid BDO schema object
+    if (!bdoSchema || typeof bdoSchema !== 'object' || !bdoSchema.Fields) {
+      throw new Error(`Invalid BDO schema response for ${source}`);
     }
 
-    return schema as BackendSchema;
+    // Return the full BDO schema - the form processor will extract what it needs
+    return bdoSchema as BackendSchema;
   } catch (error) {
     console.error(`Schema fetch error for ${source}:`, error);
     throw new Error(`Failed to load form schema: ${error instanceof Error ? error.message : 'Unknown error'}`);

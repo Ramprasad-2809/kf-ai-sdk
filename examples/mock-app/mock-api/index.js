@@ -1,10 +1,74 @@
 import { mockProducts, filterProductsByRole } from "./data/products.js";
 import { mockOrders, filterOrdersByRole } from "./data/orders.js";
+import { 
+  mockColumns, 
+  mockCards, 
+  filterColumnsByRole, 
+  filterCardsByRole,
+  getNextPosition,
+  getNextColumnPosition,
+  generateCardId,
+  generateColumnId
+} from "./data/kanban.js";
+
+// Helper to evaluate SDK Filter Payload recursively
+function evaluateFilter(item, filter) {
+  if (!filter) return true;
+
+  // Handle logical operators (AND/OR)
+  if (filter.Operator === "AND" || filter.Operator === "OR") {
+    if (!filter.Condition || !Array.isArray(filter.Condition) || filter.Condition.length === 0) {
+      return true;
+    }
+
+    const results = filter.Condition.map(c => evaluateFilter(item, c));
+    
+    if (filter.Operator === "AND") {
+      return results.every(r => r === true);
+    } else {
+      return results.some(r => r === true);
+    }
+  }
+
+  // Handle Leaf Conditions
+  if (filter.LHSField) {
+    const value = item[filter.LHSField];
+    const rhsValue = filter.RHSValue;
+    
+    // Handle specific operators
+    switch (filter.Operator) {
+      case "EQ":
+        return String(value) === String(rhsValue);
+      case "NEQ":
+        return String(value) !== String(rhsValue);
+      case "Contains":
+        return String(value || "").toLowerCase().includes(String(rhsValue || "").toLowerCase());
+      case "GT":
+        return value > rhsValue;
+      case "GTE":
+        return value >= rhsValue;
+      case "LT":
+        return value < rhsValue;
+      case "LTE":
+        return value <= rhsValue;
+      case "IN":
+        return Array.isArray(rhsValue) && rhsValue.includes(value);
+      case "NIN":
+        return Array.isArray(rhsValue) && !rhsValue.includes(value);
+      default:
+        // Default fallthrough or unknown operator
+        return false;
+    }
+  }
+
+  // Fallback for malformed structure
+  return true;
+}
 
 export function setupMockAPI(middlewares) {
   console.log("[Mock API] Setting up mock API handlers...");
 
-  middlewares.use((req, res, next) => {
+  middlewares.use(async (req, res, next) => {
     const url = req.url || "";
     const method = req.method || "GET";
 
@@ -146,9 +210,9 @@ export function setupMockAPI(middlewares) {
             Timestamp: new Date().toISOString(),
           });
         })
-        .catch((error) => {
+        .catch(async (error) => {
           console.error("[Mock API Error]:", error);
-          sendError("Internal server error", 500);
+          await sendError("Internal server error", 500);
         });
       return;
     }
@@ -242,9 +306,9 @@ export function setupMockAPI(middlewares) {
             Timestamp: new Date().toISOString(),
           });
         })
-        .catch((error) => {
+        .catch(async (error) => {
           console.error("[Mock API Error]:", error);
-          sendError("Internal server error", 500);
+          await sendError("Internal server error", 500);
         });
       return;
     }
@@ -269,7 +333,7 @@ export function setupMockAPI(middlewares) {
           Timestamp: new Date().toISOString(),
         });
       } else {
-        sendError(`Product with ID ${productId} not found`, 404);
+        await sendError(`Product with ID ${productId} not found`, 404);
       }
       return;
     }
@@ -351,9 +415,9 @@ export function setupMockAPI(middlewares) {
             Timestamp: new Date().toISOString(),
           });
         })
-        .catch((error) => {
+        .catch(async (error) => {
           console.error("[Mock API Error]:", error);
-          sendError("Internal server error", 500);
+          await sendError("Internal server error", 500);
         });
       return;
     }
@@ -457,9 +521,9 @@ export function setupMockAPI(middlewares) {
             Timestamp: new Date().toISOString(),
           });
         })
-        .catch((error) => {
+        .catch(async (error) => {
           console.error("[Mock API Error]:", error);
-          sendError("Internal server error", 500);
+          await sendError("Internal server error", 500);
         });
       return;
     }
@@ -478,7 +542,7 @@ export function setupMockAPI(middlewares) {
       const order = orders.find((o) => o._id === orderId);
 
       if (!order) {
-        sendError(`Order with ID ${orderId} not found`, 404);
+        await sendError(`Order with ID ${orderId} not found`, 404);
         return;
       }
 
@@ -489,7 +553,7 @@ export function setupMockAPI(middlewares) {
           !order.customerEmail.includes("customer1") &&
           !order.customerEmail.includes("customer2")
         ) {
-          sendError("You can only view your own orders", 403);
+          await sendError("You can only view your own orders", 403);
           return;
         }
       }
@@ -519,7 +583,7 @@ export function setupMockAPI(middlewares) {
           Timestamp: new Date().toISOString(),
         });
       } else {
-        sendError(`Product with ID ${productId} not found`, 404);
+        await sendError(`Product with ID ${productId} not found`, 404);
       }
       return;
     }
@@ -540,7 +604,7 @@ export function setupMockAPI(middlewares) {
           Timestamp: new Date().toISOString(),
         });
       } else {
-        sendError(`Order with ID ${orderId} not found`, 404);
+        await sendError(`Order with ID ${orderId} not found`, 404);
       }
       return;
     }
@@ -1267,7 +1331,7 @@ export function setupMockAPI(middlewares) {
       const role = req.headers["x-user-role"] || "admin";
 
       if (role !== "admin") {
-        sendError("Only admins can create products", 403);
+        await sendError("Only admins can create products", 403);
         return;
       }
 
@@ -1300,6 +1364,452 @@ export function setupMockAPI(middlewares) {
           },
           201
         );
+      });
+      return;
+    }
+
+    // ==================== KANBAN COLUMN ENDPOINTS ====================
+    
+    // Column count endpoint
+    if (url.includes("/board-column/count") && method === "POST") {
+      parseBody()
+        .then(async (body) => {
+          const role = req.headers["x-user-role"] || "admin";
+          let columns = filterColumnsByRole(mockColumns, role);
+
+          // Apply search if provided
+          if (body.Search) {
+            const searchValue = body.Search.toLowerCase();
+            columns = columns.filter(column => 
+              column.title.toLowerCase().includes(searchValue)
+            );
+          }
+
+          // Apply filtering if provided
+          if (body.Filter && body.Filter.Condition) {
+            columns = columns.filter(column => {
+              return body.Filter.Condition.some(condition => {
+                const value = column[condition.LHSField];
+                const searchValue = condition.RHSValue.toLowerCase();
+                
+                if (condition.Operator === "Contains") {
+                  return String(value).toLowerCase().includes(searchValue);
+                }
+                if (condition.Operator === "EQ") {
+                  return String(value).toLowerCase() === searchValue;
+                }
+                return false;
+              });
+            });
+          }
+
+          await sendJSON({
+            Count: columns.length,
+            Success: true,
+            Timestamp: new Date().toISOString(),
+          });
+        })
+        .catch(error => {
+          console.error("[Mock API Error]:", error);
+          sendError("Internal server error", 500);
+        });
+      return;
+    }
+
+    // Column list endpoint
+    if (url.includes("/board-column/list") && method === "POST") {
+      parseBody()
+        .then(async (body) => {
+          const role = req.headers["x-user-role"] || "admin";
+          let columns = filterColumnsByRole([...mockColumns], role);
+
+          // Apply search if provided
+          if (body.Search) {
+            const searchValue = body.Search.toLowerCase();
+            columns = columns.filter(column => 
+              column.title.toLowerCase().includes(searchValue)
+            );
+          }
+
+          // Apply filtering if provided
+          if (body.Filter && body.Filter.Condition) {
+            columns = columns.filter(column => {
+              return body.Filter.Condition.some(condition => {
+                const value = column[condition.LHSField];
+                const searchValue = condition.RHSValue.toLowerCase();
+                
+                if (condition.Operator === "Contains") {
+                  return String(value).toLowerCase().includes(searchValue);
+                }
+                if (condition.Operator === "EQ") {
+                  return String(value).toLowerCase() === searchValue;
+                }
+                return false;
+              });
+            });
+          }
+
+          // Apply sorting (default by position)
+          if (body.Sort && body.Sort[0]) {
+            const { Field, Order } = body.Sort[0];
+            const direction = Order === "ASC" ? 1 : -1;
+            
+            columns = columns.sort((a, b) => {
+              const aVal = a[Field];
+              const bVal = b[Field];
+              
+              if (aVal < bVal) return -1 * direction;
+              if (aVal > bVal) return 1 * direction;
+              return 0;
+            });
+          } else {
+            // Default sort by position
+            columns = columns.sort((a, b) => a.position - b.position);
+          }
+
+          await sendJSON({
+            Data: columns,
+            Success: true,
+            Timestamp: new Date().toISOString(),
+          });
+        })
+        .catch(error => {
+          console.error("[Mock API Error]:", error);
+          sendError("Internal server error", 500);
+        });
+      return;
+    }
+
+    // Column create endpoint
+    if (url.match(/\/api\/bo\/board-column\/create$/i) && method === "POST") {
+      parseBody().then(async (body) => {
+        const newId = generateColumnId();
+        const position = body.position !== undefined ? body.position : getNextColumnPosition(mockColumns);
+        
+        const newColumn = {
+          _id: newId,
+          title: body.title || "New Column",
+          position: position,
+          color: body.color || "#e3f2fd",
+          limit: body.limit || null,
+          _created_at: new Date(),
+          _modified_at: new Date(),
+        };
+
+        // Add to mock data
+        mockColumns.push(newColumn);
+        mockColumns.sort((a, b) => a.position - b.position);
+
+        await sendJSON({
+          _id: newId,
+          Success: true,
+          Message: "Column created successfully",
+          Timestamp: new Date().toISOString(),
+        });
+      });
+      return;
+    }
+
+    // Column update endpoint
+    if (url.match(/\/api\/bo\/board-column\/[^/]+\/update$/i) && method === "POST") {
+      parseBody().then(async (body) => {
+        const pathParts = url.split("/");
+        const columnId = pathParts[pathParts.length - 2];
+        
+        const columnIndex = mockColumns.findIndex(col => col._id === columnId);
+        if (columnIndex === -1) {
+          await sendError("Column not found", 404);
+          return;
+        }
+
+        // Update the column
+        mockColumns[columnIndex] = {
+          ...mockColumns[columnIndex],
+          ...body,
+          _modified_at: new Date(),
+        };
+
+        await sendJSON({
+          _id: columnId,
+          Success: true,
+          Message: "Column updated successfully",
+          Timestamp: new Date().toISOString(),
+        });
+      });
+      return;
+    }
+
+    // Column delete endpoint
+    if (url.match(/\/api\/bo\/board-column\/[^/]+\/delete$/i) && method === "DELETE") {
+      const pathParts = url.split("/");
+      const columnId = pathParts[pathParts.length - 2];
+      
+      const columnIndex = mockColumns.findIndex(col => col._id === columnId);
+      if (columnIndex === -1) {
+        await sendError("Column not found", 404);
+        return;
+      }
+
+      // Remove column and all its cards
+      mockColumns.splice(columnIndex, 1);
+      
+      // Remove all cards in this column
+      for (let i = mockCards.length - 1; i >= 0; i--) {
+        if (mockCards[i].columnId === columnId) {
+          mockCards.splice(i, 1);
+        }
+      }
+
+      await sendJSON({
+        status: "success",
+        Message: "Column and associated cards deleted successfully",
+        Timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+
+    // ==================== KANBAN CARD ENDPOINTS ====================
+    
+    // Card count endpoint
+    if (url.includes("/task/count") && method === "POST") {
+      parseBody()
+        .then(async (body) => {
+          const role = req.headers["x-user-role"] || "admin";
+          let cards = filterCardsByRole(mockCards, role);
+
+          // Apply search if provided
+          if (body.Search) {
+            const searchValue = body.Search.toLowerCase();
+            cards = cards.filter(card => {
+              const searchableFields = ["title", "description", "assignee", "priority"];
+              return searchableFields.some(field => {
+                const value = card[field];
+                return value && String(value).toLowerCase().includes(searchValue);
+              });
+            });
+          }
+
+          // Apply filtering if provided
+          if (body.Filter && body.Filter.Condition) {
+            cards = cards.filter(card => {
+              return body.Filter.Condition.some(condition => {
+                const value = card[condition.LHSField];
+                const searchValue = condition.RHSValue.toLowerCase();
+                
+                if (condition.Operator === "Contains") {
+                  return String(value).toLowerCase().includes(searchValue);
+                }
+                if (condition.Operator === "EQ") {
+                  return String(value).toLowerCase() === searchValue;
+                }
+                return false;
+              });
+            });
+          }
+
+          await sendJSON({
+            Count: cards.length,
+            Success: true,
+            Timestamp: new Date().toISOString(),
+          });
+        })
+        .catch(error => {
+          console.error("[Mock API Error]:", error);
+          sendError("Internal server error", 500);
+        });
+      return;
+    }
+
+    // Card list endpoint
+    if (url.includes("/task/list") && method === "POST") {
+      parseBody()
+        .then(async (body) => {
+          const role = req.headers["x-user-role"] || "admin";
+          let cards = filterCardsByRole([...mockCards], role);
+
+          // Apply search if provided
+          if (body.Search) {
+            const searchValue = body.Search.toLowerCase();
+            cards = cards.filter(card => {
+              const searchableFields = ["title", "description", "assignee", "priority"];
+              return searchableFields.some(field => {
+                const value = card[field];
+                return value && String(value).toLowerCase().includes(searchValue);
+              });
+            });
+          }
+
+          // Apply filtering if provided
+          // Apply filtering if provided (Robust Recursive Logic)
+          if (body.Filter) {
+            cards = cards.filter(card => evaluateFilter(card, body.Filter));
+            console.log(`[Mock API] Task List Filtered: ${cards.length} cards remaining`);
+          }
+
+          // Apply sorting (default by columnId then position)
+          if (body.Sort && body.Sort[0]) {
+            const { Field, Order } = body.Sort[0];
+            const direction = Order === "ASC" ? 1 : -1;
+            
+            cards = cards.sort((a, b) => {
+              const aVal = a[Field];
+              const bVal = b[Field];
+              
+              if (aVal < bVal) return -1 * direction;
+              if (aVal > bVal) return 1 * direction;
+              return 0;
+            });
+          } else {
+            // Default sort by columnId then position
+            cards = cards.sort((a, b) => {
+              if (a.columnId !== b.columnId) {
+                return a.columnId.localeCompare(b.columnId);
+              }
+              return a.position - b.position;
+            });
+          }
+
+          // Apply pagination if provided
+          if (body.Page && body.PageSize) {
+            const page = body.Page || 1;
+            const pageSize = body.PageSize || 10;
+            const startIndex = (page - 1) * pageSize;
+            const endIndex = startIndex + pageSize;
+            cards = cards.slice(startIndex, endIndex);
+          }
+
+          await sendJSON({
+            Data: cards,
+            Success: true,
+            Timestamp: new Date().toISOString(),
+          });
+        })
+        .catch(error => {
+          console.error("[Mock API Error]:", error);
+          sendError("Internal server error", 500);
+        });
+      return;
+    }
+
+    // Card create endpoint
+    if (url.match(/\/api\/bo\/task\/create$/i) && method === "POST") {
+      parseBody().then(async (body) => {
+        const newId = generateCardId();
+        const position = body.position !== undefined ? body.position : getNextPosition(body.columnId, mockCards);
+        
+        const newCard = {
+          _id: newId,
+          title: body.title || "New Task",
+          description: body.description || "",
+          columnId: body.columnId,
+          position: position,
+          priority: body.priority || "medium",
+          assignee: body.assignee || "",
+          tags: Array.isArray(body.tags) ? body.tags : [],
+          estimatedHours: body.estimatedHours || null,
+          dueDate: body.dueDate || null,
+          _created_at: new Date(),
+          _modified_at: new Date(),
+        };
+
+        // Add to mock data
+        mockCards.push(newCard);
+
+        await sendJSON({
+          _id: newId,
+          Success: true,
+          Message: "Card created successfully",
+          Timestamp: new Date().toISOString(),
+        });
+      });
+      return;
+    }
+
+    // Card update endpoint
+    if (url.match(/\/api\/bo\/task\/[^/]+\/update$/i) && method === "POST") {
+      parseBody().then(async (body) => {
+        const pathParts = url.split("/");
+        const cardId = pathParts[pathParts.length - 2];
+        
+        const cardIndex = mockCards.findIndex(card => card._id === cardId);
+        if (cardIndex === -1) {
+          await sendError("Card not found", 404);
+          return;
+        }
+
+        // Update the card
+        mockCards[cardIndex] = {
+          ...mockCards[cardIndex],
+          ...body,
+          _modified_at: new Date(),
+        };
+
+        await sendJSON({
+          _id: cardId,
+          Success: true,
+          Message: "Card updated successfully",
+          Timestamp: new Date().toISOString(),
+        });
+      });
+      return;
+    }
+
+    // Card delete endpoint
+    if (url.match(/\/api\/bo\/task\/[^/]+\/delete$/i) && method === "DELETE") {
+      const pathParts = url.split("/");
+      const cardId = pathParts[pathParts.length - 2];
+      
+      const cardIndex = mockCards.findIndex(card => card._id === cardId);
+      if (cardIndex === -1) {
+        await sendError("Card not found", 404);
+        return;
+      }
+
+      // Remove the card
+      mockCards.splice(cardIndex, 1);
+
+      await sendJSON({
+        status: "success",
+        Message: "Card deleted successfully",
+        Timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+
+    // Card read endpoint
+    if (url.match(/\/api\/bo\/task\/[^/]+\/read$/i) && method === "GET") {
+      const pathParts = url.split("/");
+      const cardId = pathParts[pathParts.length - 2];
+      
+      const card = mockCards.find(card => card._id === cardId);
+      if (!card) {
+        await sendError("Card not found", 404);
+        return;
+      }
+
+      await sendJSON({
+        Data: card,
+        Success: true,
+        Timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+
+    // Column read endpoint
+    if (url.match(/\/api\/bo\/board-column\/[^/]+\/read$/i) && method === "GET") {
+      const pathParts = url.split("/");
+      const columnId = pathParts[pathParts.length - 2];
+      
+      const column = mockColumns.find(col => col._id === columnId);
+      if (!column) {
+        await sendError("Column not found", 404);
+        return;
+      }
+
+      await sendJSON({
+        Data: column,
+        Success: true,
+        Timestamp: new Date().toISOString(),
       });
       return;
     }

@@ -12,11 +12,13 @@ export function Navigation() {
       { path: "/", label: "📊 Dashboard", icon: "📊" },
       { path: "/products", label: "📦 Manage Products", icon: "📦" },
       { path: "/orders", label: "🛒 Manage Orders", icon: "🛒" },
+      { path: "/kanban", label: "📋 Kanban Demo", icon: "📋" },
     ],
     [Roles.User]: [
       { path: "/", label: "🏠 Home", icon: "🏠" },
-      { path: "/products", label: "�️ Products", icon: "📦" },
+      { path: "/products", label: "🛍️ Products", icon: "📦" },
       { path: "/orders", label: "📋 My Orders", icon: "📋" },
+      { path: "/kanban", label: "📋 Kanban Demo", icon: "📋" },
     ],
   };
 
