@@ -4,17 +4,7 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { AmazonProductForRole, Roles } from "../../../../app";
 
-type BuyerProduct = AmazonProductForRole<typeof Roles.Buyer> & {
-  _id: string;
-  // Legacy compatibility fields
-  name: string;
-  price: { value: number; currency: string };
-  description: string;
-  category: string;
-  availableQuantity: number;
-  imageUrl: string;
-  sellerName?: string;
-};
+type BuyerProduct = AmazonProductForRole<typeof Roles.Buyer>;
 
 interface ProductCardProps {
   product: BuyerProduct;
@@ -29,14 +19,14 @@ export function ProductCard({
   onClick,
   showAddToCart = true,
 }: ProductCardProps) {
-  const isInStock = product.availableQuantity > 0;
+  const isInStock = product.Stock > 0;
 
   // Split price for display
   const priceParts = new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: product.price.currency,
+    currency: "USD",
   })
-    .formatToParts(product.price.value)
+    .formatToParts(product.Price)
     .reduce(
       (acc, part) => {
         acc[part.type] = part.value;
@@ -62,8 +52,8 @@ export function ProductCard({
       {/* Product Image */}
       <div className="aspect-square bg-white relative overflow-hidden p-4 flex items-center justify-center">
         <img
-          src={product.imageUrl}
-          alt={product.name}
+          src={product.ImageUrl || "https://via.placeholder.com/400x400?text=No+Image"}
+          alt={product.Title}
           loading="lazy"
           className={`max-h-full w-auto object-contain transition-transform duration-500 group-hover:scale-105 ${
             !isInStock ? "opacity-50 grayscale" : ""
@@ -89,7 +79,7 @@ export function ProductCard({
         {/* Category & Verified */}
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs text-slate-500 uppercase tracking-wide font-medium">
-            {product.category}
+            {product.Category}
           </span>
           {/* Mock Rating */}
           <div className="flex text-yellow-400">
@@ -104,7 +94,7 @@ export function ProductCard({
 
         {/* Product Name */}
         <h3 className="font-medium text-base text-slate-900 leading-snug mb-2 group-hover:text-blue-600 transition-colors line-clamp-2 min-h-[2.5rem]">
-          {product.name}
+          {product.Title}
         </h3>
 
         {/* Price */}

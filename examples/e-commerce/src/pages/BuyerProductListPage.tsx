@@ -24,17 +24,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Cart, AmazonProductForRole } from "../../../../app";
 import { Roles } from "../../../../app/types/roles";
 
-type BuyerProduct = AmazonProductForRole<typeof Roles.Buyer> & {
-  _id: string;
-  // Legacy compatibility fields
-  name: string;
-  price: { value: number; currency: string };
-  description: string;
-  category: string;
-  availableQuantity: number;
-  imageUrl: string;
-  sellerName?: string;
-};
+type BuyerProduct = AmazonProductForRole<typeof Roles.Buyer>;
 
 const categories = [
   { value: "Electronics", label: "Electronics" },
@@ -74,9 +64,9 @@ export function BuyerProductListPage() {
       // Assuming a quantity of 1 for now as per typical 'add to cart' behavior on list
       const payload = {
         productId: product._id,
-        productName: product.name,
-        productPrice: product.price,
-        productImage: product.imageUrl,
+        productName: product.Title,
+        productPrice: { value: product.Price, currency: "USD" },
+        productImage: product.ImageUrl || "",
         quantity: 1,
       };
 

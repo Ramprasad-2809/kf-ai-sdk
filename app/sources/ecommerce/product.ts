@@ -33,6 +33,9 @@ import {
  * Computed fields (Discount, LowStock) are calculated by backend
  */
 export type AmazonProductMasterType = {
+  /** MongoDB document ID */
+  _id: IdField;
+
   /** Unique product identifier (auto-generated) */
   ProductId: IdField;
 
@@ -47,6 +50,9 @@ export type AmazonProductMasterType = {
 
   /** Product Description (max 2000 characters) */
   Description: TextAreaField;
+
+  /** Product Image URL */
+  ImageUrl: StringField;
 
   /** Selling Price (required, must be > 0) */
   Price: NumberField;
@@ -125,11 +131,13 @@ export type AdminAmazonProduct = AmazonProductMasterType;
  */
 export type SellerAmazonProduct = Pick<
   AmazonProductMasterType,
+  | "_id"
   | "ProductId"
   | "ASIN"
   | "SKU"
   | "Title"
   | "Description"
+  | "ImageUrl"
   | "Price"
   | "MRP"
   | "Category"
@@ -152,11 +160,13 @@ export type SellerAmazonProduct = Pick<
  */
 export type BuyerAmazonProduct = Pick<
   AmazonProductMasterType,
+  | "_id"
   | "ProductId"
   | "ASIN"
   | "SKU"
   | "Title"
   | "Description"
+  | "ImageUrl"
   | "Price"
   | "MRP"
   | "Discount"
@@ -172,6 +182,7 @@ export type BuyerAmazonProduct = Pick<
  */
 export type InventoryManagerAmazonProduct = Pick<
   AmazonProductMasterType,
+  | "_id"
   | "ProductId"
   | "ASIN"
   | "SKU"
@@ -189,6 +200,7 @@ export type InventoryManagerAmazonProduct = Pick<
  */
 export type WarehouseStaffAmazonProduct = Pick<
   AmazonProductMasterType,
+  | "_id"
   | "ProductId"
   | "SKU"
   | "Title"
