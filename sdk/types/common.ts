@@ -19,13 +19,18 @@ export interface SortOption {
 export type Sort = SortOption[];
 
 /**
- * Filter operators supported by the API
+ * Filter operators for individual conditions (leaf nodes)
  */
-export type FilterOperator = 
-  | "EQ" | "NE" | "GT" | "GTE" | "LT" | "LTE" 
+export type FilterOperator =
+  | "EQ" | "NE" | "GT" | "GTE" | "LT" | "LTE"
   | "Between" | "NotBetween" | "IN" | "NIN"
   | "Empty" | "NotEmpty" | "Contains" | "NotContains"
-  | "MinLength" | "MaxLength" | "AND" | "OR";
+  | "MinLength" | "MaxLength";
+
+/**
+ * Logical operators for combining filter conditions (tree nodes)
+ */
+export type LogicalOperator = "And" | "Or" | "Not";
 
 /**
  * RHS value type for filter conditions
@@ -33,10 +38,18 @@ export type FilterOperator =
 export type FilterRHSType = "Constant" | "BOField" | "AppVariable";
 
 /**
- * Individual filter condition
+ * Base interface for all filter nodes
  */
-export interface FilterCondition {
-  /** Filter operator */
+interface FilterNodeBase {
+  /** Operator type */
+  Operator: FilterOperator | LogicalOperator;
+}
+
+/**
+ * Leaf filter condition (actual field comparison)
+ */
+export interface FilterCondition extends FilterNodeBase {
+  /** Condition operator */
   Operator: FilterOperator;
   /** Left-hand side field name */
   LHSField: string;
@@ -44,19 +57,28 @@ export interface FilterCondition {
   RHSValue: any;
   /** Right-hand side type (optional, defaults to Constant) */
   RHSType?: FilterRHSType;
-  /** Nested conditions for AND/OR operators */
-  Condition?: FilterCondition[];
 }
 
 /**
- * Filter structure matching API specification
+ * Logical filter node (combines multiple conditions)
  */
-export interface Filter {
-  /** Logical operator for combining conditions */
-  Operator: "AND" | "OR";
-  /** Array of filter conditions */
-  Condition: FilterCondition[];
+export interface FilterLogical extends FilterNodeBase {
+  /** Logical operator */
+  Operator: LogicalOperator;
+  /** Nested conditions (can be FilterCondition or FilterLogical) */
+  Condition: Array<FilterCondition | FilterLogical>;
 }
+
+/**
+ * Filter structure matching API specification (root level)
+ * This is a discriminated union - a filter is either a logical node or a condition
+ */
+export type Filter = FilterLogical;
+
+/**
+ * Convenience type for any filter node (leaf or logical)
+ */
+export type FilterNode = FilterCondition | FilterLogical;
 
 /**
  * DateTime encoding format used by the API

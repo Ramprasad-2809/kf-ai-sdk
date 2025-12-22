@@ -298,7 +298,7 @@ export async function getCardCount(
   
   const options: ListOptions = {
     Filter: {
-      Operator: "AND",
+      Operator: "And",
       Condition: [
         {
           Operator: "EQ",

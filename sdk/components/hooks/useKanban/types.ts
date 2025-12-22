@@ -9,6 +9,7 @@ import type {
   ValidationError,
   FieldDefinition,
 } from "../useFilter";
+import type { LogicalOperator } from "../../../types/common";
 
 // ============================================================
 // CORE DATA STRUCTURES
@@ -206,7 +207,7 @@ export interface UseKanbanOptions<T> {
     /** Initial filter conditions */
     filters?: FilterConditionWithId[];
     /** Initial filter operator */
-    filterOperator?: "AND" | "OR";
+    filterOperator?: LogicalOperator;
     /** Initial search query */
     search?: string;
     /** Initial column order */
@@ -277,7 +278,7 @@ export interface FilterOperations {
   /** Current filter conditions */
   conditions: FilterConditionWithId[];
   /** Logical operator for combining conditions */
-  logicalOperator: "AND" | "OR";
+  logicalOperator: LogicalOperator;
   /** Whether all conditions are valid */
   isValid: boolean;
   /** Current validation errors */
@@ -302,7 +303,7 @@ export interface FilterOperations {
   getCondition: (id: string) => FilterConditionWithId | undefined;
 
   /** Set logical operator */
-  setLogicalOperator: (operator: "AND" | "OR") => void;
+  setLogicalOperator: (operator: LogicalOperator) => void;
 
   /** Bulk operations */
   setConditions: (conditions: FilterConditionWithId[]) => void;

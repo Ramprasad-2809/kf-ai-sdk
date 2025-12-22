@@ -92,7 +92,7 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
 
   const filterHook = useFilter<T>({
     initialConditions: initialState?.filters,
-    initialLogicalOperator: initialState?.filterOperator || "AND",
+    initialLogicalOperator: initialState?.filterOperator || "And",
     fieldDefinitions: cardFieldDefinitions,
     validateOnChange: true,
     onValidationError: onFilterError,
@@ -114,19 +114,19 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
 
       if (!basePayload) {
         combinedPayload = {
-          Operator: "AND",
+          Operator: "And",
           Condition: [columnFilterObject]
         };
       } else {
-        // If base is AND, append. If base is OR, wrap in new AND.
-        if (basePayload.Operator === "AND") {
+        // If base is And, append. If base is Or, wrap in new And.
+        if (basePayload.Operator === "And") {
            combinedPayload = {
              ...basePayload,
              Condition: [...(basePayload.Condition || []), columnFilterObject]
            };
         } else {
           combinedPayload = {
-            Operator: "AND",
+            Operator: "And",
             Condition: [basePayload, columnFilterObject]
           };
         }
