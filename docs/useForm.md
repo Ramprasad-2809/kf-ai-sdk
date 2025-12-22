@@ -1,124 +1,208 @@
-# useForm Hook Documentation
+# useForm Hook - Usage Guide
 
-The `useForm` hook is a powerful form management solution that integrates React Hook Form with backend-driven schemas and validation. It automatically fetches field definitions from your backend, applies complex validation rules, and handles form submission with type safety.
+The `useForm` hook is a comprehensive form management solution that integrates React Hook Form with backend-driven schemas, automatic validation, computed fields, and type-safe submission handling.
 
 ## Table of Contents
 
 - [Quick Start](#quick-start)
+- [Core Concepts](#core-concepts)
 - [API Reference](#api-reference)
-- [Backend Schema Integration](#backend-schema-integration)
-- [Validation System](#validation-system)
-- [Expression Trees](#expression-trees)
-- [Advanced Usage](#advanced-usage)
-- [Examples](#examples)
+- [Features](#features)
+  - [Create Operation](#create-operation)
+  - [Update Operation](#update-operation)
+  - [Computed Fields](#computed-fields)
+  - [Validation](#validation)
+  - [Error Handling](#error-handling)
+- [Complete Example](#complete-example)
 - [Best Practices](#best-practices)
+- [Common Patterns](#common-patterns)
 - [Troubleshooting](#troubleshooting)
 
 ## Quick Start
 
-### Basic Usage
+### Basic Create Form
 
 ```tsx
-import { useForm } from '@kf-ai-sdk/hooks';
+import { useForm } from 'kf-ai-sdk';
 
-function MyForm() {
-  const form = useForm({
-    source: 'user',
-    operation: 'create',
-    onSuccess: (data) => console.log('Created:', data),
-    onError: (error) => console.error('Error:', error)
+interface Product {
+  _id?: string;
+  Title: string;
+  Description: string;
+  Price: number;
+  Stock: number;
+  Category: string;
+}
+
+function CreateProductForm() {
+  const form = useForm<Product>({
+    source: "BDO_AmazonProductMaster",
+    operation: "create",
+    defaultValues: {
+      Title: "",
+      Description: "",
+      Price: 0,
+      Stock: 0,
+      Category: "Electronics",
+    },
+    onSuccess: (data) => {
+      console.log("Product created:", data);
+    },
+    onError: (error) => {
+      console.error("Error:", error);
+    },
   });
 
   if (form.isLoadingInitialData) {
-    return <div>Loading form schema...</div>;
+    return <div>Loading form...</div>;
   }
 
   return (
     <form onSubmit={form.handleSubmit()}>
-      <input {...form.register('firstName')} placeholder="First Name" />
-      {form.formState.errors.firstName && (
-        <span>{form.formState.errors.firstName.message}</span>
-      )}
-      
-      <input {...form.register('email')} placeholder="Email" />
-      {form.formState.errors.email && (
-        <span>{form.formState.errors.email.message}</span>
-      )}
-      
+      <div>
+        <label>Product Title *</label>
+        <input {...form.register("Title")} placeholder="Enter title" />
+        {form.errors.Title && (
+          <p className="error">{form.errors.Title.message}</p>
+        )}
+      </div>
+
+      <div>
+        <label>Price *</label>
+        <input
+          {...form.register("Price")}
+          type="number"
+          step="0.01"
+          placeholder="0.00"
+        />
+        {form.errors.Price && (
+          <p className="error">{form.errors.Price.message}</p>
+        )}
+      </div>
+
+      <div>
+        <label>Stock *</label>
+        <input {...form.register("Stock")} type="number" placeholder="0" />
+        {form.errors.Stock && (
+          <p className="error">{form.errors.Stock.message}</p>
+        )}
+      </div>
+
       <button type="submit" disabled={form.isSubmitting}>
-        {form.isSubmitting ? 'Creating...' : 'Create User'}
+        {form.isSubmitting ? "Creating..." : "Create Product"}
       </button>
     </form>
   );
 }
 ```
 
-### Update Form
+### Basic Update Form
 
 ```tsx
-function EditUserForm({ userId }: { userId: string }) {
-  const form = useForm({
-    source: 'user',
-    operation: 'update',
-    recordId: userId,
-    onSuccess: (data) => console.log('Updated:', data)
+function EditProductForm({ productId }: { productId: string }) {
+  const [showForm, setShowForm] = useState(true);
+
+  const form = useForm<Product>({
+    source: "BDO_AmazonProductMaster",
+    operation: "update",
+    recordId: productId,
+    enabled: showForm,  // Only fetch when dialog is open
+    onSuccess: (data) => {
+      console.log("Product updated:", data);
+      setShowForm(false);
+    },
   });
 
-  // Form renders with existing data pre-filled
+  if (form.isLoadingInitialData) {
+    return <div>Loading product data...</div>;
+  }
+
   return (
     <form onSubmit={form.handleSubmit()}>
-      {/* Fields will be populated with existing user data */}
-      <input {...form.register('firstName')} />
-      <input {...form.register('email')} />
-      <button type="submit">Update User</button>
+      {/* Fields will be pre-filled with existing data */}
+      <input {...form.register("Title")} />
+      <input {...form.register("Price")} type="number" />
+      <input {...form.register("Stock")} type="number" />
+
+      <button type="submit" disabled={form.isSubmitting}>
+        {form.isSubmitting ? "Updating..." : "Update Product"}
+      </button>
     </form>
   );
 }
 ```
 
+## Core Concepts
+
+### Backend Schema Integration
+
+The hook automatically fetches field definitions from your backend:
+- **Field types** (string, number, boolean, date, etc.)
+- **Validation rules** (required, min/max, patterns, custom expressions)
+- **Computed fields** (auto-calculated based on other fields)
+- **Default values**
+- **Field permissions** (read-only, editable, hidden by role)
+
+### Automatic Validation
+
+Validation happens at multiple levels:
+1. **Type validation** - Automatic based on field type
+2. **Field-level validation** - Backend-defined rules
+3. **Cross-field validation** - Complex rules involving multiple fields
+4. **Client-side + Server-side** - Validated on both for security and UX
+
+### Computed Fields
+
+Fields can be automatically calculated:
+- Computed on blur after validation passes
+- Uses draft API for server-side computation
+- Falls back to client-side if API unavailable
+- Read-only in the UI
+
 ## API Reference
 
 ### useForm(options)
 
-The main hook for form management.
-
 #### Parameters
 
 ```typescript
-interface UseFormOptions<T = any> {
+interface UseFormOptions<T> {
   /** Data source identifier (Business Object name) */
   source: string;
-  
+
   /** Form operation type */
-  operation: 'create' | 'update';
-  
+  operation: "create" | "update";
+
   /** Record ID for update operations */
   recordId?: string;
-  
+
   /** Default form values */
   defaultValues?: Partial<T>;
-  
+
   /** Validation mode (default: 'onBlur') */
-  mode?: 'onBlur' | 'onChange' | 'onSubmit';
-  
+  mode?: "onBlur" | "onChange" | "onSubmit";
+
+  /** Enable/disable the hook (useful for conditional forms) */
+  enabled?: boolean;
+
+  /** User role for permission-based field filtering */
+  userRole?: string;
+
   /** Success callback */
   onSuccess?: (data: T) => void;
-  
-  /** Error callback */
+
+  /** Error callback (any error) */
   onError?: (error: Error) => void;
-  
+
   /** Schema load error callback */
   onSchemaError?: (error: Error) => void;
-  
+
   /** Submit error callback */
   onSubmitError?: (error: Error) => void;
-  
-  /** Custom validation rules */
-  customValidation?: Record<keyof T, any>;
-  
-  /** Skip schema fetching (for testing) */
+
+  /** Skip schema fetching (for testing/manual schema) */
   skipSchemaFetch?: boolean;
-  
+
   /** Manual schema (use instead of fetching) */
   schema?: BackendSchema;
 }
@@ -127,39 +211,47 @@ interface UseFormOptions<T = any> {
 #### Return Value
 
 ```typescript
-interface UseFormReturn<T = any> {
-  // React Hook Form integration
+interface UseFormReturn<T> {
+  // Form Methods (React Hook Form)
   register: UseFormRegister<T>;
-  handleSubmit: UseFormHandleSubmit<T>;
-  formState: FormState<T>;
+  handleSubmit: () => (e?: React.FormEvent) => Promise<void>;
   watch: UseFormWatch<T>;
   setValue: UseFormSetValue<T>;
   reset: UseFormReset<T>;
-  
-  // Loading states
-  isLoadingInitialData: boolean;
-  isLoadingRecord: boolean;
+
+  // Flattened Form State (Direct Access - RECOMMENDED)
+  errors: FieldErrors<T>;
+  isValid: boolean;
+  isDirty: boolean;
   isSubmitting: boolean;
-  isLoading: boolean;
-  
-  // Error handling
-  loadError: Error | null;
-  submitError: Error | null;
-  hasError: boolean;
-  
-  // Schema information
+  isSubmitSuccessful: boolean;
+
+  // Legacy (for backward compatibility)
+  formState: FormState<T>;
+
+  // Loading States
+  isLoadingInitialData: boolean;   // Schema + record data loading
+  isLoadingRecord: boolean;         // Just record data loading
+  isLoading: boolean;               // Any loading state
+
+  // Error Handling
+  loadError: Error | null;          // Schema or record load error
+  submitError: Error | null;        // Form submission error
+  hasError: boolean;                // Any error present
+
+  // Schema Information
   schema: BackendSchema | null;
   processedSchema: ProcessedSchema | null;
-  computedFields: string[];
-  requiredFields: string[];
-  
-  // Field helpers
-  getField: (fieldName: keyof T) => ProcessedField | null;
-  getFields: () => Record<string, ProcessedField>;
-  hasField: (fieldName: keyof T) => boolean;
-  isFieldRequired: (fieldName: keyof T) => boolean;
-  isFieldComputed: (fieldName: keyof T) => boolean;
-  
+  computedFields: Array<keyof T>;
+  requiredFields: Array<keyof T>;
+
+  // Field Helpers
+  getField: <K extends keyof T>(fieldName: K) => ProcessedField | null;
+  getFields: () => Record<keyof T, ProcessedField>;
+  hasField: <K extends keyof T>(fieldName: K) => boolean;
+  isFieldRequired: <K extends keyof T>(fieldName: K) => boolean;
+  isFieldComputed: <K extends keyof T>(fieldName: K) => boolean;
+
   // Operations
   submit: () => Promise<void>;
   refreshSchema: () => Promise<void>;
@@ -168,559 +260,365 @@ interface UseFormReturn<T = any> {
 }
 ```
 
-## Backend Schema Integration
+## Features
 
-The `useForm` hook automatically fetches field definitions from your backend using the endpoint:
+### Create Operation
 
-```
-GET /api/bo/{source}/field
-```
+Create new records with validation and default values.
 
-### Expected Schema Format
-
-The backend should return a JSON object with field definitions:
-
-```json
-{
-  "FirstName": {
-    "Type": "String",
-    "Required": true,
-    "Validation": [
-      {
-        "Id": "VAL_FIRSTNAME_001",
-        "Type": "Expression",
-        "Condition": {
-          "Expression": "LENGTH(TRIM(FirstName)) >= 2",
-          "ExpressionTree": {
-            "Type": "BinaryExpression",
-            "Operator": ">=",
-            "Arguments": [
-              {
-                "Type": "CallExpression",
-                "Callee": "LENGTH",
-                "Arguments": [
-                  {
-                    "Type": "CallExpression",
-                    "Callee": "TRIM",
-                    "Arguments": [
-                      {
-                        "Type": "Identifier",
-                        "Name": "FirstName",
-                        "Source": "BO_User"
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "Type": "Literal",
-                "Value": 2
-              }
-            ]
-          }
-        },
-        "Message": "First name must be at least 2 characters"
-      }
-    ]
-  },
-  "Email": {
-    "Type": "String",
-    "Required": true,
-    "Unique": true,
-    "Validation": [
-      {
-        "Id": "VAL_EMAIL_001",
-        "Type": "Expression",
-        "Condition": {
-          "Expression": "CONTAINS(Email, '@')",
-          "ExpressionTree": {
-            "Type": "CallExpression",
-            "Callee": "CONTAINS",
-            "Arguments": [
-              {
-                "Type": "Identifier",
-                "Name": "Email",
-                "Source": "BO_User"
-              },
-              {
-                "Type": "Literal",
-                "Value": "@"
-              }
-            ]
-          }
-        },
-        "Message": "Please enter a valid email address"
-      }
-    ]
-  }
-}
-```
-
-### Field Types
-
-Supported backend field types:
-
-- **String**: Text input fields
-- **Number**: Numeric input fields
-- **Boolean**: Checkbox fields
-- **Date**: Date picker fields
-- **DateTime**: Date and time picker fields
-- **Reference**: Select fields with data from other objects
-- **Array**: Multi-value fields
-- **Object**: Complex nested structures
-
-### Field Properties
-
-- `Type`: Field data type
-- `Required`: Whether the field is mandatory
-- `Unique`: Whether the field value must be unique
-- `DefaultValue`: Expression for default value calculation
-- `Formula`: Expression for computed field calculation
-- `Computed`: Whether the field is read-only (calculated)
-- `Validation`: Array of validation rules
-- `Values`: Options for select/reference fields
-- `Description`: Help text for the field
-
-## Validation System
-
-The hook supports multiple types of validation:
-
-### 1. Basic Validation
-
-```typescript
-// Required fields
-{
-  "Required": true
-}
-
-// Type validation (automatic based on field type)
-{
-  "Type": "Number" // Automatically validates numeric input
-}
-```
-
-### 2. Expression-Based Validation
-
-Backend validation rules use expression trees for complex logic:
-
-```json
-{
-  "Validation": [
-    {
-      "Id": "VAL_AGE_001",
-      "Type": "Expression",
-      "Condition": {
-        "Expression": "Age >= 18 AND Age <= 120",
-        "ExpressionTree": {
-          "Type": "LogicalExpression",
-          "Operator": "AND",
-          "Arguments": [
-            {
-              "Type": "BinaryExpression",
-              "Operator": ">=",
-              "Arguments": [
-                {
-                  "Type": "Identifier",
-                  "Name": "Age",
-                  "Source": "BO_User"
-                },
-                {
-                  "Type": "Literal",
-                  "Value": 18
-                }
-              ]
-            },
-            {
-              "Type": "BinaryExpression",
-              "Operator": "<=",
-              "Arguments": [
-                {
-                  "Type": "Identifier",
-                  "Name": "Age",
-                  "Source": "BO_User"
-                },
-                {
-                  "Type": "Literal",
-                  "Value": 120
-                }
-              ]
-            }
-          ]
-        }
-      },
-      "Message": "Age must be between 18 and 120"
-    }
-  ]
-}
-```
-
-### 3. Cross-Field Validation
-
-Validate relationships between fields:
-
-```json
-{
-  "EndDate": {
-    "Type": "Date",
-    "Required": true,
-    "Validation": [
-      {
-        "Id": "VAL_END_DATE_001",
-        "Type": "Expression",
-        "Condition": {
-          "Expression": "EndDate >= StartDate",
-          "ExpressionTree": {
-            "Type": "BinaryExpression",
-            "Operator": ">=",
-            "Arguments": [
-              {
-                "Type": "Identifier",
-                "Name": "EndDate",
-                "Source": "BO_LeaveRequest"
-              },
-              {
-                "Type": "Identifier",
-                "Name": "StartDate",
-                "Source": "BO_LeaveRequest"
-              }
-            ]
-          }
-        },
-        "Message": "End date must be on or after start date"
-      }
-    ]
-  }
-}
-```
-
-## Expression Trees
-
-Expression trees are the backbone of the validation system. They represent complex logic as nested objects that can be evaluated at runtime.
-
-### Supported Expression Types
-
-#### 1. Literal Values
-
-```json
-{
-  "Type": "Literal",
-  "Value": "Hello World" // string, number, boolean, or null
-}
-```
-
-#### 2. Field References
-
-```json
-{
-  "Type": "Identifier",
-  "Name": "FieldName",
-  "Source": "BO_ObjectName"
-}
-```
-
-#### 3. System Values
-
-```json
-{
-  "Type": "SystemIdentifier",
-  "Name": "NOW" // NOW, TODAY, CURRENT_USER, etc.
-}
-```
-
-#### 4. Function Calls
-
-```json
-{
-  "Type": "CallExpression",
-  "Callee": "LENGTH",
-  "Arguments": [
-    {
-      "Type": "Identifier",
-      "Name": "FirstName",
-      "Source": "BO_User"
-    }
-  ]
-}
-```
-
-#### 5. Binary Operations
-
-```json
-{
-  "Type": "BinaryExpression",
-  "Operator": ">=",
-  "Arguments": [
-    {
-      "Type": "Identifier",
-      "Name": "Age",
-      "Source": "BO_User"
+```tsx
+function CreateProductForm() {
+  const form = useForm<Product>({
+    source: "BDO_AmazonProductMaster",
+    operation: "create",
+    defaultValues: {
+      Title: "",
+      Description: "",
+      Category: "Electronics",
+      Price: 0,
+      MRP: 0,
+      Stock: 0,
+      Warehouse: "Warehouse_A",
+      ReorderLevel: 10,
+      IsActive: true,
     },
-    {
-      "Type": "Literal",
-      "Value": 18
-    }
-  ]
-}
-```
-
-#### 6. Logical Operations
-
-```json
-{
-  "Type": "LogicalExpression",
-  "Operator": "AND",
-  "Arguments": [
-    {
-      "Type": "BinaryExpression",
-      "Operator": ">=",
-      "Arguments": [...]
+    onSuccess: (data) => {
+      toast.success("Product created successfully!");
+      navigate("/products");
     },
-    {
-      "Type": "BinaryExpression",
-      "Operator": "<=",
-      "Arguments": [...]
-    }
-  ]
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  return (
+    <form onSubmit={form.handleSubmit()}>
+      {/* Form fields */}
+
+      <button type="submit" disabled={form.isSubmitting}>
+        {form.isSubmitting ? "Creating..." : "Create Product"}
+      </button>
+    </form>
+  );
 }
 ```
 
-### Built-in Functions
+**Key Points:**
+- Set `operation: "create"`
+- Provide `defaultValues` for better UX
+- Form resets automatically on successful submission
+- No `recordId` needed
 
-The expression evaluator supports many built-in functions:
+### Update Operation
 
-#### String Functions
-- `CONCAT(str1, str2, ...)`: Concatenate strings
-- `TRIM(str)`: Remove leading/trailing whitespace
-- `LENGTH(str)`: Get string length
-- `UPPER(str)`: Convert to uppercase
-- `LOWER(str)`: Convert to lowercase
-- `SUBSTRING(str, start, length)`: Extract substring
+Update existing records with pre-filled data.
 
-#### Date Functions
-- `NOW`: Current date and time
-- `TODAY`: Current date (no time)
-- `YEAR(date)`: Extract year
-- `MONTH(date)`: Extract month
-- `DAY(date)`: Extract day
-- `DATE_DIFF(date1, date2)`: Calculate difference in days
-- `ADD_DAYS(date, days)`: Add days to date
-- `ADD_MONTHS(date, months)`: Add months to date
+```tsx
+function EditProductForm({ productId }: { productId: string }) {
+  const [showDialog, setShowDialog] = useState(false);
 
-#### Math Functions
-- `SUM(n1, n2, ...)`: Sum numbers
-- `AVG(n1, n2, ...)`: Average numbers
-- `MIN(n1, n2, ...)`: Minimum value
-- `MAX(n1, n2, ...)`: Maximum value
-- `ROUND(num)`: Round to nearest integer
-- `FLOOR(num)`: Round down
-- `CEIL(num)`: Round up
-- `ABS(num)`: Absolute value
+  const form = useForm<Product>({
+    source: "BDO_AmazonProductMaster",
+    operation: "update",
+    recordId: productId,
+    enabled: showDialog,  // Only fetch when needed
+    onSuccess: (data) => {
+      toast.success("Product updated!");
+      setShowDialog(false);
+      refetchProductList();
+    },
+  });
 
-#### Conditional Functions
-- `IF(condition, trueValue, falseValue)`: Conditional expression
+  return (
+    <Dialog open={showDialog} onOpenChange={setShowDialog}>
+      <DialogTrigger asButton>Edit Product</DialogTrigger>
 
-#### Validation Functions
-- `IS_NULL(value)`: Check if null/undefined
-- `IS_EMPTY(str)`: Check if empty string
-- `IS_NUMBER(value)`: Check if numeric
-- `IS_DATE(value)`: Check if valid date
+      <DialogContent>
+        {form.isLoadingInitialData ? (
+          <div>Loading product data...</div>
+        ) : (
+          <form onSubmit={form.handleSubmit()}>
+            {/* Fields auto-populated with existing data */}
+            <input
+              {...form.register("Title")}
+              defaultValue={form.watch("Title")}
+            />
+            <input
+              {...form.register("Price")}
+              type="number"
+              defaultValue={form.watch("Price")}
+            />
 
-## Advanced Usage
+            <button type="submit" disabled={form.isSubmitting}>
+              Update
+            </button>
+          </form>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+```
+
+**Key Points:**
+- Set `operation: "update"`
+- Provide `recordId` to identify the record
+- Form auto-fetches and populates existing data
+- Use `enabled` prop to control when data is fetched
+- Form does NOT reset on successful update (preserves changes)
 
 ### Computed Fields
 
-Fields can be automatically calculated based on other fields:
+Fields that are automatically calculated based on other fields.
 
-```json
-{
-  "FullName": {
-    "Type": "String",
-    "Formula": {
-      "Expression": "CONCAT(FirstName, ' ', LastName)",
-      "ExpressionTree": {
-        "Type": "CallExpression",
-        "Callee": "CONCAT",
-        "Arguments": [
-          {
-            "Type": "Identifier",
-            "Name": "FirstName",
-            "Source": "BO_User"
-          },
-          {
-            "Type": "Literal",
-            "Value": " "
-          },
-          {
-            "Type": "Identifier",
-            "Name": "LastName",
-            "Source": "BO_User"
-          }
-        ]
-      }
+```tsx
+interface Product {
+  Title: string;
+  Price: number;
+  MRP: number;
+  Stock: number;
+  ReorderLevel: number;
+  Discount: number;      // Computed: (MRP - Price) / MRP * 100
+  LowStock: boolean;     // Computed: Stock <= ReorderLevel
+}
+
+function ProductForm() {
+  const form = useForm<Product>({
+    source: "BDO_AmazonProductMaster",
+    operation: "create",
+    defaultValues: {
+      Title: "",
+      Price: 0,
+      MRP: 0,
+      Stock: 0,
+      ReorderLevel: 10,
     },
-    "Computed": true
-  }
-}
-```
-
-```tsx
-// In your component
-function UserForm() {
-  const form = useForm({ source: 'user', operation: 'create' });
+  });
 
   return (
     <form onSubmit={form.handleSubmit()}>
-      <input {...form.register('FirstName')} placeholder="First Name" />
-      <input {...form.register('LastName')} placeholder="Last Name" />
-      
-      {/* Computed field - automatically calculated */}
-      <div>Full Name: {form.watch('FullName')}</div>
-      
-      <button type="submit">Create User</button>
-    </form>
-  );
-}
-```
+      {/* Regular Fields */}
+      <div>
+        <label>Price (USD) *</label>
+        <input {...form.register("Price")} type="number" step="0.01" />
+      </div>
 
-### Reference Fields
+      <div>
+        <label>MRP (USD) *</label>
+        <input {...form.register("MRP")} type="number" step="0.01" />
+      </div>
 
-Fields can reference data from other objects:
+      <div>
+        <label>Stock *</label>
+        <input {...form.register("Stock")} type="number" />
+      </div>
 
-```json
-{
-  "DepartmentId": {
-    "Type": "Reference",
-    "Values": {
-      "Mode": "Dynamic",
-      "Reference": {
-        "BusinessObject": "BO_Department",
-        "Fields": ["_id", "Name", "Description"],
-        "Filters": {
-          "Condition": [
-            {
-              "LhsField": "IsActive",
-              "Operator": "EQ",
-              "RhsType": "Value",
-              "RhsValue": true
-            }
-          ]
-        },
-        "Sort": [
-          {
-            "Field": "Name",
-            "Order": "ASC"
-          }
-        ]
-      }
-    }
-  }
-}
-```
+      {/* Computed Fields Section */}
+      <div className="computed-fields">
+        <h3>Auto-Calculated Fields</h3>
 
-```tsx
-// In your component
-function UserForm() {
-  const form = useForm({ source: 'user', operation: 'create' });
-
-  return (
-    <form onSubmit={form.handleSubmit()}>
-      {/* Reference field renders as select */}
-      <select {...form.register('DepartmentId')}>
-        <option value="">Select Department</option>
-        {form.getField('DepartmentId')?.options?.map(option => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-      
-      <button type="submit">Create User</button>
-    </form>
-  );
-}
-```
-
-### Field Helpers
-
-The hook provides utilities to work with field metadata:
-
-```tsx
-function UserForm() {
-  const form = useForm({ source: 'user', operation: 'create' });
-
-  return (
-    <form onSubmit={form.handleSubmit()}>
-      {Object.entries(form.getFields()).map(([fieldName, field]) => (
-        <div key={fieldName}>
-          <label>
-            {field.label}
-            {form.isFieldRequired(fieldName) && ' *'}
-          </label>
-          
-          {field.type === 'select' ? (
-            <select {...form.register(fieldName)}>
-              <option value="">Choose...</option>
-              {field.options?.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <input
-              {...form.register(fieldName)}
-              type={field.type}
-              placeholder={field.description}
-              readOnly={form.isFieldComputed(fieldName)}
-            />
-          )}
-          
-          {form.formState.errors[fieldName] && (
-            <span className="error">
-              {form.formState.errors[fieldName].message}
-            </span>
-          )}
+        {/* Discount Percentage */}
+        <div>
+          <label>Discount %</label>
+          <input
+            value={(form.watch("Discount") || 0).toFixed(2)}
+            readOnly
+            disabled
+            className="computed-field"
+          />
+          <p className="hint">
+            Auto-calculated from (MRP - Price) ÷ MRP × 100
+          </p>
         </div>
-      ))}
-      
-      <button type="submit">Submit</button>
+
+        {/* Low Stock Indicator */}
+        <div>
+          <label>Stock Status</label>
+          <div className="status-badge">
+            {form.watch("LowStock") ? "⚠️ Low Stock" : "✅ Good Stock"}
+          </div>
+          <p className="hint">
+            Auto-calculated: Stock ≤ Reorder Level
+          </p>
+        </div>
+      </div>
+
+      <button type="submit">Create Product</button>
     </form>
   );
 }
+```
+
+**How Computed Fields Work:**
+1. User fills in dependent fields (Price, MRP, Stock)
+2. On blur, validation runs first
+3. If validation passes, computation is triggered
+4. Draft API is called with current form values
+5. Server returns computed values
+6. Computed fields are updated automatically
+7. Falls back to client-side computation if API fails
+
+**Important Notes:**
+- Computed fields are **read-only**
+- Computation triggers **after validation passes**
+- Uses **debouncing** (300ms) to reduce API calls
+- **Not included in form submission** (computed on backend)
+- Check if a field is computed: `form.isFieldComputed("Discount")`
+
+### Validation
+
+Multi-level validation system with helpful error messages.
+
+#### Basic Field Validation
+
+```tsx
+function ProductForm() {
+  const form = useForm<Product>({
+    source: "BDO_AmazonProductMaster",
+    operation: "create",
+  });
+
+  return (
+    <form onSubmit={form.handleSubmit()}>
+      {/* Required Field */}
+      <div>
+        <label>
+          Product Title
+          {form.isFieldRequired("Title") && <span className="required">*</span>}
+        </label>
+        <input
+          {...form.register("Title")}
+          className={form.errors.Title ? "error" : ""}
+        />
+        {form.errors.Title && (
+          <p className="error-message">{form.errors.Title.message}</p>
+        )}
+      </div>
+
+      {/* Numeric Field with Validation */}
+      <div>
+        <label>Price *</label>
+        <input
+          {...form.register("Price")}
+          type="number"
+          step="0.01"
+          min="0"
+        />
+        {form.errors.Price && (
+          <p className="error-message">{form.errors.Price.message}</p>
+        )}
+      </div>
+    </form>
+  );
+}
+```
+
+#### Cross-Field Validation
+
+Validation rules that involve multiple fields:
+
+```tsx
+function ProductForm() {
+  const form = useForm<Product>({
+    source: "BDO_AmazonProductMaster",
+    operation: "create",
+  });
+
+  return (
+    <form onSubmit={form.handleSubmit()}>
+      <div>
+        <label>Selling Price *</label>
+        <input {...form.register("Price")} type="number" />
+        {form.errors.Price && <p className="error">{form.errors.Price.message}</p>}
+      </div>
+
+      <div>
+        <label>Maximum Retail Price (MRP) *</label>
+        <input {...form.register("MRP")} type="number" />
+        {form.errors.MRP && <p className="error">{form.errors.MRP.message}</p>}
+      </div>
+
+      {/* Cross-Field Validation Errors */}
+      {form.errors.root && (
+        <div className="error-banner">
+          <h4>Validation Error</h4>
+          <ul>
+            {Object.values(form.errors.root).map((err, idx) => (
+              <li key={idx}>{(err as any).message}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <button type="submit">Create Product</button>
+    </form>
+  );
+}
+```
+
+**Example Cross-Field Rule:**
+- Rule: `Price <= MRP` (Selling price cannot exceed MRP)
+- Error: Shown in `form.errors.root.crossField0`
+- Message: "Selling price cannot be greater than MRP"
+
+#### Validation Modes
+
+```tsx
+// Validate on blur (default - best for performance)
+const form = useForm({
+  source: "BDO_AmazonProductMaster",
+  operation: "create",
+  mode: "onBlur",  // Validates when user leaves field
+});
+
+// Validate on every change (more responsive, higher cost)
+const form = useForm({
+  source: "BDO_AmazonProductMaster",
+  operation: "create",
+  mode: "onChange",  // Validates on every keystroke
+});
+
+// Validate only on submit (best for long forms)
+const form = useForm({
+  source: "BDO_AmazonProductMaster",
+  operation: "create",
+  mode: "onSubmit",  // Only validates when form is submitted
+});
 ```
 
 ### Error Handling
 
-Comprehensive error handling for different scenarios:
+Comprehensive error handling for all scenarios.
 
 ```tsx
-function UserForm() {
-  const form = useForm({
-    source: 'user',
-    operation: 'create',
+function ProductForm() {
+  const [generalError, setGeneralError] = useState<string | null>(null);
+
+  const form = useForm<Product>({
+    source: "BDO_AmazonProductMaster",
+    operation: "create",
+    onSuccess: () => {
+      toast.success("Product created!");
+      setGeneralError(null);
+    },
     onError: (error) => {
-      // Global error handler
-      console.error('Form error:', error);
+      // Catch-all error handler
+      setGeneralError(error.message);
     },
     onSchemaError: (error) => {
-      // Schema loading errors
-      console.error('Schema error:', error);
+      // Schema loading failed
+      setGeneralError(`Configuration Error: ${error.message}`);
     },
     onSubmitError: (error) => {
-      // Form submission errors
-      console.error('Submit error:', error);
-    }
+      // Form submission failed
+      setGeneralError(`Submission Failed: ${error.message}`);
+    },
   });
 
-  // Show loading state
-  if (form.isLoadingInitialData) {
-    return <div>Loading form schema...</div>;
-  }
-
-  // Show schema error
+  // Schema loading error
   if (form.loadError) {
     return (
-      <div className="error">
+      <div className="error-state">
         <h3>Error Loading Form</h3>
         <p>{form.loadError.message}</p>
         <button onClick={() => form.refreshSchema()}>
@@ -730,149 +628,728 @@ function UserForm() {
     );
   }
 
+  // Loading state
+  if (form.isLoadingInitialData) {
+    return <div>Loading form configuration...</div>;
+  }
+
   return (
     <form onSubmit={form.handleSubmit()}>
-      {/* Form fields */}
-      
-      {/* Submit error */}
+      {/* General Error Banner */}
+      {generalError && (
+        <div className="error-banner">
+          {generalError}
+        </div>
+      )}
+
+      {/* Cross-Field Validation Errors */}
+      {form.errors.root && (
+        <div className="error-banner">
+          <p className="font-medium">Validation Error</p>
+          <ul>
+            {Object.values(form.errors.root).map((err, idx) => (
+              <li key={idx}>{(err as any).message}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Form Fields */}
+      <div>
+        <input {...form.register("Title")} />
+        {form.errors.Title && (
+          <p className="error">{form.errors.Title.message}</p>
+        )}
+      </div>
+
+      {/* Submit Error */}
       {form.submitError && (
-        <div className="error">
+        <div className="error-banner">
           {form.submitError.message}
         </div>
       )}
-      
+
       <button type="submit" disabled={form.isSubmitting}>
-        {form.isSubmitting ? 'Submitting...' : 'Submit'}
+        Submit
       </button>
     </form>
+  );
+}
+```
+
+**Error Types:**
+- `form.loadError` - Schema or record loading failed
+- `form.submitError` - Form submission failed
+- `form.errors.FieldName` - Field-level validation error
+- `form.errors.root` - Cross-field validation errors
+- `generalError` - Custom error state for UI
+
+## Complete Example
+
+Full product form with all features from the e-commerce example:
+
+```tsx
+import { useState } from "react";
+import { useForm } from "kf-ai-sdk";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+interface Product {
+  _id?: string;
+  Title: string;
+  Description: string;
+  Brand: string;
+  Category: "Electronics" | "Books" | "Clothing" | "Home" | "Sports" | "Toys";
+  Price: number;
+  MRP: number;
+  Stock: number;
+  Warehouse: "Warehouse_A" | "Warehouse_B" | "Warehouse_C";
+  ReorderLevel: number;
+  Discount: number;      // Computed
+  LowStock: boolean;     // Computed
+  IsActive: boolean;
+}
+
+export function ProductFormDialog({
+  productId,
+  mode,
+  open,
+  onOpenChange,
+  onSuccess,
+}: {
+  productId?: string;
+  mode: "create" | "update";
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess: () => void;
+}) {
+  const [generalError, setGeneralError] = useState<string | null>(null);
+
+  const form = useForm<Product>({
+    source: "BDO_AmazonProductMaster",
+    operation: mode,
+    recordId: productId,
+    enabled: open,
+    defaultValues: {
+      Title: "",
+      Description: "",
+      Category: "Electronics",
+      Price: 0,
+      MRP: 0,
+      Brand: "",
+      Stock: 0,
+      Warehouse: "Warehouse_A",
+      ReorderLevel: 10,
+      IsActive: true,
+    },
+    onSuccess: () => {
+      onOpenChange(false);
+      setGeneralError(null);
+      onSuccess();
+    },
+    onError: (error) => setGeneralError(error.message),
+    onSchemaError: (error) =>
+      setGeneralError(`Configuration Error: ${error.message}`),
+    onSubmitError: (error) =>
+      setGeneralError(`Submission Failed: ${error.message}`),
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await form.handleSubmit()();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
+            {mode === "create" ? "Add New Product" : "Edit Product"}
+          </DialogTitle>
+        </DialogHeader>
+
+        {form.isLoadingInitialData ? (
+          <div className="flex flex-col items-center py-12 space-y-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+            <p className="text-sm text-gray-500">Loading form configuration...</p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* General Error */}
+            {generalError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
+                {generalError}
+              </div>
+            )}
+
+            {/* Cross-Field Validation Errors */}
+            {form.errors.root && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
+                <p className="font-medium">Validation Error</p>
+                <ul className="list-disc list-inside mt-1">
+                  {Object.values(form.errors.root).map((err, idx) => (
+                    <li key={idx}>{(err as any).message}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Title */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Product Title *
+              </label>
+              <Input
+                {...form.register("Title")}
+                placeholder="Enter product title"
+                className={form.errors.Title ? "border-red-500" : ""}
+              />
+              {form.errors.Title && (
+                <p className="text-red-600 text-sm mt-1">
+                  {form.errors.Title.message}
+                </p>
+              )}
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Description
+              </label>
+              <textarea
+                {...form.register("Description")}
+                className="flex w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                rows={3}
+                placeholder="Enter product description"
+              />
+            </div>
+
+            {/* Brand */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Brand
+              </label>
+              <Input {...form.register("Brand")} placeholder="Enter brand name" />
+            </div>
+
+            {/* Category */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Category
+              </label>
+              <Select
+                defaultValue={form.watch("Category") || "Electronics"}
+                onValueChange={(value) =>
+                  form.setValue("Category", value as any)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Electronics">Electronics</SelectItem>
+                  <SelectItem value="Books">Books</SelectItem>
+                  <SelectItem value="Clothing">Clothing</SelectItem>
+                  <SelectItem value="Home">Home & Garden</SelectItem>
+                  <SelectItem value="Sports">Sports</SelectItem>
+                  <SelectItem value="Toys">Toys & Games</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Price */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Selling Price (USD) *
+              </label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                {...form.register("Price")}
+                placeholder="0.00"
+                className={form.errors.Price ? "border-red-500" : ""}
+              />
+              {form.errors.Price && (
+                <p className="text-red-600 text-sm mt-1">
+                  {form.errors.Price.message}
+                </p>
+              )}
+            </div>
+
+            {/* MRP */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Maximum Retail Price (USD) *
+              </label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                {...form.register("MRP")}
+                placeholder="0.00"
+                className={form.errors.MRP ? "border-red-500" : ""}
+              />
+              {form.errors.MRP && (
+                <p className="text-red-600 text-sm mt-1">
+                  {form.errors.MRP.message}
+                </p>
+              )}
+            </div>
+
+            {/* Stock */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Stock Quantity *
+              </label>
+              <Input
+                type="number"
+                min="0"
+                {...form.register("Stock")}
+                placeholder="0"
+                className={form.errors.Stock ? "border-red-500" : ""}
+              />
+              {form.errors.Stock && (
+                <p className="text-red-600 text-sm mt-1">
+                  {form.errors.Stock.message}
+                </p>
+              )}
+            </div>
+
+            {/* Warehouse */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Warehouse
+              </label>
+              <Select
+                defaultValue={form.watch("Warehouse") || "Warehouse_A"}
+                onValueChange={(value) =>
+                  form.setValue("Warehouse", value as any)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select warehouse" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Warehouse_A">Warehouse A - North</SelectItem>
+                  <SelectItem value="Warehouse_B">Warehouse B - South</SelectItem>
+                  <SelectItem value="Warehouse_C">Warehouse C - East</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Reorder Level */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Reorder Level
+              </label>
+              <Input
+                type="number"
+                min="0"
+                {...form.register("ReorderLevel")}
+                placeholder="10"
+              />
+            </div>
+
+            {/* Computed Fields Section */}
+            <div className="border-t border-gray-200 pt-4 mt-4">
+              <h4 className="text-sm font-medium text-gray-900 mb-3">
+                Computed Fields (Auto-calculated)
+              </h4>
+
+              <div className="grid grid-cols-2 gap-4">
+                {/* Discount Percentage */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Discount %
+                  </label>
+                  <Input
+                    value={(form.watch("Discount") || 0).toFixed(2)}
+                    readOnly
+                    disabled
+                    className="bg-gray-50 cursor-not-allowed"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Auto-calculated from (MRP - Price) ÷ MRP × 100
+                  </p>
+                </div>
+
+                {/* Low Stock Indicator */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Stock Status
+                  </label>
+                  <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-sm">
+                    <span
+                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        form.watch("LowStock")
+                          ? "bg-red-100 text-red-800"
+                          : "bg-green-100 text-green-800"
+                      }`}
+                    >
+                      {form.watch("LowStock") ? "⚠️ Low Stock" : "✅ Good Stock"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Auto-calculated: Stock ≤ Reorder Level
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Form Actions */}
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={form.isSubmitting}>
+                {form.isSubmitting ? (
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                    <span>Saving...</span>
+                  </div>
+                ) : mode === "create" ? (
+                  "Add Product"
+                ) : (
+                  "Save Changes"
+                )}
+              </Button>
+            </div>
+          </form>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 ```
 
 ## Best Practices
 
-### 1. Use TypeScript
+### 1. Always Define Types
 
-Define your form data types for better development experience:
+Use TypeScript interfaces for your form data:
 
 ```tsx
-interface User {
+interface Product {
   _id?: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  age: number;
-  departmentId: string;
+  Title: string;
+  Price: number;
+  Stock: number;
+  Category: string;
 }
 
-function UserForm() {
-  const form = useForm<User>({
-    source: 'user',
-    operation: 'create'
-  });
+const form = useForm<Product>({
+  source: "BDO_AmazonProductMaster",
+  operation: "create",
+});
 
-  // TypeScript will provide autocomplete and type checking
-  return (
-    <form onSubmit={form.handleSubmit()}>
-      <input {...form.register('firstName')} />
-      <input {...form.register('email')} />
-      <input {...form.register('age')} type="number" />
-    </form>
-  );
-}
+// TypeScript will validate field names
+form.register("Title");    // ✅ Valid
+form.register("Invalid");  // ❌ TypeScript error
 ```
 
 ### 2. Handle Loading States
 
-Always show loading indicators:
+Always show loading indicators for better UX:
 
 ```tsx
-function UserForm() {
-  const form = useForm({ source: 'user', operation: 'create' });
+if (form.isLoadingInitialData) {
+  return (
+    <div className="loading-state">
+      <Spinner />
+      <p>Loading form configuration...</p>
+    </div>
+  );
+}
+```
 
-  if (form.isLoadingInitialData) {
-    return <div>Loading form schema...</div>;
-  }
+### 3. Provide Default Values
+
+Set sensible defaults for better UX:
+
+```tsx
+const form = useForm({
+  source: "BDO_AmazonProductMaster",
+  operation: "create",
+  defaultValues: {
+    Title: "",
+    Category: "Electronics",  // Default category
+    Price: 0,
+    Stock: 0,
+    Warehouse: "Warehouse_A",  // Default warehouse
+    ReorderLevel: 10,          // Default threshold
+    IsActive: true,            // Active by default
+  },
+});
+```
+
+### 4. Use enabled Prop for Conditional Forms
+
+Only fetch data when the form is visible:
+
+```tsx
+function EditProductDialog({ productId }: { productId: string }) {
+  const [open, setOpen] = useState(false);
+
+  const form = useForm({
+    source: "BDO_AmazonProductMaster",
+    operation: "update",
+    recordId: productId,
+    enabled: open,  // Only fetch when dialog is open
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      {/* Dialog content */}
+    </Dialog>
+  );
+}
+```
+
+### 5. Centralize Error Handling
+
+Use a single state for general errors:
+
+```tsx
+const [generalError, setGeneralError] = useState<string | null>(null);
+
+const form = useForm({
+  source: "BDO_AmazonProductMaster",
+  operation: "create",
+  onSuccess: () => setGeneralError(null),
+  onError: (error) => setGeneralError(error.message),
+  onSchemaError: (error) => setGeneralError(`Config Error: ${error.message}`),
+  onSubmitError: (error) => setGeneralError(`Submit Failed: ${error.message}`),
+});
+```
+
+### 6. Use Flattened Form State
+
+Use the direct properties instead of nested formState:
+
+```tsx
+// ✅ Recommended
+form.errors
+form.isValid
+form.isDirty
+form.isSubmitting
+
+// ⚠️ Legacy (still works but verbose)
+form.formState.errors
+form.formState.isValid
+form.formState.isDirty
+form.formState.isSubmitting
+```
+
+### 7. Watch Computed Fields
+
+Use `form.watch()` to display computed values:
+
+```tsx
+<div>
+  <label>Discount %</label>
+  <input
+    value={(form.watch("Discount") || 0).toFixed(2)}
+    readOnly
+    disabled
+  />
+</div>
+```
+
+### 8. Clear Errors on Success
+
+Reset error states when operation succeeds:
+
+```tsx
+const form = useForm({
+  source: "BDO_AmazonProductMaster",
+  operation: "create",
+  onSuccess: () => {
+    setGeneralError(null);
+    toast.success("Success!");
+    navigate("/products");
+  },
+});
+```
+
+## Common Patterns
+
+### Pattern 1: Form in Dialog/Modal
+
+```tsx
+function ProductDialog({
+  mode,
+  productId,
+  open,
+  onOpenChange,
+  onSuccess,
+}: {
+  mode: "create" | "update";
+  productId?: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess: () => void;
+}) {
+  const form = useForm<Product>({
+    source: "BDO_AmazonProductMaster",
+    operation: mode,
+    recordId: productId,
+    enabled: open,
+    onSuccess: () => {
+      onOpenChange(false);
+      onSuccess();
+    },
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        {form.isLoadingInitialData ? (
+          <LoadingState />
+        ) : (
+          <form onSubmit={form.handleSubmit()}>
+            {/* Form fields */}
+          </form>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+```
+
+### Pattern 2: Multi-Step Form
+
+```tsx
+function MultiStepProductForm() {
+  const [step, setStep] = useState(1);
+
+  const form = useForm<Product>({
+    source: "BDO_AmazonProductMaster",
+    operation: "create",
+  });
+
+  const handleNext = async () => {
+    // Validate current step fields
+    const fieldsToValidate = step === 1
+      ? ["Title", "Description", "Category"]
+      : ["Price", "MRP", "Stock"];
+
+    const isValid = await form.trigger(fieldsToValidate as any);
+
+    if (isValid) {
+      setStep(step + 1);
+    }
+  };
 
   return (
     <form onSubmit={form.handleSubmit()}>
-      {/* Form content */}
-      <button type="submit" disabled={form.isSubmitting}>
-        {form.isSubmitting ? 'Creating...' : 'Create User'}
-      </button>
+      {step === 1 && (
+        <div>
+          <h2>Basic Information</h2>
+          <input {...form.register("Title")} />
+          <input {...form.register("Description")} />
+          <select {...form.register("Category")}>
+            {/* Options */}
+          </select>
+          <button type="button" onClick={handleNext}>
+            Next
+          </button>
+        </div>
+      )}
+
+      {step === 2 && (
+        <div>
+          <h2>Pricing & Inventory</h2>
+          <input {...form.register("Price")} type="number" />
+          <input {...form.register("MRP")} type="number" />
+          <input {...form.register("Stock")} type="number" />
+          <button type="button" onClick={() => setStep(1)}>
+            Back
+          </button>
+          <button type="submit">Create Product</button>
+        </div>
+      )}
     </form>
   );
 }
 ```
 
-### 3. Validate Before Submit
-
-Use the built-in validation helper:
+### Pattern 3: Form with Draft Auto-Save
 
 ```tsx
-function UserForm() {
-  const form = useForm({ source: 'user', operation: 'create' });
+function ProductFormWithAutoSave() {
+  const form = useForm<Product>({
+    source: "BDO_AmazonProductMaster",
+    operation: "create",
+  });
 
-  const handleSubmit = async () => {
-    const isValid = await form.validateForm();
-    if (isValid) {
-      await form.submit();
-    } else {
-      console.log('Validation failed');
-    }
-  };
+  // Auto-save draft every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      if (form.isDirty && !form.isSubmitting) {
+        const values = form.getValues();
+        await saveDraft(values);
+        toast.success("Draft saved");
+      }
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [form.isDirty, form.isSubmitting]);
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
+    <form onSubmit={form.handleSubmit()}>
       {/* Form fields */}
     </form>
   );
 }
 ```
 
-### 4. Use Default Values
-
-Provide sensible defaults:
+### Pattern 4: Conditional Fields
 
 ```tsx
-function UserForm() {
-  const form = useForm({
-    source: 'user',
-    operation: 'create',
-    defaultValues: {
-      firstName: '',
-      lastName: '',
-      email: '',
-      isActive: true,
-      departmentId: 'DEFAULT_DEPT'
-    }
+function ProductForm() {
+  const form = useForm<Product>({
+    source: "BDO_AmazonProductMaster",
+    operation: "create",
   });
 
-  // Form will start with these values
-}
-```
-
-### 5. Handle Reference Fields Gracefully
-
-Check for options before rendering selects:
-
-```tsx
-function UserForm() {
-  const form = useForm({ source: 'user', operation: 'create' });
-
-  const departmentField = form.getField('departmentId');
-  const hasOptions = departmentField?.options && departmentField.options.length > 0;
+  const category = form.watch("Category");
 
   return (
     <form onSubmit={form.handleSubmit()}>
-      <select {...form.register('departmentId')} disabled={!hasOptions}>
-        <option value="">{hasOptions ? 'Select Department' : 'Loading departments...'}</option>
-        {departmentField?.options?.map(option => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
+      <select {...form.register("Category")}>
+        <option value="Electronics">Electronics</option>
+        <option value="Books">Books</option>
+        <option value="Clothing">Clothing</option>
       </select>
+
+      {/* Show only for Electronics */}
+      {category === "Electronics" && (
+        <div>
+          <label>Warranty Period (months)</label>
+          <input {...form.register("WarrantyPeriod")} type="number" />
+        </div>
+      )}
+
+      {/* Show only for Clothing */}
+      {category === "Clothing" && (
+        <div>
+          <label>Size</label>
+          <select {...form.register("Size")}>
+            <option value="S">Small</option>
+            <option value="M">Medium</option>
+            <option value="L">Large</option>
+          </select>
+        </div>
+      )}
+
+      <button type="submit">Create Product</button>
     </form>
   );
 }
@@ -880,82 +1357,138 @@ function UserForm() {
 
 ## Troubleshooting
 
-### Schema Not Loading
+### Issue: Form Not Loading
 
-**Problem**: Form shows "Loading form schema..." indefinitely.
+**Symptoms:** Shows "Loading form configuration..." indefinitely
 
-**Solutions**:
-1. Check if the backend endpoint `/api/bo/{source}/field` is accessible
-2. Verify the response format matches the expected schema structure
-3. Check browser network tab for error responses
-4. Use `onSchemaError` callback to log errors
+**Solutions:**
+1. Check if backend schema endpoint is accessible: `GET /api/bo/{source}/field`
+2. Verify `source` parameter matches your Business Object name
+3. Check browser console for network errors
+4. Use `onSchemaError` callback to debug:
 
 ```tsx
 const form = useForm({
-  source: 'user',
-  operation: 'create',
+  source: "BDO_AmazonProductMaster",
+  operation: "create",
   onSchemaError: (error) => {
-    console.error('Schema loading failed:', error);
-    // Handle error appropriately
-  }
+    console.error("Schema load error:", error);
+  },
 });
 ```
 
-### Validation Not Working
+### Issue: Validation Not Working
 
-**Problem**: Backend validation rules are not being applied.
+**Symptoms:** Form submits with invalid data
 
-**Solutions**:
-1. Verify the validation rules in the backend schema are properly formatted
-2. Check the expression tree syntax
-3. Ensure field names match between form and schema
-4. Test the expression evaluator with simpler expressions first
-
-### Cross-Field Validation Issues
-
-**Problem**: Cross-field validation (e.g., end date >= start date) not working.
-
-**Solutions**:
-1. Use `mode: 'onChange'` for real-time validation
-2. Ensure both fields are registered with the form
-3. Check that the expression tree correctly references both fields
-4. Test the validation logic with the backend expression evaluator
-
-### Performance Issues
-
-**Problem**: Form is slow with large schemas or many computed fields.
-
-**Solutions**:
-1. Use `mode: 'onBlur'` instead of `'onChange'` to reduce validation frequency
-2. Consider splitting large forms into multiple steps
-3. Implement caching for reference data
-4. Use React.memo() for form components that don't need frequent re-renders
-
-### Type Safety Issues
-
-**Problem**: TypeScript errors when using the form with specific data types.
-
-**Solutions**:
-1. Define proper interfaces for your form data
-2. Use the generic type parameter: `useForm<MyDataType>(...)`
-3. Ensure field names in your TypeScript interface match the backend schema
-4. Use type assertions carefully when needed
+**Solutions:**
+1. Check backend schema has validation rules defined
+2. Ensure validation mode is appropriate:
+   - `onBlur` - Validates when field loses focus (default)
+   - `onChange` - Validates on every change
+   - `onSubmit` - Validates only on submit
+3. Check validation rules in backend schema
+4. Use `validateForm()` to debug:
 
 ```tsx
-interface MyFormData {
-  firstName: string;
-  lastName: string;
-  age: number;
+const handleDebug = async () => {
+  const isValid = await form.validateForm();
+  console.log("Is valid:", isValid);
+  console.log("Errors:", form.errors);
+};
+```
+
+### Issue: Computed Fields Not Updating
+
+**Symptoms:** Computed fields show old or no values
+
+**Solutions:**
+1. Ensure dependent fields are validated correctly
+2. Check that draft API endpoint exists: `PATCH /api/bo/{source}/draft`
+3. Verify backend has computation rules defined
+4. Computation only triggers after validation passes
+5. Check browser console for API errors
+
+### Issue: Update Form Not Pre-filling
+
+**Symptoms:** Edit form shows empty fields instead of existing data
+
+**Solutions:**
+1. Verify `recordId` is provided and correct
+2. Check that record exists in backend
+3. Ensure `operation` is set to `"update"`
+4. Check `enabled` prop is true
+5. Use `defaultValue` on inputs:
+
+```tsx
+<input
+  {...form.register("Title")}
+  defaultValue={form.watch("Title")}
+/>
+```
+
+### Issue: Form Resets Unexpectedly
+
+**Symptoms:** Form clears after successful submission
+
+**Solutions:**
+- This is expected behavior for `create` operations
+- For `update` operations, form should NOT reset
+- If you want to prevent reset on create:
+
+```tsx
+const form = useForm({
+  source: "BDO_AmazonProductMaster",
+  operation: "create",
+  onSuccess: (data) => {
+    // Don't navigate away if you want to keep the form
+    toast.success("Created!");
+    // form.reset() is called automatically for create
+    // To prevent it, you'd need to modify the form state manually
+  },
+});
+```
+
+### Issue: TypeScript Errors
+
+**Symptoms:** TypeScript complains about field names or types
+
+**Solutions:**
+1. Define proper interface for your form data
+2. Use generic type parameter: `useForm<MyType>(...)`
+3. Ensure field names match between interface and backend
+4. Use type assertions carefully:
+
+```tsx
+interface Product {
+  Title: string;
+  Price: number;
+  Category: string;
 }
 
-const form = useForm<MyFormData>({
-  source: 'user',
-  operation: 'create'
+const form = useForm<Product>({
+  source: "BDO_AmazonProductMaster",
+  operation: "create",
 });
 
-// TypeScript will now provide proper autocomplete and type checking
+// ✅ TypeScript validates this
+form.register("Title");
+
+// ❌ TypeScript error
+form.register("InvalidField");
 ```
+
+### Issue: Slow Performance
+
+**Symptoms:** Form is sluggish or laggy
+
+**Solutions:**
+1. Use `mode: "onBlur"` instead of `"onChange"`
+2. Memoize components that don't need frequent updates
+3. Reduce number of watched fields
+4. Use React DevTools Profiler to identify bottlenecks
+5. Consider splitting large forms into multiple steps
 
 ---
 
-For more examples and advanced usage patterns, see the [examples directory](../examples/) in the repository.
+For more examples, see the [e-commerce example](../examples/e-commerce/) in the repository.
