@@ -13,17 +13,17 @@ export type {
   KanbanColumn,
   ColumnConfig,
   ColumnDefinition,
-  
+
   // Operations
-  ColumnOperations,
   CardOperations,
   SearchOperations,
-  
+  FilterOperations,
+
   // Drag & Drop
   DragDropState,
   DragDropHandlers,
   DragDropManager,
-  
+
   // API Types
   CardApiResponse,
   ColumnApiResponse,
@@ -31,16 +31,16 @@ export type {
   ReorderRequest,
   BulkCardUpdateRequest,
   BulkColumnUpdateRequest,
-  
+
   // Validation
   ValidationResult,
   CardValidationContext,
   ColumnValidationContext,
-  
+
   // Events
   KanbanEventType,
   KanbanEvent,
-  
+
   // Utility Types
   ExtractCardType,
   PartialBy,

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import { useTable, useForm, api } from "kf-ai-sdk";
-import { AmazonProductForRole, Roles } from "../../../../app";
+import { AmazonProductForRole } from "../../../../app";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
@@ -20,18 +20,7 @@ import {
   SelectValue,
 } from "../components/ui/select";
 
-type SellerProduct = AmazonProductForRole<"Seller"> & {
-  _id: string;
-  // Legacy compatibility fields
-  name: string;
-  price: { value: number; currency: string };
-  description: string;
-  category: string;
-  availableQuantity: number;
-  imageUrl: string;
-  sellerId: string;
-  sellerName: string;
-};
+type SellerProduct = AmazonProductForRole<"Seller">;
 
 const categories = [
   { value: "Electronics", label: "Electronics" },
@@ -97,11 +86,11 @@ export function SellerProductsPage() {
       setGeneralError(`Submission Failed: ${error.message}`),
   });
 
-  const formatPrice = (price: { value: number; currency: string }) => {
+  const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: price.currency,
-    }).format(price.value);
+      currency: "USD",
+    }).format(price);
   };
 
   const handleCreate = () => {
@@ -121,7 +110,7 @@ export function SellerProductsPage() {
   const handleDelete = async (product: SellerProduct) => {
     if (
       window.confirm(
-        `Are you sure you want to delete "${product.Title || product.name}"?`
+        `Are you sure you want to delete "${product.Title}"?`
       )
     ) {
       try {
@@ -216,8 +205,8 @@ export function SellerProductsPage() {
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-gray-100 rounded overflow-hidden">
                           <img
-                            src={product.imageUrl}
-                            alt={product.name}
+                            src={product.ImageUrl || "https://via.placeholder.com/40x40?text=?"}
+                            alt={product.Title}
                             className="w-full h-full object-cover"
                             onError={(e) => {
                               (e.target as HTMLImageElement).src =
@@ -227,23 +216,21 @@ export function SellerProductsPage() {
                         </div>
                         <div>
                           <p className="font-medium text-gray-900">
-                            {product.Title || product.name}
+                            {product.Title}
                           </p>
                           <p className="text-xs text-gray-500 truncate max-w-xs">
-                            {product.Description || product.description}
+                            {product.Description}
                           </p>
                         </div>
                       </div>
                     </td>
                     <td className="px-4 py-3">
                       <Badge variant="secondary" className="capitalize">
-                        {product.Category || product.category}
+                        {product.Category}
                       </Badge>
                     </td>
                     <td className="px-4 py-3 font-medium">
-                      {product.Price
-                        ? `$${product.Price.toFixed(2)}`
-                        : formatPrice(product.price)}
+                      {formatPrice(product.Price)}
                       {product.LowStock && (
                         <Badge variant="destructive" className="ml-2 text-xs">
                           Low Stock
@@ -253,14 +240,14 @@ export function SellerProductsPage() {
                     <td className="px-4 py-3">
                       <Badge
                         variant={
-                          (product.Stock || product.availableQuantity) > 10
+                          product.Stock > 10
                             ? "success"
-                            : (product.Stock || product.availableQuantity) > 0
+                            : product.Stock > 0
                               ? "warning"
                               : "destructive"
                         }
                       >
-                        {product.Stock || product.availableQuantity} in stock
+                        {product.Stock} in stock
                       </Badge>
                     </td>
                     <td className="px-4 py-3">
@@ -368,9 +355,7 @@ export function SellerProductsPage() {
                 <Input
                   {...form.register("Title")}
                   placeholder="Enter product title"
-                  defaultValue={
-                    selectedProduct?.Title || selectedProduct?.name || ""
-                  }
+                  defaultValue={selectedProduct?.Title || ""}
                   className={
                     form.formState.errors.Title
                       ? "border-red-500 focus:ring-red-500"
@@ -394,11 +379,7 @@ export function SellerProductsPage() {
                   className="flex w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                   rows={3}
                   placeholder="Enter product description"
-                  defaultValue={
-                    selectedProduct?.Description ||
-                    selectedProduct?.description ||
-                    ""
-                  }
+                  defaultValue={selectedProduct?.Description || ""}
                 />
               </div>
 
@@ -420,11 +401,7 @@ export function SellerProductsPage() {
                   Category
                 </label>
                 <Select
-                  defaultValue={
-                    selectedProduct?.Category ||
-                    selectedProduct?.category ||
-                    "Electronics"
-                  }
+                  defaultValue={selectedProduct?.Category || "Electronics"}
                   onValueChange={(value) =>
                     form.setValue(
                       "Category",
@@ -462,11 +439,7 @@ export function SellerProductsPage() {
                   min="0"
                   {...form.register("Price")}
                   placeholder="0.00"
-                  defaultValue={
-                    selectedProduct?.Price ||
-                    selectedProduct?.price?.value ||
-                    ""
-                  }
+                  defaultValue={selectedProduct?.Price || ""}
                   className={
                     form.formState.errors.Price
                       ? "border-red-500 focus:ring-red-500"
@@ -515,11 +488,7 @@ export function SellerProductsPage() {
                   min="0"
                   {...form.register("Stock")}
                   placeholder="0"
-                  defaultValue={
-                    selectedProduct?.Stock ||
-                    selectedProduct?.availableQuantity ||
-                    ""
-                  }
+                  defaultValue={selectedProduct?.Stock || ""}
                   className={
                     form.formState.errors.Stock
                       ? "border-red-500 focus:ring-red-500"

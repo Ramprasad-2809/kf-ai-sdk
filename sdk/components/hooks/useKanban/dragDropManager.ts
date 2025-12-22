@@ -16,7 +16,6 @@ import type {
 // CONFIGURATION CONSTANTS
 // ============================================================
 
-const DRAG_PREVIEW_OPACITY = 0.5;
 const AUTO_SCROLL_THRESHOLD = 50;
 const AUTO_SCROLL_SPEED = 5;
 const TOUCH_MOVE_THRESHOLD = 5;

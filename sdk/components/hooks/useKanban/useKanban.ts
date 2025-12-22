@@ -8,9 +8,6 @@ import { useQuery, useMutation, useQueryClient, useQueries, keepPreviousData } f
 import { api } from "../../../api";
 import type { ListOptions, ListResponse } from "../../../types/common";
 import { useFilter } from "../useFilter";
-import type {
-  FilterConditionWithId,
-} from "../useFilter";
 
 import type {
   UseKanbanOptions,

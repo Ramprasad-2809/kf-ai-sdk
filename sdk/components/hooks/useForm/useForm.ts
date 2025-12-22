@@ -4,7 +4,7 @@
 // Main hook that integrates react-hook-form with backend schemas
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { useForm as useReactHookForm, useWatch } from "react-hook-form";
+import { useForm as useReactHookForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import type { Path } from "react-hook-form";
 
@@ -30,14 +30,12 @@ import { getApiBaseUrl, getDefaultHeaders } from "../../../api";
 
 import {
   validateCrossField,
-  validateField,
   calculateComputedValue,
 } from "./expressionValidator";
 import {
   validateFieldOptimized,
   calculateComputedValueOptimized,
   getFieldDependencies,
-  buildDependencyGraph,
 } from "./optimizedExpressionValidator";
 
 // ============================================================
@@ -59,7 +57,6 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     onError,
     onSchemaError,
     onSubmitError,
-    onComputationRule,
     skipSchemaFetch = false,
     schema: manualSchema,
   } = options;
@@ -73,12 +70,11 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
   const [referenceData, setReferenceData] = useState<Record<string, any[]>>({});
   const [submitError, setSubmitError] = useState<Error | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [lastFormValues, setLastFormValues] = useState<Partial<T>>({});
+  const [lastFormValues] = useState<Partial<T>>({});
 
   // Prevent infinite loop in API calls
   const isComputingRef = useRef(false);
   const computeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastWatchedValuesRef = useRef<string>("");
   const hasInitializedRef = useRef(false);
 
   // Stable callback refs to prevent dependency loops
@@ -176,8 +172,6 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
         ? (defaultFormValues as any)
         : undefined,
   });
-
-  const watchedValues = useWatch({ control: rhfForm.control });
 
   // ============================================================
   // SCHEMA PROCESSING
@@ -390,84 +384,6 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
   // COMPUTATION RULE HANDLING
   // ============================================================
 
-  // Handle computation and business logic rules
-  const executeComputationRules = useCallback(
-    async (fieldName: string, fieldValue: any): Promise<void> => {
-      if (!processedSchema) return;
-
-      const field = processedSchema.fields[fieldName];
-      if (!field) return;
-
-      const computationRules = field.rules.computation;
-      const businessLogicRules = field.rules.businessLogic;
-
-      // Execute computation rules
-      for (const ruleId of computationRules) {
-        const rule = processedSchema.rules.computation[ruleId];
-        if (rule && onComputationRule) {
-          try {
-            const context = {
-              ruleType: "Computation" as const,
-              ruleId,
-              fieldName: fieldName as keyof T,
-              fieldValue,
-              formValues: rhfForm.getValues(),
-              rule,
-            };
-
-            const updates = await onComputationRule(context);
-
-            // Apply updates to form
-            Object.entries(updates).forEach(([field, value]) => {
-              rhfForm.setValue(field as Path<T>, value as any, {
-                shouldDirty: true,
-                shouldValidate: false,
-              });
-            });
-          } catch (error) {
-            console.warn(
-              `Failed to execute computation rule ${ruleId}:`,
-              error
-            );
-          }
-        }
-      }
-
-      // Execute business logic rules
-      for (const ruleId of businessLogicRules) {
-        const rule = processedSchema.rules.businessLogic[ruleId];
-        if (rule && onComputationRule) {
-          try {
-            const context = {
-              ruleType: "BusinessLogic" as const,
-              ruleId,
-              fieldName: fieldName as keyof T,
-              fieldValue,
-              formValues: rhfForm.getValues(),
-              rule,
-            };
-
-            const updates = await onComputationRule(context);
-
-            // Apply updates to form
-            Object.entries(updates).forEach(([field, value]) => {
-              rhfForm.setValue(field as Path<T>, value as any, {
-                shouldDirty: true,
-                shouldValidate: true,
-              });
-            });
-          } catch (error) {
-            console.warn(
-              `Failed to execute business logic rule ${ruleId}:`,
-              error
-            );
-          }
-        }
-      }
-    },
-    [processedSchema, rhfForm, onComputationRule]
-  );
-
   // Manual computation trigger - called on blur after validation passes
   const triggerComputationAfterValidation = useCallback(
     async (fieldName: string) => {
@@ -676,8 +592,15 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     }
 
     // Cross-field validation
+    // Transform ValidationRule[] to the format expected by validateCrossField
+    const transformedRules = processedSchema.crossFieldValidation.map(rule => ({
+      Id: rule.Id,
+      Condition: { ExpressionTree: rule.ExpressionTree },
+      Message: rule.Message || `Validation failed for ${rule.Name}`
+    }));
+
     const crossFieldErrors = validateCrossField(
-      processedSchema.crossFieldValidation,
+      transformedRules,
       values as any,
       referenceData
     );
@@ -900,7 +823,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
                   value,
                   [rule],
                   currentValues,
-                  lastFormValues
+                  lastFormValues as T | undefined
                 );
                 if (!result.isValid) {
                   return result.message || rule.Message || "Invalid value";

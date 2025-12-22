@@ -5,7 +5,6 @@
 
 import type {
   ExpressionTree,
-  EvaluationContext,
   ValidationResult,
   ValidationRule,
 } from "./types";
@@ -40,7 +39,7 @@ class LRUCache<T> {
       this.cache.delete(key);
     } else if (this.cache.size >= this.maxSize) {
       // Remove least recently used (first entry)
-      const firstKey = this.cache.keys().next().value;
+      const firstKey = this.cache.keys().next().value as string;
       this.cache.delete(firstKey);
     }
     this.cache.set(key, value);

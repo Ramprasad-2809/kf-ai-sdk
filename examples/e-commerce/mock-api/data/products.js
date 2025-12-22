@@ -307,11 +307,19 @@ export function filterProductsByRole(products, role, userId = null) {
       switch (role) {
         case "Admin":
           // Admin can see all fields
+          // Add ImageUrl in PascalCase for BDO schema compatibility
+          if (filtered.imageUrl && !filtered.ImageUrl) {
+            filtered.ImageUrl = filtered.imageUrl;
+          }
           return filtered;
 
         case "Seller":
           // Seller can see most fields but not internal costs
           const { Cost, ...sellerView } = filtered;
+          // Add ImageUrl in PascalCase for BDO schema compatibility
+          if (sellerView.imageUrl && !sellerView.ImageUrl) {
+            sellerView.ImageUrl = sellerView.imageUrl;
+          }
           return sellerView;
 
         case "Buyer":
@@ -351,6 +359,7 @@ export function filterProductsByRole(products, role, userId = null) {
             SKU,
             Title,
             Description,
+            ImageUrl: imageUrl,
             Price,
             MRP,
             Discount,

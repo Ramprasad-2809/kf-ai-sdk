@@ -352,12 +352,14 @@ export const getDefaultFieldDefinition = (fieldType: FieldDefinition['type']): F
       };
     
     case 'select':
-      return {
+      const selectFieldDef: FieldDefinition = {
         type: 'select',
         allowedOperators: ['EQ', 'NE', 'IN', 'NIN', 'Empty', 'NotEmpty'],
-        validateValue: (value, operator, options) => validateSelectValue(value, operator, options?.selectOptions),
         selectOptions: []
       };
+      selectFieldDef.validateValue = (value: any, operator: FilterOperator) =>
+        validateSelectValue(value, operator, selectFieldDef.selectOptions);
+      return selectFieldDef;
     
     default:
       // Default to string type

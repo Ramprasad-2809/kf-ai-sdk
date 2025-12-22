@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { toast } from "sonner";
 import { ArrowLeft, ShoppingCart, Minus, Plus } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
@@ -12,17 +13,7 @@ import {
 } from "../../../../app";
 import { Roles } from "../../../../app/types/roles";
 
-type Product = AmazonProductForRole<typeof Roles.Buyer> & {
-  _id: string;
-  // Legacy compatibility fields
-  name: string;
-  price: { value: number; currency: string };
-  description: string;
-  category: string;
-  availableQuantity: number;
-  imageUrl: string;
-  sellerName: string;
-};
+type Product = AmazonProductForRole<typeof Roles.Buyer>;
 
 export function BuyerProductDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -53,30 +44,37 @@ export function BuyerProductDetailsPage() {
     mutationFn: async ({ product, qty }: { product: Product; qty: number }) => {
       const payload = {
         productId: product._id,
-        productName: product.name,
-        productPrice: product.price,
-        productImage: product.imageUrl,
+        productName: product.Title,
+        productPrice: { value: product.Price, currency: "USD" },
+        productImage: product.ImageUrl || "",
         quantity: qty,
       };
       return cart.create(payload);
     },
-    onSuccess: () => {
+    onSuccess: (_data, { product, qty }) => {
       queryClient.invalidateQueries({ queryKey: ["cart-count"] });
       setAddedToCart(true);
       setTimeout(() => setAddedToCart(false), 2000);
       setCartError(null);
+      toast.success("Added to cart!", {
+        description: `${qty} x ${product.Title} added to your cart.`,
+      });
     },
     onError: (error) => {
       console.error("Failed to add to cart:", error);
-      setCartError("Failed to add item to cart.");
+      const message = "Failed to add item to cart.";
+      setCartError(message);
+      toast.error("Failed to add to cart", {
+        description: error instanceof Error ? error.message : message,
+      });
     },
   });
 
-  const formatPrice = (price: { value: number; currency: string }) => {
+  const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: price.currency,
-    }).format(price.value);
+      currency: "USD",
+    }).format(price);
   };
 
   const handleAddToCart = () => {
@@ -85,7 +83,7 @@ export function BuyerProductDetailsPage() {
   };
 
   const incrementQuantity = () => {
-    if (productData && quantity < productData.availableQuantity) {
+    if (productData && quantity < productData.Stock) {
       setQuantity((q) => q + 1);
     }
   };
@@ -98,8 +96,38 @@ export function BuyerProductDetailsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="max-w-6xl mx-auto animate-pulse">
+        <div className="h-4 bg-gray-200 rounded w-32 mb-6" />
+        <div className="grid md:grid-cols-2 gap-8">
+          {/* Product Image Skeleton */}
+          <div className="bg-white rounded-lg border overflow-hidden">
+            <div className="aspect-square bg-gray-200" />
+          </div>
+
+          {/* Product Details Skeleton */}
+          <div className="space-y-6">
+            <div className="h-6 bg-gray-200 rounded w-24" />
+            <div className="h-8 bg-gray-200 rounded w-3/4" />
+            <div className="h-8 bg-gray-200 rounded w-1/3" />
+            <div className="space-y-2">
+              <div className="h-6 bg-gray-200 rounded w-32" />
+              <div className="h-4 bg-gray-200 rounded w-24" />
+            </div>
+            <div className="space-y-2">
+              <div className="h-5 bg-gray-200 rounded w-24" />
+              <div className="h-4 bg-gray-200 rounded w-full" />
+              <div className="h-4 bg-gray-200 rounded w-full" />
+              <div className="h-4 bg-gray-200 rounded w-2/3" />
+            </div>
+            <div className="h-4 bg-gray-200 rounded w-48" />
+            <div className="bg-white rounded-lg border p-4 space-y-4">
+              <div className="h-4 bg-gray-200 rounded w-20" />
+              <div className="h-10 bg-gray-200 rounded w-32" />
+              <div className="h-6 bg-gray-200 rounded w-full" />
+              <div className="h-12 bg-gray-200 rounded w-full" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -138,7 +166,7 @@ export function BuyerProductDetailsPage() {
     );
   }
 
-  const isInStock = productData.availableQuantity > 0;
+  const isInStock = productData.Stock > 0;
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -156,8 +184,9 @@ export function BuyerProductDetailsPage() {
         <Card className="overflow-hidden">
           <div className="aspect-square bg-gray-100 relative">
             <img
-              src={productData.imageUrl}
-              alt={productData.name}
+              src={productData.ImageUrl || "https://via.placeholder.com/600x600?text=No+Image"}
+              alt={productData.Title}
+              loading="lazy"
               className="w-full h-full object-cover"
               onError={(e) => {
                 (e.target as HTMLImageElement).src =
@@ -178,17 +207,17 @@ export function BuyerProductDetailsPage() {
         <div className="space-y-6">
           {/* Category */}
           <Badge variant="secondary" className="capitalize">
-            {productData.category}
+            {productData.Category}
           </Badge>
 
           {/* Name */}
           <h1 className="text-3xl font-bold text-gray-900">
-            {productData.name}
+            {productData.Title}
           </h1>
 
           {/* Price */}
           <div className="text-3xl font-bold text-blue-600">
-            {formatPrice(productData.price)}
+            {formatPrice(productData.Price)}
           </div>
 
           {/* Stock Status */}
@@ -197,7 +226,7 @@ export function BuyerProductDetailsPage() {
               <>
                 <Badge variant="success">In Stock</Badge>
                 <span className="text-gray-500">
-                  {productData.availableQuantity} available
+                  {productData.Stock} available
                 </span>
               </>
             ) : (
@@ -209,14 +238,14 @@ export function BuyerProductDetailsPage() {
           <div>
             <h3 className="font-semibold text-gray-900 mb-2">Description</h3>
             <p className="text-gray-600 leading-relaxed">
-              {productData.description}
+              {productData.Description}
             </p>
           </div>
 
           {/* Seller */}
           <div className="text-sm text-gray-500">
             Sold by:{" "}
-            <span className="font-medium">{productData.sellerName}</span>
+            <span className="font-medium">Amazon Seller</span>
           </div>
 
           {/* Quantity Selector and Add to Cart */}
@@ -244,7 +273,7 @@ export function BuyerProductDetailsPage() {
                       variant="outline"
                       size="icon"
                       onClick={incrementQuantity}
-                      disabled={quantity >= productData.availableQuantity}
+                      disabled={quantity >= productData.Stock}
                     >
                       <Plus className="h-4 w-4" />
                     </Button>
@@ -255,10 +284,7 @@ export function BuyerProductDetailsPage() {
                 <div className="flex justify-between items-center py-2 border-t">
                   <span className="text-gray-600">Subtotal:</span>
                   <span className="text-xl font-bold">
-                    {formatPrice({
-                      value: productData.price.value * quantity,
-                      currency: productData.price.currency,
-                    })}
+                    {formatPrice(productData.Price * quantity)}
                   </span>
                 </div>
 

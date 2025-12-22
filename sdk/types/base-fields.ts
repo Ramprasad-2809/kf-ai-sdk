@@ -219,29 +219,3 @@ export type OptionalField<T> = T | undefined;
  * Useful for runtime validation and type guards
  */
 export type ExtractFieldType<T> = T extends OptionalField<infer U> ? U : T;
-
-/**
- * Type guard to check if a value is a valid currency object
- */
-export function isCurrencyObject(
-  value: any
-): value is { value: number; currency: string } {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    typeof value.value === "number" &&
-    typeof value.currency === "string"
-  );
-}
-
-/**
- * Type guard to check if a value is valid JSON
- */
-export function isValidJSON(value: any): value is JSONValue {
-  try {
-    JSON.parse(JSON.stringify(value));
-    return true;
-  } catch {
-    return false;
-  }
-}

@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 import { ShoppingBag, Trash2, Minus, Plus, ArrowLeft } from "lucide-react";
 import { Button } from "../components/ui/button";
 import {
@@ -10,10 +11,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Cart, BuyerCartItem } from "../../../../app/sources/ecommerce/cart";
 import { Roles } from "../../../../app/types/roles";
-import {
-  CurrencyValue,
-  isCurrencyObject,
-} from "../../../../sdk/types/base-fields";
+import { CurrencyField } from "../../../../sdk/types/base-fields";
 
 export function BuyerCartPage() {
   const queryClient = useQueryClient();
@@ -38,15 +36,10 @@ export function BuyerCartPage() {
 
   // Derive totals
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
-  const totalValue = items.reduce((sum, item) => {
-    let val = 0;
-    if (isCurrencyObject(item.subtotal)) {
-      val = item.subtotal.value;
-    } else if (typeof item.subtotal === "string") {
-      val = parseFloat(item.subtotal.split(" ")[0] || "0");
-    }
-    return sum + val;
-  }, 0);
+  const totalValue = items.reduce(
+    (sum, item) => sum + (item.subtotal as { value: number; currency: string }).value,
+    0
+  );
   const total = { value: totalValue, currency: "USD" };
 
   // Update Quantity Mutation
@@ -64,6 +57,11 @@ export function BuyerCartPage() {
       queryClient.invalidateQueries({ queryKey: ["cart-items"] });
       queryClient.invalidateQueries({ queryKey: ["cart-count"] });
     },
+    onError: (error) => {
+      toast.error("Failed to update quantity", {
+        description: error instanceof Error ? error.message : "An error occurred",
+      });
+    },
   });
 
   // Remove Item Mutation
@@ -74,6 +72,12 @@ export function BuyerCartPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cart-items"] });
       queryClient.invalidateQueries({ queryKey: ["cart-count"] });
+      toast.success("Item removed from cart");
+    },
+    onError: (error) => {
+      toast.error("Failed to remove item", {
+        description: error instanceof Error ? error.message : "An error occurred",
+      });
     },
   });
 
@@ -87,6 +91,12 @@ export function BuyerCartPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cart-items"] });
       queryClient.invalidateQueries({ queryKey: ["cart-count"] });
+      toast.success("Cart cleared successfully");
+    },
+    onError: (error) => {
+      toast.error("Failed to clear cart", {
+        description: error instanceof Error ? error.message : "An error occurred",
+      });
     },
   });
 
@@ -106,32 +116,54 @@ export function BuyerCartPage() {
     }
   };
 
-  const formatPrice = (price: CurrencyValue | number) => {
-    let value = 0;
-    let currency = "USD";
-
-    if (typeof price === "number") {
-      value = price;
-    } else if (isCurrencyObject(price)) {
-      value = price.value;
-      currency = price.currency;
-    } else if (typeof price === "string") {
-      // Crude parsing for "100.5 USD" format
-      const parts = price.split(" ");
-      value = parseFloat(parts[0]);
-      if (parts[1]) currency = parts[1];
-    }
-
+  const formatPrice = (
+    price: CurrencyField | { value: number; currency: string }
+  ) => {
+    const currencyObj = price as { value: number; currency: string };
     return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency,
-    }).format(value);
+      currency: currencyObj.currency,
+    }).format(currencyObj.value);
   };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="max-w-4xl mx-auto animate-pulse">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <div className="h-8 bg-gray-200 rounded w-48 mb-2" />
+            <div className="h-4 bg-gray-200 rounded w-24" />
+          </div>
+          <div className="h-10 bg-gray-200 rounded w-32" />
+        </div>
+
+        <div className="grid lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="bg-white rounded-lg border p-4">
+                <div className="flex gap-4">
+                  <div className="w-24 h-24 bg-gray-200 rounded-lg" />
+                  <div className="flex-1 space-y-3">
+                    <div className="h-5 bg-gray-200 rounded w-3/4" />
+                    <div className="h-4 bg-gray-200 rounded w-1/2" />
+                    <div className="h-8 bg-gray-200 rounded w-40" />
+                  </div>
+                  <div className="h-6 bg-gray-200 rounded w-20" />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-lg border p-6 space-y-4">
+              <div className="h-6 bg-gray-200 rounded w-32 mb-4" />
+              <div className="h-4 bg-gray-200 rounded w-full" />
+              <div className="h-4 bg-gray-200 rounded w-full" />
+              <div className="h-6 bg-gray-200 rounded w-full" />
+              <div className="h-12 bg-gray-200 rounded w-full" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -190,6 +222,7 @@ export function BuyerCartPage() {
                     <img
                       src={item.productImage}
                       alt={item.productName}
+                      loading="lazy"
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         (e.target as HTMLImageElement).src =
