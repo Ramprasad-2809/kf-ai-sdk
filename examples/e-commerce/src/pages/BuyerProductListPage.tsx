@@ -7,10 +7,11 @@ import {
   ChevronRight,
   Star,
 } from "lucide-react";
-import { useTable } from "kf-ai-sdk"; // api used for useTable? No, useTable uses api internally. api is not used explicitly except for cart? No, lines 10 uses api.
-import { ProductCard } from "../components/ProductCard";
+import { useTable } from "kf-ai-sdk";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
+import { Card, CardContent, CardFooter } from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -295,23 +296,142 @@ export function BuyerProductListPage() {
           /* Product Grid */
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {table.rows.map((product) => (
-                <div key={product._id} className="relative group">
-                  <ProductCard
-                    product={product}
-                    onAddToCart={handleAddToCart}
-                    onClick={handleProductClick}
-                    showAddToCart={true}
-                  />
-                  {addingToCart === product._id && (
-                    <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center rounded-xl z-10">
-                      <div className="bg-white p-3 rounded-full shadow-lg">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+              {table.rows.map((product) => {
+                const isInStock = product.Stock > 0;
+                const priceParts = new Intl.NumberFormat("en-US", {
+                  style: "currency",
+                  currency: "USD",
+                })
+                  .formatToParts(product.Price)
+                  .reduce(
+                    (acc, part) => {
+                      acc[part.type] = part.value;
+                      return acc;
+                    },
+                    {} as Record<string, string>
+                  );
+
+                return (
+                  <div key={product._id} className="relative group">
+                    <Card
+                      className={`h-full flex flex-col overflow-hidden border-transparent hover:border-gray-200 hover:shadow-xl transition-all duration-300 group cursor-pointer`}
+                      onClick={() => handleProductClick(product)}
+                    >
+                      {/* Product Image */}
+                      <div className="aspect-square bg-white relative overflow-hidden p-4 flex items-center justify-center">
+                        <img
+                          src={
+                            product.ImageUrl ||
+                            "https://via.placeholder.com/400x400?text=No+Image"
+                          }
+                          alt={product.Title}
+                          loading="lazy"
+                          className={`max-h-full w-auto object-contain transition-transform duration-500 group-hover:scale-105 ${
+                            !isInStock ? "opacity-50 grayscale" : ""
+                          }`}
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src =
+                              "https://via.placeholder.com/400x400?text=No+Image";
+                          }}
+                        />
+                        {!isInStock && (
+                          <div className="absolute top-2 right-2">
+                            <Badge
+                              variant="destructive"
+                              className="uppercase text-[10px] tracking-wider px-2 py-1"
+                            >
+                              Out of Stock
+                            </Badge>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  )}
-                </div>
-              ))}
+
+                      <CardContent className="p-4 flex-1 flex flex-col">
+                        {/* Category & Rating */}
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs text-slate-500 uppercase tracking-wide font-medium">
+                            {product.Category}
+                          </span>
+                          {/* Mock Rating */}
+                          <div className="flex text-yellow-400">
+                            <Star className="h-3 w-3 fill-current" />
+                            <Star className="h-3 w-3 fill-current" />
+                            <Star className="h-3 w-3 fill-current" />
+                            <Star className="h-3 w-3 fill-current" />
+                            <Star className="h-3 w-3 text-slate-200 fill-current" />
+                            <span className="text-xs text-slate-400 ml-1">
+                              (42)
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Product Name */}
+                        <h3 className="font-medium text-base text-slate-900 leading-snug mb-2 group-hover:text-blue-600 transition-colors line-clamp-2 min-h-[2.5rem]">
+                          {product.Title}
+                        </h3>
+
+                        {/* Price */}
+                        <div className="mt-auto pt-2 flex items-baseline gap-1">
+                          <span className="text-xs font-bold self-start mt-1">
+                            {priceParts.currency}
+                          </span>
+                          <span className="text-2xl font-bold text-slate-900">
+                            {priceParts.integer}
+                          </span>
+                          <span className="text-xs font-bold self-start mt-1">
+                            {priceParts.fraction}
+                          </span>
+
+                          {/* Mock Prime badge */}
+                          <span className="ml-2 text-xs text-blue-600 font-bold italic tracking-tighter">
+                            Prime
+                          </span>
+                        </div>
+
+                        <p className="text-xs text-slate-500 mt-1">
+                          Delivery by{" "}
+                          <span className="font-bold text-slate-700">
+                            Tue, Dec 12
+                          </span>
+                        </p>
+                      </CardContent>
+
+                      <CardFooter className="p-4 pt-0">
+                        <Button
+                          className={`w-full font-medium ${
+                            isInStock
+                              ? "bg-yellow-400 hover:bg-yellow-500 text-slate-900 border-yellow-500"
+                              : ""
+                          }`}
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (isInStock) {
+                              handleAddToCart(product);
+                            }
+                          }}
+                          disabled={!isInStock}
+                        >
+                          {isInStock ? (
+                            <span className="flex items-center gap-2">
+                              Add to Cart
+                            </span>
+                          ) : (
+                            "Currently Unavailable"
+                          )}
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                    {addingToCart === product._id && (
+                      <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center rounded-xl z-10">
+                        <div className="bg-white p-3 rounded-full shadow-lg">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             {/* Pagination */}
@@ -347,3 +467,15 @@ export function BuyerProductListPage() {
     </div>
   );
 }
+
+/**
+ * gold etf - 15000
+ * lic - 5000
+ * nps - 7000
+ * large cap - 15000
+ * mid cap - 7000
+ * small cap - 3000
+ * rd - 2000
+ * ----------------
+ * total - 54000
+ */

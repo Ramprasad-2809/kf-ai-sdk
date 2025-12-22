@@ -38,7 +38,7 @@ export interface ColumnDefinition {
   color?: string;
 }
 
-export interface UseKanbanOptions<T> {
+export interface UseKanbanOptions<T = Record<string, any>> {
   /** Data source identifier for API calls */
   source: string;
   /** Column configurations */
@@ -49,6 +49,8 @@ export interface UseKanbanOptions<T> {
   initialSearch?: string;
   /** Error callback */
   onError?: (error: Error) => void;
+  /** Custom card data type validator (optional) */
+  validateCardData?: (data: T) => boolean;
 }
 
 export interface UseKanbanReturn<T> {
@@ -349,14 +351,24 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
     clearSearch,
 
     // Card Operations
-    createCard: createCardMutation.mutateAsync,
+    createCard: useCallback(
+      async (card: Partial<KanbanCard<T>> & { columnId: string }) => {
+        await createCardMutation.mutateAsync(card);
+      },
+      [createCardMutation]
+    ),
     updateCard: useCallback(
       async (id: string, updates: Partial<KanbanCard<T>>) => {
         await updateCardMutation.mutateAsync({ id, updates });
       },
       [updateCardMutation]
     ),
-    deleteCard: deleteCardMutation.mutateAsync,
+    deleteCard: useCallback(
+      async (id: string) => {
+        await deleteCardMutation.mutateAsync(id);
+      },
+      [deleteCardMutation]
+    ),
     moveCard: useCallback(
       async (cardId: string, toColumnId: string, position?: number) => {
         await moveCardMutation.mutateAsync({ cardId, toColumnId, position });

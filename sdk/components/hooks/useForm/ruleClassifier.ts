@@ -7,11 +7,9 @@ import type {
   BDOSchema,
   BackendSchema,
   ProcessedSchema,
-  ProcessedField,
   ValidationRule,
   RuleType,
   FieldPermission,
-  RolePermission,
 } from "./types";
 
 // ============================================================
@@ -283,9 +281,9 @@ export function convertLegacySchema(legacySchema: BackendSchema): BDOSchema {
       Object.entries(legacySchema).map(([fieldName, field]) => [
         fieldName,
         {
+          ...field,
           Id: fieldName,
           Name: field.Description || fieldName,
-          ...field,
           Validation: [], // Legacy format needs to be processed separately
         },
       ])
