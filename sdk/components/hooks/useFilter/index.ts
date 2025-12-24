@@ -1,5 +1,7 @@
 // Main hook export
-export { useFilter } from '../useFilter';
+export { useFilter } from './useFilter';
+
+// Type exports
 export type {
   FilterConditionWithId,
   FilterState,
@@ -8,7 +10,7 @@ export type {
   ValidationError,
   UseFilterOptions,
   UseFilterReturn
-} from '../useFilter';
+} from './types';
 
 // Validation utilities
 export {
@@ -20,7 +22,7 @@ export {
   validateSelectValue,
   getDefaultFieldDefinition,
   createFieldDefinitionsFromSample
-} from './validation';
+} from './validation.utils';
 
 // Payload building utilities
 export {
@@ -31,4 +33,4 @@ export {
   mergeFilterPayloads,
   filterPayloadToString,
   areFilterPayloadsEqual
-} from './payloadBuilder';
+} from './payloadBuilder.utils';

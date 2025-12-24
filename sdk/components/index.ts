@@ -1,15 +1,15 @@
-// Component hooks
+// Hooks
 export * from "./hooks";
 
-// Kanban components - export explicitly to avoid conflicts with type exports
+// UI Components (explicit exports to avoid naming conflicts with types)
 export {
   Kanban,
-  KanbanColumn as KanbanColumnComponent,
+  KanbanColumn,
   KanbanColumnHeader,
   KanbanColumnTitle,
   KanbanColumnContent,
-  KanbanCard as KanbanCardComponent,
+  KanbanCard,
   KanbanCardTitle,
   KanbanCardDescription,
   KanbanColumnFooter,
-} from "./kanban";
+} from "./ui";

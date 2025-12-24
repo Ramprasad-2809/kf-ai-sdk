@@ -15,13 +15,13 @@ import type {
 import {
   calculateDefaultValue,
   calculateComputedValue,
-} from "./expressionValidator";
+} from "./expressionValidator.utils";
 import {
   classifyRules,
   createFieldRuleMapping,
   calculateFieldPermissions,
   convertLegacySchema,
-} from "./ruleClassifier";
+} from "./ruleClassifier.utils";
 
 // ============================================================
 // FIELD TYPE MAPPING

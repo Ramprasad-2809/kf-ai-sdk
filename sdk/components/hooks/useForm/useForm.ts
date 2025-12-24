@@ -16,7 +16,7 @@ import type {
   ProcessedField,
 } from "./types";
 
-import { processSchema, extractReferenceFields } from "./schemaParser";
+import { processSchema, extractReferenceFields } from "./schemaParser.utils";
 
 import {
   fetchFormSchemaWithCache,
@@ -31,12 +31,12 @@ import { getApiBaseUrl, getDefaultHeaders } from "../../../api";
 import {
   validateCrossField,
   calculateComputedValue,
-} from "./expressionValidator";
+} from "./expressionValidator.utils";
 import {
   validateFieldOptimized,
   calculateComputedValueOptimized,
   getFieldDependencies,
-} from "./optimizedExpressionValidator";
+} from "./optimizedExpressionValidator.utils";
 
 // ============================================================
 // MAIN HOOK IMPLEMENTATION
