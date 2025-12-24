@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api";
-import type { ListResponse, ListOptions } from "../../types/common";
+import type { ListResponse, ListOptions, LogicalOperator } from "../../types/common";
 import { useFilter } from "./useFilter";
 import type {
   FilterConditionWithId,
@@ -51,7 +51,7 @@ export interface UseTableOptions<T> {
     };
     globalFilter?: string;
     filters?: FilterConditionWithId[];
-    filterOperator?: "AND" | "OR";
+    filterOperator?: LogicalOperator;
   };
   /** Error callback */
   onError?: (error: Error) => void;
@@ -99,7 +99,7 @@ export interface UseTableReturn<T> {
   filter: {
     // State
     conditions: FilterConditionWithId[];
-    logicalOperator: "AND" | "OR";
+    logicalOperator: LogicalOperator;
     isValid: boolean;
     validationErrors: ValidationError[];
     hasConditions: boolean;
@@ -117,7 +117,7 @@ export interface UseTableReturn<T> {
     getCondition: (id: string) => FilterConditionWithId | undefined;
 
     // Logical Operator
-    setLogicalOperator: (operator: "AND" | "OR") => void;
+    setLogicalOperator: (operator: LogicalOperator) => void;
 
     // Bulk Operations
     setConditions: (conditions: FilterConditionWithId[]) => void;
@@ -243,7 +243,7 @@ export function useTable<T = any>(
 
   const filterHook = useFilter<T>({
     initialConditions: options.initialState?.filters,
-    initialLogicalOperator: options.initialState?.filterOperator || "AND",
+    initialLogicalOperator: options.initialState?.filterOperator || "And",
     fieldDefinitions: options.fieldDefinitions,
     validateOnChange: true,
     onValidationError: options.onFilterError,

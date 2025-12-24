@@ -1,21 +1,27 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
-import type { Filter, FilterOperator, FilterRHSType } from "../../types/common";
+import type { Filter, FilterOperator, FilterRHSType, LogicalOperator } from "../../types/common";
 
 // ============================================================
 // TYPE DEFINITIONS
 // ============================================================
 
+/**
+ * Internal filter condition with ID for management
+ * Supports both simple conditions and nested logical groups
+ */
 export interface FilterConditionWithId {
   /** Unique identifier for internal management */
   id: string;
-  /** Filter operator */
-  operator: FilterOperator;
-  /** Left-hand side field name */
-  lhsField: string;
-  /** Right-hand side value */
-  rhsValue: any;
+  /** Filter operator (can be condition or logical operator) */
+  operator: FilterOperator | LogicalOperator;
+  /** Left-hand side field name (required for condition operators) */
+  lhsField?: string;
+  /** Right-hand side value (required for condition operators) */
+  rhsValue?: any;
   /** Right-hand side type (defaults to Constant) */
   rhsType?: FilterRHSType;
+  /** Nested conditions (for logical operators: And, Or, Not) */
+  children?: FilterConditionWithId[];
   /** Validation state */
   isValid: boolean;
   /** Specific validation errors */
@@ -24,7 +30,7 @@ export interface FilterConditionWithId {
 
 export interface FilterState {
   /** Logical operator for combining conditions */
-  logicalOperator: "AND" | "OR";
+  logicalOperator: LogicalOperator;
   /** Array of filter conditions with IDs */
   conditions: FilterConditionWithId[];
 }
@@ -62,7 +68,7 @@ export interface UseFilterOptions<T = any> {
   /** Initial filter conditions */
   initialConditions?: FilterConditionWithId[];
   /** Initial logical operator */
-  initialLogicalOperator?: "AND" | "OR";
+  initialLogicalOperator?: LogicalOperator;
   /** Field definitions for validation */
   fieldDefinitions?: Record<keyof T, FieldDefinition>;
   /** Whether to validate conditions on change */
@@ -82,14 +88,14 @@ export interface UseFilterReturn {
   /** Array of current filter conditions */
   conditions: FilterConditionWithId[];
   /** Current logical operator */
-  logicalOperator: "AND" | "OR";
+  logicalOperator: LogicalOperator;
   /** SDK-formatted filter payload for API calls */
   filterPayload: Filter | undefined;
   /** Overall validation state */
   isValid: boolean;
   /** Array of validation errors */
   validationErrors: ValidationError[];
-  
+
   // Condition management
   /** Add a new filter condition */
   addCondition: (condition: Omit<FilterConditionWithId, 'id' | 'isValid'>) => string;
@@ -101,10 +107,10 @@ export interface UseFilterReturn {
   clearConditions: () => void;
   /** Get a specific condition by ID */
   getCondition: (id: string) => FilterConditionWithId | undefined;
-  
+
   // Logical operator management
   /** Set the root logical operator */
-  setLogicalOperator: (operator: "AND" | "OR") => void;
+  setLogicalOperator: (operator: LogicalOperator) => void;
   
   // Bulk operations
   /** Replace all conditions */
@@ -147,7 +153,14 @@ const generateId = (): string => {
 };
 
 /**
- * Validate a filter condition
+ * Helper to check if operator is a logical operator
+ */
+const isLogicalOperator = (operator: string): operator is LogicalOperator => {
+  return operator === 'And' || operator === 'Or' || operator === 'Not';
+};
+
+/**
+ * Validate a filter condition (supports both simple conditions and nested logical groups)
  */
 const validateFilterCondition = <T>(
   condition: Partial<FilterConditionWithId>,
@@ -159,53 +172,90 @@ const validateFilterCondition = <T>(
   if (!condition.operator) {
     errors.push('Operator is required');
   }
-  if (!condition.lhsField) {
-    errors.push('Field is required');
-  }
 
-  // Validate operator-specific requirements
-  if (condition.operator && condition.rhsValue !== undefined) {
-    switch (condition.operator) {
-      case 'Between':
-      case 'NotBetween':
-        if (!Array.isArray(condition.rhsValue) || condition.rhsValue.length !== 2) {
-          errors.push('Between operators require an array of two values');
-        }
-        break;
-      case 'IN':
-      case 'NIN':
-        if (!Array.isArray(condition.rhsValue) || condition.rhsValue.length === 0) {
-          errors.push('IN/NIN operators require a non-empty array');
-        }
-        break;
-      case 'Empty':
-      case 'NotEmpty':
-        // These operators don't need RHS values
-        break;
-      default:
-        if (condition.rhsValue === null || condition.rhsValue === undefined || condition.rhsValue === '') {
-          errors.push('Value is required for this operator');
-        }
-        break;
+  // Check if this is a logical operator (nested group)
+  if (condition.operator && isLogicalOperator(condition.operator)) {
+    // Validate logical group
+    if (!condition.children || !Array.isArray(condition.children)) {
+      errors.push('Logical operators require a children array');
+    } else if (condition.children.length === 0) {
+      errors.push('Logical operators require at least one child condition');
+    } else if (condition.operator === 'Not' && condition.children.length > 1) {
+      errors.push('Not operator can only have one child condition');
     }
-  }
 
-  // Field-specific validation
-  if (fieldDefinitions && condition.lhsField && condition.operator) {
-    const fieldDef = fieldDefinitions[condition.lhsField as keyof T];
-    if (fieldDef) {
-      // Check if operator is allowed for this field
-      if (!fieldDef.allowedOperators.includes(condition.operator)) {
-        errors.push(`Operator ${condition.operator} is not allowed for field ${condition.lhsField}`);
+    // Recursively validate children
+    if (condition.children && Array.isArray(condition.children)) {
+      condition.children.forEach((child, index) => {
+        const childValidation = validateFilterCondition(child, fieldDefinitions);
+        if (!childValidation.isValid) {
+          errors.push(...childValidation.errors.map(err => `Child ${index + 1}: ${err}`));
+        }
+      });
+    }
+
+    // Logical operators should not have lhsField or rhsValue
+    if (condition.lhsField) {
+      errors.push('Logical operators should not have lhsField');
+    }
+    if (condition.rhsValue !== undefined) {
+      errors.push('Logical operators should not have rhsValue');
+    }
+  } else {
+    // Validate simple condition
+    if (!condition.lhsField) {
+      errors.push('Field is required for condition operators');
+    }
+
+    // Validate operator-specific requirements
+    if (condition.operator && condition.rhsValue !== undefined) {
+      switch (condition.operator) {
+        case 'Between':
+        case 'NotBetween':
+          if (!Array.isArray(condition.rhsValue) || condition.rhsValue.length !== 2) {
+            errors.push('Between operators require an array of two values');
+          }
+          break;
+        case 'IN':
+        case 'NIN':
+          if (!Array.isArray(condition.rhsValue) || condition.rhsValue.length === 0) {
+            errors.push('IN/NIN operators require a non-empty array');
+          }
+          break;
+        case 'Empty':
+        case 'NotEmpty':
+          // These operators don't need RHS values
+          break;
+        default:
+          if (condition.rhsValue === null || condition.rhsValue === undefined || condition.rhsValue === '') {
+            errors.push('Value is required for this operator');
+          }
+          break;
       }
-      
-      // Custom field validation
-      if (fieldDef.validateValue && condition.rhsValue !== undefined) {
-        const fieldValidation = fieldDef.validateValue(condition.rhsValue, condition.operator);
-        if (!fieldValidation.isValid) {
-          errors.push(...fieldValidation.errors);
+    }
+
+    // Field-specific validation
+    if (fieldDefinitions && condition.lhsField && condition.operator) {
+      const fieldDef = fieldDefinitions[condition.lhsField as keyof T];
+      if (fieldDef) {
+        // Check if operator is allowed for this field
+        if (!fieldDef.allowedOperators.includes(condition.operator as FilterOperator)) {
+          errors.push(`Operator ${condition.operator} is not allowed for field ${condition.lhsField}`);
+        }
+
+        // Custom field validation
+        if (fieldDef.validateValue && condition.rhsValue !== undefined) {
+          const fieldValidation = fieldDef.validateValue(condition.rhsValue, condition.operator as FilterOperator);
+          if (!fieldValidation.isValid) {
+            errors.push(...fieldValidation.errors);
+          }
         }
       }
+    }
+
+    // Simple conditions should not have children
+    if (condition.children && condition.children.length > 0) {
+      errors.push('Condition operators should not have children');
     }
   }
 
@@ -216,11 +266,36 @@ const validateFilterCondition = <T>(
 };
 
 /**
+ * Convert a single FilterConditionWithId to API format (FilterCondition or FilterLogical)
+ */
+const convertConditionToAPI = (condition: FilterConditionWithId): any => {
+  // Check if this is a logical operator (nested group)
+  if (isLogicalOperator(condition.operator)) {
+    // Build nested logical filter
+    return {
+      Operator: condition.operator,
+      Condition: (condition.children || [])
+        .filter(child => child.isValid)
+        .map(child => convertConditionToAPI(child))
+    };
+  } else {
+    // Build simple condition
+    return {
+      Operator: condition.operator,
+      LHSField: condition.lhsField,
+      RHSValue: condition.rhsValue,
+      RHSType: condition.rhsType || "Constant"
+    };
+  }
+};
+
+/**
  * Convert filter state to SDK Filter format
+ * Supports both flat and nested filter structures
  */
 const buildFilterPayload = (
   conditions: FilterConditionWithId[],
-  logicalOperator: "AND" | "OR"
+  logicalOperator: LogicalOperator
 ): Filter | undefined => {
   if (conditions.length === 0) {
     return undefined;
@@ -233,12 +308,7 @@ const buildFilterPayload = (
 
   return {
     Operator: logicalOperator,
-    Condition: validConditions.map(c => ({
-      Operator: c.operator,
-      LHSField: c.lhsField,
-      RHSValue: c.rhsValue,
-      RHSType: c.rhsType || "Constant"
-    }))
+    Condition: validConditions.map(c => convertConditionToAPI(c))
   };
 };
 
@@ -254,13 +324,13 @@ export function useFilter<T = any>(
   // ============================================================
 
   const [filterState, setFilterState] = useState<FilterState>({
-    logicalOperator: options.initialLogicalOperator || "AND",
+    logicalOperator: options.initialLogicalOperator || "And",
     conditions: options.initialConditions || []
   });
 
   // Store initial state for reset functionality
   const [initialState] = useState<FilterState>({
-    logicalOperator: options.initialLogicalOperator || "AND",
+    logicalOperator: options.initialLogicalOperator || "And",
     conditions: options.initialConditions || []
   });
 
@@ -380,7 +450,7 @@ export function useFilter<T = any>(
   // LOGICAL OPERATOR MANAGEMENT
   // ============================================================
 
-  const setLogicalOperator = useCallback((operator: "AND" | "OR") => {
+  const setLogicalOperator = useCallback((operator: LogicalOperator) => {
     setFilterState(prev => ({
       ...prev,
       logicalOperator: operator
@@ -470,13 +540,13 @@ export function useFilter<T = any>(
 
   const validationErrors = useMemo((): ValidationError[] => {
     const errors: ValidationError[] = [];
-    
+
     filterState.conditions.forEach(condition => {
       if (!condition.isValid && condition.validationErrors) {
         condition.validationErrors.forEach(error => {
           errors.push({
             conditionId: condition.id,
-            field: condition.lhsField,
+            field: condition.lhsField || '', // Empty string for logical operators
             message: error
           });
         });

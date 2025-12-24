@@ -7,6 +7,13 @@ import {
   clearCart,
   getCartCount,
 } from "./data/cart.js";
+import {
+  getRestockingTasks,
+  getRestockingTask,
+  createRestockingTask,
+  updateRestockingTask,
+  deleteRestockingTask,
+} from "./data/restocking.js";
 
 export function setupMockAPI(middlewares) {
   console.log(
@@ -1024,6 +1031,183 @@ export function setupMockAPI(middlewares) {
       return;
     }
 
+    // ==================== BDO PRODUCT RESTOCKING ENDPOINTS ====================
+
+    // BDO Pattern: POST /api/BDO_ProductRestocking/list
+    if (
+      url.match(/^\/api\/BDO_ProductRestocking\/list$/i) &&
+      method === "POST"
+    ) {
+      if (role !== "InventoryManager") {
+        sendError("Only inventory managers can access restocking tasks", 403);
+        return;
+      }
+
+      parseBody().then(async (body) => {
+        let tasks = getRestockingTasks(role, userId);
+        tasks = applyFiltersAndSearch(tasks, body);
+
+        // Apply sorting
+        if (body.Sort && body.Sort[0]) {
+          const { Field, Order } = body.Sort[0];
+          const direction = Order === "ASC" ? 1 : -1;
+
+          tasks = [...tasks].sort((a, b) => {
+            let aVal = a[Field];
+            let bVal = b[Field];
+
+            if (aVal < bVal) return -1 * direction;
+            if (aVal > bVal) return 1 * direction;
+            return 0;
+          });
+        }
+
+        // Apply pagination
+        const page = body.Page || 1;
+        const pageSize = body.PageSize || 10;
+        const startIndex = (page - 1) * pageSize;
+        const endIndex = startIndex + pageSize;
+
+        const paginatedTasks = tasks.slice(startIndex, endIndex);
+
+        await sendJSON({
+          Data: paginatedTasks,
+        });
+      });
+      return;
+    }
+
+    // BDO Pattern: POST /api/BDO_ProductRestocking/count
+    if (
+      url.match(/^\/api\/BDO_ProductRestocking\/count$/i) &&
+      method === "POST"
+    ) {
+      if (role !== "InventoryManager") {
+        sendError("Only inventory managers can access restocking tasks", 403);
+        return;
+      }
+
+      parseBody().then(async (body) => {
+        let tasks = getRestockingTasks(role, userId);
+        tasks = applyFiltersAndSearch(tasks, body);
+
+        await sendJSON({
+          Count: tasks.length,
+        });
+      });
+      return;
+    }
+
+    // BDO Pattern: GET /api/BDO_ProductRestocking/{instance_id}/read
+    if (
+      url.match(/^\/api\/BDO_ProductRestocking\/([^/]+)\/read$/i) &&
+      method === "GET"
+    ) {
+      if (role !== "InventoryManager") {
+        sendError("Only inventory managers can access restocking tasks", 403);
+        return;
+      }
+
+      const match = url.match(
+        /^\/api\/BDO_ProductRestocking\/([^/]+)\/read$/i
+      );
+      const taskId = match[1];
+
+      const task = getRestockingTask(taskId, role);
+
+      if (task) {
+        sendJSON({
+          Data: task,
+        });
+      } else {
+        sendError(`Restocking task with ID ${taskId} not found`, 404);
+      }
+      return;
+    }
+
+    // BDO Pattern: POST /api/BDO_ProductRestocking/create
+    if (
+      url.match(/^\/api\/BDO_ProductRestocking\/create$/i) &&
+      method === "POST"
+    ) {
+      if (role !== "InventoryManager") {
+        sendError("Only inventory managers can create restocking tasks", 403);
+        return;
+      }
+
+      parseBody().then(async (body) => {
+        const newTask = createRestockingTask(body, userId);
+
+        await sendJSON({
+          _id: newTask._id,
+          Success: true,
+          Message: "Restocking task created successfully",
+        });
+      });
+      return;
+    }
+
+    // BDO Pattern: POST /api/BDO_ProductRestocking/{instance_id}/update
+    if (
+      url.match(/^\/api\/BDO_ProductRestocking\/([^/]+)\/update$/i) &&
+      method === "POST"
+    ) {
+      if (role !== "InventoryManager") {
+        sendError("Only inventory managers can update restocking tasks", 403);
+        return;
+      }
+
+      const match = url.match(
+        /^\/api\/BDO_ProductRestocking\/([^/]+)\/update$/i
+      );
+      const taskId = match[1];
+
+      parseBody().then(async (body) => {
+        const task = updateRestockingTask(taskId, body, userId);
+
+        if (!task) {
+          await sendError(`Restocking task with ID ${taskId} not found`, 404);
+          return;
+        }
+
+        await sendJSON({
+          _id: taskId,
+          Success: true,
+          Message: "Restocking task updated successfully",
+        });
+      });
+      return;
+    }
+
+    // BDO Pattern: DELETE /api/BDO_ProductRestocking/{instance_id}/delete
+    if (
+      url.match(/^\/api\/BDO_ProductRestocking\/([^/]+)\/delete$/i) &&
+      method === "DELETE"
+    ) {
+      if (role !== "InventoryManager") {
+        sendError("Only inventory managers can delete restocking tasks", 403);
+        return;
+      }
+
+      const match = url.match(
+        /^\/api\/BDO_ProductRestocking\/([^/]+)\/delete$/i
+      );
+      const taskId = match[1];
+
+      const deleted = deleteRestockingTask(taskId);
+
+      if (!deleted) {
+        sendError(`Restocking task with ID ${taskId} not found`, 404);
+        return;
+      }
+
+      sendJSON({
+        Success: true,
+        Message: "Restocking task deleted successfully",
+      });
+      return;
+    }
+
     // If we got here, it's an unhandled route
     next();
   });
@@ -1072,7 +1256,7 @@ function evaluateFilterConditions(product, filter) {
     // Use LhsField (BDO pattern) or fallback to LHSField (legacy)
     const fieldName = cond.LhsField || cond.LHSField;
     const value = product[fieldName];
-    const rhsValue = cond.RhsValue;
+    const rhsValue = cond.RhsValue || cond.RHSValue;
 
     switch (cond.Operator) {
       case "EQ":
@@ -1105,9 +1289,10 @@ function evaluateFilterConditions(product, filter) {
     }
   });
 
-  if (Operator === "AND") {
+  // Handle "And"/"Or" (capitalized first letter)
+  if (Operator === "And") {
     return results.every(Boolean);
-  } else if (Operator === "OR") {
+  } else if (Operator === "Or") {
     return results.some(Boolean);
   }
 

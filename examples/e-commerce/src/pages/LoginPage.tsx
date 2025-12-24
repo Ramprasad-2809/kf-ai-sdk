@@ -1,14 +1,14 @@
-import { ShoppingBag, Store } from "lucide-react";
+import { ShoppingBag, Store, Package } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 
 interface LoginPageProps {
-  onLogin: (role: "Buyer" | "Seller") => void;
+  onLogin: (role: "Buyer" | "Seller" | "InventoryManager") => void;
 }
 
 export function LoginPage({ onLogin }: LoginPageProps) {
 
-  const handleLogin = (role: "Buyer" | "Seller") => {
+  const handleLogin = (role: "Buyer" | "Seller" | "InventoryManager") => {
     onLogin(role);
   };
 
@@ -26,7 +26,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
         </div>
 
         {/* Role Selection Cards */}
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-3 gap-6">
           {/* Buyer Card */}
           <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleLogin("Buyer")}>
             <CardHeader className="text-center pb-2">
@@ -73,6 +73,31 @@ export function LoginPage({ onLogin }: LoginPageProps) {
               <Button className="w-full bg-green-600 hover:bg-green-700" size="lg">
                 <Store className="h-5 w-5 mr-2" />
                 Continue as Seller
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Inventory Manager Card */}
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleLogin("InventoryManager")}>
+            <CardHeader className="text-center pb-2">
+              <div className="mx-auto w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-4">
+                <Package className="h-8 w-8 text-orange-600" />
+              </div>
+              <CardTitle className="text-2xl">Inventory Manager</CardTitle>
+              <CardDescription>
+                Track restocking workflow
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-center">
+              <ul className="text-sm text-gray-600 space-y-2 mb-6">
+                <li>Monitor low-stock products</li>
+                <li>Create restocking tasks</li>
+                <li>Track order fulfillment</li>
+                <li>Update inventory levels</li>
+              </ul>
+              <Button className="w-full bg-orange-600 hover:bg-orange-700" size="lg">
+                <Package className="h-5 w-5 mr-2" />
+                Continue as Manager
               </Button>
             </CardContent>
           </Card>

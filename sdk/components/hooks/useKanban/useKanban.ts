@@ -92,7 +92,7 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
 
   const filterHook = useFilter<T>({
     initialConditions: initialState?.filters,
-    initialLogicalOperator: initialState?.filterOperator || "AND",
+    initialLogicalOperator: initialState?.filterOperator || "And",
     fieldDefinitions: cardFieldDefinitions,
     validateOnChange: true,
     onValidationError: onFilterError,
@@ -114,19 +114,19 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
 
       if (!basePayload) {
         combinedPayload = {
-          Operator: "AND",
+          Operator: "And",
           Condition: [columnFilterObject]
         };
       } else {
-        // If base is AND, append. If base is OR, wrap in new AND.
-        if (basePayload.Operator === "AND") {
+        // If base is And, append. If base is Or, wrap in new And.
+        if (basePayload.Operator === "And") {
            combinedPayload = {
              ...basePayload,
              Condition: [...(basePayload.Condition || []), columnFilterObject]
            };
         } else {
           combinedPayload = {
-            Operator: "AND",
+            Operator: "And",
             Condition: [basePayload, columnFilterObject]
           };
         }
@@ -353,34 +353,88 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
   });
 
   const moveCardMutation = useMutation({
-    mutationFn: async ({ cardId, toColumnId, position }: { cardId: string; toColumnId: string; position?: number }) => {
+    mutationFn: async ({ cardId, fromColumnId, toColumnId, position }: { cardId: string; fromColumnId: string; toColumnId: string; position?: number }) => {
       const updates: any = { columnId: toColumnId, ...(position !== undefined && { position }) };
       await api<KanbanCard<T>>(dataSource).update(cardId, updates);
-      return { cardId, toColumnId, position };
+      return { cardId, fromColumnId, toColumnId, position };
     },
-    onMutate: async () => {
-       // Moving is complex to optimistic update across multiple paginated queries.
-       // We'll rely on fast refetch for now.
-       // Optimistic update would require:
-       // 1. Find source column query -> remove card
-       // 2. Find target column query -> add card
-       // 3. Handle reordering in target
-       await queryClient.cancelQueries({ queryKey: ["kanban-cards", dataSource] });
-       return {};
+    onMutate: async ({ cardId, fromColumnId, toColumnId, position }) => {
+       // Cancel queries for only the affected columns
+       const fromOpts = getColumnApiOptions(fromColumnId);
+       const toOpts = getColumnApiOptions(toColumnId);
+       const fromQueryKey = ["kanban-cards", dataSource, fromColumnId, fromOpts];
+       const toQueryKey = ["kanban-cards", dataSource, toColumnId, toOpts];
+
+       await queryClient.cancelQueries({ queryKey: fromQueryKey });
+       await queryClient.cancelQueries({ queryKey: toQueryKey });
+
+       // Get current data for both columns
+       const previousFromData = queryClient.getQueryData<ListResponse<KanbanCard<T>>>(fromQueryKey);
+       const previousToData = queryClient.getQueryData<ListResponse<KanbanCard<T>>>(toQueryKey);
+
+       // Optimistic update: move card between columns
+       if (previousFromData && previousToData) {
+         // Find the card in the source column
+         const cardToMove = previousFromData.Data.find(c => c._id === cardId);
+
+         if (cardToMove) {
+           // Remove card from source column
+           const newFromData = {
+             ...previousFromData,
+             Data: previousFromData.Data.filter(c => c._id !== cardId)
+           };
+
+           // Add card to target column with updated columnId
+           const movedCard = {
+             ...cardToMove,
+             columnId: toColumnId,
+             position: position ?? previousToData.Data.length,
+             _modified_at: new Date()
+           };
+
+           const newToData = {
+             ...previousToData,
+             Data: [...previousToData.Data, movedCard].sort((a, b) => a.position - b.position)
+           };
+
+           // Update cache optimistically
+           queryClient.setQueryData(fromQueryKey, newFromData);
+           queryClient.setQueryData(toQueryKey, newToData);
+         }
+       }
+
+       return {
+         previousFromData,
+         previousToData,
+         fromQueryKey,
+         toQueryKey,
+         fromColumnId,
+         toColumnId
+       };
     },
     onSuccess: async (result) => {
-       // Manually trigger callback if needed, but easier to wait for refetch
        onCardMoveRef.current?.(
-         { _id: result.cardId } as any, 
-         "unknown", // we don't know fromColumnId without looking it up
+         { _id: result.cardId } as any,
+         result.fromColumnId,
          result.toColumnId
        );
     },
-    onError: (error, _variables, _context) => {
+    onError: (error, _variables, context) => {
+      // Rollback optimistic update on error
+      if (context?.previousFromData && context?.fromQueryKey) {
+        queryClient.setQueryData(context.fromQueryKey, context.previousFromData);
+      }
+      if (context?.previousToData && context?.toQueryKey) {
+        queryClient.setQueryData(context.toQueryKey, context.previousToData);
+      }
       onErrorRef.current?.(error as Error);
     },
-    onSettled: () => {
-       queryClient.invalidateQueries({ queryKey: ["kanban-cards", dataSource] });
+    onSettled: (_data, _error, variables) => {
+       // Invalidate queries to ensure sync with server
+       const fromOpts = getColumnApiOptions(variables.fromColumnId);
+       const toOpts = getColumnApiOptions(variables.toColumnId);
+       queryClient.invalidateQueries({ queryKey: ["kanban-cards", dataSource, variables.fromColumnId, fromOpts] });
+       queryClient.invalidateQueries({ queryKey: ["kanban-cards", dataSource, variables.toColumnId, toOpts] });
     }
   });
 
@@ -417,10 +471,11 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
   // ============================================================
 
   const handleCardMove = useCallback(
-    async (card: KanbanCard<T>, _fromColumnId: string, toColumnId: string) => {
+    async (card: KanbanCard<T>, fromColumnId: string, toColumnId: string) => {
       try {
         await moveCardMutation.mutateAsync({
           cardId: card._id,
+          fromColumnId,
           toColumnId,
           position: undefined, // Let the backend calculate optimal position
         });
@@ -605,10 +660,24 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
       [deleteCardMutation]
     ),
     moveCard: useCallback(
-      async (cardId: string, toColumnId: string, position?: number) => {
-        await moveCardMutation.mutateAsync({ cardId, toColumnId, position });
+      async (cardId: string, toColumnId: string, position?: number, fromColumnId?: string) => {
+        // If fromColumnId is not provided, we need to find it
+        if (!fromColumnId) {
+          // Find the card in the columns to get its current columnId
+          for (const column of processedColumns) {
+            const card = column.cards.find(c => c._id === cardId);
+            if (card) {
+              fromColumnId = column._id;
+              break;
+            }
+          }
+          if (!fromColumnId) {
+            throw new Error(`Card ${cardId} not found in any column`);
+          }
+        }
+        await moveCardMutation.mutateAsync({ cardId, fromColumnId, toColumnId, position });
       },
-      [moveCardMutation]
+      [moveCardMutation, processedColumns]
     ),
     reorderCards: useCallback(
       async (cardIds: string[], columnId: string) => {
@@ -628,6 +697,7 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
     // Drag Drop (Flat Access)
     isDragging: enableDragDrop ? dragDropManager.isDragging : false,
     draggedCard: enableDragDrop ? dragDropManager.draggedCard : null,
+    dragOverColumn: enableDragDrop ? dragDropManager.dragOverColumn : null,
     handleDragStart: enableDragDrop
       ? dragDropManager.handleDragStart
       : () => {},

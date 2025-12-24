@@ -467,15 +467,3 @@ export function BuyerProductListPage() {
     </div>
   );
 }
-
-/**
- * gold etf - 15000
- * lic - 5000
- * nps - 7000
- * large cap - 15000
- * mid cap - 7000
- * small cap - 3000
- * rd - 2000
- * ----------------
- * total - 54000
- */

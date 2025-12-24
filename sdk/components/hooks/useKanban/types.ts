@@ -9,6 +9,7 @@ import type {
   ValidationError,
   FieldDefinition,
 } from "../useFilter";
+import type { LogicalOperator } from "../../../types/common";
 
 // ============================================================
 // CORE DATA STRUCTURES
@@ -206,7 +207,7 @@ export interface UseKanbanOptions<T> {
     /** Initial filter conditions */
     filters?: FilterConditionWithId[];
     /** Initial filter operator */
-    filterOperator?: "AND" | "OR";
+    filterOperator?: LogicalOperator;
     /** Initial search query */
     search?: string;
     /** Initial column order */
@@ -252,7 +253,8 @@ export interface CardOperations<T> {
   move: (
     cardId: string,
     toColumnId: string,
-    position?: number
+    position?: number,
+    fromColumnId?: string
   ) => Promise<void>;
   /** Reorder cards within a column */
   reorder: (cardIds: string[], columnId: string) => Promise<void>;
@@ -277,7 +279,7 @@ export interface FilterOperations {
   /** Current filter conditions */
   conditions: FilterConditionWithId[];
   /** Logical operator for combining conditions */
-  logicalOperator: "AND" | "OR";
+  logicalOperator: LogicalOperator;
   /** Whether all conditions are valid */
   isValid: boolean;
   /** Current validation errors */
@@ -302,7 +304,7 @@ export interface FilterOperations {
   getCondition: (id: string) => FilterConditionWithId | undefined;
 
   /** Set logical operator */
-  setLogicalOperator: (operator: "AND" | "OR") => void;
+  setLogicalOperator: (operator: LogicalOperator) => void;
 
   /** Bulk operations */
   setConditions: (conditions: FilterConditionWithId[]) => void;
@@ -372,7 +374,8 @@ export interface UseKanbanReturn<T> {
   moveCard: (
     cardId: string,
     toColumnId: string,
-    position?: number
+    position?: number,
+    fromColumnId?: string
   ) => Promise<void>;
   /** Reorder cards within a column */
   reorderCards: (cardIds: string[], columnId: string) => Promise<void>;
@@ -403,6 +406,8 @@ export interface UseKanbanReturn<T> {
   isDragging: boolean;
   /** The card currently being dragged */
   draggedCard: KanbanCard<T> | null;
+  /** The column currently being hovered over during drag */
+  dragOverColumn: string | null;
   /** Handle drag start event */
   handleDragStart: (event: DragEvent, card: KanbanCard<T>) => void;
   /** Handle drag over event */
