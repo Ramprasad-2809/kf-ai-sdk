@@ -253,7 +253,8 @@ export interface CardOperations<T> {
   move: (
     cardId: string,
     toColumnId: string,
-    position?: number
+    position?: number,
+    fromColumnId?: string
   ) => Promise<void>;
   /** Reorder cards within a column */
   reorder: (cardIds: string[], columnId: string) => Promise<void>;
@@ -373,7 +374,8 @@ export interface UseKanbanReturn<T> {
   moveCard: (
     cardId: string,
     toColumnId: string,
-    position?: number
+    position?: number,
+    fromColumnId?: string
   ) => Promise<void>;
   /** Reorder cards within a column */
   reorderCards: (cardIds: string[], columnId: string) => Promise<void>;
@@ -404,6 +406,8 @@ export interface UseKanbanReturn<T> {
   isDragging: boolean;
   /** The card currently being dragged */
   draggedCard: KanbanCard<T> | null;
+  /** The column currently being hovered over during drag */
+  dragOverColumn: string | null;
   /** Handle drag start event */
   handleDragStart: (event: DragEvent, card: KanbanCard<T>) => void;
   /** Handle drag over event */

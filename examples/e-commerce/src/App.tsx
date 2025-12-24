@@ -17,6 +17,7 @@ import { BuyerProductListPage } from "./pages/BuyerProductListPage";
 import { BuyerProductDetailsPage } from "./pages/BuyerProductDetailsPage";
 import { BuyerCartPage } from "./pages/BuyerCartPage";
 import { SellerProductsPage } from "./pages/SellerProductsPage";
+import { InventoryRestockingPage } from "./pages/InventoryRestockingPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { initializeMockApi } from "./utils/mockApiClient";
 import { setDefaultHeaders } from "kf-ai-sdk";
@@ -26,8 +27,8 @@ import { Roles } from "../../../app/types/roles";
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [currentRole, setCurrentRole] = useState<"Buyer" | "Seller" | null>(
-    () => (localStorage.getItem("currentRole") as "Buyer" | "Seller" | null)
+  const [currentRole, setCurrentRole] = useState<"Buyer" | "Seller" | "InventoryManager" | null>(
+    () => (localStorage.getItem("currentRole") as "Buyer" | "Seller" | "InventoryManager" | null)
   );
 
   // Initialize Mock API once
@@ -38,7 +39,10 @@ export default function App() {
   // Update headers whenever role changes
   useEffect(() => {
      if (currentRole) {
-         const userId = currentRole === "Buyer" ? "buyer_001" : "seller_001";
+         const userId =
+           currentRole === "Buyer" ? "buyer_001" :
+           currentRole === "Seller" ? "seller_001" :
+           "inventory_001";
          setDefaultHeaders({
              "Content-Type": "application/json",
              "x-user-role": currentRole,
@@ -50,9 +54,13 @@ export default function App() {
      }
   }, [currentRole]);
 
-  const handleLogin = (role: "Buyer" | "Seller") => {
+  const handleLogin = (role: "Buyer" | "Seller" | "InventoryManager") => {
     setCurrentRole(role);
-    navigate("/products");
+    if (role === "InventoryManager") {
+      navigate("/inventory/restocking");
+    } else {
+      navigate("/products");
+    }
   };
 
   const handleLogout = () => {
@@ -179,6 +187,12 @@ export default function App() {
             <button className="hover:text-white transition-colors">Registry</button>
             <button className="hover:text-white transition-colors">Gift Cards</button>
             <button className="hover:text-white transition-colors">Sell</button>
+            {currentRole === "InventoryManager" && (
+              <Link to="/inventory/restocking" className="hover:text-white transition-colors flex items-center gap-1">
+                <Package className="h-4 w-4" />
+                Restocking
+              </Link>
+            )}
           </div>
         </header>
       )}
@@ -217,6 +231,17 @@ export default function App() {
                ) : (
                  <Navigate to="/products" replace />
                )
+            }
+          />
+
+          <Route
+            path="/inventory/restocking"
+            element={
+              currentRole === "InventoryManager" ? (
+                <InventoryRestockingPage />
+              ) : (
+                <Navigate to="/products" replace />
+              )
             }
           />
 
