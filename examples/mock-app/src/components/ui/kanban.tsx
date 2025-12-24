@@ -1,7 +1,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { KanbanContext, useKanbanContext } from "../../../../../sdk/components/hooks/useKanban/context";
-import { UseKanbanReturn, KanbanCard as KanbanCardType } from "../../../../../sdk/components/hooks/useKanban/types";
+import { KanbanContext, useKanbanContext, UseKanbanReturn, KanbanCard as KanbanCardType } from "../../../../../sdk/components/hooks/useKanban";
 
 // ============================================================
 // COMPOUND COMPONENTS

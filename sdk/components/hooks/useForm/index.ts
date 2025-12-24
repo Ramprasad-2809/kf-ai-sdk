@@ -34,7 +34,7 @@ export {
   extractReferenceFields,
   validateSchema,
   buildReferenceFieldConfig
-} from './schemaParser';
+} from './schemaParser.utils';
 
 export {
   evaluateExpression,
@@ -42,7 +42,7 @@ export {
   validateCrossField,
   calculateComputedValue,
   calculateDefaultValue
-} from './expressionValidator';
+} from './expressionValidator.utils';
 
 export {
   fetchFormSchema,

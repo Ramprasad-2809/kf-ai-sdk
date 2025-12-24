@@ -1,5 +1,5 @@
 import * as React from "react";
-import { cn } from "../../utils";
+import { cn } from "../../../utils";
 
 // Simple styled wrapper components following the Table pattern
 // No complex logic - just styling and basic structure
