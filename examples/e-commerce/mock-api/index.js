@@ -166,7 +166,7 @@ export function setupMockAPI(middlewares) {
 
         // Return metric response format for count
         await sendJSON({
-          Data: [{ _id_Count: products.length }],
+          Data: [{ count__id: products.length }],
         });
       });
       return;
@@ -1198,7 +1198,7 @@ export function setupMockAPI(middlewares) {
 
       const count = getCartCount(userId);
       sendJSON({
-        Data: [{ _id_Count: count }],
+        Data: [{ count__id: count }],
       });
       return;
     }
@@ -1398,7 +1398,7 @@ export function setupMockAPI(middlewares) {
         tasks = applyFiltersAndSearch(tasks, body);
 
         await sendJSON({
-          Data: [{ _id_Count: tasks.length }],
+          Data: [{ count__id: tasks.length }],
         });
       });
       return;

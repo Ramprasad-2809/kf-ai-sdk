@@ -294,7 +294,7 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
 
       const result = await response.json();
       // Extract count from metric response
-      const count = result.Data?.[0]?._id_Count ?? 0;
+      const count = result.Data?.[0]?.count__id ?? 0;
       return { Count: count };
     },
 
