@@ -26,7 +26,7 @@ import {
   cleanFormData,
 } from "./apiClient";
 
-import { getApiBaseUrl, getDefaultHeaders } from "../../../api";
+import { api } from "../../../api";
 
 import {
   validateCrossField,
@@ -241,28 +241,12 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
       isComputingRef.current = true;
 
       try {
-        const baseUrl = getApiBaseUrl();
-        const headers = getDefaultHeaders();
-
-        const draftUrl =
+        // Use API client draft methods
+        const client = api<T>(source);
+        const computedFields =
           operation === "update" && recordId
-            ? `${source}/${recordId}/draft`
-            : `${source}/draft`;
-
-        const response = await fetch(`${baseUrl}/${draftUrl}`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            ...headers,
-          },
-          body: JSON.stringify(values),
-        });
-
-        if (!response.ok) {
-          throw new Error(`Draft API call failed: ${response.statusText}`);
-        }
-
-        const computedFields = await response.json();
+            ? await client.draftPatch(recordId, values)
+            : await client.draft(values);
 
         // Apply computed fields
         if (computedFields && typeof computedFields === "object") {
@@ -422,30 +406,12 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
           isComputingRef.current = true;
 
           try {
-            const baseUrl = getApiBaseUrl();
-            const headers = getDefaultHeaders();
-
-            // Build draft URL based on operation mode
-            const draftUrl =
+            // Use API client draft methods
+            const client = api<T>(source);
+            const computedFields =
               operation === "update" && recordId
-                ? `${source}/${recordId}/draft`
-                : `${source}/draft`;
-
-            // Call draft endpoint with current form values
-            const response = await fetch(`${baseUrl}/${draftUrl}`, {
-              method: "PATCH",
-              headers: {
-                "Content-Type": "application/json",
-                ...headers,
-              },
-              body: JSON.stringify(currentValues),
-            });
-
-            if (!response.ok) {
-              throw new Error(`Draft API call failed: ${response.statusText}`);
-            }
-
-            const computedFields = await response.json();
+                ? await client.draftPatch(recordId, currentValues)
+                : await client.draft(currentValues);
 
             // Apply computed fields returned from API
             if (computedFields && typeof computedFields === "object") {

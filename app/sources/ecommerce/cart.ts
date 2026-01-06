@@ -15,8 +15,6 @@ import {
   CreateUpdateResponse,
   DeleteResponse,
   api,
-  getApiBaseUrl,
-  getDefaultHeaders,
 } from "../../../sdk";
 
 // ============================================================
@@ -155,15 +153,7 @@ export class Cart<TRole extends Role = typeof Roles.Buyer> {
     if (this.role !== Roles.Buyer) {
       throw new Error("Only buyers can access cart count");
     }
-    
-    // api("BDO_Cart") does not expose custom methods, using fetch
-    const response = await fetch(`${getApiBaseUrl()}/BDO_Cart/count`, {
-      method: "POST",
-      headers: getDefaultHeaders(),
-      body: JSON.stringify({}),
-    });
-    
-    const data = await response.json();
-    return data.Count || 0;
+    const response = await api("BDO_Cart").count();
+    return response.Count;
   }
 }

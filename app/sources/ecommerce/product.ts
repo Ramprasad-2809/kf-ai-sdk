@@ -20,6 +20,12 @@ import {
   ListOptions,
   CreateUpdateResponse,
   DeleteResponse,
+  MetricOptions,
+  MetricResponse,
+  PivotOptions,
+  PivotResponse,
+  DraftResponse,
+  FieldsResponse,
   api,
 } from "../../../sdk";
 
@@ -290,5 +296,59 @@ export class AmazonProductMaster<TRole extends Role = typeof Roles.Admin> {
    */
   async delete(id: IdField): Promise<DeleteResponse> {
     return api("BDO_AmazonProductMaster").delete(id);
+  }
+
+  // ============================================================
+  // DRAFT/INTERACTIVE OPERATIONS
+  // ============================================================
+
+  /**
+   * Create draft - compute fields without persisting
+   */
+  async draft(
+    data: Partial<AmazonProductForRole<TRole>>
+  ): Promise<DraftResponse> {
+    return api("BDO_AmazonProductMaster").draft(data);
+  }
+
+  /**
+   * Update draft (patch) - compute fields during editing
+   */
+  async draftPatch(
+    id: IdField,
+    data: Partial<AmazonProductForRole<TRole>>
+  ): Promise<DraftResponse> {
+    return api("BDO_AmazonProductMaster").draftPatch(id, data);
+  }
+
+  // ============================================================
+  // QUERY OPERATIONS
+  // ============================================================
+
+  /**
+   * Get aggregated metrics grouped by dimensions
+   */
+  async metric(
+    options: Omit<MetricOptions, "Type">
+  ): Promise<MetricResponse> {
+    return api("BDO_AmazonProductMaster").metric(options);
+  }
+
+  /**
+   * Get pivot table data
+   */
+  async pivot(options: Omit<PivotOptions, "Type">): Promise<PivotResponse> {
+    return api("BDO_AmazonProductMaster").pivot(options);
+  }
+
+  // ============================================================
+  // METADATA OPERATIONS
+  // ============================================================
+
+  /**
+   * Get field definitions for this Business Object
+   */
+  async fields(): Promise<FieldsResponse> {
+    return api("BDO_AmazonProductMaster").fields();
   }
 }

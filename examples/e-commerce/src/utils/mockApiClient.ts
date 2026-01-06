@@ -1,7 +1,8 @@
 import { setApiBaseUrl, setDefaultHeaders } from "kf-ai-sdk";
 
 export function initializeMockApi() {
-  setApiBaseUrl("/api");
+  // Base URL should be empty or just domain - SDK adds /api/app/ automatically
+  setApiBaseUrl("");
 
   // Get initial role from localStorage or default to buyer
   const currentRole = localStorage.getItem("currentRole") || "Buyer";

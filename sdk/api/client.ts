@@ -11,12 +11,22 @@ import type {
   CountResponse,
   DateTimeEncoded,
   DateEncoded,
+  MetricOptions,
+  MetricResponse,
+  PivotOptions,
+  PivotResponse,
+  DraftResponse,
+  FieldsResponse,
 } from "../types/common";
 
 /**
  * API client interface for a specific Business Object
  */
 export interface ResourceClient<T = any> {
+  // ============================================================
+  // BASIC CRUD OPERATIONS
+  // ============================================================
+
   /** Get single record by ID */
   get(id: string): Promise<T>;
 
@@ -34,6 +44,54 @@ export interface ResourceClient<T = any> {
 
   /** Get count of records matching the same criteria as list */
   count(options?: ListOptions): Promise<CountResponse>;
+
+  // ============================================================
+  // DRAFT/INTERACTIVE OPERATIONS
+  // ============================================================
+
+  /**
+   * Create draft - compute fields without persisting
+   * POST /{bo_id}/draft
+   */
+  draft(data: Partial<T>): Promise<DraftResponse>;
+
+  /**
+   * Update draft (commit) - compute and prepare for update
+   * POST /{bo_id}/{instance_id}/draft
+   */
+  draftUpdate(id: string, data: Partial<T>): Promise<CreateUpdateResponse>;
+
+  /**
+   * Update draft (patch) - compute fields during editing
+   * PATCH /{bo_id}/{instance_id}/draft
+   */
+  draftPatch(id: string, data: Partial<T>): Promise<DraftResponse>;
+
+  // ============================================================
+  // QUERY OPERATIONS
+  // ============================================================
+
+  /**
+   * Get aggregated metrics grouped by dimensions
+   * POST /{bo_id}/metric
+   */
+  metric(options: Omit<MetricOptions, "Type">): Promise<MetricResponse>;
+
+  /**
+   * Get pivot table data
+   * POST /{bo_id}/pivot
+   */
+  pivot(options: Omit<PivotOptions, "Type">): Promise<PivotResponse>;
+
+  // ============================================================
+  // METADATA OPERATIONS
+  // ============================================================
+
+  /**
+   * Get field definitions for this Business Object
+   * GET /{bo_id}/fields
+   */
+  fields(): Promise<FieldsResponse>;
 }
 
 /**
@@ -127,7 +185,7 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
 
   return {
     async get(id: string): Promise<T> {
-      const response = await fetch(`${baseUrl}/${bo_id}/${id}/read`, {
+      const response = await fetch(`${baseUrl}/api/app/${bo_id}/${id}/read`, {
         method: "GET",
         headers: defaultHeaders,
       });
@@ -143,7 +201,7 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
     async create(
       data: Partial<T> & { _id?: string }
     ): Promise<CreateUpdateResponse> {
-      const response = await fetch(`${baseUrl}/${bo_id}/create`, {
+      const response = await fetch(`${baseUrl}/api/app/${bo_id}/create`, {
         method: "POST",
         headers: defaultHeaders,
         body: JSON.stringify(data),
@@ -157,7 +215,7 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
     },
 
     async update(id: string, data: Partial<T>): Promise<CreateUpdateResponse> {
-      const response = await fetch(`${baseUrl}/${bo_id}/${id}/update`, {
+      const response = await fetch(`${baseUrl}/api/app/${bo_id}/${id}/update`, {
         method: "POST",
         headers: defaultHeaders,
         body: JSON.stringify(data),
@@ -173,7 +231,7 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
     },
 
     async delete(id: string): Promise<DeleteResponse> {
-      const response = await fetch(`${baseUrl}/${bo_id}/${id}/delete`, {
+      const response = await fetch(`${baseUrl}/api/app/${bo_id}/${id}/delete`, {
         method: "DELETE",
         headers: defaultHeaders,
       });
@@ -193,7 +251,7 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
         ...options,
       };
 
-      const response = await fetch(`${baseUrl}/${bo_id}/list`, {
+      const response = await fetch(`${baseUrl}/api/app/${bo_id}/list`, {
         method: "POST",
         headers: defaultHeaders,
         body: JSON.stringify(requestBody),
@@ -210,12 +268,15 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
     },
 
     async count(options?: ListOptions): Promise<CountResponse> {
-      const requestBody: ListOptions = {
-        Type: "List",
-        ...options,
+      // Note: Count uses metric endpoint with Count aggregation
+      const requestBody = {
+        Type: "Metric",
+        GroupBy: [],
+        Metric: [{ Field: "_id", Type: "Count" }],
+        ...(options?.Filter && { Filter: options.Filter }),
       };
 
-      const response = await fetch(`${baseUrl}/${bo_id}/count`, {
+      const response = await fetch(`${baseUrl}/api/app/${bo_id}/metric`, {
         method: "POST",
         headers: defaultHeaders,
         body: JSON.stringify(requestBody),
@@ -223,6 +284,131 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
 
       if (!response.ok) {
         throw new Error(`Failed to count ${bo_id}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      // Extract count from metric response
+      const count = result.Data?.[0]?._id_Count ?? 0;
+      return { Count: count };
+    },
+
+    // ============================================================
+    // DRAFT/INTERACTIVE OPERATIONS
+    // ============================================================
+
+    async draft(data: Partial<T>): Promise<DraftResponse> {
+      const response = await fetch(`${baseUrl}/api/app/${bo_id}/draft`, {
+        method: "POST",
+        headers: defaultHeaders,
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to create draft for ${bo_id}: ${response.statusText}`
+        );
+      }
+
+      return response.json();
+    },
+
+    async draftUpdate(
+      id: string,
+      data: Partial<T>
+    ): Promise<CreateUpdateResponse> {
+      const response = await fetch(`${baseUrl}/api/app/${bo_id}/${id}/draft`, {
+        method: "POST",
+        headers: defaultHeaders,
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to update draft for ${bo_id} ${id}: ${response.statusText}`
+        );
+      }
+
+      return response.json();
+    },
+
+    async draftPatch(id: string, data: Partial<T>): Promise<DraftResponse> {
+      const response = await fetch(`${baseUrl}/api/app/${bo_id}/${id}/draft`, {
+        method: "PATCH",
+        headers: defaultHeaders,
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to patch draft for ${bo_id} ${id}: ${response.statusText}`
+        );
+      }
+
+      return response.json();
+    },
+
+    // ============================================================
+    // QUERY OPERATIONS
+    // ============================================================
+
+    async metric(
+      options: Omit<MetricOptions, "Type">
+    ): Promise<MetricResponse> {
+      const requestBody: MetricOptions = {
+        Type: "Metric",
+        ...options,
+      };
+
+      const response = await fetch(`${baseUrl}/api/app/${bo_id}/metric`, {
+        method: "POST",
+        headers: defaultHeaders,
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to get metrics for ${bo_id}: ${response.statusText}`
+        );
+      }
+
+      return response.json();
+    },
+
+    async pivot(options: Omit<PivotOptions, "Type">): Promise<PivotResponse> {
+      const requestBody: PivotOptions = {
+        Type: "Pivot",
+        ...options,
+      };
+
+      const response = await fetch(`${baseUrl}/api/app/${bo_id}/pivot`, {
+        method: "POST",
+        headers: defaultHeaders,
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to get pivot data for ${bo_id}: ${response.statusText}`
+        );
+      }
+
+      return response.json();
+    },
+
+    // ============================================================
+    // METADATA OPERATIONS
+    // ============================================================
+
+    async fields(): Promise<FieldsResponse> {
+      const response = await fetch(`${baseUrl}/api/app/${bo_id}/fields`, {
+        method: "GET",
+        headers: defaultHeaders,
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to get fields for ${bo_id}: ${response.statusText}`
+        );
       }
 
       return response.json();

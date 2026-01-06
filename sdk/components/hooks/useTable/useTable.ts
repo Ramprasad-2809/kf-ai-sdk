@@ -116,12 +116,11 @@ export function useTable<T = any>(
   const apiOptions = useMemo((): ListOptions => {
     const opts: ListOptions = {};
 
-    // Add sorting
+    // Add sorting - using correct API format: [{ "fieldName": "ASC" }]
     if (sorting.field && sorting.direction) {
       opts.Sort = [
         {
-          Field: String(sorting.field),
-          Order: sorting.direction === "asc" ? "ASC" : "DESC",
+          [String(sorting.field)]: sorting.direction === "asc" ? "ASC" : "DESC",
         },
       ];
     }

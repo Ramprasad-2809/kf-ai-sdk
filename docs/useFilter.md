@@ -5,6 +5,7 @@ The `useFilter` hook provides a powerful interface for building and managing com
 ## Key Changes
 
 ### ✅ Fixed Issues
+
 1. **Logical operator casing**: Changed from `"AND" | "OR"` to `"And" | "Or" | "Not"` (title case as per spec)
 2. **Separated operator types**:
    - `FilterOperator` - for leaf conditions (EQ, NE, GT, etc.)
@@ -18,7 +19,7 @@ The `useFilter` hook provides a powerful interface for building and managing com
 
 ```typescript
 const filter = useFilter({
-  initialLogicalOperator: "And"
+  initialLogicalOperator: "And",
 });
 
 // Add a simple condition
@@ -26,7 +27,7 @@ const conditionId = filter.addCondition({
   operator: "EQ",
   lhsField: "leave_status",
   rhsValue: "Approved",
-  rhsType: "Constant"
+  rhsType: "Constant",
 });
 
 // Generated API payload:
@@ -47,21 +48,21 @@ const conditionId = filter.addCondition({
 
 ```typescript
 const filter = useFilter({
-  initialLogicalOperator: "And"
+  initialLogicalOperator: "And",
 });
 
 filter.addCondition({
   operator: "IN",
   lhsField: "leave_type",
   rhsValue: ["Casual", "Sick"],
-  rhsType: "Constant"
+  rhsType: "Constant",
 });
 
 filter.addCondition({
   operator: "EQ",
   lhsField: "leave_status",
   rhsValue: "Approved",
-  rhsType: "Constant"
+  rhsType: "Constant",
 });
 
 // Generated API payload:
@@ -92,7 +93,7 @@ Example: (department = "Engineering" AND salary > 80000) OR is_manager = true
 
 ```typescript
 const filter = useFilter({
-  initialLogicalOperator: "Or"
+  initialLogicalOperator: "Or",
 });
 
 // Add a nested AND group
@@ -105,7 +106,7 @@ filter.addCondition({
       lhsField: "department",
       rhsValue: "Engineering",
       rhsType: "Constant",
-      isValid: true
+      isValid: true,
     },
     {
       id: crypto.randomUUID(),
@@ -113,9 +114,9 @@ filter.addCondition({
       lhsField: "salary",
       rhsValue: 80000,
       rhsType: "Constant",
-      isValid: true
-    }
-  ]
+      isValid: true,
+    },
+  ],
 });
 
 // Add a simple condition at the OR level
@@ -123,7 +124,7 @@ filter.addCondition({
   operator: "EQ",
   lhsField: "is_manager",
   rhsValue: true,
-  rhsType: "Constant"
+  rhsType: "Constant",
 });
 
 // Generated API payload:
@@ -163,7 +164,7 @@ Example: NOT (status = "Inactive")
 
 ```typescript
 const filter = useFilter({
-  initialLogicalOperator: "And"
+  initialLogicalOperator: "And",
 });
 
 filter.addCondition({
@@ -175,9 +176,9 @@ filter.addCondition({
       lhsField: "status",
       rhsValue: "Inactive",
       rhsType: "Constant",
-      isValid: true
-    }
-  ]
+      isValid: true,
+    },
+  ],
 });
 
 // Generated API payload:
@@ -204,6 +205,7 @@ filter.addCondition({
 ### Condition Operators (FilterOperator)
 
 #### Common Operators (All field types)
+
 - `EQ` - Equals
 - `NE` - Not equals
 - `IN` - In list
@@ -212,6 +214,7 @@ filter.addCondition({
 - `NotEmpty` - Not null and not empty
 
 #### Numeric Operators (Number, Long, Date fields)
+
 - `GT` - Greater than
 - `GTE` - Greater than or equal
 - `LT` - Less than
@@ -220,12 +223,14 @@ filter.addCondition({
 - `NotBetween` - Not between two values (requires array of 2)
 
 #### String Operators
+
 - `Contains` - String contains substring
 - `NotContains` - String does not contain
 - `MinLength` - Minimum length
 - `MaxLength` - Maximum length
 
 ### Logical Operators (LogicalOperator)
+
 - `And` - Combines conditions with AND logic
 - `Or` - Combines conditions with OR logic
 - `Not` - Negates a condition (single child only)
@@ -260,30 +265,30 @@ You can provide field definitions for enhanced validation:
 const filter = useFilter<MyDataType>({
   fieldDefinitions: {
     salary: {
-      type: 'number',
-      allowedOperators: ['EQ', 'GT', 'GTE', 'LT', 'LTE', 'Between'],
+      type: "number",
+      allowedOperators: ["EQ", "GT", "GTE", "LT", "LTE", "Between"],
       validateValue: (value, operator) => {
-        if (operator === 'Between') {
+        if (operator === "Between") {
           if (value[0] >= value[1]) {
             return {
               isValid: false,
-              errors: ['First value must be less than second value']
+              errors: ["First value must be less than second value"],
             };
           }
         }
         return { isValid: true, errors: [] };
-      }
+      },
     },
     department: {
-      type: 'select',
-      allowedOperators: ['EQ', 'NE', 'IN', 'NIN'],
+      type: "select",
+      allowedOperators: ["EQ", "NE", "IN", "NIN"],
       selectOptions: [
-        { label: 'Engineering', value: 'Engineering' },
-        { label: 'Sales', value: 'Sales' },
-        { label: 'HR', value: 'HR' }
-      ]
-    }
-  }
+        { label: "Engineering", value: "Engineering" },
+        { label: "Sales", value: "Sales" },
+        { label: "HR", value: "HR" },
+      ],
+    },
+  },
 });
 ```
 
@@ -336,8 +341,8 @@ const { filterPayload } = useFilter();
 const response = await api("employees").list({
   Type: "List",
   Field: ["name", "salary", "department"],
-  Filter: filterPayload,  // Automatically formatted
-  Sort: [{ Field: "name", Order: "ASC" }]
+  Filter: filterPayload, // Automatically formatted
+  Sort: [{ name: "ASC" }],
 });
 ```
 
@@ -346,6 +351,7 @@ const response = await api("employees").list({
 If you were using the old hook with `"AND"` / `"OR"`:
 
 ### Before:
+
 ```typescript
 filter.setLogicalOperator("AND");
 // OR
@@ -353,6 +359,7 @@ filter.setLogicalOperator("OR");
 ```
 
 ### After:
+
 ```typescript
 filter.setLogicalOperator("And");
 // OR
@@ -372,7 +379,7 @@ filter.addCondition({
   operator: "Between",
   lhsField: "salary",
   rhsValue: [50000, 100000],
-  rhsType: "Constant"
+  rhsType: "Constant",
 });
 ```
 
@@ -383,7 +390,7 @@ filter.addCondition({
   operator: "Contains",
   lhsField: "name",
   rhsValue: "John",
-  rhsType: "Constant"
+  rhsType: "Constant",
 });
 ```
 
@@ -394,7 +401,7 @@ filter.addCondition({
   operator: "GT",
   lhsField: "end_date",
   rhsValue: "start_date",
-  rhsType: "BOField"  // Compare end_date > start_date
+  rhsType: "BOField", // Compare end_date > start_date
 });
 ```
 
@@ -405,7 +412,7 @@ filter.addCondition({
   operator: "EQ",
   lhsField: "department",
   rhsValue: "current_user_department",
-  rhsType: "AppVariable"
+  rhsType: "AppVariable",
 });
 ```
 

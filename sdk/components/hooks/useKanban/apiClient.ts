@@ -35,8 +35,8 @@ export async function fetchColumns<T>(
   // Build API options for columns query
   const apiOptions: ListOptions = {
     ...options,
-    // Default sort by position if no sort specified
-    Sort: options?.Sort || [{ Field: "position", Order: "ASC" }]
+    // Default sort by position if no sort specified - using correct API format
+    Sort: options?.Sort || [{ position: "ASC" }]
   };
   
   const response: ListResponse<KanbanColumn<T>> = await client.list(apiOptions);
@@ -131,10 +131,10 @@ export async function fetchCards<T>(
   // Build API options for cards query
   const apiOptions: ListOptions = {
     ...options,
-    // Default sort by column and position if no sort specified
+    // Default sort by column and position if no sort specified - using correct API format
     Sort: options?.Sort || [
-      { Field: "columnId", Order: "ASC" },
-      { Field: "position", Order: "ASC" }
+      { columnId: "ASC" },
+      { position: "ASC" }
     ]
   };
   
@@ -340,8 +340,8 @@ export async function searchCards<T>(
     ...additionalOptions,
     Search: searchQuery,
     Sort: additionalOptions?.Sort || [
-      { Field: "columnId", Order: "ASC" },
-      { Field: "position", Order: "ASC" }
+      { columnId: "ASC" },
+      { position: "ASC" }
     ]
   };
   

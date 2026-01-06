@@ -7,24 +7,28 @@ The KF AI SDK provides a complete TypeScript/React SDK for building applications
 ## Key Features
 
 ### ✅ **Complete Rule System**
+
 - **Validation Rules**: Client-side validation with expression trees
-- **Computation Rules**: Server-side calculations with API updates  
+- **Computation Rules**: Server-side calculations with API updates
 - **Business Logic Rules**: Complex server-side business logic
 - **Automatic Rule Classification**: Smart execution strategy (client vs server)
 
 ### ✅ **Role-Based Access Control**
+
 - **Field-Level Permissions**: Editable, readable, and hidden field control
 - **Method Restrictions**: Role-based CRUD operation permissions
 - **Data Filtering**: Automatic role-based data filtering
 - **Type-Safe Access**: Compile-time enforcement of permissions
 
 ### ✅ **Optimized Performance**
+
 - **Expression Caching**: LRU cache for computed values
 - **Dependency Tracking**: Smart field watching and updates
 - **Batch Operations**: Efficient bulk validations and updates
 - **Short-Circuit Evaluation**: Optimized logical operations
 
 ### ✅ **Complete API Integration**
+
 - **POST-Based APIs**: Correct implementation per BDO specification
 - **Count Operations**: Efficient counting with same payload as list
 - **Error Handling**: Comprehensive error management
@@ -74,12 +78,12 @@ function ProductList() {
 
   return (
     <div>
-      <input 
+      <input
         value={table.search.query}
         onChange={(e) => table.search.setQuery(e.target.value)}
         placeholder="Search products..."
       />
-      
+
       <table>
         <thead>
           <tr>
@@ -103,7 +107,7 @@ function ProductList() {
 
       {table.pagination.totalPages > 1 && (
         <div>
-          <button 
+          <button
             disabled={!table.pagination.canGoPrevious}
             onClick={table.pagination.goToPrevious}
           >
@@ -112,7 +116,7 @@ function ProductList() {
           <span>
             Page {table.pagination.currentPage} of {table.pagination.totalPages}
           </span>
-          <button 
+          <button
             disabled={!table.pagination.canGoNext}
             onClick={table.pagination.goToNext}
           >
@@ -137,18 +141,18 @@ function ProductForm({ productId }: { productId?: string }) {
     operation: productId ? "update" : "create",
     recordId: productId,
     userRole: "Seller",
-    
+
     // Handle computation rules (server-side calculations)
     onComputationRule: async (context) => {
       // Call update API for computation/business logic rules
       const response = await api(form.source).update(productId!, {
         [context.fieldName]: context.fieldValue
       });
-      
+
       // Return computed field updates
       return response.computedFields || {};
     },
-    
+
     onSuccess: (data) => {
       console.log("Product saved:", data);
     }
@@ -248,8 +252,8 @@ function ProductForm({ productId }: { productId?: string }) {
         )}
       </div>
 
-      <button 
-        type="submit" 
+      <button
+        type="submit"
         disabled={form.isSubmitting || !form.isValid}
       >
         {form.isSubmitting ? "Saving..." : "Save Product"}
@@ -278,8 +282,8 @@ await adminProducts.create({
   Title: "Echo Dot (4th Gen)",
   Price: 49.99,
   MRP: 59.99,
-  Cost: 25.00, // Admin can set cost
-  Category: "Electronics"
+  Cost: 25.0, // Admin can set cost
+  Category: "Electronics",
 });
 
 // Seller - Limited Access
@@ -306,14 +310,14 @@ const validationRules = {
     {
       Id: "RULE_ASIN_REQUIRED",
       Expression: "ASIN != null AND TRIM(ASIN) != ''",
-      Message: "ASIN is required"
+      Message: "ASIN is required",
     },
     {
-      Id: "RULE_ASIN_FORMAT", 
+      Id: "RULE_ASIN_FORMAT",
       Expression: "LENGTH(ASIN) == 10 AND MATCHES(ASIN, '^[A-Z0-9]{10}$')",
-      Message: "ASIN must be exactly 10 alphanumeric characters"
-    }
-  ]
+      Message: "ASIN must be exactly 10 alphanumeric characters",
+    },
+  ],
 };
 ```
 
@@ -325,7 +329,7 @@ const computationRules = {
   RULE_CALC_DISCOUNT: {
     Expression: "IF(MRP > 0, ((MRP - Price) / MRP) * 100, 0)",
     // Automatically triggers API call to update computed fields
-  }
+  },
 };
 ```
 
@@ -337,7 +341,7 @@ const businessLogicRules = {
   RULE_INVENTORY_CHECK: {
     Expression: "Stock > 0 AND Warehouse != null",
     // Triggers inventory validation and updates
-  }
+  },
 };
 ```
 
@@ -355,14 +359,14 @@ const table = useTable({
 table.filter.addCondition({
   fieldName: "Price",
   operator: "BETWEEN",
-  value: { min: 10, max: 100 }
+  value: { min: 10, max: 100 },
 });
 
 // Add category filter
 table.filter.addCondition({
-  fieldName: "Category", 
+  fieldName: "Category",
   operator: "IN",
-  value: ["Electronics", "Books"]
+  value: ["Electronics", "Books"],
 });
 
 // Set logical operator
@@ -376,8 +380,8 @@ const adminProducts = new AmazonProductMaster("Admin");
 
 // Batch create
 await adminProducts.batchCreate([
-  { ASIN: "B001", Title: "Product 1", /*...*/ },
-  { ASIN: "B002", Title: "Product 2", /*...*/ },
+  { ASIN: "B001", Title: "Product 1" /*...*/ },
+  { ASIN: "B002", Title: "Product 2" /*...*/ },
 ]);
 
 // Batch update
@@ -410,7 +414,7 @@ const form = useForm({
   },
   onSubmitError: (error) => {
     // Handle submission errors
-    if (error.code === 'VALIDATION_FAILED') {
+    if (error.code === "VALIDATION_FAILED") {
       // Show field-specific errors
       error.fieldErrors.forEach(({ field, message }) => {
         toast.error(`${field}: ${message}`);
@@ -418,7 +422,7 @@ const form = useForm({
     } else {
       toast.error(`Save failed: ${error.message}`);
     }
-  }
+  },
 });
 ```
 
@@ -428,9 +432,9 @@ const form = useForm({
 try {
   await products.create(productData);
 } catch (error) {
-  if (error.code === 'PERMISSION_DENIED') {
+  if (error.code === "PERMISSION_DENIED") {
     toast.error("You don't have permission to create products");
-  } else if (error.code === 'VALIDATION_FAILED') {
+  } else if (error.code === "VALIDATION_FAILED") {
     toast.error("Please check your input and try again");
   } else {
     toast.error("An unexpected error occurred");
@@ -441,6 +445,7 @@ try {
 ## Best Practices
 
 ### 1. Use TypeScript Strictly
+
 ```typescript
 // ✅ Good - Type-safe access
 const products = new AmazonProductMaster<"Seller">("Seller");
@@ -451,6 +456,7 @@ const products = new AmazonProductMaster("Seller" as any);
 ```
 
 ### 2. Leverage Role-Based Views
+
 ```typescript
 // ✅ Good - Use specific role clients
 const buyerProducts = AmazonProducts.Buyer();
@@ -461,6 +467,7 @@ const adminProducts = new AmazonProductMaster("Admin");
 ```
 
 ### 3. Handle Async Operations Properly
+
 ```typescript
 // ✅ Good - Proper error handling
 const form = useForm({
@@ -469,10 +476,10 @@ const form = useForm({
       const result = await api(context.source).update(id, data);
       return result.computedFields;
     } catch (error) {
-      console.error('Computation failed:', error);
+      console.error("Computation failed:", error);
       throw error; // Re-throw to trigger form error handling
     }
-  }
+  },
 });
 
 // ❌ Bad - Swallowing errors
@@ -483,11 +490,12 @@ const form = useForm({
     } catch (error) {
       return {}; // Silent failure
     }
-  }
+  },
 });
 ```
 
 ### 4. Optimize Performance
+
 ```typescript
 // ✅ Good - Use dependency tracking
 const form = useForm({
@@ -496,7 +504,7 @@ const form = useForm({
 });
 
 // ✅ Good - Batch operations when possible
-const updates = products.map(p => ({ id: p.id, price: p.price * 1.1 }));
+const updates = products.map((p) => ({ id: p.id, price: p.price * 1.1 }));
 await adminProducts.batchUpdate(updates);
 ```
 
@@ -505,6 +513,7 @@ await adminProducts.batchUpdate(updates);
 ### From Legacy Forms to New useForm
 
 **Before:**
+
 ```typescript
 const form = useForm({
   source: "product",
@@ -513,35 +522,38 @@ const form = useForm({
 ```
 
 **After:**
+
 ```typescript
 const form = useForm({
-  source: "BDO_AmazonProductMaster", 
+  source: "BDO_AmazonProductMaster",
   userRole: "Seller",
   // Validation rules run client-side
   // Computation rules trigger API calls
   onComputationRule: async (context) => {
     const result = await api(context.source).update(id, {
-      [context.fieldName]: context.fieldValue
+      [context.fieldName]: context.fieldValue,
     });
     return result.computedFields;
-  }
+  },
 });
 ```
 
 ### API Endpoint Updates
 
 **Before:**
+
 ```typescript
 // GET requests
 const products = await fetch(`/api/product/list`);
 ```
 
 **After:**
+
 ```typescript
 // POST requests with payload
 const products = await api("BDO_AmazonProductMaster").list({
-  Sort: [{ Field: "Title", Order: "ASC" }],
-  PageSize: 10
+  Sort: [{ Title: "ASC" }],
+  PageSize: 10,
 });
 ```
 
@@ -550,6 +562,7 @@ const products = await api("BDO_AmazonProductMaster").list({
 ### Common Issues
 
 1. **ValidationRule Type Mismatch**
+
    ```typescript
    // Fix: Update ValidationRule interface
    // Old: rule.Condition.ExpressionTree
@@ -557,6 +570,7 @@ const products = await api("BDO_AmazonProductMaster").list({
    ```
 
 2. **Permission Denied Errors**
+
    ```typescript
    // Fix: Check role permissions in BDO schema
    const field = form.getField("Cost");
@@ -580,14 +594,14 @@ const table = useTable({
   source: "BDO_AmazonProductMaster",
   onError: (error) => {
     console.debug("Table error:", error);
-  }
+  },
 });
 
 const form = useForm({
   source: "BDO_AmazonProductMaster",
   onSchemaError: (error) => {
     console.debug("Schema error:", error);
-  }
+  },
 });
 ```
 

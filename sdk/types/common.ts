@@ -4,14 +4,10 @@
 export type SortDirection = "ASC" | "DESC";
 
 /**
- * Sort configuration for a single field (API spec format)
+ * Sort configuration: array of field-direction mappings
+ * Format: [{ "fieldName": "ASC" }, { "anotherField": "DESC" }]
  */
-export interface SortOption {
-  /** Field to sort by */
-  Field: string;
-  /** Sort direction */
-  Order: SortDirection;
-}
+export type SortOption = Record<string, SortDirection>;
 
 /**
  * Sort configuration: array of sort options
@@ -141,7 +137,7 @@ export interface CountResponse {
  */
 export interface ListOptions {
   /** Query type (defaults to "List") */
-  Type?: "List" | "Aggregation" | "Pivot";
+  Type?: "List";
 
   /** Specific fields to return */
   Field?: string[];
@@ -160,4 +156,129 @@ export interface ListOptions {
 
   /** Records per page */
   PageSize?: number;
+}
+
+// ============================================================
+// METRIC/AGGREGATE TYPES
+// ============================================================
+
+/**
+ * Metric aggregation function types
+ */
+export type MetricType =
+  | "Sum"
+  | "Avg"
+  | "Count"
+  | "Max"
+  | "Min"
+  | "DistinctCount"
+  | "BlankCount"
+  | "NotBlankCount"
+  | "Concat"
+  | "DistinctConcat";
+
+/**
+ * Metric field configuration
+ */
+export interface MetricField {
+  /** Field to aggregate */
+  Field: string;
+  /** Aggregation function type */
+  Type: MetricType;
+}
+
+/**
+ * Options for metric/aggregate queries
+ */
+export interface MetricOptions {
+  /** Query type (always "Metric") */
+  Type: "Metric";
+  /** Fields to group by */
+  GroupBy: string[];
+  /** Metric definitions */
+  Metric: MetricField[];
+  /** Optional filter criteria */
+  Filter?: Filter;
+}
+
+/**
+ * Response from metric endpoint
+ */
+export interface MetricResponse {
+  /** Aggregated data rows */
+  Data: Record<string, any>[];
+}
+
+// ============================================================
+// PIVOT TYPES
+// ============================================================
+
+/**
+ * Pivot table header item (hierarchical)
+ */
+export interface PivotHeaderItem {
+  /** Header key/label */
+  Key: string;
+  /** Child headers for nested grouping */
+  Children?: PivotHeaderItem[] | null;
+}
+
+/**
+ * Pivot response data structure
+ */
+export interface PivotResponseData {
+  /** Row headers */
+  RowHeader: PivotHeaderItem[];
+  /** Column headers */
+  ColumnHeader: PivotHeaderItem[];
+  /** Value matrix [row][column] */
+  Value: (number | string | null)[][];
+}
+
+/**
+ * Options for pivot queries
+ */
+export interface PivotOptions {
+  /** Query type (always "Pivot") */
+  Type: "Pivot";
+  /** Row dimension fields */
+  Row: string[];
+  /** Column dimension fields */
+  Column: string[];
+  /** Metric definitions */
+  Metric: MetricField[];
+  /** Optional filter criteria */
+  Filter?: Filter;
+}
+
+/**
+ * Response from pivot endpoint
+ */
+export interface PivotResponse {
+  /** Pivot data including headers and values */
+  Data: PivotResponseData;
+}
+
+// ============================================================
+// DRAFT/INTERACTIVE TYPES
+// ============================================================
+
+/**
+ * Response from draft operations
+ */
+export interface DraftResponse {
+  /** Computed field values */
+  [fieldName: string]: any;
+}
+
+// ============================================================
+// FIELDS METADATA TYPES
+// ============================================================
+
+/**
+ * Response from fields endpoint
+ */
+export interface FieldsResponse {
+  /** Field metadata */
+  Data: Record<string, any>[];
 }
