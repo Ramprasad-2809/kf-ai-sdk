@@ -21,20 +21,11 @@ import {
 } from "../components/ui/select";
 import { Checkbox } from "../components/ui/checkbox";
 import { Separator } from "../components/ui/separator";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Cart, AmazonProductForRole } from "../../../../app";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { Cart, Product, ProductForRole } from "../../../../app";
 import { Roles } from "../../../../app/types/roles";
 
-type BuyerProduct = AmazonProductForRole<typeof Roles.Buyer>;
-
-const categories = [
-  { value: "Electronics", label: "Electronics" },
-  { value: "Clothing", label: "Clothing" },
-  { value: "Books", label: "Books" },
-  { value: "Home", label: "Home & Garden" },
-  { value: "Sports", label: "Sports" },
-  { value: "Toys", label: "Toys & Games" },
-];
+type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
 
 export function BuyerProductListPage() {
   const navigate = useNavigate();
@@ -42,6 +33,15 @@ export function BuyerProductListPage() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [addingToCart, setAddingToCart] = useState<string | null>(null);
   const cart = new Cart(Roles.Buyer);
+  const product = new Product(Roles.Buyer);
+
+  // Fetch categories from field metadata
+  const { data: categoriesData } = useQuery({
+    queryKey: ["product-categories"],
+    queryFn: () => product.getField("Category"),
+  });
+
+  const categories = categoriesData || [];
 
   const table = useTable<BuyerProduct>({
     source: "BDO_AmazonProductMaster",
@@ -134,14 +134,14 @@ export function BuyerProductListPage() {
             </button>
             {categories.map((cat) => (
               <button
-                key={cat.value}
-                onClick={() => handleCategoryChange(cat.value)}
-                className={`text-sm text-left hover:text-blue-600 transition-colors flex items-center gap-2 ${selectedCategory === cat.value ? "font-bold text-blue-600" : "text-gray-600"}`}
+                key={cat.Value}
+                onClick={() => handleCategoryChange(cat.Value)}
+                className={`text-sm text-left hover:text-blue-600 transition-colors flex items-center gap-2 ${selectedCategory === cat.Value ? "font-bold text-blue-600" : "text-gray-600"}`}
               >
-                {selectedCategory === cat.value && (
+                {selectedCategory === cat.Value && (
                   <ChevronRight className="h-3 w-3" />
                 )}
-                {cat.label}
+                {cat.Label}
               </button>
             ))}
           </div>
@@ -208,7 +208,7 @@ export function BuyerProductListPage() {
               <h1 className="text-xl font-bold text-gray-900">
                 {selectedCategory === "all"
                   ? "All Products"
-                  : categories.find((c) => c.value === selectedCategory)?.label}
+                  : categories.find((c) => c.Value === selectedCategory)?.Label}
               </h1>
               <p className="text-sm text-gray-500">
                 {table.totalItems} results found

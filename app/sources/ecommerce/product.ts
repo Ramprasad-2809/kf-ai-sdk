@@ -1,7 +1,7 @@
 // ============================================================
-// AMAZON PRODUCT MASTER - BDO SDK Wrapper
+// PRODUCT MASTER - BDO SDK Wrapper
 // ============================================================
-// Thin wrapper around BDO_AmazonProductMaster API
+// Thin wrapper around BDO_ProductMaster API
 // All validation and business logic handled by BDO schema and useForm hook
 
 import {
@@ -27,6 +27,8 @@ import {
   DraftResponse,
   FieldsResponse,
   api,
+  getBdoFields,
+  FieldMetadata,
 } from "../../../sdk";
 
 // ============================================================
@@ -34,11 +36,11 @@ import {
 // ============================================================
 
 /**
- * Complete Amazon Product Master type based on BDO schema
+ * Complete Product Master type based on BDO schema
  * All validation rules are defined in BDO schema and enforced by useForm hook
  * Computed fields (Discount, LowStock) are calculated by backend
  */
-export type AmazonProductMasterType = {
+export type ProductMasterType = {
   /** MongoDB document ID */
   _id: IdField;
 
@@ -130,13 +132,13 @@ export type AmazonProductMasterType = {
 /**
  * Admin view - full access to all fields
  */
-export type AdminAmazonProduct = AmazonProductMasterType;
+export type AdminProduct = ProductMasterType;
 
 /**
  * Seller view - can edit product details, pricing, and inventory
  */
-export type SellerAmazonProduct = Pick<
-  AmazonProductMasterType,
+export type SellerProduct = Pick<
+  ProductMasterType,
   | "_id"
   | "ProductId"
   | "ASIN"
@@ -164,8 +166,8 @@ export type SellerAmazonProduct = Pick<
 /**
  * Buyer view - read-only access to public product information
  */
-export type BuyerAmazonProduct = Pick<
-  AmazonProductMasterType,
+export type BuyerProduct = Pick<
+  ProductMasterType,
   | "_id"
   | "ProductId"
   | "ASIN"
@@ -186,8 +188,8 @@ export type BuyerAmazonProduct = Pick<
 /**
  * Inventory Manager view - focus on inventory and warehouse management
  */
-export type InventoryManagerAmazonProduct = Pick<
-  AmazonProductMasterType,
+export type InventoryManagerProduct = Pick<
+  ProductMasterType,
   | "_id"
   | "ProductId"
   | "ASIN"
@@ -204,8 +206,8 @@ export type InventoryManagerAmazonProduct = Pick<
 /**
  * Warehouse Staff view - limited to assigned warehouse stock updates
  */
-export type WarehouseStaffAmazonProduct = Pick<
-  AmazonProductMasterType,
+export type WarehouseStaffProduct = Pick<
+  ProductMasterType,
   | "_id"
   | "ProductId"
   | "SKU"
@@ -223,17 +225,17 @@ export type WarehouseStaffAmazonProduct = Pick<
 /**
  * Maps role to appropriate view type
  */
-export type AmazonProductForRole<TRole extends Role> =
+export type ProductForRole<TRole extends Role> =
   TRole extends typeof Roles.Admin
-    ? AdminAmazonProduct
+    ? AdminProduct
     : TRole extends "Seller"
-      ? SellerAmazonProduct
+      ? SellerProduct
       : TRole extends "Buyer"
-        ? BuyerAmazonProduct
+        ? BuyerProduct
         : TRole extends "InventoryManager"
-          ? InventoryManagerAmazonProduct
+          ? InventoryManagerProduct
           : TRole extends "WarehouseStaff"
-            ? WarehouseStaffAmazonProduct
+            ? WarehouseStaffProduct
             : never;
 
 // ============================================================
@@ -241,14 +243,14 @@ export type AmazonProductForRole<TRole extends Role> =
 // ============================================================
 
 /**
- * Amazon Product Master client with role-based access control
+ * Product client with role-based access control
  * Simple wrapper around BDO API - no business logic
  * All validation handled by useForm hook with BDO schema
  * All computed fields handled by backend
  */
-export class AmazonProductMaster<TRole extends Role = typeof Roles.Admin> {
+export class Product<TRole extends Role = typeof Roles.Admin> {
   /**
-   * Create Amazon Product Master client for specific role
+   * Create Product Master client for specific role
    */
   constructor(_role: TRole) {}
 
@@ -257,14 +259,14 @@ export class AmazonProductMaster<TRole extends Role = typeof Roles.Admin> {
    */
   async list(
     options?: ListOptions
-  ): Promise<ListResponse<AmazonProductForRole<TRole>>> {
+  ): Promise<ListResponse<ProductForRole<TRole>>> {
     return api("BDO_AmazonProductMaster").list(options);
   }
 
   /**
    * Get single product by ID
    */
-  async get(id: IdField): Promise<AmazonProductForRole<TRole>> {
+  async get(id: IdField): Promise<ProductForRole<TRole>> {
     return api("BDO_AmazonProductMaster").get(id);
   }
 
@@ -274,7 +276,7 @@ export class AmazonProductMaster<TRole extends Role = typeof Roles.Admin> {
    * Computed fields calculated by backend
    */
   async create(
-    data: Partial<AmazonProductForRole<TRole>>
+    data: Partial<ProductForRole<TRole>>
   ): Promise<CreateUpdateResponse> {
     return api("BDO_AmazonProductMaster").create(data);
   }
@@ -286,7 +288,7 @@ export class AmazonProductMaster<TRole extends Role = typeof Roles.Admin> {
    */
   async update(
     id: IdField,
-    data: Partial<AmazonProductForRole<TRole>>
+    data: Partial<ProductForRole<TRole>>
   ): Promise<CreateUpdateResponse> {
     return api("BDO_AmazonProductMaster").update(id, data);
   }
@@ -305,9 +307,7 @@ export class AmazonProductMaster<TRole extends Role = typeof Roles.Admin> {
   /**
    * Create draft - compute fields without persisting
    */
-  async draft(
-    data: Partial<AmazonProductForRole<TRole>>
-  ): Promise<DraftResponse> {
+  async draft(data: Partial<ProductForRole<TRole>>): Promise<DraftResponse> {
     return api("BDO_AmazonProductMaster").draft(data);
   }
 
@@ -316,7 +316,7 @@ export class AmazonProductMaster<TRole extends Role = typeof Roles.Admin> {
    */
   async draftPatch(
     id: IdField,
-    data: Partial<AmazonProductForRole<TRole>>
+    data: Partial<ProductForRole<TRole>>
   ): Promise<DraftResponse> {
     return api("BDO_AmazonProductMaster").draftPatch(id, data);
   }
@@ -328,9 +328,7 @@ export class AmazonProductMaster<TRole extends Role = typeof Roles.Admin> {
   /**
    * Get aggregated metrics grouped by dimensions
    */
-  async metric(
-    options: Omit<MetricOptions, "Type">
-  ): Promise<MetricResponse> {
+  async metric(options: Omit<MetricOptions, "Type">): Promise<MetricResponse> {
     return api("BDO_AmazonProductMaster").metric(options);
   }
 
@@ -350,5 +348,37 @@ export class AmazonProductMaster<TRole extends Role = typeof Roles.Admin> {
    */
   async fields(): Promise<FieldsResponse> {
     return api("BDO_AmazonProductMaster").fields();
+  }
+
+  /**
+   * Get field options for a specific field (e.g., dropdown values)
+   * Uses metadata API: GET /api/app/meta/bdo/{bdo_id}/field
+   *
+   * @param fieldId - The field ID to get options for
+   * @returns Array of field option items with Value and Label
+   *
+   * @example
+   * ```typescript
+   * const product = new Product(Roles.Buyer);
+   * const categories = await product.getField("Category");
+   * const warehouses = await product.getField("Warehouse");
+   * // Returns: [{ Value: "Electronics", Label: "Electronics" }, ...]
+   * ```
+   */
+  async getField(
+    fieldId: string
+  ): Promise<Array<{ Value: string; Label: string }>> {
+    const response = await getBdoFields("BDO_AmazonProductMaster");
+    const field = response.find((f: FieldMetadata) => f.Id === fieldId);
+
+    if (!field) {
+      throw new Error(`Field "${fieldId}" not found`);
+    }
+
+    if (!field.Values?.Items) {
+      throw new Error(`Field "${fieldId}" does not have options`);
+    }
+
+    return field.Values.Items;
   }
 }

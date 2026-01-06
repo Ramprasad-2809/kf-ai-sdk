@@ -6,20 +6,16 @@ import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { Card, CardContent } from "../components/ui/card";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  Cart,
-  AmazonProductMaster,
-  AmazonProductForRole,
-} from "../../../../app";
+import { Cart, Product, ProductForRole } from "../../../../app";
 import { Roles } from "../../../../app/types/roles";
 
-type Product = AmazonProductForRole<typeof Roles.Buyer>;
+type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
 
 export function BuyerProductDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const product = new AmazonProductMaster(Roles.Buyer);
+  const product = new Product(Roles.Buyer);
   const cart = new Cart(Roles.Buyer);
 
   const [quantity, setQuantity] = useState(1);
@@ -30,34 +26,33 @@ export function BuyerProductDetailsPage() {
     data: productData,
     isLoading,
     error,
-  } = useQuery({
+  } = useQuery<BuyerProduct>({
     queryKey: ["product", id],
     queryFn: async () => {
       if (!id) throw new Error("Product ID is required");
-      const data = await product.get(id);
-      return data as unknown as Product;
+      return await product.get(id);
     },
     enabled: !!id,
   });
 
   const addToCartMutation = useMutation({
-    mutationFn: async ({ product, qty }: { product: Product; qty: number }) => {
+    mutationFn: async ({ product: productItem, qty }: { product: BuyerProduct; qty: number }) => {
       const payload = {
-        productId: product._id,
-        productName: product.Title,
-        productPrice: { value: product.Price, currency: "USD" },
-        productImage: product.ImageUrl || "",
+        productId: productItem._id,
+        productName: productItem.Title,
+        productPrice: { value: productItem.Price, currency: "USD" },
+        productImage: productItem.ImageUrl || "",
         quantity: qty,
       };
       return cart.create(payload);
     },
-    onSuccess: (_data, { product, qty }) => {
+    onSuccess: (_data, { product: productItem, qty }) => {
       queryClient.invalidateQueries({ queryKey: ["cart-count"] });
       setAddedToCart(true);
       setTimeout(() => setAddedToCart(false), 2000);
       setCartError(null);
       toast.success("Added to cart!", {
-        description: `${qty} x ${product.Title} added to your cart.`,
+        description: `${qty} x ${productItem.Title} added to your cart.`,
       });
     },
     onError: (error) => {
@@ -184,7 +179,10 @@ export function BuyerProductDetailsPage() {
         <Card className="overflow-hidden">
           <div className="aspect-square bg-gray-100 relative">
             <img
-              src={productData.ImageUrl || "https://via.placeholder.com/600x600?text=No+Image"}
+              src={
+                productData.ImageUrl ||
+                "https://via.placeholder.com/600x600?text=No+Image"
+              }
               alt={productData.Title}
               loading="lazy"
               className="w-full h-full object-cover"
@@ -244,8 +242,7 @@ export function BuyerProductDetailsPage() {
 
           {/* Seller */}
           <div className="text-sm text-gray-500">
-            Sold by:{" "}
-            <span className="font-medium">Amazon Seller</span>
+            Sold by: <span className="font-medium">Amazon Seller</span>
           </div>
 
           {/* Quantity Selector and Add to Cart */}

@@ -129,3 +129,63 @@ export async function listMetadata(
     );
   }
 }
+
+/**
+ * Field metadata structure
+ */
+export interface FieldMetadata {
+  Id: string;
+  Name: string;
+  Type: string;
+  Required?: boolean;
+  Unique?: boolean;
+  Computed?: boolean;
+  Values?: {
+    Mode: "Static" | "Dynamic";
+    Items?: Array<{ Value: string; Label: string }>;
+  };
+  [key: string]: any;
+}
+
+/**
+ * Get field definitions for a Business Object
+ *
+ * Endpoint: GET /meta/bdo/{bdo_id}/field
+ *
+ * @param bdoId - The Business Object ID (e.g., "BDO_AmazonProductMaster")
+ * @returns Promise resolving to array of field definitions
+ *
+ * @example
+ * ```typescript
+ * const fields = await getBdoFields("BDO_AmazonProductMaster");
+ * const categoryField = fields.find(f => f.Id === "Category");
+ * console.log(categoryField.Values?.Items); // Get dropdown options
+ * ```
+ */
+export async function getBdoFields(bdoId: string): Promise<FieldMetadata[]> {
+  try {
+    const baseUrl = getApiBaseUrl();
+    const headers = getDefaultHeaders();
+
+    const response = await fetch(`${baseUrl}/api/app/meta/bdo/${bdoId}/field`, {
+      method: "GET",
+      headers,
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch fields for ${bdoId}: ${response.statusText}`
+      );
+    }
+
+    const result = await response.json();
+
+    // Return the fields array from Data property if it exists, otherwise return as is
+    return (result.Data || result) as FieldMetadata[];
+  } catch (error) {
+    console.error(`Fields fetch error for ${bdoId}:`, error);
+    throw new Error(
+      `Failed to load BDO fields: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
+  }
+}

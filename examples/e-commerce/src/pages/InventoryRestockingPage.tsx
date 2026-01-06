@@ -4,7 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Package, Search, AlertTriangle } from "lucide-react";
 import { InventoryManagerRestocking } from "../../../../app/sources/ecommerce/restocking";
-import { AmazonProductMaster } from "../../../../app/sources/ecommerce/product";
+import { Product } from "../../../../app";
 import { Roles } from "../../../../app/types/roles";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -115,7 +115,7 @@ export function InventoryRestockingPage() {
   // Mutation for updating product stock
   const updateStockMutation = useMutation({
     mutationFn: async (data: { _id: string; newStock: number }) => {
-      const productApi = new AmazonProductMaster(Roles.InventoryManager);
+      const productApi = new Product(Roles.InventoryManager);
       return await productApi.update(data._id, {
         Stock: data.newStock,
       });

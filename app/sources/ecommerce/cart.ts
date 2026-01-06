@@ -14,7 +14,15 @@ import {
   ListOptions,
   CreateUpdateResponse,
   DeleteResponse,
+  DraftResponse,
+  MetricOptions,
+  MetricResponse,
+  PivotOptions,
+  PivotResponse,
+  FieldsResponse,
   api,
+  getBdoFields,
+  FieldMetadata,
 } from "../../../sdk";
 
 // ============================================================
@@ -83,6 +91,14 @@ export type CartItemType = {
  */
 export type BuyerCartItem = CartItemType;
 
+/**
+ * Maps role to appropriate cart view type
+ * Currently only Buyers can access cart
+ */
+export type CartForRole<TRole extends Role> = TRole extends typeof Roles.Buyer
+  ? BuyerCartItem
+  : never;
+
 // ============================================================
 // CLASS IMPLEMENTATION
 // ============================================================
@@ -96,7 +112,7 @@ export class Cart<TRole extends Role = typeof Roles.Buyer> {
   /**
    * List cart items for current user
    */
-  async list(options?: ListOptions): Promise<ListResponse<BuyerCartItem>> {
+  async list(options?: ListOptions): Promise<ListResponse<CartForRole<TRole>>> {
     if (this.role !== Roles.Buyer) {
       throw new Error("Only buyers can access cart");
     }
@@ -106,7 +122,7 @@ export class Cart<TRole extends Role = typeof Roles.Buyer> {
   /**
    * Get single cart item
    */
-  async get(id: IdField): Promise<BuyerCartItem> {
+  async get(id: IdField): Promise<CartForRole<TRole>> {
     if (this.role !== Roles.Buyer) {
       throw new Error("Only buyers can access cart");
     }
@@ -116,7 +132,9 @@ export class Cart<TRole extends Role = typeof Roles.Buyer> {
   /**
    * Add item to cart
    */
-  async create(data: Partial<BuyerCartItem>): Promise<CreateUpdateResponse> {
+  async create(
+    data: Partial<CartForRole<TRole>>
+  ): Promise<CreateUpdateResponse> {
     if (this.role !== Roles.Buyer) {
       throw new Error("Only buyers can add to cart");
     }
@@ -128,7 +146,7 @@ export class Cart<TRole extends Role = typeof Roles.Buyer> {
    */
   async update(
     id: IdField,
-    data: Partial<BuyerCartItem>
+    data: Partial<CartForRole<TRole>>
   ): Promise<CreateUpdateResponse> {
     if (this.role !== Roles.Buyer) {
       throw new Error("Only buyers can update cart");
@@ -146,8 +164,99 @@ export class Cart<TRole extends Role = typeof Roles.Buyer> {
     return api("BDO_Cart").delete(id);
   }
 
+  // ============================================================
+  // DRAFT/INTERACTIVE OPERATIONS
+  // ============================================================
+
   /**
-   * Get cart item count
+   * Create draft - compute fields without persisting
+   */
+  async draft(data: Partial<CartForRole<TRole>>): Promise<DraftResponse> {
+    if (this.role !== Roles.Buyer) {
+      throw new Error("Only buyers can access cart");
+    }
+    return api("BDO_Cart").draft(data);
+  }
+
+  /**
+   * Update draft (patch) - compute fields during editing
+   */
+  async draftPatch(
+    id: IdField,
+    data: Partial<CartForRole<TRole>>
+  ): Promise<DraftResponse> {
+    if (this.role !== Roles.Buyer) {
+      throw new Error("Only buyers can access cart");
+    }
+    return api("BDO_Cart").draftPatch(id, data);
+  }
+
+  // ============================================================
+  // QUERY OPERATIONS
+  // ============================================================
+
+  /**
+   * Get aggregated metrics grouped by dimensions
+   */
+  async metric(options: Omit<MetricOptions, "Type">): Promise<MetricResponse> {
+    if (this.role !== Roles.Buyer) {
+      throw new Error("Only buyers can access cart");
+    }
+    return api("BDO_Cart").metric(options);
+  }
+
+  /**
+   * Get pivot table data
+   */
+  async pivot(options: Omit<PivotOptions, "Type">): Promise<PivotResponse> {
+    if (this.role !== Roles.Buyer) {
+      throw new Error("Only buyers can access cart");
+    }
+    return api("BDO_Cart").pivot(options);
+  }
+
+  // ============================================================
+  // METADATA OPERATIONS
+  // ============================================================
+
+  /**
+   * Get field definitions for this Business Object
+   */
+  async fields(): Promise<FieldsResponse> {
+    return api("BDO_Cart").fields();
+  }
+
+  /**
+   * Get field options for a specific field (e.g., dropdown values)
+   *
+   * @param fieldId - The field ID to get options for
+   * @returns Array of field option items with Value and Label
+   *
+   * @example
+   * ```typescript
+   * const cart = new Cart(Roles.Buyer);
+   * const statuses = await cart.getField("Status");
+   * ```
+   */
+  async getField(
+    fieldId: string
+  ): Promise<Array<{ Value: string; Label: string }>> {
+    const response = await getBdoFields("BDO_Cart");
+    const field = response.find((f: FieldMetadata) => f.Id === fieldId);
+
+    if (!field) {
+      throw new Error(`Field "${fieldId}" not found`);
+    }
+
+    if (!field.Values?.Items) {
+      throw new Error(`Field "${fieldId}" does not have options`);
+    }
+
+    return field.Values.Items;
+  }
+
+  /**
+   * Get cart item count (convenience method)
    */
   async count(): Promise<number> {
     if (this.role !== Roles.Buyer) {

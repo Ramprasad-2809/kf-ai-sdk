@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState } from "react";
 import {
   View,
   Text,
@@ -6,25 +6,35 @@ import {
   ScrollView,
   Pressable,
   Platform,
-} from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Image } from 'expo-image';
-import { Button, IconButton, ActivityIndicator, Chip } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import Toast from 'react-native-toast-message';
-import { AmazonProductMaster, Cart } from '../../../../../app';
-import { Roles } from '../../../../../app/types/roles';
-import { colors, spacing, typography, borderRadius } from '../../../constants/theme';
-import { formatCurrency, getDeliveryDate } from '../../../utils/formatting';
-import { Product } from '../../../types';
+} from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { Image } from "expo-image";
+import {
+  Button,
+  IconButton,
+  ActivityIndicator,
+  Chip,
+} from "react-native-paper";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import Toast from "react-native-toast-message";
+import { ProductMaster, Cart } from "../../../../../app";
+import { Roles } from "../../../../../app/types/roles";
+import {
+  colors,
+  spacing,
+  typography,
+  borderRadius,
+} from "../../../constants/theme";
+import { formatCurrency, getDeliveryDate } from "../../../utils/formatting";
+import { Product } from "../../../types";
 
 export default function ProductDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const productApi = new AmazonProductMaster(Roles.Buyer);
+  const productApi = new ProductMaster(Roles.Buyer);
   const cart = new Cart(Roles.Buyer);
 
   const [quantity, setQuantity] = useState(1);
@@ -36,9 +46,9 @@ export default function ProductDetailsScreen() {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['product', id],
+    queryKey: ["product", id],
     queryFn: async () => {
-      if (!id) throw new Error('Product ID is required');
+      if (!id) throw new Error("Product ID is required");
       const data = await productApi.get(id);
       return data as unknown as Product;
     },
@@ -51,31 +61,31 @@ export default function ProductDetailsScreen() {
       const payload = {
         productId: product._id,
         productName: product.Title,
-        productPrice: { value: product.Price, currency: 'USD' },
-        productImage: product.ImageUrl || '',
+        productPrice: { value: product.Price, currency: "USD" },
+        productImage: product.ImageUrl || "",
         quantity: qty,
       };
       return cart.create(payload);
     },
     onSuccess: (_data, { product, qty }) => {
-      queryClient.invalidateQueries({ queryKey: ['cart-count'] });
+      queryClient.invalidateQueries({ queryKey: ["cart-count"] });
       setAddedToCart(true);
       setTimeout(() => setAddedToCart(false), 2000);
       Toast.show({
-        type: 'success',
-        text1: 'Added to Cart',
+        type: "success",
+        text1: "Added to Cart",
         text2: `${qty} x ${product.Title} added to your cart`,
-        position: 'bottom',
+        position: "bottom",
         visibilityTime: 2000,
       });
     },
     onError: (error) => {
-      console.error('Failed to add to cart:', error);
+      console.error("Failed to add to cart:", error);
       Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Failed to add item to cart',
-        position: 'bottom',
+        type: "error",
+        text1: "Error",
+        text2: "Failed to add item to cart",
+        position: "bottom",
       });
     },
   });
@@ -101,7 +111,7 @@ export default function ProductDetailsScreen() {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace('/(buyer)/products');
+      router.replace("/(buyer)/products");
     }
   };
 
@@ -119,12 +129,22 @@ export default function ProductDetailsScreen() {
   if (error) {
     return (
       <View style={styles.centerContainer}>
-        <MaterialCommunityIcons name="alert-circle" size={64} color={colors.error} />
+        <MaterialCommunityIcons
+          name="alert-circle"
+          size={64}
+          color={colors.error}
+        />
         <Text style={styles.errorTitle}>Error</Text>
         <Text style={styles.errorSubtitle}>
-          {error instanceof Error ? error.message : 'Failed to load product details'}
+          {error instanceof Error
+            ? error.message
+            : "Failed to load product details"}
         </Text>
-        <Button mode="contained" onPress={handleGoBack} style={styles.backButton}>
+        <Button
+          mode="contained"
+          onPress={handleGoBack}
+          style={styles.backButton}
+        >
           Back to Products
         </Button>
       </View>
@@ -135,12 +155,20 @@ export default function ProductDetailsScreen() {
   if (!product) {
     return (
       <View style={styles.centerContainer}>
-        <MaterialCommunityIcons name="package-variant-remove" size={64} color={colors.gray300} />
+        <MaterialCommunityIcons
+          name="package-variant-remove"
+          size={64}
+          color={colors.gray300}
+        />
         <Text style={styles.errorTitle}>Product Not Found</Text>
         <Text style={styles.errorSubtitle}>
           The product you're looking for doesn't exist.
         </Text>
-        <Button mode="contained" onPress={handleGoBack} style={styles.backButton}>
+        <Button
+          mode="contained"
+          onPress={handleGoBack}
+          style={styles.backButton}
+        >
           Back to Products
         </Button>
       </View>
@@ -154,14 +182,22 @@ export default function ProductDetailsScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Back Button */}
       <Pressable onPress={handleGoBack} style={styles.backLink}>
-        <MaterialCommunityIcons name="arrow-left" size={20} color={colors.primary} />
+        <MaterialCommunityIcons
+          name="arrow-left"
+          size={20}
+          color={colors.primary}
+        />
         <Text style={styles.backLinkText}>Back to Products</Text>
       </Pressable>
 
       {/* Product Image */}
       <View style={styles.imageContainer}>
         <Image
-          source={{ uri: product.ImageUrl || 'https://via.placeholder.com/600x600?text=No+Image' }}
+          source={{
+            uri:
+              product.ImageUrl ||
+              "https://via.placeholder.com/600x600?text=No+Image",
+          }}
           style={styles.image}
           contentFit="contain"
           transition={200}
@@ -208,9 +244,14 @@ export default function ProductDetailsScreen() {
         {/* Delivery */}
         {isInStock && (
           <View style={styles.deliveryContainer}>
-            <MaterialCommunityIcons name="truck-delivery" size={20} color={colors.success} />
+            <MaterialCommunityIcons
+              name="truck-delivery"
+              size={20}
+              color={colors.success}
+            />
             <Text style={styles.deliveryText}>
-              FREE delivery by <Text style={styles.deliveryDate}>{deliveryDate}</Text>
+              FREE delivery by{" "}
+              <Text style={styles.deliveryDate}>{deliveryDate}</Text>
             </Text>
           </View>
         )}
@@ -284,9 +325,9 @@ export default function ProductDetailsScreen() {
             style={styles.addToCartButton}
             labelStyle={styles.addToCartButtonLabel}
             contentStyle={styles.addToCartButtonContent}
-            icon={addedToCart ? 'check' : 'cart'}
+            icon={addedToCart ? "check" : "cart"}
           >
-            {addedToCart ? 'Added to Cart!' : 'Add to Cart'}
+            {addedToCart ? "Added to Cart!" : "Add to Cart"}
           </Button>
         </View>
       )}
@@ -294,9 +335,14 @@ export default function ProductDetailsScreen() {
       {/* Out of stock message */}
       {!isInStock && (
         <View style={styles.unavailableSection}>
-          <MaterialCommunityIcons name="bell-outline" size={24} color={colors.gray500} />
+          <MaterialCommunityIcons
+            name="bell-outline"
+            size={24}
+            color={colors.gray500}
+          />
           <Text style={styles.unavailableText}>
-            This item is currently unavailable. Check back later or browse similar products.
+            This item is currently unavailable. Check back later or browse
+            similar products.
           </Text>
           <Button mode="outlined" onPress={handleGoBack}>
             Browse Products
@@ -317,8 +363,8 @@ const styles = StyleSheet.create({
   },
   centerContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: spacing.xl,
     backgroundColor: colors.background,
   },
@@ -336,15 +382,15 @@ const styles = StyleSheet.create({
   errorSubtitle: {
     ...typography.body,
     color: colors.gray500,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: spacing.lg,
   },
   backButton: {
     backgroundColor: colors.primary,
   },
   backLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: spacing.md,
     gap: spacing.xs,
   },
@@ -357,17 +403,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gray50,
     marginHorizontal: spacing.md,
     borderRadius: borderRadius.lg,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   image: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   outOfStockOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   outOfStockBadge: {
     backgroundColor: colors.error,
@@ -377,21 +423,21 @@ const styles = StyleSheet.create({
   },
   outOfStockText: {
     color: colors.background,
-    fontWeight: '700',
+    fontWeight: "700",
     fontSize: 16,
   },
   infoContainer: {
     padding: spacing.md,
   },
   categoryChip: {
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     backgroundColor: colors.gray100,
     marginBottom: spacing.sm,
   },
   categoryChipText: {
     ...typography.caption,
     color: colors.gray700,
-    textTransform: 'capitalize',
+    textTransform: "capitalize",
   },
   title: {
     ...typography.h2,
@@ -400,33 +446,33 @@ const styles = StyleSheet.create({
   },
   price: {
     fontSize: 28,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.primary,
     marginBottom: spacing.md,
   },
   stockContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.sm,
     marginBottom: spacing.md,
   },
   stockBadge: {
-    backgroundColor: colors.success + '20',
+    backgroundColor: colors.success + "20",
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     borderRadius: borderRadius.sm,
   },
   stockBadgeText: {
     color: colors.success,
-    fontWeight: '600',
+    fontWeight: "600",
     fontSize: 12,
   },
   outOfStockBadgeSmall: {
-    backgroundColor: colors.error + '20',
+    backgroundColor: colors.error + "20",
   },
   stockBadgeTextOut: {
     color: colors.error,
-    fontWeight: '600',
+    fontWeight: "600",
     fontSize: 12,
   },
   stockCount: {
@@ -434,10 +480,10 @@ const styles = StyleSheet.create({
     color: colors.gray500,
   },
   deliveryContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.sm,
-    backgroundColor: colors.success + '10',
+    backgroundColor: colors.success + "10",
     padding: spacing.md,
     borderRadius: borderRadius.md,
     marginBottom: spacing.lg,
@@ -447,7 +493,7 @@ const styles = StyleSheet.create({
     color: colors.gray700,
   },
   deliveryDate: {
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.gray900,
   },
   section: {
@@ -464,7 +510,7 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   detailRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginBottom: spacing.sm,
   },
   detailLabel: {
@@ -475,7 +521,7 @@ const styles = StyleSheet.create({
   detailValue: {
     ...typography.body,
     color: colors.gray900,
-    fontWeight: '500',
+    fontWeight: "500",
     flex: 1,
   },
   cartSection: {
@@ -491,13 +537,13 @@ const styles = StyleSheet.create({
   },
   quantityLabel: {
     ...typography.bodySmall,
-    fontWeight: '600',
+    fontWeight: "600",
     color: colors.gray700,
     marginBottom: spacing.sm,
   },
   quantitySelector: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.md,
   },
   quantityButton: {
@@ -505,15 +551,15 @@ const styles = StyleSheet.create({
   },
   quantityValue: {
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.gray900,
     minWidth: 40,
-    textAlign: 'center',
+    textAlign: "center",
   },
   subtotalContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.gray200,
@@ -525,7 +571,7 @@ const styles = StyleSheet.create({
   },
   subtotalValue: {
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: "700",
     color: colors.gray900,
   },
   addToCartButton: {
@@ -534,7 +580,7 @@ const styles = StyleSheet.create({
   },
   addToCartButtonLabel: {
     color: colors.slate900,
-    fontWeight: '700',
+    fontWeight: "700",
     fontSize: 16,
   },
   addToCartButtonContent: {
@@ -545,12 +591,12 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     backgroundColor: colors.gray50,
     borderRadius: borderRadius.lg,
-    alignItems: 'center',
+    alignItems: "center",
     gap: spacing.md,
   },
   unavailableText: {
     ...typography.body,
     color: colors.gray500,
-    textAlign: 'center',
+    textAlign: "center",
   },
 });

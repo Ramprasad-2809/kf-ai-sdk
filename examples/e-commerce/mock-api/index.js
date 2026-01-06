@@ -916,6 +916,238 @@ export function setupMockAPI(middlewares) {
       return;
     }
 
+    // BDO Pattern: GET /api/app/meta/bdo/BDO_AmazonProductMaster/field
+    if (
+      url.match(/^\/api\/app\/meta\/bdo\/BDO_AmazonProductMaster\/field$/i) &&
+      method === "GET"
+    ) {
+      const fields = [
+        {
+          Id: "ProductId",
+          Name: "Product ID",
+          Type: "String",
+          Unique: true,
+        },
+        {
+          Id: "ASIN",
+          Name: "Amazon Standard Identification Number",
+          Type: "String",
+          Unique: true,
+        },
+        {
+          Id: "SKU",
+          Name: "Stock Keeping Unit",
+          Type: "String",
+          Unique: true,
+        },
+        {
+          Id: "Title",
+          Name: "Product Title",
+          Type: "String",
+          Required: true,
+        },
+        {
+          Id: "Description",
+          Name: "Product Description",
+          Type: "String",
+        },
+        {
+          Id: "Price",
+          Name: "Selling Price",
+          Type: "Number",
+          Required: true,
+        },
+        {
+          Id: "MRP",
+          Name: "Maximum Retail Price",
+          Type: "Number",
+          Required: true,
+        },
+        { Id: "Cost", Name: "Product Cost", Type: "Number" },
+        {
+          Id: "Discount",
+          Name: "Discount Percentage",
+          Type: "Number",
+          Computed: true,
+        },
+        {
+          Id: "Category",
+          Name: "Product Category",
+          Type: "String",
+          Required: true,
+          Values: {
+            Mode: "Static",
+            Items: [
+              { Value: "Electronics", Label: "Electronics" },
+              { Value: "Books", Label: "Books" },
+              { Value: "Clothing", Label: "Clothing & Accessories" },
+              { Value: "Home", Label: "Home & Kitchen" },
+              { Value: "Sports", Label: "Sports & Outdoors" },
+              { Value: "Toys", Label: "Toys & Games" },
+            ],
+          },
+        },
+        { Id: "Brand", Name: "Brand Name", Type: "String" },
+        {
+          Id: "Tags",
+          Name: "Product Tags",
+          Type: "Array",
+          Items: { Type: "String" },
+        },
+        {
+          Id: "Stock",
+          Name: "Stock Quantity",
+          Type: "Number",
+          Required: true,
+        },
+        {
+          Id: "Warehouse",
+          Name: "Warehouse Location",
+          Type: "String",
+          Values: {
+            Mode: "Static",
+            Items: [
+              { Value: "Warehouse_A", Label: "Warehouse A - North" },
+              { Value: "Warehouse_B", Label: "Warehouse B - South" },
+              { Value: "Warehouse_C", Label: "Warehouse C - East" },
+            ],
+          },
+        },
+        {
+          Id: "ReorderLevel",
+          Name: "Reorder Level",
+          Type: "Number",
+        },
+        {
+          Id: "LowStock",
+          Name: "Low Stock Indicator",
+          Type: "Boolean",
+          Computed: true,
+        },
+        { Id: "IsActive", Name: "Is Active", Type: "Boolean" },
+      ];
+
+      sendJSON({ Data: fields });
+      return;
+    }
+
+    // BDO Pattern: GET /api/app/BDO_AmazonProductMaster/fields
+    if (
+      url.match(/^\/api\/app\/BDO_AmazonProductMaster\/fields$/i) &&
+      method === "GET"
+    ) {
+      const fields = {
+        Data: [
+          {
+            Id: "ProductId",
+            Name: "Product ID",
+            Type: "String",
+            Unique: true,
+          },
+          {
+            Id: "ASIN",
+            Name: "Amazon Standard Identification Number",
+            Type: "String",
+            Unique: true,
+          },
+          {
+            Id: "SKU",
+            Name: "Stock Keeping Unit",
+            Type: "String",
+            Unique: true,
+          },
+          {
+            Id: "Title",
+            Name: "Product Title",
+            Type: "String",
+            Required: true,
+          },
+          {
+            Id: "Description",
+            Name: "Product Description",
+            Type: "String",
+          },
+          {
+            Id: "Price",
+            Name: "Selling Price",
+            Type: "Number",
+            Required: true,
+          },
+          {
+            Id: "MRP",
+            Name: "Maximum Retail Price",
+            Type: "Number",
+            Required: true,
+          },
+          { Id: "Cost", Name: "Product Cost", Type: "Number" },
+          {
+            Id: "Discount",
+            Name: "Discount Percentage",
+            Type: "Number",
+            Computed: true,
+          },
+          {
+            Id: "Category",
+            Name: "Product Category",
+            Type: "String",
+            Required: true,
+            Values: {
+              Mode: "Static",
+              Items: [
+                { Value: "Electronics", Label: "Electronics" },
+                { Value: "Books", Label: "Books" },
+                { Value: "Clothing", Label: "Clothing & Accessories" },
+                { Value: "Home", Label: "Home & Kitchen" },
+                { Value: "Sports", Label: "Sports & Outdoors" },
+                { Value: "Toys", Label: "Toys & Games" },
+              ],
+            },
+          },
+          { Id: "Brand", Name: "Brand Name", Type: "String" },
+          {
+            Id: "Tags",
+            Name: "Product Tags",
+            Type: "Array",
+            Items: { Type: "String" },
+          },
+          {
+            Id: "Stock",
+            Name: "Stock Quantity",
+            Type: "Number",
+            Required: true,
+          },
+          {
+            Id: "Warehouse",
+            Name: "Warehouse Location",
+            Type: "String",
+            Values: {
+              Mode: "Static",
+              Items: [
+                { Value: "Warehouse_A", Label: "Warehouse A - North" },
+                { Value: "Warehouse_B", Label: "Warehouse B - South" },
+                { Value: "Warehouse_C", Label: "Warehouse C - East" },
+              ],
+            },
+          },
+          {
+            Id: "ReorderLevel",
+            Name: "Reorder Level",
+            Type: "Number",
+          },
+          {
+            Id: "LowStock",
+            Name: "Low Stock Indicator",
+            Type: "Boolean",
+            Computed: true,
+          },
+          { Id: "IsActive", Name: "Is Active", Type: "Boolean" },
+        ],
+      };
+
+      sendJSON(fields);
+      return;
+    }
+
     // ==================== BDO CART ENDPOINTS ====================
 
     // BDO Pattern: POST /api/app/BDO_Cart/metric (used for count)
