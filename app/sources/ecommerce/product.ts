@@ -1,8 +1,6 @@
 // ============================================================
 // PRODUCT MASTER - BDO SDK Wrapper
 // ============================================================
-// Thin wrapper around BDO_ProductMaster API
-// All validation and business logic handled by BDO schema and useForm hook
 
 import {
   IdField,
@@ -33,11 +31,8 @@ import {
 // TYPE DEFINITION
 // ============================================================
 
-/**
- * Complete Product Master type based on BDO schema
- * All validation rules are defined in BDO schema and enforced by useForm hook
- * Computed fields (Discount, LowStock) are calculated by backend
- */
+const BO_ID = `BDO_AmazonProductMaster`;
+
 export type ProductMasterType = {
   /** MongoDB document ID */
   _id: IdField;
@@ -243,59 +238,53 @@ export type ProductForRole<TRole extends Role> =
 /**
  * Product client with role-based access control
  * Simple wrapper around BDO API - no business logic
- * All validation handled by useForm hook with BDO schema
- * All computed fields handled by backend
  */
 export class Product<TRole extends Role = typeof Roles.Admin> {
   /**
-   * Create Product Master client for specific role
+   * Create Product client for specific role
    */
   constructor(_role: TRole) {}
 
   /**
-   * List products with optional filtering and pagination
+   * List Product with optional filtering and pagination
    */
   async list(
     options?: ListOptions
   ): Promise<ListResponse<ProductForRole<TRole>>> {
-    return api("BDO_AmazonProductMaster").list(options);
+    return api(BO_ID).list(options);
   }
 
   /**
-   * Get single product by ID
+   * Get single Product by ID
    */
   async get(id: IdField): Promise<ProductForRole<TRole>> {
-    return api("BDO_AmazonProductMaster").get(id);
+    return api(BO_ID).get(id);
   }
 
   /**
-   * Create new product
-   * Validation handled by useForm hook
-   * Computed fields calculated by backend
+   * Create new Product
    */
   async create(
     data: Partial<ProductForRole<TRole>>
   ): Promise<CreateUpdateResponse> {
-    return api("BDO_AmazonProductMaster").create(data);
+    return api(BO_ID).create(data);
   }
 
   /**
-   * Update existing product
-   * Validation handled by useForm hook
-   * Computed fields calculated by backend
+   * Update existing Product
    */
   async update(
     id: IdField,
     data: Partial<ProductForRole<TRole>>
   ): Promise<CreateUpdateResponse> {
-    return api("BDO_AmazonProductMaster").update(id, data);
+    return api(BO_ID).update(id, data);
   }
 
   /**
-   * Delete product
+   * Delete Product
    */
   async delete(id: IdField): Promise<DeleteResponse> {
-    return api("BDO_AmazonProductMaster").delete(id);
+    return api(BO_ID).delete(id);
   }
 
   // ============================================================
@@ -306,7 +295,7 @@ export class Product<TRole extends Role = typeof Roles.Admin> {
    * Create draft - compute fields without persisting
    */
   async draft(data: Partial<ProductForRole<TRole>>): Promise<DraftResponse> {
-    return api("BDO_AmazonProductMaster").draft(data);
+    return api(BO_ID).draft(data);
   }
 
   /**
@@ -316,7 +305,7 @@ export class Product<TRole extends Role = typeof Roles.Admin> {
     id: IdField,
     data: Partial<ProductForRole<TRole>>
   ): Promise<DraftResponse> {
-    return api("BDO_AmazonProductMaster").draftPatch(id, data);
+    return api(BO_ID).draftPatch(id, data);
   }
 
   // ============================================================
@@ -327,14 +316,14 @@ export class Product<TRole extends Role = typeof Roles.Admin> {
    * Get aggregated metrics grouped by dimensions
    */
   async metric(options: Omit<MetricOptions, "Type">): Promise<MetricResponse> {
-    return api("BDO_AmazonProductMaster").metric(options);
+    return api(BO_ID).metric(options);
   }
 
   /**
    * Get pivot table data
    */
   async pivot(options: Omit<PivotOptions, "Type">): Promise<PivotResponse> {
-    return api("BDO_AmazonProductMaster").pivot(options);
+    return api(BO_ID).pivot(options);
   }
 
   // ============================================================
@@ -342,28 +331,18 @@ export class Product<TRole extends Role = typeof Roles.Admin> {
   // ============================================================
 
   /**
-   * Get field definitions for this Business Object
+   * Get field definitions of Product
    */
   async fields(): Promise<FieldsResponse> {
-    return api("BDO_AmazonProductMaster").fields();
+    return api(BO_ID).fields();
   }
 
   /**
-   * Fetch reference data for a specific field (for lookup and dropdown fields)
-   * GET /{bo_id}/field/{field_id}/fetch
-   *
-   * @param fieldId - The field ID to fetch data for
-   * @returns Field data (e.g., dropdown options)
-   *
-   * @example
-   * ```typescript
-   * const product = new Product(Roles.Buyer);
-   * const categories = await product.fetchField("Category");
-   * const warehouses = await product.fetchField("Warehouse");
-   * // Returns: [{ Value: "Electronics", Label: "Electronics" }, ...]
-   * ```
+   * Fetch reference data for a specific field
    */
-  async fetchField(fieldId: string): Promise<any> {
-    return api("BDO_AmazonProductMaster").fetchField(fieldId);
+  async fetchField(
+    fieldId: string
+  ): Promise<Array<{ Value: string; Label: string }>> {
+    return api(BO_ID).fetchField(fieldId);
   }
 }
