@@ -21,8 +21,6 @@ import {
   PivotResponse,
   FieldsResponse,
   api,
-  getBdoFields,
-  FieldMetadata,
 } from "../../../sdk";
 
 // ============================================================
@@ -227,32 +225,23 @@ export class Cart<TRole extends Role = typeof Roles.Buyer> {
   }
 
   /**
-   * Get field options for a specific field (e.g., dropdown values)
+   * Fetch reference data for a specific field (for lookup and dropdown fields)
+   * GET /{bo_id}/field/{field_id}/fetch
    *
-   * @param fieldId - The field ID to get options for
-   * @returns Array of field option items with Value and Label
+   * @param fieldId - The field ID to fetch data for
+   * @returns Field data (e.g., dropdown options)
    *
    * @example
    * ```typescript
    * const cart = new Cart(Roles.Buyer);
-   * const statuses = await cart.getField("Status");
+   * const statuses = await cart.fetchField("Status");
    * ```
    */
-  async getField(
-    fieldId: string
-  ): Promise<Array<{ Value: string; Label: string }>> {
-    const response = await getBdoFields("BDO_Cart");
-    const field = response.find((f: FieldMetadata) => f.Id === fieldId);
-
-    if (!field) {
-      throw new Error(`Field "${fieldId}" not found`);
+  async fetchField(fieldId: string): Promise<any> {
+    if (this.role !== Roles.Buyer) {
+      throw new Error("Only buyers can access cart");
     }
-
-    if (!field.Values?.Items) {
-      throw new Error(`Field "${fieldId}" does not have options`);
-    }
-
-    return field.Values.Items;
+    return api("BDO_Cart").fetchField(fieldId);
   }
 
   /**

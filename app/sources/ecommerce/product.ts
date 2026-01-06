@@ -27,8 +27,6 @@ import {
   DraftResponse,
   FieldsResponse,
   api,
-  getBdoFields,
-  FieldMetadata,
 } from "../../../sdk";
 
 // ============================================================
@@ -351,34 +349,21 @@ export class Product<TRole extends Role = typeof Roles.Admin> {
   }
 
   /**
-   * Get field options for a specific field (e.g., dropdown values)
-   * Uses metadata API: GET /api/app/meta/bdo/{bdo_id}/field
+   * Fetch reference data for a specific field (for lookup and dropdown fields)
+   * GET /{bo_id}/field/{field_id}/fetch
    *
-   * @param fieldId - The field ID to get options for
-   * @returns Array of field option items with Value and Label
+   * @param fieldId - The field ID to fetch data for
+   * @returns Field data (e.g., dropdown options)
    *
    * @example
    * ```typescript
    * const product = new Product(Roles.Buyer);
-   * const categories = await product.getField("Category");
-   * const warehouses = await product.getField("Warehouse");
+   * const categories = await product.fetchField("Category");
+   * const warehouses = await product.fetchField("Warehouse");
    * // Returns: [{ Value: "Electronics", Label: "Electronics" }, ...]
    * ```
    */
-  async getField(
-    fieldId: string
-  ): Promise<Array<{ Value: string; Label: string }>> {
-    const response = await getBdoFields("BDO_AmazonProductMaster");
-    const field = response.find((f: FieldMetadata) => f.Id === fieldId);
-
-    if (!field) {
-      throw new Error(`Field "${fieldId}" not found`);
-    }
-
-    if (!field.Values?.Items) {
-      throw new Error(`Field "${fieldId}" does not have options`);
-    }
-
-    return field.Values.Items;
+  async fetchField(fieldId: string): Promise<any> {
+    return api("BDO_AmazonProductMaster").fetchField(fieldId);
   }
 }

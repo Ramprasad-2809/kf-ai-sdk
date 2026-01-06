@@ -17,7 +17,7 @@ export {
 } from "./datetime";
 
 // Metadata API client
-export { getBdoSchema, listMetadata, getBdoFields } from "./metadata";
+export { getBdoSchema, listMetadata } from "./metadata";
 export type { BackendSchema, MetadataItem, FieldMetadata } from "./metadata";
 
 // Re-export common types for convenience

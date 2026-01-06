@@ -1148,6 +1148,45 @@ export function setupMockAPI(middlewares) {
       return;
     }
 
+    // BDO Pattern: GET /api/app/BDO_AmazonProductMaster/field/{field_id}/fetch
+    if (
+      url.match(
+        /^\/api\/app\/BDO_AmazonProductMaster\/field\/([^\/]+)\/fetch$/i
+      ) &&
+      method === "GET"
+    ) {
+      const match = url.match(
+        /^\/api\/app\/BDO_AmazonProductMaster\/field\/([^\/]+)\/fetch$/i
+      );
+      const fieldId = match[1];
+
+      // Return field options based on field ID
+      const fieldOptionsMap = {
+        Category: [
+          { Value: "Electronics", Label: "Electronics" },
+          { Value: "Books", Label: "Books" },
+          { Value: "Clothing", Label: "Clothing & Accessories" },
+          { Value: "Home", Label: "Home & Kitchen" },
+          { Value: "Sports", Label: "Sports & Outdoors" },
+          { Value: "Toys", Label: "Toys & Games" },
+        ],
+        Warehouse: [
+          { Value: "Warehouse_A", Label: "Warehouse A - North" },
+          { Value: "Warehouse_B", Label: "Warehouse B - South" },
+          { Value: "Warehouse_C", Label: "Warehouse C - East" },
+        ],
+      };
+
+      const options = fieldOptionsMap[fieldId];
+
+      if (options) {
+        sendJSON(options);
+      } else {
+        sendError(`Field '${fieldId}' does not have fetchable data`, 404);
+      }
+      return;
+    }
+
     // ==================== BDO CART ENDPOINTS ====================
 
     // BDO Pattern: POST /api/app/BDO_Cart/metric (used for count)
@@ -1267,6 +1306,34 @@ export function setupMockAPI(middlewares) {
         Success: true,
         Message: "Cart cleared",
       });
+      return;
+    }
+
+    // BDO Pattern: GET /api/app/BDO_Cart/field/{field_id}/fetch
+    if (
+      url.match(/^\/api\/app\/BDO_Cart\/field\/([^/]+)\/fetch$/i) &&
+      method === "GET"
+    ) {
+      if (role !== "Buyer") {
+        sendError("Only buyers can access cart", 403);
+        return;
+      }
+
+      const match = url.match(/^\/api\/app\/BDO_Cart\/field\/([^/]+)\/fetch$/i);
+      const fieldId = match[1];
+
+      // Cart doesn't have many static field options, but keeping structure for consistency
+      const fieldOptionsMap = {
+        // Add any cart-specific field options here if needed
+      };
+
+      const options = fieldOptionsMap[fieldId];
+
+      if (options) {
+        sendJSON(options);
+      } else {
+        sendError(`Field '${fieldId}' does not have fetchable data`, 404);
+      }
       return;
     }
 

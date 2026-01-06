@@ -92,6 +92,12 @@ export interface ResourceClient<T = any> {
    * GET /{bo_id}/fields
    */
   fields(): Promise<FieldsResponse>;
+
+  /**
+   * Fetch reference data for a specific field (for lookup and dropdown fields)
+   * GET /{bo_id}/field/{field_id}/fetch
+   */
+  fetchField(fieldId: string): Promise<any>;
 }
 
 /**
@@ -408,6 +414,24 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
       if (!response.ok) {
         throw new Error(
           `Failed to get fields for ${bo_id}: ${response.statusText}`
+        );
+      }
+
+      return response.json();
+    },
+
+    async fetchField(fieldId: string): Promise<any> {
+      const response = await fetch(
+        `${baseUrl}/api/app/${bo_id}/field/${fieldId}/fetch`,
+        {
+          method: "GET",
+          headers: defaultHeaders,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch field ${fieldId} for ${bo_id}: ${response.statusText}`
         );
       }
 

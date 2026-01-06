@@ -36,7 +36,7 @@ export function SellerProductsPage() {
   // Fetch categories from field metadata
   const { data: categoriesData } = useQuery({
     queryKey: ["product-categories"],
-    queryFn: () => product.getField("Category"),
+    queryFn: () => product.fetchField("Category"),
   });
 
   const categories = categoriesData || [];
@@ -434,11 +434,13 @@ export function SellerProductsPage() {
                             <SelectValue placeholder="Select category" />
                           </SelectTrigger>
                           <SelectContent>
-                            {categories.map((cat) => (
-                              <SelectItem key={cat.Value} value={cat.Value}>
-                                {cat.Label}
-                              </SelectItem>
-                            ))}
+                            {categories.map(
+                              (cat: { Value: string; Label: string }) => (
+                                <SelectItem key={cat.Value} value={cat.Value}>
+                                  {cat.Label}
+                                </SelectItem>
+                              )
+                            )}
                           </SelectContent>
                         </Select>
                       </div>
