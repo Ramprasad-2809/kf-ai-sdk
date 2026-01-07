@@ -28,10 +28,7 @@ import {
 
 import { api } from "../../../api";
 
-import {
-  validateCrossField,
-  calculateComputedValue,
-} from "./expressionValidator.utils";
+import { validateCrossField } from "./expressionValidator.utils";
 import {
   validateFieldOptimized,
   calculateComputedValueOptimized,
@@ -75,7 +72,10 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
   // Prevent infinite loop in API calls
   const isComputingRef = useRef(false);
   const computeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const hasInitializedRef = useRef(false);
+
+  // Track values that have been synced with server (sent in draft calls)
+  // This allows us to detect changes since the last draft, not since form init
+  const lastSyncedValuesRef = useRef<Partial<T> | null>(null);
 
   // Stable callback refs to prevent dependency loops
   const onSuccessRef = useRef(onSuccess);
@@ -218,99 +218,6 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
   // COMPUTED FIELD DEPENDENCY TRACKING AND OPTIMIZATION
   // ============================================================
 
-  // Compute initial values when form loads or recordData changes
-  useEffect(() => {
-    // Only run once - skip if already initialized
-    if (hasInitializedRef.current) {
-      return;
-    }
-
-    if (!processedSchema) return;
-
-    // Wait for form to be initialized with values
-    const values = rhfForm.getValues();
-    if (Object.keys(values).length === 0) return;
-
-    // Prevent concurrent calls
-    if (isComputingRef.current) {
-      return;
-    }
-
-    // Call draft API to compute initial fields
-    const computeInitialFields = async () => {
-      isComputingRef.current = true;
-
-      try {
-        // Use API client draft methods
-        const client = api<T>(source);
-        const computedFields =
-          operation === "update" && recordId
-            ? await client.draftPatch(recordId, values)
-            : await client.draft(values);
-
-        // Apply computed fields
-        if (computedFields && typeof computedFields === "object") {
-          Object.entries(computedFields).forEach(([fieldName, value]) => {
-            rhfForm.setValue(fieldName as Path<T>, value as any, {
-              shouldDirty: false,
-              shouldValidate: false,
-            });
-          });
-        }
-      } catch (error) {
-        console.warn("Failed to compute initial fields via API:", error);
-        // Fallback to client-side computation
-        const updates: Array<{ field: Path<T>; value: any }> = [];
-
-        Object.entries(processedSchema.fieldRules).forEach(
-          ([fieldName, rules]) => {
-            if (rules.computation.length === 0) return;
-
-            rules.computation.forEach((ruleId) => {
-              const rule = processedSchema.rules.computation[ruleId];
-              if (!rule?.ExpressionTree) return;
-
-              try {
-                const computedValue = calculateComputedValue(
-                  rule.ExpressionTree,
-                  values
-                );
-
-                if (computedValue !== null && computedValue !== undefined) {
-                  updates.push({
-                    field: fieldName as Path<T>,
-                    value: computedValue,
-                  });
-                }
-              } catch (error) {
-                console.warn(
-                  `Failed to compute initial value for ${fieldName}:`,
-                  error
-                );
-              }
-            });
-          }
-        );
-
-        // Apply initial computed values
-        if (updates.length > 0) {
-          updates.forEach(({ field, value }) => {
-            rhfForm.setValue(field, value, {
-              shouldDirty: false,
-              shouldValidate: false,
-            });
-          });
-        }
-      } finally {
-        isComputingRef.current = false;
-        hasInitializedRef.current = true; // Mark initial computation as complete
-      }
-    };
-
-    computeInitialFields();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [processedSchema]); // Only depend on processedSchema - run once when schema is ready
-
   // Extract computed field dependencies using optimized analyzer
   const computedFieldDependencies = useMemo(() => {
     if (!processedSchema) return [];
@@ -408,10 +315,44 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
           try {
             // Use API client draft methods
             const client = api<T>(source);
+
+            // For updates, compute payload with only changed fields + _id
+            let payload: Partial<T> = currentValues;
+
+            if (operation === "update" && recordId) {
+              // Build payload with only fields that changed since last sync
+              const changedFields: Partial<T> = {};
+
+              // Always include _id
+              if ("_id" in currentValues) {
+                (changedFields as any)._id = (currentValues as any)._id;
+              }
+
+              // Use lastSyncedValues if available, otherwise use recordData as baseline
+              const baseline = lastSyncedValuesRef.current ?? recordData ?? {};
+
+              // Find fields that changed from baseline
+              Object.keys(currentValues).forEach((key) => {
+                if (key === "_id") return;
+
+                const currentValue = (currentValues as any)[key];
+                const baselineValue = (baseline as any)[key];
+
+                // Include if value has changed (using JSON.stringify for deep comparison)
+                if (
+                  JSON.stringify(currentValue) !== JSON.stringify(baselineValue)
+                ) {
+                  (changedFields as any)[key] = currentValue;
+                }
+              });
+
+              payload = changedFields;
+            }
+
             const computedFields =
               operation === "update" && recordId
-                ? await client.draftPatch(recordId, currentValues)
-                : await client.draft(currentValues);
+                ? await client.draftPatch(recordId, payload)
+                : await client.draft(payload);
 
             // Apply computed fields returned from API
             if (computedFields && typeof computedFields === "object") {
@@ -425,6 +366,11 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
                 }
               });
             }
+
+            // Update lastSyncedValuesRef with the LATEST form values (after computed fields are set)
+            // This ensures subsequent changes are compared against the new state
+            const latestValues = rhfForm.getValues();
+            lastSyncedValuesRef.current = { ...latestValues } as Partial<T>;
           } catch (error) {
             console.warn("Failed to compute fields via API:", error);
             // Fallback to client-side computation if API fails
@@ -534,6 +480,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
       processedSchema,
       operation,
       recordId,
+      recordData,
       source,
       rhfForm,
       computedFieldDependencies,
