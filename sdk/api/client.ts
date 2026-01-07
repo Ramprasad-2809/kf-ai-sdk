@@ -95,9 +95,9 @@ export interface ResourceClient<T = any> {
 
   /**
    * Fetch reference data for a specific field (for lookup and dropdown fields)
-   * GET /{bo_id}/field/{field_id}/fetch
+   * GET /{bo_id}/{instance_id}/field/{field_id}/fetch
    */
-  fetchField(fieldId: string): Promise<any>;
+  fetchField(instanceId: string, fieldId: string): Promise<any>;
 }
 
 /**
@@ -420,9 +420,9 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
       return response.json();
     },
 
-    async fetchField(fieldId: string): Promise<any> {
+    async fetchField(instanceId: string, fieldId: string): Promise<any> {
       const response = await fetch(
-        `${baseUrl}/api/app/${bo_id}/field/${fieldId}/fetch`,
+        `${baseUrl}/api/app/${bo_id}/${instanceId}/field/${fieldId}/fetch`,
         {
           method: "GET",
           headers: defaultHeaders,

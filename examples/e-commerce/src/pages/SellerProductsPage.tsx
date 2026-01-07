@@ -31,15 +31,8 @@ export function SellerProductsPage() {
   );
   const [formMode, setFormMode] = useState<"create" | "update">("create");
   const [generalError, setGeneralError] = useState<string | null>(null);
+  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
   const product = new Product(Roles.Seller);
-
-  // Fetch categories from field metadata
-  const { data: categoriesData } = useQuery({
-    queryKey: ["product-categories"],
-    queryFn: () => product.fetchField("Category"),
-  });
-
-  const categories = categoriesData || [];
 
   const table = useTable<SellerProduct>({
     source: "BDO_AmazonProductMaster",
@@ -58,6 +51,23 @@ export function SellerProductsPage() {
     },
   });
 
+  // Get instance_id based on form mode
+  // For update mode: use selectedProduct._id
+  // For create mode: use first product from table
+  const instanceId =
+    formMode === "update" ? selectedProduct?._id : table.rows[0]?._id;
+
+  // Fetch categories only when dropdown is opened
+  const { data: categories = [], isFetching: isCategoriesLoading } = useQuery({
+    queryKey: ["product-categories", instanceId],
+    queryFn: async () => {
+      if (!instanceId) return [];
+      return product.fetchField(instanceId, "Category");
+    },
+    enabled: categoryDropdownOpen && !!instanceId, // Only fetch when dropdown is open
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
+
   const form = useForm<SellerProduct>({
     source: "BDO_AmazonProductMaster",
     operation: formMode,
@@ -66,7 +76,6 @@ export function SellerProductsPage() {
     defaultValues: {
       Title: "",
       Description: "",
-      Category: "Electronics",
       Price: 0,
       MRP: 0,
       Brand: "",
@@ -414,32 +423,36 @@ export function SellerProductsPage() {
                           Category
                         </label>
                         <Select
-                          defaultValue={
-                            selectedProduct?.Category || "Electronics"
-                          }
-                          onValueChange={(value) =>
-                            form.setValue(
-                              "Category",
-                              value as
-                                | "Electronics"
-                                | "Books"
-                                | "Clothing"
-                                | "Home"
-                                | "Sports"
-                                | "Toys"
-                            )
-                          }
+                          value={form.watch("Category") || selectedProduct?.Category || ""}
+                          onValueChange={(value) => form.setValue("Category", value)}
+                          open={categoryDropdownOpen}
+                          onOpenChange={setCategoryDropdownOpen}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Select category" />
+                            <SelectValue placeholder="Select category">
+                              {form.watch("Category") || selectedProduct?.Category || "Select category"}
+                            </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
-                            {categories.map(
-                              (cat: { Value: string; Label: string }) => (
-                                <SelectItem key={cat.Value} value={cat.Value}>
-                                  {cat.Label}
-                                </SelectItem>
+                            {isCategoriesLoading ? (
+                              <div className="flex items-center justify-center py-4">
+                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                                <span className="ml-2 text-sm text-gray-500">
+                                  Loading...
+                                </span>
+                              </div>
+                            ) : categories.length > 0 ? (
+                              categories.map(
+                                (cat: { Value: string; Label: string }) => (
+                                  <SelectItem key={cat.Value} value={cat.Value}>
+                                    {cat.Label}
+                                  </SelectItem>
+                                )
                               )
+                            ) : (
+                              <div className="py-4 text-center text-sm text-gray-500">
+                                No categories available
+                              </div>
                             )}
                           </SelectContent>
                         </Select>

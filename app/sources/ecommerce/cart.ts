@@ -226,22 +226,23 @@ export class Cart<TRole extends Role = typeof Roles.Buyer> {
 
   /**
    * Fetch reference data for a specific field (for lookup and dropdown fields)
-   * GET /{bo_id}/field/{field_id}/fetch
+   * GET /{bo_id}/{instance_id}/field/{field_id}/fetch
    *
+   * @param instanceId - The instance ID
    * @param fieldId - The field ID to fetch data for
    * @returns Field data (e.g., dropdown options)
    *
    * @example
    * ```typescript
    * const cart = new Cart(Roles.Buyer);
-   * const statuses = await cart.fetchField("Status");
+   * const statuses = await cart.fetchField("cart-instance-id", "Status");
    * ```
    */
-  async fetchField(fieldId: string): Promise<any> {
+  async fetchField(instanceId: string, fieldId: string): Promise<any> {
     if (this.role !== Roles.Buyer) {
       throw new Error("Only buyers can access cart");
     }
-    return api("BDO_Cart").fetchField(fieldId);
+    return api("BDO_Cart").fetchField(instanceId, fieldId);
   }
 
   /**

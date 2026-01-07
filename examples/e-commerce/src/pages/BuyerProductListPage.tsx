@@ -35,15 +35,6 @@ export function BuyerProductListPage() {
   const cart = new Cart(Roles.Buyer);
   const product = new Product(Roles.Buyer);
 
-  // Fetch categories from field
-  const { data: categoriesData } = useQuery({
-    queryKey: ["product-categories"],
-    queryFn: () => product.fetchField("Category"),
-  });
-
-  const categories: Array<{ Value: string; Label: string }> =
-    categoriesData || [];
-
   const table = useTable<BuyerProduct>({
     source: "BDO_AmazonProductMaster",
     columns: [
@@ -60,6 +51,23 @@ export function BuyerProductListPage() {
       sorting: { field: "Title", direction: "asc" },
     },
   });
+
+  const instanceId = table.rows[0]?._id;
+
+  // Fetch categories from field using instance_id
+  const { data: categoriesData } = useQuery({
+    queryKey: ["product-categories", instanceId],
+    queryFn: () => {
+      if (!instanceId) {
+        throw new Error("No instance ID available");
+      }
+      return product.fetchField(instanceId, "Category");
+    },
+    enabled: !!instanceId,
+  });
+
+  const categories: Array<{ Value: string; Label: string }> =
+    categoriesData || [];
 
   const addToCartMutation = useMutation({
     mutationFn: async (product: BuyerProduct) => {

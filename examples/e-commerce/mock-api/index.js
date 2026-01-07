@@ -1148,17 +1148,18 @@ export function setupMockAPI(middlewares) {
       return;
     }
 
-    // BDO Pattern: GET /api/app/BDO_AmazonProductMaster/field/{field_id}/fetch
+    // BDO Pattern: GET /api/app/BDO_AmazonProductMaster/{instance_id}/field/{field_id}/fetch
     if (
       url.match(
-        /^\/api\/app\/BDO_AmazonProductMaster\/field\/([^\/]+)\/fetch$/i
+        /^\/api\/app\/BDO_AmazonProductMaster\/([^\/]+)\/field\/([^\/]+)\/fetch$/i
       ) &&
       method === "GET"
     ) {
       const match = url.match(
-        /^\/api\/app\/BDO_AmazonProductMaster\/field\/([^\/]+)\/fetch$/i
+        /^\/api\/app\/BDO_AmazonProductMaster\/([^\/]+)\/field\/([^\/]+)\/fetch$/i
       );
-      const fieldId = match[1];
+      const instanceId = match[1];
+      const fieldId = match[2];
 
       // Return field options based on field ID
       const fieldOptionsMap = {
@@ -1309,9 +1310,9 @@ export function setupMockAPI(middlewares) {
       return;
     }
 
-    // BDO Pattern: GET /api/app/BDO_Cart/field/{field_id}/fetch
+    // BDO Pattern: GET /api/app/BDO_Cart/{instance_id}/field/{field_id}/fetch
     if (
-      url.match(/^\/api\/app\/BDO_Cart\/field\/([^/]+)\/fetch$/i) &&
+      url.match(/^\/api\/app\/BDO_Cart\/([^/]+)\/field\/([^/]+)\/fetch$/i) &&
       method === "GET"
     ) {
       if (role !== "Buyer") {
@@ -1319,8 +1320,11 @@ export function setupMockAPI(middlewares) {
         return;
       }
 
-      const match = url.match(/^\/api\/app\/BDO_Cart\/field\/([^/]+)\/fetch$/i);
-      const fieldId = match[1];
+      const match = url.match(
+        /^\/api\/app\/BDO_Cart\/([^/]+)\/field\/([^/]+)\/fetch$/i
+      );
+      const instanceId = match[1];
+      const fieldId = match[2];
 
       // Cart doesn't have many static field options, but keeping structure for consistency
       const fieldOptionsMap = {

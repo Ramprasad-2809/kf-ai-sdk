@@ -341,8 +341,9 @@ export class Product<TRole extends Role = typeof Roles.Admin> {
    * Fetch reference data for a specific field
    */
   async fetchField(
+    instanceId: string,
     fieldId: string
   ): Promise<Array<{ Value: string; Label: string }>> {
-    return api(BO_ID).fetchField(fieldId);
+    return api(BO_ID).fetchField(instanceId, fieldId);
   }
 }
