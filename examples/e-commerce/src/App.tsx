@@ -91,20 +91,22 @@ export default function App() {
     navigate("/");
   };
 
+  const cartCount = 0;
+
   // Fetch cart count using React Query (only for buyers)
   // Must be called before any conditional returns (Rules of Hooks)
-  const { data: cartCount = 0 } = useQuery({
-    queryKey: ["cart-count"],
-    queryFn: async () => {
-      if (currentRole === "Buyer") {
-        const cart = new Cart(Roles.Buyer);
-        return await cart.count();
-      }
-      return 0;
-    },
-    enabled: currentRole === "Buyer",
-    refetchInterval: 30000,
-  });
+  // const { data: cartCount = 0 } = useQuery({
+  //   queryKey: ["cart-count"],
+  //   queryFn: async () => {
+  //     if (currentRole === "Buyer") {
+  //       const cart = new Cart(Roles.Buyer);
+  //       return await cart.count();
+  //     }
+  //     return 0;
+  //   },
+  //   enabled: currentRole === "Buyer",
+  //   refetchInterval: 30000,
+  // });
 
   // If not logged in, only allow access to login page
   if (!currentRole) {

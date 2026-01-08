@@ -41,7 +41,7 @@ export function BuyerProductDetailsPage() {
         productId: productItem._id,
         productName: productItem.Title,
         productPrice: { value: productItem.Price, currency: "USD" },
-        productImage: productItem.ImageUrl || "",
+        productImage: productItem.ImageSrc || "",
         quantity: qty,
       };
       return cart.create(payload);
@@ -180,7 +180,7 @@ export function BuyerProductDetailsPage() {
           <div className="aspect-square bg-gray-100 relative">
             <img
               src={
-                productData.ImageUrl ||
+                productData.ImageSrc ||
                 "https://via.placeholder.com/600x600?text=No+Image"
               }
               alt={productData.Title}

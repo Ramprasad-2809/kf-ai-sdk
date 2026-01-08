@@ -31,7 +31,6 @@ import { api } from "../../../api";
 import { validateCrossField } from "./expressionValidator.utils";
 import {
   validateFieldOptimized,
-  calculateComputedValueOptimized,
   getFieldDependencies,
 } from "./optimizedExpressionValidator.utils";
 
@@ -47,7 +46,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     operation,
     recordId,
     defaultValues = {},
-    mode = "onBlur",
+    mode = "onBlur", // Validation mode - controls when errors are shown (see types.ts for details)
     enabled = true,
     userRole,
     onSuccess,
@@ -56,6 +55,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     onSubmitError,
     skipSchemaFetch = false,
     schema: manualSchema,
+    draftOnEveryChange = false,
   } = options;
 
   // ============================================================
@@ -283,7 +283,13 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
       }
 
       // Check if this field is a dependency for any computed fields
-      if (!computedFieldDependencies.includes(fieldName as Path<T>)) {
+      // If draftOnEveryChange is true, trigger for all fields
+      // If false (default), only trigger for computed field dependencies
+      const shouldTrigger =
+        draftOnEveryChange ||
+        computedFieldDependencies.includes(fieldName as Path<T>);
+
+      if (!shouldTrigger) {
         return;
       }
 
@@ -316,163 +322,110 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
             // Use API client draft methods
             const client = api<T>(source);
 
-            // For updates, compute payload with only changed fields + _id
-            let payload: Partial<T> = currentValues;
+            // Build payload with only fields that changed since last sync
+            const changedFields: Partial<T> = {};
 
-            if (operation === "update" && recordId) {
-              // Build payload with only fields that changed since last sync
-              const changedFields: Partial<T> = {};
-
-              // Always include _id
-              if ("_id" in currentValues) {
-                (changedFields as any)._id = (currentValues as any)._id;
-              }
-
-              // Use lastSyncedValues if available, otherwise use recordData as baseline
-              const baseline = lastSyncedValuesRef.current ?? recordData ?? {};
-
-              // Find fields that changed from baseline
-              Object.keys(currentValues).forEach((key) => {
-                if (key === "_id") return;
-
-                const currentValue = (currentValues as any)[key];
-                const baselineValue = (baseline as any)[key];
-
-                // Include if value has changed (using JSON.stringify for deep comparison)
-                if (
-                  JSON.stringify(currentValue) !== JSON.stringify(baselineValue)
-                ) {
-                  (changedFields as any)[key] = currentValue;
-                }
-              });
-
-              payload = changedFields;
+            // For update mode, always include _id
+            if (operation === "update" && recordId && "_id" in currentValues) {
+              (changedFields as any)._id = (currentValues as any)._id;
             }
 
-            const computedFields =
+            // Use lastSyncedValues if available, otherwise use recordData (for update) or empty object (for create)
+            const baseline =
+              lastSyncedValuesRef.current ??
+              (operation === "update" ? recordData : null) ??
+              {};
+
+            // Get computed field names to exclude from payload
+            const computedFieldNames = new Set(
+              processedSchema.computedFields || []
+            );
+
+            // Find fields that changed from baseline (excluding computed fields)
+            Object.keys(currentValues).forEach((key) => {
+              // Skip _id and computed fields
+              if (key === "_id" || computedFieldNames.has(key)) return;
+
+              const currentValue = (currentValues as any)[key];
+              const baselineValue = (baseline as any)[key];
+
+              // Include if value has changed (using JSON.stringify for deep comparison)
+              // For create mode with no baseline, only include non-empty values
+              const hasChanged =
+                JSON.stringify(currentValue) !== JSON.stringify(baselineValue);
+              const isNonEmpty =
+                currentValue !== "" &&
+                currentValue !== null &&
+                currentValue !== undefined;
+
+              if (hasChanged && isNonEmpty) {
+                (changedFields as any)[key] = currentValue;
+              }
+            });
+
+            const payload = changedFields;
+
+            // Update lastSyncedValuesRef BEFORE API call with what we're about to send
+            // This ensures that even if the API fails, the next draft only sends NEW changes
+            const baselineBeforeApiCall = {
+              ...lastSyncedValuesRef.current,
+            } as Partial<T>;
+
+            // Update baseline with non-computed fields from current form state
+            Object.keys(currentValues).forEach((key) => {
+              if (!computedFieldNames.has(key)) {
+                (baselineBeforeApiCall as any)[key] = (currentValues as any)[
+                  key
+                ];
+              }
+            });
+
+            lastSyncedValuesRef.current = baselineBeforeApiCall;
+
+            const computedFieldsResponse =
               operation === "update" && recordId
                 ? await client.draftPatch(recordId, payload)
                 : await client.draft(payload);
 
             // Apply computed fields returned from API
-            if (computedFields && typeof computedFields === "object") {
-              Object.entries(computedFields).forEach(([fieldName, value]) => {
-                const currentValue = currentValues[fieldName as keyof T];
-                if (currentValue !== value) {
-                  rhfForm.setValue(fieldName as Path<T>, value as any, {
-                    shouldDirty: false,
-                    shouldValidate: false,
-                  });
+            if (
+              computedFieldsResponse &&
+              typeof computedFieldsResponse === "object"
+            ) {
+              Object.entries(computedFieldsResponse).forEach(
+                ([fieldName, value]) => {
+                  const currentValue = currentValues[fieldName as keyof T];
+                  if (currentValue !== value) {
+                    rhfForm.setValue(fieldName as Path<T>, value as any, {
+                      shouldDirty: false,
+                      shouldValidate: false,
+                    });
+                  }
                 }
-              });
-            }
+              );
 
-            // Update lastSyncedValuesRef with the LATEST form values (after computed fields are set)
-            // This ensures subsequent changes are compared against the new state
-            const latestValues = rhfForm.getValues();
-            lastSyncedValuesRef.current = { ...latestValues } as Partial<T>;
+              // Update baseline with computed fields from successful API response
+              Object.entries(computedFieldsResponse).forEach(
+                ([fieldName, value]) => {
+                  if (computedFieldNames.has(fieldName)) {
+                    (lastSyncedValuesRef.current as any)[fieldName] = value;
+                  }
+                }
+              );
+            }
           } catch (error) {
             console.warn("Failed to compute fields via API:", error);
-            // Fallback to client-side computation if API fails
-            computeFieldsClientSide();
+            // Note: lastSyncedValuesRef was already updated before the API call
+            // This is correct - we want to track what we ATTEMPTED to send,
+            // so the next draft only includes NEW changes, not failed changes again
+            // Client-side formula computation fallback has been removed
+            // Formula fields remain as-is when API fails
           } finally {
             isComputingRef.current = false;
           }
         };
 
-        // Client-side computation fallback for offline/error scenarios
-        const computeFieldsClientSide = () => {
-          const updates: Array<{ field: Path<T>; value: any }> = [];
-
-          Object.entries(processedSchema.fieldRules).forEach(
-            ([fieldName, rules]) => {
-              if (rules.computation.length === 0) return;
-
-              // Execute all computation rules for this field
-              rules.computation.forEach((ruleId) => {
-                const rule = processedSchema.rules.computation[ruleId];
-                if (!rule?.ExpressionTree) return;
-
-                try {
-                  // Evaluate the expression tree
-                  const computedValue = calculateComputedValueOptimized(
-                    rule.ExpressionTree,
-                    currentValues,
-                    lastFormValues
-                  );
-
-                  const currentValue = currentValues[fieldName as keyof T];
-
-                  const isValidValue =
-                    computedValue !== null &&
-                    computedValue !== undefined &&
-                    !(
-                      typeof computedValue === "number" && isNaN(computedValue)
-                    );
-
-                  if (isValidValue && currentValue !== computedValue) {
-                    updates.push({
-                      field: fieldName as Path<T>,
-                      value: computedValue,
-                    });
-                  }
-                } catch (error) {
-                  console.warn(
-                    `Failed to compute ${fieldName} using rule ${ruleId}:`,
-                    error
-                  );
-                }
-              });
-            }
-          );
-
-          // Also handle legacy Formula-based computed fields
-          processedSchema.computedFields.forEach((fieldName) => {
-            const field = processedSchema.fields[fieldName];
-            if (
-              field.backendField.Formula &&
-              field.rules.computation.length === 0
-            ) {
-              try {
-                const computedValue = calculateComputedValueOptimized(
-                  field.backendField.Formula.ExpressionTree,
-                  currentValues,
-                  lastFormValues
-                );
-
-                const currentValue = currentValues[fieldName as keyof T];
-                const isValidValue =
-                  computedValue !== null &&
-                  computedValue !== undefined &&
-                  !(typeof computedValue === "number" && isNaN(computedValue));
-
-                if (isValidValue && currentValue !== computedValue) {
-                  updates.push({
-                    field: fieldName as Path<T>,
-                    value: computedValue,
-                  });
-                }
-              } catch (error) {
-                console.warn(
-                  `Failed to compute value for ${fieldName}:`,
-                  error
-                );
-              }
-            }
-          });
-
-          // Batch update computed fields
-          if (updates.length > 0) {
-            updates.forEach(({ field, value }) => {
-              rhfForm.setValue(field, value, {
-                shouldDirty: false,
-                shouldValidate: false,
-              });
-            });
-          }
-        };
-
-        // Call API for computation
+        // Call API for computation (no client-side fallback)
         computeFieldsViaAPI();
       }, 300); // 300ms debounce
     },
@@ -484,6 +437,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
       source,
       rhfForm,
       computedFieldDependencies,
+      draftOnEveryChange,
     ]
   );
 
@@ -506,11 +460,13 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
 
     // Cross-field validation
     // Transform ValidationRule[] to the format expected by validateCrossField
-    const transformedRules = processedSchema.crossFieldValidation.map(rule => ({
-      Id: rule.Id,
-      Condition: { ExpressionTree: rule.ExpressionTree },
-      Message: rule.Message || `Validation failed for ${rule.Name}`
-    }));
+    const transformedRules = processedSchema.crossFieldValidation.map(
+      (rule) => ({
+        Id: rule.Id,
+        Condition: { ExpressionTree: rule.ExpressionTree },
+        Message: rule.Message || `Validation failed for ${rule.Name}`,
+      })
+    );
 
     const crossFieldErrors = validateCrossField(
       transformedRules,
@@ -754,7 +710,19 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     return rules;
   }, [processedSchema, rhfForm, referenceData]);
 
-  // Enhanced register function with validation-first computation
+  /**
+   * Enhanced register function that wraps react-hook-form's register
+   *
+   * Custom onBlur behavior:
+   * 1. Respects validation mode - only triggers validation on blur when mode allows
+   * 2. Always fires computation (draft API calls) on blur for fields affecting computed fields
+   * 3. Ensures computation only happens when field is valid
+   *
+   * Mode-specific behavior:
+   * - "onBlur", "onTouched", "all": Validates on blur (shows errors)
+   * - "onSubmit": Doesn't validate on blur (checks existing errors only)
+   * - "onChange": Doesn't validate on blur (validation already happened on change)
+   */
   const register = useCallback(
     <K extends Path<T>>(name: K, options?: any) => {
       const fieldValidation = validationRules[name as string];
@@ -762,15 +730,29 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
       // Create custom onBlur handler
       const originalOnBlur = options?.onBlur;
       const enhancedOnBlur = async (e: any) => {
-        // Call original onBlur if provided
+        // 1. Call original onBlur if provided
         if (originalOnBlur) {
           await originalOnBlur(e);
         }
 
-        // Trigger validation first
-        const isValid = await rhfForm.trigger(name);
+        // 2. Mode-aware validation check
+        let isValid = true;
 
-        // Only trigger computation if validation passes
+        // Modes that should trigger validation on blur
+        const shouldTriggerOnBlur =
+          mode === "onBlur" || mode === "onTouched" || mode === "all";
+
+        if (shouldTriggerOnBlur) {
+          // Trigger validation (shows errors in UI)
+          isValid = await rhfForm.trigger(name);
+        } else {
+          // For "onSubmit" and "onChange" modes, check existing errors without triggering new validation
+          const fieldState = rhfForm.getFieldState(name, rhfForm.formState);
+          isValid = !fieldState.error;
+        }
+
+        // 3. Always fire computation on blur if valid
+        // This ensures computed fields update even in "onSubmit" mode
         if (isValid) {
           await triggerComputationAfterValidation(name as string);
         }
@@ -782,7 +764,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
         onBlur: enhancedOnBlur,
       });
     },
-    [rhfForm, validationRules, triggerComputationAfterValidation]
+    [rhfForm, validationRules, triggerComputationAfterValidation, mode]
   );
 
   return {

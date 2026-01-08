@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import { useTable, useForm } from "kf-ai-sdk";
 import { Product, ProductForRole } from "../../../../app";
@@ -51,21 +51,22 @@ export function SellerProductsPage() {
     },
   });
 
-  // Get instance_id based on form mode
-  // For update mode: use selectedProduct._id
-  // For create mode: use first product from table
-  const instanceId =
-    formMode === "update" ? selectedProduct?._id : table.rows[0]?._id;
+  // Store the first valid instanceId to avoid re-fetching categories when table changes
+  const instanceIdRef = useRef<string | null>(null);
+  if (!instanceIdRef.current && table.rows[0]?._id) {
+    instanceIdRef.current = table.rows[0]._id;
+  }
 
-  // Fetch categories only when dropdown is opened
+  // Fetch categories only when dropdown is opened, cache permanently
   const { data: categories = [], isFetching: isCategoriesLoading } = useQuery({
-    queryKey: ["product-categories", instanceId],
+    queryKey: ["product-categories"],
     queryFn: async () => {
-      if (!instanceId) return [];
-      return product.fetchField(instanceId, "Category");
+      if (!instanceIdRef.current) return [];
+      return product.fetchField(instanceIdRef.current, "Category");
     },
-    enabled: categoryDropdownOpen && !!instanceId, // Only fetch when dropdown is open
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    enabled: categoryDropdownOpen && !!instanceIdRef.current,
+    staleTime: Infinity, // Never refetch - categories are static
+    gcTime: Infinity, // Keep in cache forever
   });
 
   const form = useForm<SellerProduct>({
@@ -73,17 +74,8 @@ export function SellerProductsPage() {
     operation: formMode,
     recordId: selectedProduct?._id,
     enabled: showForm,
-    defaultValues: {
-      Title: "",
-      Description: "",
-      Price: 0,
-      MRP: 0,
-      Brand: "",
-      Stock: 0,
-      Warehouse: "Warehouse_A",
-      ReorderLevel: 10,
-      IsActive: true,
-    },
+    mode: "onBlur", // Validate on submit
+    draftOnEveryChange: false, // Only trigger draft for computed field dependencies
     onSuccess: () => {
       setShowForm(false);
       setSelectedProduct(null);
@@ -213,7 +205,7 @@ export function SellerProductsPage() {
                         <div className="w-10 h-10 bg-gray-100 rounded overflow-hidden">
                           <img
                             src={
-                              product.ImageUrl ||
+                              product.ImageSrc ||
                               "https://via.placeholder.com/40x40?text=?"
                             }
                             alt={product.Title}
@@ -398,11 +390,45 @@ export function SellerProductsPage() {
                       </label>
                       <textarea
                         {...form.register("Description")}
-                        className="flex w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                        className={`flex w-full rounded-md border bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 ${
+                          form.formState.errors.Description
+                            ? "border-red-500 focus-visible:ring-red-500"
+                            : "border-gray-300 focus-visible:ring-blue-500"
+                        }`}
                         rows={3}
                         placeholder="Enter product description"
                         defaultValue={selectedProduct?.Description || ""}
                       />
+                      {form.formState.errors.Description && (
+                        <p className="text-red-600 text-sm mt-1">
+                          {form.formState.errors.Description.message}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Image Source URL - Full Width */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Image URL
+                      </label>
+                      <Input
+                        {...form.register("ImageSrc")}
+                        placeholder="Enter image URL (e.g., https://example.com/image.jpg)"
+                        defaultValue={selectedProduct?.ImageSrc || ""}
+                        className={
+                          form.formState.errors.ImageSrc
+                            ? "border-red-500 focus:ring-red-500"
+                            : ""
+                        }
+                      />
+                      {form.formState.errors.ImageSrc && (
+                        <p className="text-red-600 text-sm mt-1">
+                          {form.formState.errors.ImageSrc.message}
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-500 mt-1">
+                        Provide a direct link to the product image
+                      </p>
                     </div>
 
                     {/* Brand and Category - Two Columns */}
@@ -423,14 +449,22 @@ export function SellerProductsPage() {
                           Category
                         </label>
                         <Select
-                          value={form.watch("Category") || selectedProduct?.Category || ""}
-                          onValueChange={(value) => form.setValue("Category", value)}
+                          value={
+                            form.watch("Category") ||
+                            selectedProduct?.Category ||
+                            ""
+                          }
+                          onValueChange={(value) =>
+                            form.setValue("Category", value)
+                          }
                           open={categoryDropdownOpen}
                           onOpenChange={setCategoryDropdownOpen}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Select category">
-                              {form.watch("Category") || selectedProduct?.Category || "Select category"}
+                              {form.watch("Category") ||
+                                selectedProduct?.Category ||
+                                "Select category"}
                             </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
@@ -549,20 +583,6 @@ export function SellerProductsPage() {
                           </p>
                         )}
                       </div>
-
-                      {/* Reorder Level */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Reorder Level
-                        </label>
-                        <Input
-                          type="number"
-                          min="0"
-                          {...form.register("ReorderLevel")}
-                          placeholder="10"
-                          defaultValue={selectedProduct?.ReorderLevel || "10"}
-                        />
-                      </div>
                     </div>
 
                     {/* Warehouse - Full Width */}
@@ -571,9 +591,7 @@ export function SellerProductsPage() {
                         Warehouse
                       </label>
                       <Select
-                        defaultValue={
-                          selectedProduct?.Warehouse || "Warehouse_A"
-                        }
+                        defaultValue={selectedProduct?.Warehouse || ""}
                         onValueChange={(value) =>
                           form.setValue(
                             "Warehouse",

@@ -6,12 +6,13 @@ import { setupMockAPI } from "./mock-api/index.js";
 export default defineConfig({
   plugins: [
     react(),
-    {
-      name: "mock-api",
-      configureServer(server) {
-        setupMockAPI(server.middlewares);
-      },
-    },
+    // Mock API disabled - using external server at http://runtime1001.localhost:8085
+    // {
+    //   name: "mock-api",
+    //   configureServer(server) {
+    //     setupMockAPI(server.middlewares);
+    //   },
+    // },
   ],
   resolve: {
     alias: {
@@ -22,5 +23,11 @@ export default defineConfig({
   },
   server: {
     port: 3003,
+    proxy: {
+      "/api": {
+        target: "http://runtime1001.localhost:8085",
+        changeOrigin: true,
+      },
+    },
   },
 });

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Search,
@@ -27,10 +27,23 @@ import { Roles } from "../../../../app/types/roles";
 
 type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
 
+// Price range definitions with min/max values
+const PRICE_RANGES = [
+  { label: "Under $25", min: 0, max: 25 },
+  { label: "$25 to $50", min: 25, max: 50 },
+  { label: "$50 to $100", min: 50, max: 100 },
+  { label: "$100 to $200", min: 100, max: 200 },
+  { label: "$200 & Above", min: 200, max: null },
+] as const;
+
 export function BuyerProductListPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedPriceRange, setSelectedPriceRange] = useState<string | null>(
+    null
+  );
+  const [selectedSort, setSelectedSort] = useState("featured");
   const [addingToCart, setAddingToCart] = useState<string | null>(null);
   const cart = new Cart(Roles.Buyer);
   const product = new Product(Roles.Buyer);
@@ -52,18 +65,24 @@ export function BuyerProductListPage() {
     },
   });
 
-  const instanceId = table.rows[0]?._id;
+  // Store the first valid instanceId to avoid re-fetching categories when filters change
+  const instanceIdRef = useRef<string | null>(null);
+  if (!instanceIdRef.current && table.rows[0]?._id) {
+    instanceIdRef.current = table.rows[0]._id;
+  }
 
-  // Fetch categories from field using instance_id
+  // Fetch categories once on page load and cache permanently
   const { data: categoriesData } = useQuery({
-    queryKey: ["product-categories", instanceId],
+    queryKey: ["product-categories"],
     queryFn: () => {
-      if (!instanceId) {
+      if (!instanceIdRef.current) {
         throw new Error("No instance ID available");
       }
-      return product.fetchField(instanceId, "Category");
+      return product.fetchField(instanceIdRef.current, "Category");
     },
-    enabled: !!instanceId,
+    enabled: !!instanceIdRef.current,
+    staleTime: Infinity, // Never refetch - categories are static
+    gcTime: Infinity, // Keep in cache forever
   });
 
   const categories: Array<{ Value: string; Label: string }> =
@@ -76,7 +95,7 @@ export function BuyerProductListPage() {
         productId: product._id,
         productName: product.Title,
         productPrice: { value: product.Price, currency: "USD" },
-        productImage: product.ImageUrl || "",
+        productImage: product.ImageSrc || "",
         quantity: 1,
       };
 
@@ -105,19 +124,83 @@ export function BuyerProductListPage() {
     navigate(`/products/${product._id}`);
   };
 
+  // Helper function to apply all active filters
+  const applyFilters = (category: string, priceRange: string | null) => {
+    table.filter.clearConditions();
+
+    // Apply category filter
+    if (category !== "all") {
+      table.filter.addCondition({
+        lhsField: "Category",
+        operator: "EQ",
+        rhsValue: category,
+        rhsType: "Constant",
+      });
+    }
+
+    // Apply price filter
+    if (priceRange) {
+      const range = PRICE_RANGES.find((r) => r.label === priceRange);
+      if (range) {
+        if (range.max === null) {
+          // "$200 & Above" - use GTE
+          table.filter.addCondition({
+            lhsField: "Price",
+            operator: "GTE",
+            rhsValue: range.min,
+            rhsType: "Constant",
+          });
+        } else if (range.min === 0) {
+          // "Under $25" - use LT
+          table.filter.addCondition({
+            lhsField: "Price",
+            operator: "LT",
+            rhsValue: range.max,
+            rhsType: "Constant",
+          });
+        } else {
+          // Range like "$25 to $50" - use Between
+          table.filter.addCondition({
+            lhsField: "Price",
+            operator: "Between",
+            rhsValue: [range.min, range.max],
+            rhsType: "Constant",
+          });
+        }
+      }
+    }
+  };
+
   const handleCategoryChange = (value: string) => {
     // If clicking same category, toggle off to 'all'
     const newValue = selectedCategory === value ? "all" : value;
     setSelectedCategory(newValue);
+    applyFilters(newValue, selectedPriceRange);
+  };
 
-    table.filter.clearConditions();
-    if (newValue !== "all") {
-      table.filter.addCondition({
-        lhsField: "Category",
-        operator: "EQ",
-        rhsValue: newValue,
-        rhsType: "Constant",
-      });
+  const handlePriceChange = (rangeLabel: string) => {
+    // If clicking same range, toggle off
+    const newValue = selectedPriceRange === rangeLabel ? null : rangeLabel;
+    setSelectedPriceRange(newValue);
+    applyFilters(selectedCategory, newValue);
+  };
+
+  const handleSortChange = (value: string) => {
+    setSelectedSort(value);
+    switch (value) {
+      case "price-asc":
+        table.sort.set("Price", "asc");
+        break;
+      case "price-desc":
+        table.sort.set("Price", "desc");
+        break;
+      case "newest":
+        table.sort.set("_created_at", "desc");
+        break;
+      case "featured":
+      default:
+        table.sort.set("Title", "asc"); // Default sort by title
+        break;
     }
   };
 
@@ -141,41 +224,44 @@ export function BuyerProductListPage() {
             >
               All Departments
             </button>
-            {categories.map((cat) => (
-              <button
-                key={cat.Value}
-                onClick={() => handleCategoryChange(cat.Value)}
-                className={`text-sm text-left hover:text-blue-600 transition-colors flex items-center gap-2 ${selectedCategory === cat.Value ? "font-bold text-blue-600" : "text-gray-600"}`}
-              >
-                {selectedCategory === cat.Value && (
-                  <ChevronRight className="h-3 w-3" />
-                )}
-                {cat.Label}
-              </button>
-            ))}
+            {categories.length > 0 &&
+              categories.map((cat) => (
+                <button
+                  key={cat.Value}
+                  onClick={() => handleCategoryChange(cat.Value)}
+                  className={`text-sm text-left hover:text-blue-600 transition-colors flex items-center gap-2 ${selectedCategory === cat.Value ? "font-bold text-blue-600" : "text-gray-600"}`}
+                >
+                  {selectedCategory === cat.Value && (
+                    <ChevronRight className="h-3 w-3" />
+                  )}
+                  {cat.Label}
+                </button>
+              ))}
           </div>
         </div>
 
         <Separator />
 
-        {/* Price Range (Mock UI) */}
+        {/* Price Range Filter */}
         <div className="space-y-3">
           <h3 className="font-bold text-gray-900 text-sm">Price</h3>
           <div className="space-y-2">
-            {[
-              "Under $25",
-              "$25 to $50",
-              "$50 to $100",
-              "$100 to $200",
-              "$200 & Above",
-            ].map((range) => (
-              <div key={range} className="flex items-center space-x-2">
-                <Checkbox id={range} />
+            {PRICE_RANGES.map((range) => (
+              <div key={range.label} className="flex items-center space-x-2">
+                <Checkbox
+                  id={range.label}
+                  checked={selectedPriceRange === range.label}
+                  onCheckedChange={() => handlePriceChange(range.label)}
+                />
                 <label
-                  htmlFor={range}
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-gray-600"
+                  htmlFor={range.label}
+                  className={`text-sm font-medium leading-none cursor-pointer ${
+                    selectedPriceRange === range.label
+                      ? "text-blue-600 font-bold"
+                      : "text-gray-600"
+                  }`}
                 >
-                  {range}
+                  {range.label}
                 </label>
               </div>
             ))}
@@ -238,7 +324,7 @@ export function BuyerProductListPage() {
                 <span className="text-sm text-gray-500 whitespace-nowrap hidden sm:block">
                   Sort by:
                 </span>
-                <Select value="featured">
+                <Select value={selectedSort} onValueChange={handleSortChange}>
                   <SelectTrigger className="w-[140px] h-9">
                     <SelectValue placeholder="Sort" />
                   </SelectTrigger>
@@ -296,6 +382,7 @@ export function BuyerProductListPage() {
                 table.search.clear();
                 table.filter.clearConditions();
                 setSelectedCategory("all");
+                setSelectedPriceRange(null);
               }}
             >
               Clear All Filters
@@ -307,18 +394,21 @@ export function BuyerProductListPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {table.rows.map((product) => {
                 const isInStock = product.Stock > 0;
-                const priceParts = new Intl.NumberFormat("en-US", {
+                const formattedPrice = new Intl.NumberFormat("en-US", {
                   style: "currency",
                   currency: "USD",
-                })
-                  .formatToParts(product.Price)
-                  .reduce(
-                    (acc, part) => {
-                      acc[part.type] = part.value;
-                      return acc;
-                    },
-                    {} as Record<string, string>
-                  );
+                }).format(product.Price);
+                // Extract parts for styled display (e.g., "$1,234.56" → ["$", "1,234", "56"])
+                const priceMatch = formattedPrice.match(
+                  /^(\$)([\d,]+)\.(\d{2})$/
+                );
+                const priceParts = priceMatch
+                  ? {
+                      currency: priceMatch[1],
+                      integer: priceMatch[2],
+                      fraction: priceMatch[3],
+                    }
+                  : { currency: "$", integer: "0", fraction: "00" };
 
                 return (
                   <div key={product._id} className="relative group">
@@ -330,7 +420,7 @@ export function BuyerProductListPage() {
                       <div className="aspect-square bg-white relative overflow-hidden p-4 flex items-center justify-center">
                         <img
                           src={
-                            product.ImageUrl ||
+                            product.ImageSrc ||
                             "https://via.placeholder.com/400x400?text=No+Image"
                           }
                           alt={product.Title}

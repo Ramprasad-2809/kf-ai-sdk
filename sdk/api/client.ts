@@ -17,6 +17,8 @@ import type {
   PivotResponse,
   DraftResponse,
   FieldsResponse,
+  FetchFieldOption,
+  FetchFieldResponse,
 } from "../types/common";
 
 /**
@@ -97,7 +99,7 @@ export interface ResourceClient<T = any> {
    * Fetch reference data for a specific field (for lookup and dropdown fields)
    * GET /{bo_id}/{instance_id}/field/{field_id}/fetch
    */
-  fetchField(instanceId: string, fieldId: string): Promise<any>;
+  fetchField(instanceId: string, fieldId: string): Promise<FetchFieldOption[]>;
 }
 
 /**
@@ -420,7 +422,10 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
       return response.json();
     },
 
-    async fetchField(instanceId: string, fieldId: string): Promise<any> {
+    async fetchField(
+      instanceId: string,
+      fieldId: string
+    ): Promise<FetchFieldOption[]> {
       const response = await fetch(
         `${baseUrl}/api/app/${bo_id}/${instanceId}/field/${fieldId}/fetch`,
         {
@@ -435,7 +440,8 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
         );
       }
 
-      return response.json();
+      const responseData: FetchFieldResponse = await response.json();
+      return responseData.Data;
     },
   };
 }

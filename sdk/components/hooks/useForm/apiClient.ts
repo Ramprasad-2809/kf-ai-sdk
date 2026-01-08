@@ -16,7 +16,8 @@ import type { BackendSchema, FormOperation, SubmissionResult } from "./types";
 export async function fetchFormSchema(source: string): Promise<BackendSchema> {
   try {
     // Use the new metadata API client to fetch BDO schema
-    const bdoSchema = await getBdoSchema(source);
+    const bdoResp = await getBdoSchema(source);
+    const bdoSchema = bdoResp.BOBlob;
 
     // Validate that response is a valid BDO schema object
     if (!bdoSchema || typeof bdoSchema !== "object" || !bdoSchema.Fields) {

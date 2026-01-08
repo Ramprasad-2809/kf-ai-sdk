@@ -1,7 +1,7 @@
 import { setApiBaseUrl, setDefaultHeaders } from "kf-ai-sdk";
 
 export function initializeMockApi() {
-  // Base URL should be empty or just domain - SDK adds /api/app/ automatically
+  // Base URL empty - Vite proxy forwards /api/* to http://runtime1001.localhost:8085
   setApiBaseUrl("");
 
   // Get initial role from localStorage or default to buyer

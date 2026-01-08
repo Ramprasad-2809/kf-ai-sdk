@@ -20,7 +20,7 @@ export interface BackendSchema {
 /**
  * Get BDO schema/metadata by ID
  *
- * Endpoint: GET /api/app/metadata/{meta_id}/read
+ * Endpoint: GET //api/app/meta/bdo/${metaId}
  *
  * @param metaId - The Business Object metadata ID (e.g., "Product", "Order")
  * @returns Promise resolving to the BDO schema
@@ -36,7 +36,7 @@ export async function getBdoSchema(metaId: string): Promise<BackendSchema> {
     const baseUrl = getApiBaseUrl();
     const headers = getDefaultHeaders();
 
-    const response = await fetch(`${baseUrl}/api/app/metadata/${metaId}/read`, {
+    const response = await fetch(`${baseUrl}/api/app/meta/bdo/${metaId}`, {
       method: "GET",
       headers,
     });

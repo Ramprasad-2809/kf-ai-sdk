@@ -1181,7 +1181,7 @@ export function setupMockAPI(middlewares) {
       const options = fieldOptionsMap[fieldId];
 
       if (options) {
-        sendJSON(options);
+        sendJSON({ Data: options });
       } else {
         sendError(`Field '${fieldId}' does not have fetchable data`, 404);
       }
@@ -1334,7 +1334,7 @@ export function setupMockAPI(middlewares) {
       const options = fieldOptionsMap[fieldId];
 
       if (options) {
-        sendJSON(options);
+        sendJSON({ Data: options });
       } else {
         sendError(`Field '${fieldId}' does not have fetchable data`, 404);
       }

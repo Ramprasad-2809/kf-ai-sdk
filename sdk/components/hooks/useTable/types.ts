@@ -82,6 +82,7 @@ export interface UseTableReturn<T> {
     direction: "asc" | "desc" | null;
     toggle: (field: keyof T) => void;
     clear: () => void;
+    set: (field: keyof T, direction: "asc" | "desc") => void;
   };
 
   // Legacy Global Filtering (Flat Access)

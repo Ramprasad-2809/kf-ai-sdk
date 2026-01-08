@@ -282,3 +282,25 @@ export interface FieldsResponse {
   /** Field metadata */
   Data: Record<string, any>[];
 }
+
+// ============================================================
+// FETCH FIELD TYPES
+// ============================================================
+
+/**
+ * Single option returned from fetch field endpoint
+ */
+export interface FetchFieldOption {
+  /** The value to be stored */
+  Value: string;
+  /** The display label */
+  Label: string;
+}
+
+/**
+ * Response from fetch field endpoint
+ */
+export interface FetchFieldResponse {
+  /** Array of field options */
+  Data: FetchFieldOption[];
+}

@@ -52,8 +52,8 @@ export type ProductMasterType = {
   /** Product Description (max 2000 characters) */
   Description: TextAreaField;
 
-  /** Product Image URL */
-  ImageUrl: StringField;
+  /** Product Image Source URL */
+  ImageSrc: StringField;
 
   /** Selling Price (required, must be > 0) */
   Price: NumberField;
@@ -138,7 +138,7 @@ export type SellerProduct = Pick<
   | "SKU"
   | "Title"
   | "Description"
-  | "ImageUrl"
+  | "ImageSrc"
   | "Price"
   | "MRP"
   | "Category"
@@ -167,7 +167,7 @@ export type BuyerProduct = Pick<
   | "SKU"
   | "Title"
   | "Description"
-  | "ImageUrl"
+  | "ImageSrc"
   | "Price"
   | "MRP"
   | "Discount"
@@ -176,6 +176,7 @@ export type BuyerProduct = Pick<
   | "Tags"
   | "Stock"
   | "IsActive"
+  | "_created_at"
 >;
 
 /**
