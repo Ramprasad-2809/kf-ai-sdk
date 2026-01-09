@@ -11,7 +11,6 @@ export { useForm } from "./useForm";
 export type {
   UseFormOptions,
   UseFormReturn,
-  BackendSchema,
   BackendFieldDefinition,
   ProcessedField,
   ProcessedSchema,
