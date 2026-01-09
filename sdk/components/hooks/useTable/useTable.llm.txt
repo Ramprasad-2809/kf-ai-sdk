@@ -1,0 +1,344 @@
+# useTable Hook - LLM Documentation
+
+## Overview
+
+The `useTable` hook is a React hook that provides a complete table data management solution with built-in support for:
+- Data fetching with TanStack Query
+- Pagination (1-indexed)
+- Sorting
+- Search
+- Advanced filtering (via integrated useFilter hook)
+- Error handling
+- Loading states
+
+## Import
+
+```typescript
+import { useTable } from "kf-ai-sdk";
+```
+
+## Basic Usage
+
+```typescript
+const table = useTable<ProductType>({
+  source: "BDO_ProductMaster",
+  columns: [
+    { fieldId: "Title", label: "Name", enableSorting: true },
+    { fieldId: "Price", label: "Price", enableSorting: true },
+    { fieldId: "Category", label: "Category", enableSorting: true },
+    { fieldId: "Stock", label: "Stock", enableSorting: true },
+  ],
+  enableSorting: true,
+  enableFiltering: true,
+  enablePagination: true,
+  initialState: {
+    pagination: { pageNo: 1, pageSize: 10 },
+    sorting: { field: "Title", direction: "asc" },
+  },
+});
+```
+
+## Configuration Options
+
+### UseTableOptions<T>
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `source` | `string` | Yes | Data source identifier (Business Data Object name) |
+| `columns` | `ColumnDefinition<T>[]` | Yes | Column configurations |
+| `enableSorting` | `boolean` | No | Enable sorting functionality |
+| `enableFiltering` | `boolean` | No | Enable filtering functionality |
+| `enablePagination` | `boolean` | No | Enable pagination |
+| `fieldDefinitions` | `Record<keyof T, FieldDefinition>` | No | Field definitions for filter validation |
+| `initialState` | `object` | No | Initial state for pagination, sorting, filters |
+| `onError` | `(error: Error) => void` | No | Error callback |
+| `onSuccess` | `(data: T[]) => void` | No | Success callback |
+| `onFilterError` | `(errors: ValidationError[]) => void` | No | Filter error callback |
+
+### ColumnDefinition<T>
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `fieldId` | `keyof T` | Field name from the data type |
+| `label` | `string` | Display label (optional, defaults to fieldId) |
+| `enableSorting` | `boolean` | Enable sorting for this column |
+| `enableFiltering` | `boolean` | Enable filtering for this column |
+| `transform` | `(value: any, row: T) => React.ReactNode` | Custom transform function |
+
+## Return Value
+
+### UseTableReturn<T>
+
+#### Data
+| Property | Type | Description |
+|----------|------|-------------|
+| `rows` | `T[]` | Array of data rows |
+| `totalItems` | `number` | Total number of items (across all pages) |
+
+#### Loading States
+| Property | Type | Description |
+|----------|------|-------------|
+| `isLoading` | `boolean` | Initial data loading |
+| `isFetching` | `boolean` | Background refetching |
+
+#### Error Handling
+| Property | Type | Description |
+|----------|------|-------------|
+| `error` | `Error \| null` | Current error state |
+
+#### Search
+| Property | Type | Description |
+|----------|------|-------------|
+| `search.query` | `string` | Current search query |
+| `search.setQuery` | `(value: string) => void` | Set search query (auto-resets to page 1) |
+| `search.clear` | `() => void` | Clear search query |
+
+#### Sorting
+| Property | Type | Description |
+|----------|------|-------------|
+| `sort.field` | `keyof T \| null` | Current sort field |
+| `sort.direction` | `"asc" \| "desc" \| null` | Current sort direction |
+| `sort.toggle` | `(field: keyof T) => void` | Toggle sort (cycles: asc -> desc -> none) |
+| `sort.clear` | `() => void` | Clear sorting |
+| `sort.set` | `(field: keyof T, direction: "asc" \| "desc") => void` | Set specific sort |
+
+#### Filtering (Advanced)
+| Property | Type | Description |
+|----------|------|-------------|
+| `filter.conditions` | `FilterConditionWithId[]` | Current filter conditions |
+| `filter.logicalOperator` | `LogicalOperator` | "And" or "Or" |
+| `filter.isValid` | `boolean` | Whether all conditions are valid |
+| `filter.validationErrors` | `ValidationError[]` | Current validation errors |
+| `filter.hasConditions` | `boolean` | Whether any conditions exist |
+| `filter.addCondition` | `(condition) => string` | Add a filter condition, returns ID |
+| `filter.updateCondition` | `(id, updates) => boolean` | Update a condition |
+| `filter.removeCondition` | `(id) => boolean` | Remove a condition |
+| `filter.clearConditions` | `() => void` | Clear all conditions |
+| `filter.getCondition` | `(id) => FilterConditionWithId` | Get a specific condition |
+| `filter.setLogicalOperator` | `(operator) => void` | Set logical operator |
+
+#### Pagination
+| Property | Type | Description |
+|----------|------|-------------|
+| `pagination.currentPage` | `number` | Current page (1-indexed) |
+| `pagination.pageSize` | `number` | Items per page |
+| `pagination.totalPages` | `number` | Total number of pages |
+| `pagination.totalItems` | `number` | Total item count |
+| `pagination.canGoNext` | `boolean` | Can navigate to next page |
+| `pagination.canGoPrevious` | `boolean` | Can navigate to previous page |
+| `pagination.goToNext` | `() => void` | Go to next page |
+| `pagination.goToPrevious` | `() => void` | Go to previous page |
+| `pagination.goToPage` | `(page: number) => void` | Go to specific page |
+| `pagination.setPageSize` | `(size: number) => void` | Change page size (resets to page 1) |
+
+#### Operations
+| Property | Type | Description |
+|----------|------|-------------|
+| `refetch` | `() => Promise<ListResponse<T>>` | Manually refetch data |
+
+## Filter Operators
+
+The following operators are supported for filter conditions:
+
+### Comparison Operators
+- `EQ` - Equal
+- `NE` - Not Equal
+- `GT` - Greater Than
+- `GTE` - Greater Than or Equal
+- `LT` - Less Than
+- `LTE` - Less Than or Equal
+
+### Range Operators
+- `Between` - Between two values (requires array of 2 values)
+- `NotBetween` - Not between two values
+
+### Set Operators
+- `IN` - In array of values
+- `NIN` - Not in array of values
+
+### String Operators
+- `Contains` - Contains substring
+- `NotContains` - Does not contain substring
+- `StartsWith` - Starts with string
+- `EndsWith` - Ends with string
+
+### Null Operators
+- `Empty` - Is empty/null
+- `NotEmpty` - Is not empty/null
+
+## E-Commerce App Usage Examples
+
+### Seller Products Page (SellerProductsPage.tsx)
+
+```typescript
+const table = useTable<SellerProduct>({
+  source: "BDO_AmazonProductMaster",
+  columns: [
+    { fieldId: "Title", label: "Name", enableSorting: true },
+    { fieldId: "Price", label: "Price", enableSorting: true },
+    { fieldId: "Category", label: "Category", enableSorting: true },
+    { fieldId: "Stock", label: "Stock", enableSorting: true },
+  ],
+  enableSorting: true,
+  enableFiltering: true,
+  enablePagination: true,
+  initialState: {
+    pagination: { pageNo: 1, pageSize: 10 },
+    sorting: { field: "Title", direction: "asc" },
+  },
+});
+
+// Search
+<Input
+  value={table.search.query}
+  onChange={(e) => table.search.setQuery(e.target.value)}
+/>
+
+// Display rows
+{table.rows.map((product) => (
+  <tr key={product._id}>...</tr>
+))}
+
+// Pagination controls
+<Button
+  onClick={table.pagination.goToPrevious}
+  disabled={!table.pagination.canGoPrevious}
+>
+  Previous
+</Button>
+<Button
+  onClick={table.pagination.goToNext}
+  disabled={!table.pagination.canGoNext}
+>
+  Next
+</Button>
+```
+
+### Buyer Product List Page (BuyerProductListPage.tsx)
+
+```typescript
+const table = useTable<BuyerProduct>({
+  source: "BDO_AmazonProductMaster",
+  columns: [...],
+  enableSorting: true,
+  enableFiltering: true,
+  enablePagination: true,
+  initialState: {
+    pagination: { pageNo: 1, pageSize: 10 },
+    sorting: { field: "Title", direction: "asc" },
+  },
+});
+
+// Category filter
+const handleCategoryChange = (category: string) => {
+  table.filter.clearConditions();
+  if (category !== "all") {
+    table.filter.addCondition({
+      lhsField: "Category",
+      operator: "EQ",
+      rhsValue: category,
+      rhsType: "Constant",
+    });
+  }
+};
+
+// Price range filter
+const handlePriceChange = (rangeLabel: string) => {
+  const range = PRICE_RANGES.find((r) => r.label === rangeLabel);
+  if (range) {
+    if (range.max === null) {
+      // "$200 & Above" - use GTE
+      table.filter.addCondition({
+        lhsField: "Price",
+        operator: "GTE",
+        rhsValue: range.min,
+        rhsType: "Constant",
+      });
+    } else if (range.min === 0) {
+      // "Under $25" - use LT
+      table.filter.addCondition({
+        lhsField: "Price",
+        operator: "LT",
+        rhsValue: range.max,
+        rhsType: "Constant",
+      });
+    } else {
+      // Range like "$25 to $50" - use Between
+      table.filter.addCondition({
+        lhsField: "Price",
+        operator: "Between",
+        rhsValue: [range.min, range.max],
+        rhsType: "Constant",
+      });
+    }
+  }
+};
+
+// Sorting
+const handleSortChange = (value: string) => {
+  switch (value) {
+    case "price-asc":
+      table.sort.set("Price", "asc");
+      break;
+    case "price-desc":
+      table.sort.set("Price", "desc");
+      break;
+    case "newest":
+      table.sort.set("_created_at", "desc");
+      break;
+    default:
+      table.sort.set("Title", "asc");
+      break;
+  }
+};
+
+// Clear all filters
+<Button
+  onClick={() => {
+    table.search.clear();
+    table.filter.clearConditions();
+  }}
+>
+  Clear All Filters
+</Button>
+```
+
+## Key Behaviors
+
+1. **Auto-pagination reset**: Search and filter changes automatically reset to page 1
+2. **Separate count query**: Total count is fetched separately for accurate pagination
+3. **Type-safe filters**: The `lhsField` in filter conditions is constrained to `keyof T`
+4. **1-indexed pagination**: Pages start at 1, not 0
+5. **Sort cycling**: `toggle()` cycles through: ascending -> descending -> none
+6. **Integrated useFilter**: Advanced filtering is powered by the standalone useFilter hook
+7. **TanStack Query**: Data fetching uses React Query for caching and state management
+
+## API Format
+
+The hook automatically converts state to the backend API format:
+
+```typescript
+// Sort format sent to API
+Sort: [{ "fieldName": "ASC" }]
+
+// Filter format sent to API
+Filter: {
+  Operator: "And",
+  Condition: [
+    {
+      Operator: "EQ",
+      LHSField: "Category",
+      RHSValue: "Electronics",
+      RHSType: "Constant"
+    }
+  ]
+}
+```
+
+## Architecture Notes
+
+- Built on TanStack Query for data fetching
+- Integrates `useFilter` hook for advanced filtering
+- Maintains separate queries for data and count (optimized caching)
+- Uses `useMemo` and `useCallback` for performance optimization
+- Type-safe with full TypeScript generics support
