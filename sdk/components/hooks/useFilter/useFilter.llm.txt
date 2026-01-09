@@ -1,0 +1,497 @@
+# useFilter Hook - LLM Documentation
+
+## Overview
+
+The `useFilter` hook is a React hook for managing filter conditions with:
+- Type-safe filter condition management
+- Support for simple conditions and nested logical groups
+- Automatic validation
+- API payload generation
+- State import/export
+- Integrated with useTable hook
+
+## Import
+
+```typescript
+import { useFilter } from "kf-ai-sdk";
+// Or use through useTable's filter property
+```
+
+## Basic Usage
+
+### Standalone Usage
+
+```typescript
+const filter = useFilter<ProductType>({
+  initialLogicalOperator: "And",
+  fieldDefinitions: {
+    Price: {
+      type: "number",
+      allowedOperators: ["EQ", "GT", "LT", "GTE", "LTE", "Between"],
+    },
+    Category: {
+      type: "string",
+      allowedOperators: ["EQ", "NE", "Contains"],
+    },
+  },
+  onValidationError: (errors) => console.log(errors),
+});
+
+// Add a condition
+const id = filter.addCondition({
+  lhsField: "Price",
+  operator: "GT",
+  rhsValue: 100,
+  rhsType: "Constant",
+});
+```
+
+### Through useTable
+
+```typescript
+const table = useTable<ProductType>({
+  source: "BDO_Products",
+  columns: [...],
+  enableFiltering: true,
+});
+
+// Use table.filter for all filter operations
+table.filter.addCondition({
+  lhsField: "Category",
+  operator: "EQ",
+  rhsValue: "Electronics",
+  rhsType: "Constant",
+});
+```
+
+## Configuration Options
+
+### UseFilterOptions<T>
+
+| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `initialConditions` | `FilterConditionWithId[]` | No | `[]` | Initial filter conditions |
+| `initialLogicalOperator` | `LogicalOperator` | No | `"And"` | Initial logical operator |
+| `fieldDefinitions` | `Record<keyof T, FieldDefinition>` | No | - | Field definitions for validation |
+| `validateOnChange` | `boolean` | No | `true` | Validate conditions on change |
+| `onConditionAdd` | `(condition) => void` | No | - | Callback when condition added |
+| `onConditionUpdate` | `(condition) => void` | No | - | Callback when condition updated |
+| `onConditionRemove` | `(conditionId) => void` | No | - | Callback when condition removed |
+| `onValidationError` | `(errors) => void` | No | - | Callback for validation errors |
+
+### FieldDefinition
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `type` | `'string' \| 'number' \| 'date' \| 'boolean' \| 'currency' \| 'select'` | Field data type |
+| `allowedOperators` | `FilterOperator[]` | Operators allowed for this field |
+| `validateValue` | `(value, operator) => ValidationResult` | Custom validation function |
+| `transformValue` | `(value) => any` | Value transformation function |
+| `selectOptions` | `Array<{label, value}>` | Options for select fields |
+
+## Return Value
+
+### UseFilterReturn<T>
+
+#### Current State
+| Property | Type | Description |
+|----------|------|-------------|
+| `conditions` | `FilterConditionWithId[]` | Current filter conditions |
+| `logicalOperator` | `LogicalOperator` | Current logical operator ("And" \| "Or") |
+| `filterPayload` | `Filter \| undefined` | SDK-formatted filter for API |
+| `isValid` | `boolean` | All conditions are valid |
+| `validationErrors` | `ValidationError[]` | Current validation errors |
+
+#### Condition Management
+| Property | Type | Description |
+|----------|------|-------------|
+| `addCondition` | `(condition) => string` | Add condition, returns ID |
+| `updateCondition` | `(id, updates) => boolean` | Update condition |
+| `removeCondition` | `(id) => boolean` | Remove condition |
+| `clearConditions` | `() => void` | Clear all conditions |
+| `getCondition` | `(id) => FilterConditionWithId` | Get specific condition |
+
+#### Logical Operator
+| Property | Type | Description |
+|----------|------|-------------|
+| `setLogicalOperator` | `(operator) => void` | Set logical operator |
+
+#### Bulk Operations
+| Property | Type | Description |
+|----------|------|-------------|
+| `setConditions` | `(conditions) => void` | Replace all conditions |
+| `replaceCondition` | `(id, newCondition) => boolean` | Replace specific condition |
+
+#### Validation
+| Property | Type | Description |
+|----------|------|-------------|
+| `validateCondition` | `(condition) => ValidationResult` | Validate single condition |
+| `validateAllConditions` | `() => ValidationResult` | Validate all conditions |
+
+#### State Management
+| Property | Type | Description |
+|----------|------|-------------|
+| `exportState` | `() => FilterState` | Export current state |
+| `importState` | `(state) => void` | Import state |
+| `resetToInitial` | `() => void` | Reset to initial state |
+
+#### Utilities
+| Property | Type | Description |
+|----------|------|-------------|
+| `getConditionCount` | `() => number` | Get number of conditions |
+| `hasConditions` | `boolean` | Whether any conditions exist |
+| `canAddCondition` | `boolean` | Whether more can be added (always true) |
+
+## Filter Condition Types
+
+### FilterConditionWithId
+
+```typescript
+interface FilterConditionWithId {
+  id: string;                        // Unique identifier
+  operator: FilterOperator | LogicalOperator;
+  lhsField?: string;                 // Field name (for condition operators)
+  rhsValue?: any;                    // Value to compare
+  rhsType?: FilterRHSType;           // "Constant" | "Field"
+  children?: FilterConditionWithId[]; // Nested conditions (for logical operators)
+  isValid: boolean;                  // Validation state
+  validationErrors?: string[];       // Specific errors
+}
+```
+
+### TypedFilterConditionInput<T>
+
+Type-safe input for addCondition:
+
+```typescript
+interface TypedFilterConditionInput<T> {
+  operator: FilterOperator | LogicalOperator;
+  lhsField?: keyof T & string;  // Constrained to keys of T
+  rhsValue?: T[keyof T] | T[keyof T][] | any;
+  rhsType?: FilterRHSType;
+  children?: TypedFilterConditionInput<T>[];
+}
+```
+
+## Filter Operators
+
+### Comparison Operators
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `EQ` | Equal | `Price = 100` |
+| `NE` | Not Equal | `Status != "Active"` |
+| `GT` | Greater Than | `Stock > 0` |
+| `GTE` | Greater Than or Equal | `Price >= 50` |
+| `LT` | Less Than | `Rating < 3` |
+| `LTE` | Less Than or Equal | `Discount <= 20` |
+
+### Range Operators
+| Operator | Description | RHS Format |
+|----------|-------------|------------|
+| `Between` | Between two values | `[min, max]` |
+| `NotBetween` | Not between two values | `[min, max]` |
+
+### Set Operators
+| Operator | Description | RHS Format |
+|----------|-------------|------------|
+| `IN` | In array | `[value1, value2, ...]` |
+| `NIN` | Not in array | `[value1, value2, ...]` |
+
+### String Operators
+| Operator | Description |
+|----------|-------------|
+| `Contains` | Contains substring |
+| `NotContains` | Does not contain substring |
+| `StartsWith` | Starts with string |
+| `EndsWith` | Ends with string |
+
+### Null Operators
+| Operator | Description | RHS Required |
+|----------|-------------|--------------|
+| `Empty` | Is empty/null | No |
+| `NotEmpty` | Is not empty/null | No |
+
+### Logical Operators (for nesting)
+| Operator | Description |
+|----------|-------------|
+| `And` | All children must match |
+| `Or` | Any child must match |
+| `Not` | Negate child (single child only) |
+
+## E-Commerce App Usage Examples
+
+### Category Filter (BuyerProductListPage.tsx)
+
+```typescript
+const handleCategoryChange = (category: string) => {
+  table.filter.clearConditions();
+  if (category !== "all") {
+    table.filter.addCondition({
+      lhsField: "Category",
+      operator: "EQ",
+      rhsValue: category,
+      rhsType: "Constant",
+    });
+  }
+};
+```
+
+### Price Range Filter
+
+```typescript
+const PRICE_RANGES = [
+  { label: "Under $25", min: 0, max: 25 },
+  { label: "$25 to $50", min: 25, max: 50 },
+  { label: "$50 to $100", min: 50, max: 100 },
+  { label: "$100 to $200", min: 100, max: 200 },
+  { label: "$200 & Above", min: 200, max: null },
+];
+
+const handlePriceChange = (rangeLabel: string) => {
+  const range = PRICE_RANGES.find((r) => r.label === rangeLabel);
+  if (range) {
+    if (range.max === null) {
+      // "$200 & Above" - use GTE
+      table.filter.addCondition({
+        lhsField: "Price",
+        operator: "GTE",
+        rhsValue: range.min,
+        rhsType: "Constant",
+      });
+    } else if (range.min === 0) {
+      // "Under $25" - use LT
+      table.filter.addCondition({
+        lhsField: "Price",
+        operator: "LT",
+        rhsValue: range.max,
+        rhsType: "Constant",
+      });
+    } else {
+      // Range like "$25 to $50" - use Between
+      table.filter.addCondition({
+        lhsField: "Price",
+        operator: "Between",
+        rhsValue: [range.min, range.max],
+        rhsType: "Constant",
+      });
+    }
+  }
+};
+```
+
+### Multiple Filters Combined
+
+```typescript
+// Apply both category and price filters
+const applyFilters = (category: string, priceRange: string | null) => {
+  table.filter.clearConditions();
+
+  // Apply category filter
+  if (category !== "all") {
+    table.filter.addCondition({
+      lhsField: "Category",
+      operator: "EQ",
+      rhsValue: category,
+      rhsType: "Constant",
+    });
+  }
+
+  // Apply price filter
+  if (priceRange) {
+    const range = PRICE_RANGES.find((r) => r.label === priceRange);
+    if (range) {
+      table.filter.addCondition({
+        lhsField: "Price",
+        operator: "Between",
+        rhsValue: [range.min, range.max],
+        rhsType: "Constant",
+      });
+    }
+  }
+};
+```
+
+### Clear All Filters
+
+```typescript
+<Button
+  onClick={() => {
+    table.search.clear();
+    table.filter.clearConditions();
+    setSelectedCategory("all");
+    setSelectedPriceRange(null);
+  }}
+>
+  Clear All Filters
+</Button>
+```
+
+## Nested Logical Groups
+
+Support for complex filter expressions:
+
+```typescript
+// (Category = "Electronics" AND Price > 100) OR Stock = 0
+filter.addCondition({
+  operator: "Or",
+  children: [
+    {
+      operator: "And",
+      children: [
+        { operator: "EQ", lhsField: "Category", rhsValue: "Electronics", rhsType: "Constant" },
+        { operator: "GT", lhsField: "Price", rhsValue: 100, rhsType: "Constant" },
+      ],
+    },
+    { operator: "EQ", lhsField: "Stock", rhsValue: 0, rhsType: "Constant" },
+  ],
+});
+```
+
+## API Payload Format
+
+The hook generates payloads compatible with the backend API:
+
+```typescript
+// Single condition
+{
+  Operator: "And",
+  Condition: [
+    {
+      Operator: "EQ",
+      LHSField: "Category",
+      RHSValue: "Electronics",
+      RHSType: "Constant"
+    }
+  ]
+}
+
+// Multiple conditions
+{
+  Operator: "And",
+  Condition: [
+    { Operator: "EQ", LHSField: "Category", RHSValue: "Electronics", RHSType: "Constant" },
+    { Operator: "GTE", LHSField: "Price", RHSValue: 50, RHSType: "Constant" }
+  ]
+}
+
+// Nested logical groups
+{
+  Operator: "Or",
+  Condition: [
+    {
+      Operator: "And",
+      Condition: [...]
+    },
+    { Operator: "EQ", LHSField: "Stock", RHSValue: 0, RHSType: "Constant" }
+  ]
+}
+```
+
+## Validation
+
+### Automatic Validation
+
+Conditions are validated on add/update:
+- Operator is required
+- lhsField is required for condition operators
+- rhsValue format matches operator requirements
+- Field-specific validation if fieldDefinitions provided
+
+### Validation Errors
+
+```typescript
+interface ValidationError {
+  conditionId: string;
+  field: string;
+  message: string;
+}
+
+// Access validation errors
+filter.validationErrors.forEach((error) => {
+  console.log(`${error.field}: ${error.message}`);
+});
+```
+
+### Custom Field Validation
+
+```typescript
+const filter = useFilter<Product>({
+  fieldDefinitions: {
+    Price: {
+      type: "number",
+      allowedOperators: ["EQ", "GT", "LT", "GTE", "LTE", "Between"],
+      validateValue: (value, operator) => {
+        if (value < 0) {
+          return { isValid: false, errors: ["Price cannot be negative"] };
+        }
+        return { isValid: true, errors: [] };
+      },
+    },
+  },
+});
+```
+
+## State Management
+
+### Export/Import State
+
+```typescript
+// Export current state
+const savedState = filter.exportState();
+localStorage.setItem("filters", JSON.stringify(savedState));
+
+// Import saved state
+const savedState = JSON.parse(localStorage.getItem("filters"));
+filter.importState(savedState);
+```
+
+### Reset to Initial
+
+```typescript
+filter.resetToInitial();
+```
+
+## Key Behaviors
+
+1. **Auto-validation**: Conditions validated on add/update
+2. **Type-safe lhsField**: Constrained to `keyof T` at compile time
+3. **Only valid in payload**: Only valid conditions included in filterPayload
+4. **UUID generation**: Uses `crypto.randomUUID()` for condition IDs
+5. **Deep copy on export**: Exported state is a deep copy
+6. **Nested group support**: Full support for And/Or/Not logical nesting
+
+## Integration with useTable
+
+The useFilter hook is automatically integrated into useTable:
+
+```typescript
+const table = useTable<Product>({
+  source: "BDO_Products",
+  enableFiltering: true,
+  initialState: {
+    filters: [...],
+    filterOperator: "And",
+  },
+  onFilterError: (errors) => console.log(errors),
+});
+
+// Access filter through table.filter
+table.filter.addCondition({...});
+table.filter.clearConditions();
+table.filter.conditions;
+table.filter.isValid;
+```
+
+Filter changes automatically:
+- Reset pagination to page 1
+- Trigger data refetch
+- Update count query
+
+## Architecture Notes
+
+- Uses `useState` for internal state management
+- Generates UUIDs for condition tracking
+- Recursive validation for nested groups
+- Memoized filterPayload computation
+- Type-safe with full TypeScript generics
+- Integrates seamlessly with useTable
