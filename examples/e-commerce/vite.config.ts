@@ -27,6 +27,12 @@ export default defineConfig({
       "/api": {
         target: "http://runtime1001.localhost:8085",
         changeOrigin: true,
+        secure: false,
+        configure: (proxy) => {
+          proxy.on("proxyReq", (proxyReq) => {
+            proxyReq.setHeader("Cookie", "__USID=US_CjtU7R0ADc");
+          });
+        },
       },
     },
   },

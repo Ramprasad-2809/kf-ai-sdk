@@ -1,12 +1,6 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Search,
-  Filter,
-  SlidersHorizontal,
-  ChevronRight,
-  Star,
-} from "lucide-react";
+import { Search, Filter, SlidersHorizontal, ChevronRight } from "lucide-react";
 import { useTable } from "kf-ai-sdk";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
@@ -49,7 +43,7 @@ export function BuyerProductListPage() {
   const product = new Product(Roles.Buyer);
 
   const table = useTable<BuyerProduct>({
-    source: "BDO_AmazonProductMaster",
+    source: "BDO_AmazonProductMaster", // TODO: implement product._id to get BDO id instead of static string
     columns: [
       { fieldId: "Title", label: "Name", enableSorting: true },
       { fieldId: "Price", label: "Price", enableSorting: true },
@@ -60,33 +54,29 @@ export function BuyerProductListPage() {
     enableFiltering: true,
     enablePagination: true,
     initialState: {
-      pagination: { pageNo: 1, pageSize: 12 },
+      pagination: { pageNo: 1, pageSize: 10 },
       sorting: { field: "Title", direction: "asc" },
     },
   });
 
-  // Store the first valid instanceId to avoid re-fetching categories when filters change
-  const instanceIdRef = useRef<string | null>(null);
-  if (!instanceIdRef.current && table.rows[0]?._id) {
-    instanceIdRef.current = table.rows[0]._id;
-  }
+  // Derive instanceId from first row - no useRef needed
+  const instanceId = table.rows[0]?._id;
 
-  // Fetch categories once on page load and cache permanently
-  const { data: categoriesData } = useQuery({
+  // Fetch categories once when instanceId is available and cache permanently
+  const { data: categories = [] } = useQuery<
+    Array<{ Value: string; Label: string }>
+  >({
     queryKey: ["product-categories"],
     queryFn: () => {
-      if (!instanceIdRef.current) {
+      if (!instanceId) {
         throw new Error("No instance ID available");
       }
-      return product.fetchField(instanceIdRef.current, "Category");
+      return product.fetchField(instanceId, "Category");
     },
-    enabled: !!instanceIdRef.current,
+    enabled: !!instanceId,
     staleTime: Infinity, // Never refetch - categories are static
     gcTime: Infinity, // Keep in cache forever
   });
-
-  const categories: Array<{ Value: string; Label: string }> =
-    categoriesData || [];
 
   const addToCartMutation = useMutation({
     mutationFn: async (product: BuyerProduct) => {
@@ -269,29 +259,6 @@ export function BuyerProductListPage() {
         </div>
 
         <Separator />
-
-        {/* Customer Reviews (Mock UI) */}
-        <div className="space-y-3">
-          <h3 className="font-bold text-gray-900 text-sm">Customer Review</h3>
-          <div className="space-y-2">
-            {[4, 3, 2, 1].map((rating) => (
-              <button
-                key={rating}
-                className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
-              >
-                <div className="flex text-yellow-400">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Star
-                      key={i}
-                      className={`h-4 w-4 ${i < rating ? "fill-current" : "text-gray-200"}`}
-                    />
-                  ))}
-                </div>
-                <span>& Up</span>
-              </button>
-            ))}
-          </div>
-        </div>
       </aside>
 
       {/* Main Content */}
@@ -451,17 +418,6 @@ export function BuyerProductListPage() {
                           <span className="text-xs text-slate-500 uppercase tracking-wide font-medium">
                             {product.Category}
                           </span>
-                          {/* Mock Rating */}
-                          <div className="flex text-yellow-400">
-                            <Star className="h-3 w-3 fill-current" />
-                            <Star className="h-3 w-3 fill-current" />
-                            <Star className="h-3 w-3 fill-current" />
-                            <Star className="h-3 w-3 fill-current" />
-                            <Star className="h-3 w-3 text-slate-200 fill-current" />
-                            <span className="text-xs text-slate-400 ml-1">
-                              (42)
-                            </span>
-                          </div>
                         </div>
 
                         {/* Product Name */}

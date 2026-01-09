@@ -27,6 +27,23 @@ export interface FilterConditionWithId {
   validationErrors?: string[];
 }
 
+/**
+ * Type-safe filter condition input (for addCondition)
+ * Constrains lhsField to keys of T for compile-time type checking
+ */
+export interface TypedFilterConditionInput<T> {
+  /** Filter operator (can be condition or logical operator) */
+  operator: FilterOperator | LogicalOperator;
+  /** Left-hand side field name - constrained to keyof T */
+  lhsField?: keyof T & string;
+  /** Right-hand side value */
+  rhsValue?: T[keyof T] | T[keyof T][] | any;
+  /** Right-hand side type (defaults to Constant) */
+  rhsType?: FilterRHSType;
+  /** Nested conditions (for logical operators: And, Or, Not) */
+  children?: TypedFilterConditionInput<T>[];
+}
+
 export interface FilterState {
   /** Logical operator for combining conditions */
   logicalOperator: LogicalOperator;
@@ -82,7 +99,7 @@ export interface UseFilterOptions<T = any> {
   onValidationError?: (errors: ValidationError[]) => void;
 }
 
-export interface UseFilterReturn {
+export interface UseFilterReturn<T = any> {
   // Current state
   /** Array of current filter conditions */
   conditions: FilterConditionWithId[];
@@ -96,10 +113,10 @@ export interface UseFilterReturn {
   validationErrors: ValidationError[];
 
   // Condition management
-  /** Add a new filter condition */
-  addCondition: (condition: Omit<FilterConditionWithId, 'id' | 'isValid'>) => string;
+  /** Add a new filter condition (type-safe: lhsField constrained to keyof T) */
+  addCondition: (condition: TypedFilterConditionInput<T>) => string;
   /** Update an existing condition */
-  updateCondition: (id: string, updates: Partial<FilterConditionWithId>) => boolean;
+  updateCondition: (id: string, updates: Partial<TypedFilterConditionInput<T>>) => boolean;
   /** Remove a condition by ID */
   removeCondition: (id: string) => boolean;
   /** Clear all conditions */
@@ -115,7 +132,7 @@ export interface UseFilterReturn {
   /** Replace all conditions */
   setConditions: (conditions: FilterConditionWithId[]) => void;
   /** Replace a specific condition */
-  replaceCondition: (id: string, newCondition: Omit<FilterConditionWithId, 'id' | 'isValid'>) => boolean;
+  replaceCondition: (id: string, newCondition: TypedFilterConditionInput<T>) => boolean;
 
   // Validation
   /** Validate a single condition */

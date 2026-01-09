@@ -1,6 +1,7 @@
 import type { ListResponse, LogicalOperator } from "../../../types/common";
 import type {
   FilterConditionWithId,
+  TypedFilterConditionInput,
   ValidationError,
   FieldDefinition,
 } from "../useFilter";
@@ -92,7 +93,7 @@ export interface UseTableReturn<T> {
     clear: () => void;
   };
 
-  // Advanced Filtering (Filter Conditions)
+  // Advanced Filtering (Filter Conditions) - Type-safe: lhsField constrained to keyof T
   filter: {
     // State
     conditions: FilterConditionWithId[];
@@ -101,13 +102,11 @@ export interface UseTableReturn<T> {
     validationErrors: ValidationError[];
     hasConditions: boolean;
 
-    // Condition Management
-    addCondition: (
-      condition: Omit<FilterConditionWithId, "id" | "isValid">
-    ) => string;
+    // Condition Management (type-safe)
+    addCondition: (condition: TypedFilterConditionInput<T>) => string;
     updateCondition: (
       id: string,
-      updates: Partial<FilterConditionWithId>
+      updates: Partial<TypedFilterConditionInput<T>>
     ) => boolean;
     removeCondition: (id: string) => boolean;
     clearConditions: () => void;
@@ -120,7 +119,7 @@ export interface UseTableReturn<T> {
     setConditions: (conditions: FilterConditionWithId[]) => void;
     replaceCondition: (
       id: string,
-      newCondition: Omit<FilterConditionWithId, "id" | "isValid">
+      newCondition: TypedFilterConditionInput<T>
     ) => boolean;
 
     // Validation

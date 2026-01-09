@@ -1,16 +1,14 @@
 // ============================================================
-// PRODUCT MASTER - BDO SDK Wrapper
+// PRODUCT - BDO SDK Wrapper
 // ============================================================
 
 import {
-  IdField,
-  StringField,
-  NumberField,
-  DateTimeField,
-  BooleanField,
-  SelectField,
-  TextAreaField,
   ArrayField,
+  BooleanField,
+  DateTimeField,
+  IdField,
+  NumberField,
+  StringField,
 } from "../../../sdk/types/base-fields";
 import { Role, Roles } from "../../types/roles";
 import {
@@ -33,88 +31,80 @@ import {
 
 const BO_ID = `BDO_AmazonProductMaster`;
 
-export type ProductMasterType = {
-  /** MongoDB document ID */
-  _id: IdField;
+export type ProductType = {
+  /** Product ID */
+  ProductId: StringField;
 
-  /** Unique product identifier (auto-generated) */
-  ProductId: IdField;
-
-  /** Amazon Standard Identification Number (10 alphanumeric chars) */
+  /** Amazon Standard Identification Number */
   ASIN: StringField;
 
   /** Stock Keeping Unit */
   SKU: StringField;
 
-  /** Product Title (10-200 characters) */
+  /** Product Title */
   Title: StringField;
 
-  /** Product Description (max 2000 characters) */
-  Description: TextAreaField;
+  /** Product Description */
+  Description: StringField;
 
-  /** Product Image Source URL */
-  ImageSrc: StringField;
-
-  /** Selling Price (required, must be > 0) */
+  /** Selling Price */
   Price: NumberField;
 
-  /** Maximum Retail Price (required, >= Price) */
+  /** Maximum Retail Price */
   MRP: NumberField;
 
-  /** Product Cost (non-negative) */
+  /** Product Cost */
   Cost: NumberField;
 
-  /** Discount Percentage (0-100, computed from MRP and Price) */
+  /** Discount Percentage */
   Discount: NumberField;
 
   /** Product Category */
-  Category: SelectField<
-    "Electronics" | "Books" | "Clothing" | "Home" | "Sports" | "Toys"
-  >;
+  Category: StringField;
 
   /** Brand Name */
   Brand: StringField;
 
-  /** Product Tags for search */
+  /** Product Tags */
   Tags: ArrayField<StringField>;
 
-  /** Stock Quantity (non-negative) */
+  /** Stock Quantity */
   Stock: NumberField;
 
   /** Warehouse Location */
-  Warehouse: SelectField<"Warehouse_A" | "Warehouse_B" | "Warehouse_C">;
+  Warehouse: StringField;
 
   /** Reorder Level */
   ReorderLevel: NumberField;
 
-  /** Low Stock Indicator (computed: Stock <= ReorderLevel) */
+  /** Low Stock Indicator */
   LowStock: BooleanField;
 
   /** Is Active */
   IsActive: BooleanField;
 
-  /** Created timestamp */
+  /** Image Source */
+  ImageSrc: StringField;
+
+  /** MongoDB document ID (required) (read-only) */
+  _id: IdField;
+
+  /** Created timestamp (required) (read-only) */
   _created_at: DateTimeField;
 
-  /** Modified timestamp */
+  /** Modified timestamp (required) (read-only) */
   _modified_at: DateTimeField;
 
-  /** Created by user */
-  _created_by: {
-    _id: IdField;
-    username: StringField;
-  };
+  /** Created by user (read-only) */
+  _created_by: { _id: IdField; username: StringField };
 
-  /** Modified by user */
-  _modified_by: {
-    _id: IdField;
-    username: StringField;
-  };
+  /** Modified by user (read-only) */
+  _modified_by: { _id: IdField; username: StringField };
 
-  /** Record version */
+  /** Record version (read-only) */
   _version: StringField;
 
-  /** Metadata version */
+  /** Metadata version (read-only) */
   _m_version: StringField;
 };
 
@@ -123,93 +113,92 @@ export type ProductMasterType = {
 // ============================================================
 
 /**
- * Admin view - full access to all fields
+ * Admin view - System Administrator with full access
  */
-export type AdminProduct = ProductMasterType;
+export type AdminProduct = ProductType;
 
 /**
- * Seller view - can edit product details, pricing, and inventory
+ * Seller view - Product seller with create and Update permissions
  */
 export type SellerProduct = Pick<
-  ProductMasterType,
-  | "_id"
-  | "ProductId"
+  ProductType,
   | "ASIN"
-  | "SKU"
-  | "Title"
-  | "Description"
-  | "ImageSrc"
-  | "Price"
-  | "MRP"
-  | "Category"
   | "Brand"
-  | "Tags"
-  | "Stock"
-  | "Warehouse"
-  | "ReorderLevel"
+  | "Category"
+  | "Cost"
+  | "Description"
   | "Discount"
+  | "ImageSrc"
   | "LowStock"
-  | "IsActive"
+  | "MRP"
+  | "Price"
+  | "ProductId"
+  | "SKU"
+  | "Stock"
+  | "Tags"
+  | "Title"
+  | "Warehouse"
   | "_created_at"
-  | "_modified_at"
-  | "_version"
+  | "_created_by"
+  | "_id"
   | "_m_version"
+  | "_modified_at"
+  | "_modified_by"
+  | "_version"
 >;
 
 /**
- * Buyer view - read-only access to public product information
+ * Buyer view - Product buyer with Read-only access
  */
 export type BuyerProduct = Pick<
-  ProductMasterType,
-  | "_id"
-  | "ProductId"
+  ProductType,
   | "ASIN"
-  | "SKU"
-  | "Title"
-  | "Description"
-  | "ImageSrc"
-  | "Price"
-  | "MRP"
-  | "Discount"
-  | "Category"
   | "Brand"
-  | "Tags"
-  | "Stock"
+  | "Category"
+  | "Description"
+  | "Discount"
+  | "ImageSrc"
   | "IsActive"
-  | "_created_at"
->;
-
-/**
- * Inventory Manager view - focus on inventory and warehouse management
- */
-export type InventoryManagerProduct = Pick<
-  ProductMasterType,
-  | "_id"
+  | "MRP"
+  | "Price"
   | "ProductId"
-  | "ASIN"
   | "SKU"
-  | "Title"
   | "Stock"
-  | "Warehouse"
-  | "ReorderLevel"
-  | "LowStock"
+  | "Tags"
+  | "Title"
   | "_created_at"
+  | "_created_by"
+  | "_id"
+  | "_m_version"
   | "_modified_at"
+  | "_modified_by"
+  | "_version"
 >;
 
 /**
- * Warehouse Staff view - limited to assigned warehouse stock updates
+ * InventoryManager view - Manages inventory levels and warehouse assignments
+ */
+export type InventoryManagerProduct = ProductType;
+
+/**
+ * WarehouseStaff view - Updates stock for assigned warehouse
  */
 export type WarehouseStaffProduct = Pick<
-  ProductMasterType,
-  | "_id"
-  | "ProductId"
-  | "SKU"
-  | "Title"
-  | "Stock"
-  | "Warehouse"
-  | "ReorderLevel"
+  ProductType,
   | "LowStock"
+  | "ProductId"
+  | "ReorderLevel"
+  | "SKU"
+  | "Stock"
+  | "Title"
+  | "Warehouse"
+  | "_created_at"
+  | "_created_by"
+  | "_id"
+  | "_m_version"
+  | "_modified_at"
+  | "_modified_by"
+  | "_version"
 >;
 
 // ============================================================
@@ -222,13 +211,13 @@ export type WarehouseStaffProduct = Pick<
 export type ProductForRole<TRole extends Role> =
   TRole extends typeof Roles.Admin
     ? AdminProduct
-    : TRole extends "Seller"
+    : TRole extends typeof Roles.Seller
       ? SellerProduct
-      : TRole extends "Buyer"
+      : TRole extends typeof Roles.Buyer
         ? BuyerProduct
-        : TRole extends "InventoryManager"
+        : TRole extends typeof Roles.InventoryManager
           ? InventoryManagerProduct
-          : TRole extends "WarehouseStaff"
+          : TRole extends typeof Roles.WarehouseStaff
             ? WarehouseStaffProduct
             : never;
 
