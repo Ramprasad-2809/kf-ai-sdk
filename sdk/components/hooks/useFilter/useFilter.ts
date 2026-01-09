@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo, useEffect } from "react";
 import type { Filter, LogicalOperator } from "../../../types/common";
 import type {
   FilterConditionWithId,
+  TypedFilterConditionInput,
   FieldDefinition,
   ValidationResult,
   ValidationError,
@@ -187,7 +188,7 @@ const buildFilterPayload = (
 
 export function useFilter<T = any>(
   options: UseFilterOptions<T> = {}
-): UseFilterReturn {
+): UseFilterReturn<T> {
   // ============================================================
   // STATE MANAGEMENT
   // ============================================================
@@ -231,12 +232,14 @@ export function useFilter<T = any>(
   // CONDITION MANAGEMENT
   // ============================================================
 
-  const addCondition = useCallback((condition: Omit<FilterConditionWithId, 'id' | 'isValid'>): string => {
+  const addCondition = useCallback((condition: TypedFilterConditionInput<T>): string => {
     const id = generateId();
-    const validation = validateCondition(condition);
+    // Convert typed input to internal format (using unknown for type narrowing)
+    const internalCondition = condition as unknown as Omit<FilterConditionWithId, 'id' | 'isValid'>;
+    const validation = validateCondition(internalCondition);
 
     const newCondition: FilterConditionWithId = {
-      ...condition,
+      ...internalCondition,
       id,
       isValid: validation.isValid,
       validationErrors: validation.errors
@@ -254,15 +257,17 @@ export function useFilter<T = any>(
     return id;
   }, [validateCondition, options]);
 
-  const updateCondition = useCallback((id: string, updates: Partial<FilterConditionWithId>): boolean => {
+  const updateCondition = useCallback((id: string, updates: Partial<TypedFilterConditionInput<T>>): boolean => {
     let found = false;
+    // Convert typed input to internal format (using unknown for type narrowing)
+    const internalUpdates = updates as unknown as Partial<FilterConditionWithId>;
 
     setFilterState(prev => ({
       ...prev,
       conditions: prev.conditions.map(condition => {
         if (condition.id === id) {
           found = true;
-          const updatedCondition = { ...condition, ...updates };
+          const updatedCondition = { ...condition, ...internalUpdates };
           const validation = validateCondition(updatedCondition);
 
           const finalCondition = {
@@ -346,17 +351,19 @@ export function useFilter<T = any>(
     }));
   }, [validateCondition]);
 
-  const replaceCondition = useCallback((id: string, newCondition: Omit<FilterConditionWithId, 'id' | 'isValid'>): boolean => {
+  const replaceCondition = useCallback((id: string, newCondition: TypedFilterConditionInput<T>): boolean => {
     let found = false;
+    // Convert typed input to internal format (using unknown for type narrowing)
+    const internalCondition = newCondition as unknown as Omit<FilterConditionWithId, 'id' | 'isValid'>;
 
     setFilterState(prev => ({
       ...prev,
       conditions: prev.conditions.map(condition => {
         if (condition.id === id) {
           found = true;
-          const validation = validateCondition(newCondition);
+          const validation = validateCondition(internalCondition);
           return {
-            ...newCondition,
+            ...internalCondition,
             id,
             isValid: validation.isValid,
             validationErrors: validation.errors

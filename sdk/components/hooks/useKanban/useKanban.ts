@@ -139,19 +139,16 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
         Filter: combinedPayload,
       };
 
-      // Add Sorting
+      // Add Sorting - using correct API format: [{ "fieldName": "ASC" }]
       if (sorting.field && sorting.direction) {
         opts.Sort = [
-          {
-            Field: String(sorting.field),
-            Order: sorting.direction === "asc" ? "ASC" : "DESC",
-          },
-          { Field: "position", Order: "ASC" },
+          { [String(sorting.field)]: sorting.direction === "asc" ? "ASC" : "DESC" },
+          { position: "ASC" },
         ];
       } else {
         opts.Sort = [
-          { Field: "columnId", Order: "ASC" },
-          { Field: "position", Order: "ASC" },
+          { columnId: "ASC" },
+          { position: "ASC" },
         ];
       }
 

@@ -79,8 +79,12 @@ export interface ValidationRule {
  * Backend formula structure for computed fields
  */
 export interface Formula {
+  Id?: string;
+  Name?: string;
+  Description?: string;
   Expression: string;
   ExpressionTree: ExpressionTree;
+  ResultType?: string;
 }
 
 /**
@@ -147,7 +151,7 @@ export interface BackendFieldDefinition {
   DefaultValue?: DefaultValue;
   Formula?: Formula;
   Computed?: boolean;
-  Validation?: string[]; // Array of rule IDs
+  Validation?: string[] | ValidationRule[]; // Array of rule IDs OR inline validation rule objects
   Values?: FieldValues;
   Items?: {
     Type: string;
@@ -195,10 +199,13 @@ export interface BDOSchema {
   Rules: BusinessObjectRules;
   Fields: Record<string, BackendFieldDefinition>;
   RolePermission: Record<string, RolePermission>;
-  Roles: Record<string, {
-    Name: string;
-    Description: string;
-  }>;
+  Roles: Record<
+    string,
+    {
+      Name: string;
+      Description: string;
+    }
+  >;
 }
 
 /**
@@ -242,7 +249,9 @@ export interface RuleExecutionContext<T> {
 /**
  * useForm hook options with strict typing
  */
-export interface UseFormOptions<T extends Record<string, any> = Record<string, any>> {
+export interface UseFormOptions<
+  T extends Record<string, any> = Record<string, any>,
+> {
   /** Data source identifier (Business Object name) */
   source: string;
 
@@ -255,7 +264,23 @@ export interface UseFormOptions<T extends Record<string, any> = Record<string, a
   /** Default form values */
   defaultValues?: Partial<T>;
 
-  /** Validation mode */
+  /**
+   * Validation mode - controls when validation runs and errors are displayed
+   *
+   * Available modes:
+   * - "onSubmit" (default in react-hook-form): Validate only when form is submitted
+   * - "onBlur" (default in useForm): Validate when field loses focus
+   * - "onChange": Validate on every keystroke/change
+   * - "onTouched": Validate on first blur, then on every change after
+   * - "all": Validate on both blur and change
+   *
+   * **Important:** Computation (draft API calls) ALWAYS fires on blur regardless of mode,
+   * but only if the field value is valid. In "onSubmit" mode, computation will fire
+   * on blur since no validation has occurred yet (validation happens at submit time).
+   *
+   * @default "onBlur"
+   * @see https://react-hook-form.com/docs/useform for more details on validation modes
+   */
   mode?: FormMode;
 
   /** Whether to enable schema fetching and form initialization (default: true) */
@@ -284,6 +309,13 @@ export interface UseFormOptions<T extends Record<string, any> = Record<string, a
 
   /** Manual schema (use instead of fetching) */
   schema?: BackendSchema | BDOSchema;
+
+  /**
+   * Trigger draft API call on every field change (after validation passes)
+   * If true: draft API is called for any field change
+   * If false (default): draft API is called only when computed field dependencies change
+   */
+  draftOnEveryChange?: boolean;
 }
 
 // ============================================================
@@ -296,10 +328,10 @@ export interface UseFormOptions<T extends Record<string, any> = Record<string, a
 export interface FieldPermission {
   /** Can user edit this field */
   editable: boolean;
-  
+
   /** Can user see this field */
   readable: boolean;
-  
+
   /** Is field completely hidden */
   hidden: boolean;
 }
@@ -362,7 +394,6 @@ export interface ProcessedField {
   };
 }
 
-
 /**
  * Form schema after processing
  */
@@ -390,11 +421,14 @@ export interface ProcessedSchema {
   };
 
   /** Field-to-rule mapping for quick lookup */
-  fieldRules: Record<string, {
-    validation: string[];
-    computation: string[];
-    businessLogic: string[];
-  }>;
+  fieldRules: Record<
+    string,
+    {
+      validation: string[];
+      computation: string[];
+      businessLogic: string[];
+    }
+  >;
 
   /** Role permissions */
   rolePermissions?: Record<string, RolePermission>;
@@ -407,7 +441,9 @@ export interface ProcessedSchema {
 /**
  * useForm hook return type with flattened state access and strict typing
  */
-export interface UseFormReturn<T extends Record<string, any> = Record<string, any>> {
+export interface UseFormReturn<
+  T extends Record<string, any> = Record<string, any>,
+> {
   // ============================================================
   // FORM METHODS WITH STRICT TYPING
   // ============================================================
@@ -424,11 +460,11 @@ export interface UseFormReturn<T extends Record<string, any> = Record<string, an
   /** Watch field values with strict typing */
   watch: <K extends Path<T> | readonly Path<T>[]>(
     name?: K
-  ) => K extends Path<T> 
-    ? PathValue<T, K> 
+  ) => K extends Path<T>
+    ? PathValue<T, K>
     : K extends readonly Path<T>[]
-    ? PathValue<T, K[number]>[] 
-    : T;
+      ? PathValue<T, K[number]>[]
+      : T;
 
   /** Set field value programmatically with strict typing */
   setValue: <K extends Path<T>>(
@@ -526,7 +562,6 @@ export interface UseFormReturn<T extends Record<string, any> = Record<string, an
 
   /** Check if field is computed with strict typing */
   isFieldComputed: <K extends keyof T>(fieldName: K) => boolean;
-
 
   // ============================================================
   // OPERATIONS

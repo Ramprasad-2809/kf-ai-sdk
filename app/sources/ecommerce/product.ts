@@ -1,18 +1,14 @@
 // ============================================================
-// AMAZON PRODUCT MASTER - BDO SDK Wrapper
+// PRODUCT - BDO SDK Wrapper
 // ============================================================
-// Thin wrapper around BDO_AmazonProductMaster API
-// All validation and business logic handled by BDO schema and useForm hook
 
 import {
-  IdField,
-  StringField,
-  NumberField,
-  DateTimeField,
-  BooleanField,
-  SelectField,
-  TextAreaField,
   ArrayField,
+  BooleanField,
+  DateTimeField,
+  IdField,
+  NumberField,
+  StringField,
 } from "../../../sdk/types/base-fields";
 import { Role, Roles } from "../../types/roles";
 import {
@@ -20,6 +16,12 @@ import {
   ListOptions,
   CreateUpdateResponse,
   DeleteResponse,
+  MetricOptions,
+  MetricResponse,
+  PivotOptions,
+  PivotResponse,
+  DraftResponse,
+  FieldsResponse,
   api,
 } from "../../../sdk";
 
@@ -27,93 +29,82 @@ import {
 // TYPE DEFINITION
 // ============================================================
 
-/**
- * Complete Amazon Product Master type based on BDO schema
- * All validation rules are defined in BDO schema and enforced by useForm hook
- * Computed fields (Discount, LowStock) are calculated by backend
- */
-export type AmazonProductMasterType = {
-  /** MongoDB document ID */
-  _id: IdField;
+const BO_ID = `BDO_AmazonProductMaster`;
 
-  /** Unique product identifier (auto-generated) */
-  ProductId: IdField;
+export type ProductType = {
+  /** Product ID */
+  ProductId: StringField;
 
-  /** Amazon Standard Identification Number (10 alphanumeric chars) */
+  /** Amazon Standard Identification Number */
   ASIN: StringField;
 
   /** Stock Keeping Unit */
   SKU: StringField;
 
-  /** Product Title (10-200 characters) */
+  /** Product Title */
   Title: StringField;
 
-  /** Product Description (max 2000 characters) */
-  Description: TextAreaField;
+  /** Product Description */
+  Description: StringField;
 
-  /** Product Image URL */
-  ImageUrl: StringField;
-
-  /** Selling Price (required, must be > 0) */
+  /** Selling Price */
   Price: NumberField;
 
-  /** Maximum Retail Price (required, >= Price) */
+  /** Maximum Retail Price */
   MRP: NumberField;
 
-  /** Product Cost (non-negative) */
+  /** Product Cost */
   Cost: NumberField;
 
-  /** Discount Percentage (0-100, computed from MRP and Price) */
+  /** Discount Percentage */
   Discount: NumberField;
 
   /** Product Category */
-  Category: SelectField<
-    "Electronics" | "Books" | "Clothing" | "Home" | "Sports" | "Toys"
-  >;
+  Category: StringField;
 
   /** Brand Name */
   Brand: StringField;
 
-  /** Product Tags for search */
+  /** Product Tags */
   Tags: ArrayField<StringField>;
 
-  /** Stock Quantity (non-negative) */
+  /** Stock Quantity */
   Stock: NumberField;
 
   /** Warehouse Location */
-  Warehouse: SelectField<"Warehouse_A" | "Warehouse_B" | "Warehouse_C">;
+  Warehouse: StringField;
 
   /** Reorder Level */
   ReorderLevel: NumberField;
 
-  /** Low Stock Indicator (computed: Stock <= ReorderLevel) */
+  /** Low Stock Indicator */
   LowStock: BooleanField;
 
   /** Is Active */
   IsActive: BooleanField;
 
-  /** Created timestamp */
+  /** Image Source */
+  ImageSrc: StringField;
+
+  /** MongoDB document ID (required) (read-only) */
+  _id: IdField;
+
+  /** Created timestamp (required) (read-only) */
   _created_at: DateTimeField;
 
-  /** Modified timestamp */
+  /** Modified timestamp (required) (read-only) */
   _modified_at: DateTimeField;
 
-  /** Created by user */
-  _created_by: {
-    _id: IdField;
-    username: StringField;
-  };
+  /** Created by user (read-only) */
+  _created_by: { _id: IdField; username: StringField };
 
-  /** Modified by user */
-  _modified_by: {
-    _id: IdField;
-    username: StringField;
-  };
+  /** Modified by user (read-only) */
+  _modified_by: { _id: IdField; username: StringField };
 
-  /** Record version */
+  /** Record version (read-only) */
   _version: StringField;
 
-  /** Metadata version */
+  /** Metadata version (read-only) */
   _m_version: StringField;
 };
 
@@ -122,92 +113,92 @@ export type AmazonProductMasterType = {
 // ============================================================
 
 /**
- * Admin view - full access to all fields
+ * Admin view - System Administrator with full access
  */
-export type AdminAmazonProduct = AmazonProductMasterType;
+export type AdminProduct = ProductType;
 
 /**
- * Seller view - can edit product details, pricing, and inventory
+ * Seller view - Product seller with create and Update permissions
  */
-export type SellerAmazonProduct = Pick<
-  AmazonProductMasterType,
-  | "_id"
-  | "ProductId"
+export type SellerProduct = Pick<
+  ProductType,
   | "ASIN"
-  | "SKU"
-  | "Title"
-  | "Description"
-  | "ImageUrl"
-  | "Price"
-  | "MRP"
-  | "Category"
   | "Brand"
-  | "Tags"
-  | "Stock"
-  | "Warehouse"
-  | "ReorderLevel"
+  | "Category"
+  | "Cost"
+  | "Description"
   | "Discount"
+  | "ImageSrc"
   | "LowStock"
-  | "IsActive"
+  | "MRP"
+  | "Price"
+  | "ProductId"
+  | "SKU"
+  | "Stock"
+  | "Tags"
+  | "Title"
+  | "Warehouse"
   | "_created_at"
-  | "_modified_at"
-  | "_version"
+  | "_created_by"
+  | "_id"
   | "_m_version"
->;
-
-/**
- * Buyer view - read-only access to public product information
- */
-export type BuyerAmazonProduct = Pick<
-  AmazonProductMasterType,
-  | "_id"
-  | "ProductId"
-  | "ASIN"
-  | "SKU"
-  | "Title"
-  | "Description"
-  | "ImageUrl"
-  | "Price"
-  | "MRP"
-  | "Discount"
-  | "Category"
-  | "Brand"
-  | "Tags"
-  | "Stock"
-  | "IsActive"
->;
-
-/**
- * Inventory Manager view - focus on inventory and warehouse management
- */
-export type InventoryManagerAmazonProduct = Pick<
-  AmazonProductMasterType,
-  | "_id"
-  | "ProductId"
-  | "ASIN"
-  | "SKU"
-  | "Title"
-  | "Stock"
-  | "Warehouse"
-  | "ReorderLevel"
-  | "LowStock"
-  | "_created_at"
   | "_modified_at"
+  | "_modified_by"
+  | "_version"
 >;
 
 /**
- * Warehouse Staff view - limited to assigned warehouse stock updates
+ * Buyer view - Product buyer with Read-only access
  */
-export type WarehouseStaffAmazonProduct = Pick<
-  AmazonProductMasterType,
-  | "_id"
+export type BuyerProduct = Pick<
+  ProductType,
+  | "ASIN"
+  | "Brand"
+  | "Category"
+  | "Description"
+  | "Discount"
+  | "ImageSrc"
+  | "IsActive"
+  | "MRP"
+  | "Price"
   | "ProductId"
   | "SKU"
-  | "Title"
   | "Stock"
-  | "Warehouse"
-  | "ReorderLevel"
+  | "Tags"
+  | "Title"
+  | "_created_at"
+  | "_created_by"
+  | "_id"
+  | "_m_version"
+  | "_modified_at"
+  | "_modified_by"
+  | "_version"
+>;
+
+/**
+ * InventoryManager view - Manages inventory levels and warehouse assignments
+ */
+export type InventoryManagerProduct = ProductType;
+
+/**
+ * WarehouseStaff view - Updates stock for assigned warehouse
+ */
+export type WarehouseStaffProduct = Pick<
+  ProductType,
   | "LowStock"
+  | "ProductId"
+  | "ReorderLevel"
+  | "SKU"
+  | "Stock"
+  | "Title"
+  | "Warehouse"
+  | "_created_at"
+  | "_created_by"
+  | "_id"
+  | "_m_version"
+  | "_modified_at"
+  | "_modified_by"
+  | "_version"
 >;
 
 // ============================================================
@@ -217,17 +208,17 @@ export type WarehouseStaffAmazonProduct = Pick<
 /**
  * Maps role to appropriate view type
  */
-export type AmazonProductForRole<TRole extends Role> =
+export type ProductForRole<TRole extends Role> =
   TRole extends typeof Roles.Admin
-    ? AdminAmazonProduct
-    : TRole extends "Seller"
-      ? SellerAmazonProduct
-      : TRole extends "Buyer"
-        ? BuyerAmazonProduct
-        : TRole extends "InventoryManager"
-          ? InventoryManagerAmazonProduct
-          : TRole extends "WarehouseStaff"
-            ? WarehouseStaffAmazonProduct
+    ? AdminProduct
+    : TRole extends typeof Roles.Seller
+      ? SellerProduct
+      : TRole extends typeof Roles.Buyer
+        ? BuyerProduct
+        : TRole extends typeof Roles.InventoryManager
+          ? InventoryManagerProduct
+          : TRole extends typeof Roles.WarehouseStaff
+            ? WarehouseStaffProduct
             : never;
 
 // ============================================================
@@ -235,60 +226,114 @@ export type AmazonProductForRole<TRole extends Role> =
 // ============================================================
 
 /**
- * Amazon Product Master client with role-based access control
+ * Product client with role-based access control
  * Simple wrapper around BDO API - no business logic
- * All validation handled by useForm hook with BDO schema
- * All computed fields handled by backend
  */
-export class AmazonProductMaster<TRole extends Role = typeof Roles.Admin> {
+export class Product<TRole extends Role = typeof Roles.Admin> {
   /**
-   * Create Amazon Product Master client for specific role
+   * Create Product client for specific role
    */
   constructor(_role: TRole) {}
 
   /**
-   * List products with optional filtering and pagination
+   * List Product with optional filtering and pagination
    */
   async list(
     options?: ListOptions
-  ): Promise<ListResponse<AmazonProductForRole<TRole>>> {
-    return api("BDO_AmazonProductMaster").list(options);
+  ): Promise<ListResponse<ProductForRole<TRole>>> {
+    return api(BO_ID).list(options);
   }
 
   /**
-   * Get single product by ID
+   * Get single Product by ID
    */
-  async get(id: IdField): Promise<AmazonProductForRole<TRole>> {
-    return api("BDO_AmazonProductMaster").get(id);
+  async get(id: IdField): Promise<ProductForRole<TRole>> {
+    return api(BO_ID).get(id);
   }
 
   /**
-   * Create new product
-   * Validation handled by useForm hook
-   * Computed fields calculated by backend
+   * Create new Product
    */
   async create(
-    data: Partial<AmazonProductForRole<TRole>>
+    data: Partial<ProductForRole<TRole>>
   ): Promise<CreateUpdateResponse> {
-    return api("BDO_AmazonProductMaster").create(data);
+    return api(BO_ID).create(data);
   }
 
   /**
-   * Update existing product
-   * Validation handled by useForm hook
-   * Computed fields calculated by backend
+   * Update existing Product
    */
   async update(
     id: IdField,
-    data: Partial<AmazonProductForRole<TRole>>
+    data: Partial<ProductForRole<TRole>>
   ): Promise<CreateUpdateResponse> {
-    return api("BDO_AmazonProductMaster").update(id, data);
+    return api(BO_ID).update(id, data);
   }
 
   /**
-   * Delete product
+   * Delete Product
    */
   async delete(id: IdField): Promise<DeleteResponse> {
-    return api("BDO_AmazonProductMaster").delete(id);
+    return api(BO_ID).delete(id);
+  }
+
+  // ============================================================
+  // DRAFT/INTERACTIVE OPERATIONS
+  // ============================================================
+
+  /**
+   * Create draft - compute fields without persisting
+   */
+  async draft(data: Partial<ProductForRole<TRole>>): Promise<DraftResponse> {
+    return api(BO_ID).draft(data);
+  }
+
+  /**
+   * Update draft (patch) - compute fields during editing
+   */
+  async draftPatch(
+    id: IdField,
+    data: Partial<ProductForRole<TRole>>
+  ): Promise<DraftResponse> {
+    return api(BO_ID).draftPatch(id, data);
+  }
+
+  // ============================================================
+  // QUERY OPERATIONS
+  // ============================================================
+
+  /**
+   * Get aggregated metrics grouped by dimensions
+   */
+  async metric(options: Omit<MetricOptions, "Type">): Promise<MetricResponse> {
+    return api(BO_ID).metric(options);
+  }
+
+  /**
+   * Get pivot table data
+   */
+  async pivot(options: Omit<PivotOptions, "Type">): Promise<PivotResponse> {
+    return api(BO_ID).pivot(options);
+  }
+
+  // ============================================================
+  // METADATA OPERATIONS
+  // ============================================================
+
+  /**
+   * Get field definitions of Product
+   */
+  async fields(): Promise<FieldsResponse> {
+    return api(BO_ID).fields();
+  }
+
+  /**
+   * Fetch reference data for a specific field
+   */
+  async fetchField(
+    instanceId: string,
+    fieldId: string
+  ): Promise<Array<{ Value: string; Label: string }>> {
+    return api(BO_ID).fetchField(instanceId, fieldId);
   }
 }

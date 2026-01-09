@@ -21,6 +21,7 @@ import {
   createFieldRuleMapping,
   calculateFieldPermissions,
   convertLegacySchema,
+  normalizeBDOSchema,
 } from "./ruleClassifier.utils";
 
 // ============================================================
@@ -262,10 +263,13 @@ export function processSchema(
   userRole?: string
 ): ProcessedSchema {
   // Convert legacy schema to BDO format if needed
-  const bdoSchema =
+  let bdoSchema =
     "Kind" in schema && schema.Kind === "BusinessObject"
       ? (schema as BDOSchema)
       : convertLegacySchema(schema as BackendSchema);
+
+  // Normalize BDO schema to ensure inline validation rules are centralized
+  bdoSchema = normalizeBDOSchema(bdoSchema);
 
   const fields: Record<string, ProcessedField> = {};
   const fieldOrder: string[] = [];

@@ -124,10 +124,10 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
   const apiOptions = useMemo((): ListOptions => {
     const opts: ListOptions = {};
 
-    // Default sorting by column and position
+    // Default sorting by column and position - using correct API format
     opts.Sort = [
-      { Field: "columnId", Order: "ASC" },
-      { Field: "position", Order: "ASC" },
+      { columnId: "ASC" },
+      { position: "ASC" },
     ];
 
     // Add search query

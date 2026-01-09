@@ -24,8 +24,8 @@ export function setupMockAPI(middlewares) {
     const url = req.url || "";
     const method = req.method || "GET";
 
-    // Handle /api and /meta routes following BDO pattern
-    if (!url.startsWith("/api/") && !url.startsWith("/meta/")) {
+    // Handle /api routes following Swagger BDO pattern
+    if (!url.startsWith("/api/")) {
       next();
       return;
     }
@@ -107,18 +107,21 @@ export function setupMockAPI(middlewares) {
 
     // ==================== BDO PRODUCT ENDPOINTS ====================
 
-    // BDO Pattern: POST /api/BDO_AmazonProductMaster/list
+    // BDO Pattern: POST /api/app/BDO_AmazonProductMaster/list
     if (
-      url.match(/^\/api\/BDO_AmazonProductMaster\/list$/i) &&
+      url.match(/^\/api\/app\/BDO_AmazonProductMaster\/list$/i) &&
       method === "POST"
     ) {
       parseBody().then(async (body) => {
         let products = filterProductsByRole(mockProducts, role, userId);
         products = applyFiltersAndSearch(products, body);
 
-        // Apply sorting
+        // Apply sorting (support both old and new formats)
         if (body.Sort && body.Sort[0]) {
-          const { Field, Order } = body.Sort[0];
+          // New format: { fieldName: "ASC" } or old format: { Field: "fieldName", Order: "ASC" }
+          const sortObj = body.Sort[0];
+          const Field = sortObj.Field || Object.keys(sortObj)[0];
+          const Order = sortObj.Order || sortObj[Field];
           const direction = Order === "ASC" ? 1 : -1;
 
           products = [...products].sort((a, b) => {
@@ -152,29 +155,30 @@ export function setupMockAPI(middlewares) {
       return;
     }
 
-    // BDO Pattern: POST /api/BDO_AmazonProductMaster/count
+    // BDO Pattern: POST /api/app/BDO_AmazonProductMaster/metric (used for count)
     if (
-      url.match(/^\/api\/BDO_AmazonProductMaster\/count$/i) &&
+      url.match(/^\/api\/app\/BDO_AmazonProductMaster\/metric$/i) &&
       method === "POST"
     ) {
       parseBody().then(async (body) => {
         let products = filterProductsByRole(mockProducts, role, userId);
         products = applyFiltersAndSearch(products, body);
 
+        // Return metric response format for count
         await sendJSON({
-          Count: products.length,
+          Data: [{ count__id: products.length }],
         });
       });
       return;
     }
 
-    // BDO Pattern: GET /api/BDO_AmazonProductMaster/{instance_id}/read
+    // BDO Pattern: GET /api/app/BDO_AmazonProductMaster/{instance_id}/read
     if (
-      url.match(/^\/api\/BDO_AmazonProductMaster\/([^/]+)\/read$/i) &&
+      url.match(/^\/api\/app\/BDO_AmazonProductMaster\/([^/]+)\/read$/i) &&
       method === "GET"
     ) {
       const match = url.match(
-        /^\/api\/BDO_AmazonProductMaster\/([^/]+)\/read$/i
+        /^\/api\/app\/BDO_AmazonProductMaster\/([^/]+)\/read$/i
       );
       const productId = match[1];
 
@@ -191,9 +195,9 @@ export function setupMockAPI(middlewares) {
       return;
     }
 
-    // BDO Pattern: POST /api/BDO_AmazonProductMaster/create
+    // BDO Pattern: POST /api/app/BDO_AmazonProductMaster/create
     if (
-      url.match(/^\/api\/BDO_AmazonProductMaster\/create$/i) &&
+      url.match(/^\/api\/app\/BDO_AmazonProductMaster\/create$/i) &&
       method === "POST"
     ) {
       // Check permissions
@@ -246,14 +250,14 @@ export function setupMockAPI(middlewares) {
       return;
     }
 
-    // BDO Pattern: PATCH /api/BDO_AmazonProductMaster/{instance_id}/draft
+    // BDO Pattern: PATCH /api/app/BDO_AmazonProductMaster/{instance_id}/draft
     // Interactive mode - returns only computed fields without persisting changes
     if (
-      url.match(/^\/api\/BDO_AmazonProductMaster\/([^/]+)\/draft$/i) &&
+      url.match(/^\/api\/app\/BDO_AmazonProductMaster\/([^/]+)\/draft$/i) &&
       method === "PATCH"
     ) {
       const match = url.match(
-        /^\/api\/BDO_AmazonProductMaster\/([^/]+)\/draft$/i
+        /^\/api\/app\/BDO_AmazonProductMaster\/([^/]+)\/draft$/i
       );
       const productId = match[1];
 
@@ -327,10 +331,10 @@ export function setupMockAPI(middlewares) {
       return;
     }
 
-    // BDO Pattern: PATCH /api/BDO_AmazonProductMaster/draft (for create operations)
+    // BDO Pattern: POST /api/app/BDO_AmazonProductMaster/draft (for create operations)
     if (
-      url.match(/^\/api\/BDO_AmazonProductMaster\/draft$/i) &&
-      method === "PATCH"
+      url.match(/^\/api\/app\/BDO_AmazonProductMaster\/draft$/i) &&
+      method === "POST"
     ) {
       // Check permissions
       const allowedRoles = ["Admin", "Seller"];
@@ -373,13 +377,13 @@ export function setupMockAPI(middlewares) {
       return;
     }
 
-    // BDO Pattern: POST /api/BDO_AmazonProductMaster/{instance_id}/update
+    // BDO Pattern: POST /api/app/BDO_AmazonProductMaster/{instance_id}/update
     if (
-      url.match(/^\/api\/BDO_AmazonProductMaster\/([^/]+)\/update$/i) &&
+      url.match(/^\/api\/app\/BDO_AmazonProductMaster\/([^/]+)\/update$/i) &&
       method === "POST"
     ) {
       const match = url.match(
-        /^\/api\/BDO_AmazonProductMaster\/([^/]+)\/update$/i
+        /^\/api\/app\/BDO_AmazonProductMaster\/([^/]+)\/update$/i
       );
       const productId = match[1];
 
@@ -467,13 +471,13 @@ export function setupMockAPI(middlewares) {
       return;
     }
 
-    // BDO Pattern: DELETE /api/BDO_AmazonProductMaster/{instance_id}/delete
+    // BDO Pattern: DELETE /api/app/BDO_AmazonProductMaster/{instance_id}/delete
     if (
-      url.match(/^\/api\/BDO_AmazonProductMaster\/([^/]+)\/delete$/i) &&
+      url.match(/^\/api\/app\/BDO_AmazonProductMaster\/([^/]+)\/delete$/i) &&
       method === "DELETE"
     ) {
       const match = url.match(
-        /^\/api\/BDO_AmazonProductMaster\/([^/]+)\/delete$/i
+        /^\/api\/app\/BDO_AmazonProductMaster\/([^/]+)\/delete$/i
       );
       const productId = match[1];
 
@@ -501,9 +505,9 @@ export function setupMockAPI(middlewares) {
 
     // ==================== BDO METADATA ENDPOINTS ====================
 
-    // BDO Pattern: GET /meta/bdo/BDO_AmazonProductMaster
+    // BDO Pattern: GET /api/app/metadata/BDO_AmazonProductMaster/read
     if (
-      url.match(/^\/meta\/bdo\/BDO_AmazonProductMaster$/i) &&
+      url.match(/^\/api\/app\/metadata\/BDO_AmazonProductMaster\/read$/i) &&
       method === "GET"
     ) {
       const schema = {
@@ -912,10 +916,282 @@ export function setupMockAPI(middlewares) {
       return;
     }
 
+    // BDO Pattern: GET /api/app/meta/bdo/BDO_AmazonProductMaster/field
+    if (
+      url.match(/^\/api\/app\/meta\/bdo\/BDO_AmazonProductMaster\/field$/i) &&
+      method === "GET"
+    ) {
+      const fields = [
+        {
+          Id: "ProductId",
+          Name: "Product ID",
+          Type: "String",
+          Unique: true,
+        },
+        {
+          Id: "ASIN",
+          Name: "Amazon Standard Identification Number",
+          Type: "String",
+          Unique: true,
+        },
+        {
+          Id: "SKU",
+          Name: "Stock Keeping Unit",
+          Type: "String",
+          Unique: true,
+        },
+        {
+          Id: "Title",
+          Name: "Product Title",
+          Type: "String",
+          Required: true,
+        },
+        {
+          Id: "Description",
+          Name: "Product Description",
+          Type: "String",
+        },
+        {
+          Id: "Price",
+          Name: "Selling Price",
+          Type: "Number",
+          Required: true,
+        },
+        {
+          Id: "MRP",
+          Name: "Maximum Retail Price",
+          Type: "Number",
+          Required: true,
+        },
+        { Id: "Cost", Name: "Product Cost", Type: "Number" },
+        {
+          Id: "Discount",
+          Name: "Discount Percentage",
+          Type: "Number",
+          Computed: true,
+        },
+        {
+          Id: "Category",
+          Name: "Product Category",
+          Type: "String",
+          Required: true,
+          Values: {
+            Mode: "Static",
+            Items: [
+              { Value: "Electronics", Label: "Electronics" },
+              { Value: "Books", Label: "Books" },
+              { Value: "Clothing", Label: "Clothing & Accessories" },
+              { Value: "Home", Label: "Home & Kitchen" },
+              { Value: "Sports", Label: "Sports & Outdoors" },
+              { Value: "Toys", Label: "Toys & Games" },
+            ],
+          },
+        },
+        { Id: "Brand", Name: "Brand Name", Type: "String" },
+        {
+          Id: "Tags",
+          Name: "Product Tags",
+          Type: "Array",
+          Items: { Type: "String" },
+        },
+        {
+          Id: "Stock",
+          Name: "Stock Quantity",
+          Type: "Number",
+          Required: true,
+        },
+        {
+          Id: "Warehouse",
+          Name: "Warehouse Location",
+          Type: "String",
+          Values: {
+            Mode: "Static",
+            Items: [
+              { Value: "Warehouse_A", Label: "Warehouse A - North" },
+              { Value: "Warehouse_B", Label: "Warehouse B - South" },
+              { Value: "Warehouse_C", Label: "Warehouse C - East" },
+            ],
+          },
+        },
+        {
+          Id: "ReorderLevel",
+          Name: "Reorder Level",
+          Type: "Number",
+        },
+        {
+          Id: "LowStock",
+          Name: "Low Stock Indicator",
+          Type: "Boolean",
+          Computed: true,
+        },
+        { Id: "IsActive", Name: "Is Active", Type: "Boolean" },
+      ];
+
+      sendJSON({ Data: fields });
+      return;
+    }
+
+    // BDO Pattern: GET /api/app/BDO_AmazonProductMaster/fields
+    if (
+      url.match(/^\/api\/app\/BDO_AmazonProductMaster\/fields$/i) &&
+      method === "GET"
+    ) {
+      const fields = {
+        Data: [
+          {
+            Id: "ProductId",
+            Name: "Product ID",
+            Type: "String",
+            Unique: true,
+          },
+          {
+            Id: "ASIN",
+            Name: "Amazon Standard Identification Number",
+            Type: "String",
+            Unique: true,
+          },
+          {
+            Id: "SKU",
+            Name: "Stock Keeping Unit",
+            Type: "String",
+            Unique: true,
+          },
+          {
+            Id: "Title",
+            Name: "Product Title",
+            Type: "String",
+            Required: true,
+          },
+          {
+            Id: "Description",
+            Name: "Product Description",
+            Type: "String",
+          },
+          {
+            Id: "Price",
+            Name: "Selling Price",
+            Type: "Number",
+            Required: true,
+          },
+          {
+            Id: "MRP",
+            Name: "Maximum Retail Price",
+            Type: "Number",
+            Required: true,
+          },
+          { Id: "Cost", Name: "Product Cost", Type: "Number" },
+          {
+            Id: "Discount",
+            Name: "Discount Percentage",
+            Type: "Number",
+            Computed: true,
+          },
+          {
+            Id: "Category",
+            Name: "Product Category",
+            Type: "String",
+            Required: true,
+            Values: {
+              Mode: "Static",
+              Items: [
+                { Value: "Electronics", Label: "Electronics" },
+                { Value: "Books", Label: "Books" },
+                { Value: "Clothing", Label: "Clothing & Accessories" },
+                { Value: "Home", Label: "Home & Kitchen" },
+                { Value: "Sports", Label: "Sports & Outdoors" },
+                { Value: "Toys", Label: "Toys & Games" },
+              ],
+            },
+          },
+          { Id: "Brand", Name: "Brand Name", Type: "String" },
+          {
+            Id: "Tags",
+            Name: "Product Tags",
+            Type: "Array",
+            Items: { Type: "String" },
+          },
+          {
+            Id: "Stock",
+            Name: "Stock Quantity",
+            Type: "Number",
+            Required: true,
+          },
+          {
+            Id: "Warehouse",
+            Name: "Warehouse Location",
+            Type: "String",
+            Values: {
+              Mode: "Static",
+              Items: [
+                { Value: "Warehouse_A", Label: "Warehouse A - North" },
+                { Value: "Warehouse_B", Label: "Warehouse B - South" },
+                { Value: "Warehouse_C", Label: "Warehouse C - East" },
+              ],
+            },
+          },
+          {
+            Id: "ReorderLevel",
+            Name: "Reorder Level",
+            Type: "Number",
+          },
+          {
+            Id: "LowStock",
+            Name: "Low Stock Indicator",
+            Type: "Boolean",
+            Computed: true,
+          },
+          { Id: "IsActive", Name: "Is Active", Type: "Boolean" },
+        ],
+      };
+
+      sendJSON(fields);
+      return;
+    }
+
+    // BDO Pattern: GET /api/app/BDO_AmazonProductMaster/{instance_id}/field/{field_id}/fetch
+    if (
+      url.match(
+        /^\/api\/app\/BDO_AmazonProductMaster\/([^\/]+)\/field\/([^\/]+)\/fetch$/i
+      ) &&
+      method === "GET"
+    ) {
+      const match = url.match(
+        /^\/api\/app\/BDO_AmazonProductMaster\/([^\/]+)\/field\/([^\/]+)\/fetch$/i
+      );
+      const instanceId = match[1];
+      const fieldId = match[2];
+
+      // Return field options based on field ID
+      const fieldOptionsMap = {
+        Category: [
+          { Value: "Electronics", Label: "Electronics" },
+          { Value: "Books", Label: "Books" },
+          { Value: "Clothing", Label: "Clothing & Accessories" },
+          { Value: "Home", Label: "Home & Kitchen" },
+          { Value: "Sports", Label: "Sports & Outdoors" },
+          { Value: "Toys", Label: "Toys & Games" },
+        ],
+        Warehouse: [
+          { Value: "Warehouse_A", Label: "Warehouse A - North" },
+          { Value: "Warehouse_B", Label: "Warehouse B - South" },
+          { Value: "Warehouse_C", Label: "Warehouse C - East" },
+        ],
+      };
+
+      const options = fieldOptionsMap[fieldId];
+
+      if (options) {
+        sendJSON({ Data: options });
+      } else {
+        sendError(`Field '${fieldId}' does not have fetchable data`, 404);
+      }
+      return;
+    }
+
     // ==================== BDO CART ENDPOINTS ====================
 
-    // BDO Pattern: POST /api/BDO_Cart/count
-    if (url.match(/^\/api\/BDO_Cart\/count$/i) && method === "POST") {
+    // BDO Pattern: POST /api/app/BDO_Cart/metric (used for count)
+    if (url.match(/^\/api\/app\/BDO_Cart\/metric$/i) && method === "POST") {
       if (role !== "Buyer") {
         sendError("Only buyers can access cart", 403);
         return;
@@ -923,13 +1199,13 @@ export function setupMockAPI(middlewares) {
 
       const count = getCartCount(userId);
       sendJSON({
-        Count: count,
+        Data: [{ count__id: count }],
       });
       return;
     }
 
-    // BDO Pattern: POST /api/BDO_Cart/list
-    if (url.match(/^\/api\/BDO_Cart\/list$/i) && method === "POST") {
+    // BDO Pattern: POST /api/app/BDO_Cart/list
+    if (url.match(/^\/api\/app\/BDO_Cart\/list$/i) && method === "POST") {
       if (role !== "Buyer") {
         sendError("Only buyers can access cart", 403);
         return;
@@ -942,8 +1218,8 @@ export function setupMockAPI(middlewares) {
       return;
     }
 
-    // BDO Pattern: POST /api/BDO_Cart/create
-    if (url.match(/^\/api\/BDO_Cart\/create$/i) && method === "POST") {
+    // BDO Pattern: POST /api/app/BDO_Cart/create
+    if (url.match(/^\/api\/app\/BDO_Cart\/create$/i) && method === "POST") {
       if (role !== "Buyer") {
         sendError("Only buyers can add to cart", 403);
         return;
@@ -961,14 +1237,17 @@ export function setupMockAPI(middlewares) {
       return;
     }
 
-    // BDO Pattern: POST /api/BDO_Cart/{instance_id}/update
-    if (url.match(/^\/api\/BDO_Cart\/([^/]+)\/update$/i) && method === "POST") {
+    // BDO Pattern: POST /api/app/BDO_Cart/{instance_id}/update
+    if (
+      url.match(/^\/api\/app\/BDO_Cart\/([^/]+)\/update$/i) &&
+      method === "POST"
+    ) {
       if (role !== "Buyer") {
         sendError("Only buyers can update cart", 403);
         return;
       }
 
-      const match = url.match(/^\/api\/BDO_Cart\/([^/]+)\/update$/i);
+      const match = url.match(/^\/api\/app\/BDO_Cart\/([^/]+)\/update$/i);
       const itemId = match[1];
 
       parseBody().then(async (body) => {
@@ -988,9 +1267,9 @@ export function setupMockAPI(middlewares) {
       return;
     }
 
-    // BDO Pattern: DELETE /api/BDO_Cart/{instance_id}/delete
+    // BDO Pattern: DELETE /api/app/BDO_Cart/{instance_id}/delete
     if (
-      url.match(/^\/api\/BDO_Cart\/([^/]+)\/delete$/i) &&
+      url.match(/^\/api\/app\/BDO_Cart\/([^/]+)\/delete$/i) &&
       method === "DELETE"
     ) {
       if (role !== "Buyer") {
@@ -998,7 +1277,7 @@ export function setupMockAPI(middlewares) {
         return;
       }
 
-      const match = url.match(/^\/api\/BDO_Cart\/([^/]+)\/delete$/i);
+      const match = url.match(/^\/api\/app\/BDO_Cart\/([^/]+)\/delete$/i);
       const itemId = match[1];
 
       const removed = removeFromCart(userId, itemId);
@@ -1015,8 +1294,8 @@ export function setupMockAPI(middlewares) {
       return;
     }
 
-    // BDO Pattern: POST /api/BDO_Cart/clear
-    if (url.match(/^\/api\/BDO_Cart\/clear$/i) && method === "POST") {
+    // BDO Pattern: POST /api/app/BDO_Cart/clear
+    if (url.match(/^\/api\/app\/BDO_Cart\/clear$/i) && method === "POST") {
       if (role !== "Buyer") {
         sendError("Only buyers can clear cart", 403);
         return;
@@ -1031,11 +1310,42 @@ export function setupMockAPI(middlewares) {
       return;
     }
 
+    // BDO Pattern: GET /api/app/BDO_Cart/{instance_id}/field/{field_id}/fetch
+    if (
+      url.match(/^\/api\/app\/BDO_Cart\/([^/]+)\/field\/([^/]+)\/fetch$/i) &&
+      method === "GET"
+    ) {
+      if (role !== "Buyer") {
+        sendError("Only buyers can access cart", 403);
+        return;
+      }
+
+      const match = url.match(
+        /^\/api\/app\/BDO_Cart\/([^/]+)\/field\/([^/]+)\/fetch$/i
+      );
+      const instanceId = match[1];
+      const fieldId = match[2];
+
+      // Cart doesn't have many static field options, but keeping structure for consistency
+      const fieldOptionsMap = {
+        // Add any cart-specific field options here if needed
+      };
+
+      const options = fieldOptionsMap[fieldId];
+
+      if (options) {
+        sendJSON({ Data: options });
+      } else {
+        sendError(`Field '${fieldId}' does not have fetchable data`, 404);
+      }
+      return;
+    }
+
     // ==================== BDO PRODUCT RESTOCKING ENDPOINTS ====================
 
-    // BDO Pattern: POST /api/BDO_ProductRestocking/list
+    // BDO Pattern: POST /api/app/BDO_ProductRestocking/list
     if (
-      url.match(/^\/api\/BDO_ProductRestocking\/list$/i) &&
+      url.match(/^\/api\/app\/BDO_ProductRestocking\/list$/i) &&
       method === "POST"
     ) {
       if (role !== "InventoryManager") {
@@ -1077,9 +1387,9 @@ export function setupMockAPI(middlewares) {
       return;
     }
 
-    // BDO Pattern: POST /api/BDO_ProductRestocking/count
+    // BDO Pattern: POST /api/app/BDO_ProductRestocking/metric (used for count)
     if (
-      url.match(/^\/api\/BDO_ProductRestocking\/count$/i) &&
+      url.match(/^\/api\/app\/BDO_ProductRestocking\/metric$/i) &&
       method === "POST"
     ) {
       if (role !== "InventoryManager") {
@@ -1092,15 +1402,15 @@ export function setupMockAPI(middlewares) {
         tasks = applyFiltersAndSearch(tasks, body);
 
         await sendJSON({
-          Count: tasks.length,
+          Data: [{ count__id: tasks.length }],
         });
       });
       return;
     }
 
-    // BDO Pattern: GET /api/BDO_ProductRestocking/{instance_id}/read
+    // BDO Pattern: GET /api/app/BDO_ProductRestocking/{instance_id}/read
     if (
-      url.match(/^\/api\/BDO_ProductRestocking\/([^/]+)\/read$/i) &&
+      url.match(/^\/api\/app\/BDO_ProductRestocking\/([^/]+)\/read$/i) &&
       method === "GET"
     ) {
       if (role !== "InventoryManager") {
@@ -1109,7 +1419,7 @@ export function setupMockAPI(middlewares) {
       }
 
       const match = url.match(
-        /^\/api\/BDO_ProductRestocking\/([^/]+)\/read$/i
+        /^\/api\/app\/BDO_ProductRestocking\/([^/]+)\/read$/i
       );
       const taskId = match[1];
 
@@ -1125,9 +1435,9 @@ export function setupMockAPI(middlewares) {
       return;
     }
 
-    // BDO Pattern: POST /api/BDO_ProductRestocking/create
+    // BDO Pattern: POST /api/app/BDO_ProductRestocking/create
     if (
-      url.match(/^\/api\/BDO_ProductRestocking\/create$/i) &&
+      url.match(/^\/api\/app\/BDO_ProductRestocking\/create$/i) &&
       method === "POST"
     ) {
       if (role !== "InventoryManager") {
@@ -1147,9 +1457,9 @@ export function setupMockAPI(middlewares) {
       return;
     }
 
-    // BDO Pattern: POST /api/BDO_ProductRestocking/{instance_id}/update
+    // BDO Pattern: POST /api/app/BDO_ProductRestocking/{instance_id}/update
     if (
-      url.match(/^\/api\/BDO_ProductRestocking\/([^/]+)\/update$/i) &&
+      url.match(/^\/api\/app\/BDO_ProductRestocking\/([^/]+)\/update$/i) &&
       method === "POST"
     ) {
       if (role !== "InventoryManager") {
@@ -1158,7 +1468,7 @@ export function setupMockAPI(middlewares) {
       }
 
       const match = url.match(
-        /^\/api\/BDO_ProductRestocking\/([^/]+)\/update$/i
+        /^\/api\/app\/BDO_ProductRestocking\/([^/]+)\/update$/i
       );
       const taskId = match[1];
 
@@ -1179,9 +1489,9 @@ export function setupMockAPI(middlewares) {
       return;
     }
 
-    // BDO Pattern: DELETE /api/BDO_ProductRestocking/{instance_id}/delete
+    // BDO Pattern: DELETE /api/app/BDO_ProductRestocking/{instance_id}/delete
     if (
-      url.match(/^\/api\/BDO_ProductRestocking\/([^/]+)\/delete$/i) &&
+      url.match(/^\/api\/app\/BDO_ProductRestocking\/([^/]+)\/delete$/i) &&
       method === "DELETE"
     ) {
       if (role !== "InventoryManager") {
@@ -1190,7 +1500,7 @@ export function setupMockAPI(middlewares) {
       }
 
       const match = url.match(
-        /^\/api\/BDO_ProductRestocking\/([^/]+)\/delete$/i
+        /^\/api\/app\/BDO_ProductRestocking\/([^/]+)\/delete$/i
       );
       const taskId = match[1];
 

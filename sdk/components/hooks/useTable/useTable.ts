@@ -113,27 +113,34 @@ export function useTable<T = any>(
   // API OPTIONS BUILDER
   // ============================================================
 
-  const apiOptions = useMemo((): ListOptions => {
+  // Options for count query - excludes sorting and pagination (they don't affect count)
+  const countApiOptions = useMemo((): ListOptions => {
     const opts: ListOptions = {};
 
-    // Add sorting
-    if (sorting.field && sorting.direction) {
-      opts.Sort = [
-        {
-          Field: String(sorting.field),
-          Order: sorting.direction === "asc" ? "ASC" : "DESC",
-        },
-      ];
-    }
-
-    // Add search query (separate from filters)
+    // Add search query (affects count)
     if (search.query) {
       opts.Search = search.query;
     }
 
-    // Add filter conditions
+    // Add filter conditions (affects count)
     if (filterHook.filterPayload) {
       opts.Filter = filterHook.filterPayload;
+    }
+
+    return opts;
+  }, [search.query, filterHook.filterPayload]);
+
+  // Options for list query - includes all options
+  const apiOptions = useMemo((): ListOptions => {
+    const opts: ListOptions = { ...countApiOptions };
+
+    // Add sorting - using correct API format: [{ "fieldName": "ASC" }]
+    if (sorting.field && sorting.direction) {
+      opts.Sort = [
+        {
+          [String(sorting.field)]: sorting.direction === "asc" ? "ASC" : "DESC",
+        },
+      ];
     }
 
     // Add pagination
@@ -143,13 +150,7 @@ export function useTable<T = any>(
     }
 
     return opts;
-  }, [
-    sorting,
-    search.query,
-    filterHook.filterPayload,
-    pagination,
-    options.enablePagination,
-  ]);
+  }, [countApiOptions, sorting, pagination, options.enablePagination]);
 
   // ============================================================
   // DATA FETCHING
@@ -181,7 +182,7 @@ export function useTable<T = any>(
     gcTime: 0,
   });
 
-  // Count query for accurate total items
+  // Count query for accurate total items (only depends on filters/search, not sorting/pagination)
   const {
     data: countData,
     isLoading: isCountLoading,
@@ -189,10 +190,10 @@ export function useTable<T = any>(
     error: countError,
     refetch: countRefetch,
   } = useQuery({
-    queryKey: ["table-count", options.source, apiOptions],
+    queryKey: ["table-count", options.source, countApiOptions],
     queryFn: async () => {
       try {
-        return await api<T>(options.source).count(apiOptions);
+        return await api<T>(options.source).count(countApiOptions);
       } catch (err) {
         if (options.onError) {
           options.onError(err as Error);
@@ -237,6 +238,13 @@ export function useTable<T = any>(
   const clearSort = useCallback(() => {
     setSorting({ field: null, direction: null });
   }, []);
+
+  const setSort = useCallback(
+    (field: keyof T | null, direction: "asc" | "desc" | null) => {
+      setSorting({ field, direction });
+    },
+    []
+  );
 
   // ============================================================
   // SEARCH OPERATIONS
@@ -339,6 +347,7 @@ export function useTable<T = any>(
       direction: sorting.direction,
       toggle: toggleSort,
       clear: clearSort,
+      set: setSort,
     },
 
     // Legacy Global Filtering (Flat Access)

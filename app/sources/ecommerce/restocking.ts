@@ -16,6 +16,8 @@ import {
   ListOptions,
   CreateUpdateResponse,
   DeleteResponse,
+  MetricOptions,
+  MetricResponse,
   api,
 } from "../../../sdk";
 
@@ -222,5 +224,26 @@ export class ProductRestocking<TRole extends Role = typeof Roles.InventoryManage
       throw new Error("Only inventory managers can delete restocking tasks");
     }
     return api("BDO_ProductRestocking").delete(id);
+  }
+
+  /**
+   * Get count of restocking tasks
+   */
+  async count(options?: ListOptions): Promise<number> {
+    if (this.role !== Roles.InventoryManager) {
+      throw new Error("Only inventory managers can access restocking count");
+    }
+    const response = await api("BDO_ProductRestocking").count(options);
+    return response.Count;
+  }
+
+  /**
+   * Get aggregated metrics (e.g., total quantity ordered by status)
+   */
+  async metric(options: Omit<MetricOptions, "Type">): Promise<MetricResponse> {
+    if (this.role !== Roles.InventoryManager) {
+      throw new Error("Only inventory managers can access restocking metrics");
+    }
+    return api("BDO_ProductRestocking").metric(options);
   }
 }

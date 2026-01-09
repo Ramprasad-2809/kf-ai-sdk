@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
-import { useTable, useForm, api } from "kf-ai-sdk";
-import { AmazonProductForRole } from "../../../../app";
+import { useTable, useForm } from "kf-ai-sdk";
+import { Product, ProductForRole } from "../../../../app";
+import { Roles } from "../../../../app/types/roles";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
@@ -20,16 +22,7 @@ import {
   SelectValue,
 } from "../components/ui/select";
 
-type SellerProduct = AmazonProductForRole<"Seller">;
-
-const categories = [
-  { value: "Electronics", label: "Electronics" },
-  { value: "Clothing", label: "Clothing" },
-  { value: "Books", label: "Books" },
-  { value: "Home", label: "Home & Garden" },
-  { value: "Sports", label: "Sports" },
-  { value: "Toys", label: "Toys & Games" },
-];
+type SellerProduct = ProductForRole<"Seller">;
 
 export function SellerProductsPage() {
   const [showForm, setShowForm] = useState(false);
@@ -38,6 +31,8 @@ export function SellerProductsPage() {
   );
   const [formMode, setFormMode] = useState<"create" | "update">("create");
   const [generalError, setGeneralError] = useState<string | null>(null);
+  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
+  const product = new Product(Roles.Seller);
 
   const table = useTable<SellerProduct>({
     source: "BDO_AmazonProductMaster",
@@ -56,23 +51,31 @@ export function SellerProductsPage() {
     },
   });
 
+  // Store the first valid instanceId to avoid re-fetching categories when table changes
+  const instanceIdRef = useRef<string | null>(null);
+  if (!instanceIdRef.current && table.rows[0]?._id) {
+    instanceIdRef.current = table.rows[0]._id;
+  }
+
+  // Fetch categories only when dropdown is opened, cache permanently
+  const { data: categories = [], isFetching: isCategoriesLoading } = useQuery({
+    queryKey: ["product-categories"],
+    queryFn: async () => {
+      if (!instanceIdRef.current) return [];
+      return product.fetchField(instanceIdRef.current, "Category");
+    },
+    enabled: categoryDropdownOpen && !!instanceIdRef.current,
+    staleTime: Infinity, // Never refetch - categories are static
+    gcTime: Infinity, // Keep in cache forever
+  });
+
   const form = useForm<SellerProduct>({
     source: "BDO_AmazonProductMaster",
     operation: formMode,
     recordId: selectedProduct?._id,
     enabled: showForm,
-    defaultValues: {
-      Title: "",
-      Description: "",
-      Category: "Electronics",
-      Price: 0,
-      MRP: 0,
-      Brand: "",
-      Stock: 0,
-      Warehouse: "Warehouse_A",
-      ReorderLevel: 10,
-      IsActive: true,
-    },
+    mode: "onBlur", // Validate on submit
+    draftOnEveryChange: false, // Only trigger draft for computed field dependencies
     onSuccess: () => {
       setShowForm(false);
       setSelectedProduct(null);
@@ -107,14 +110,10 @@ export function SellerProductsPage() {
     setShowForm(true);
   };
 
-  const handleDelete = async (product: SellerProduct) => {
-    if (
-      window.confirm(
-        `Are you sure you want to delete "${product.Title}"?`
-      )
-    ) {
+  const handleDelete = async (item: SellerProduct) => {
+    if (window.confirm(`Are you sure you want to delete "${item.Title}"?`)) {
       try {
-        await api("BDO_AmazonProductMaster").delete(product._id);
+        await product.delete(item._id);
         table.refetch();
       } catch (error) {
         console.error("Failed to delete product:", error);
@@ -205,7 +204,10 @@ export function SellerProductsPage() {
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-gray-100 rounded overflow-hidden">
                           <img
-                            src={product.ImageUrl || "https://via.placeholder.com/40x40?text=?"}
+                            src={
+                              product.ImageSrc ||
+                              "https://via.placeholder.com/40x40?text=?"
+                            }
                             alt={product.Title}
                             className="w-full h-full object-cover"
                             onError={(e) => {
@@ -327,303 +329,345 @@ export function SellerProductsPage() {
               </p>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+            <form
+              onSubmit={handleSubmit}
+              className="flex flex-col flex-1 overflow-hidden"
+            >
               <div className="overflow-y-auto flex-1 px-1">
                 <div className="space-y-4 pb-4">
-              {generalError && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm mb-4">
-                  {generalError}
-                </div>
-              )}
-
-              {/* Root Errors (e.g. Cross-Field Validation) */}
-              {form.formState.errors.root && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm mb-4">
-                  <p className="font-medium">Validation Error</p>
-                  <ul className="list-disc list-inside mt-1">
-                    {Object.values(form.formState.errors.root).map(
-                      (err, idx) => (
-                        <li key={idx}>{(err as any).message}</li>
-                      )
-                    )}
-                  </ul>
-                </div>
-              )}
-
-              {/* Basic Information Section */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">
-                  Basic Information
-                </h3>
-
-                {/* Title - Full Width */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Product Title *
-                  </label>
-                  <Input
-                    {...form.register("Title")}
-                    placeholder="Enter product title"
-                    defaultValue={selectedProduct?.Title || ""}
-                    className={
-                      form.formState.errors.Title
-                        ? "border-red-500 focus:ring-red-500"
-                        : ""
-                    }
-                  />
-                  {form.formState.errors.Title && (
-                    <p className="text-red-600 text-sm mt-1">
-                      {form.formState.errors.Title.message}
-                    </p>
-                  )}
-                </div>
-
-                {/* Description - Full Width */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    {...form.register("Description")}
-                    className="flex w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                    rows={3}
-                    placeholder="Enter product description"
-                    defaultValue={selectedProduct?.Description || ""}
-                  />
-                </div>
-
-                {/* Brand and Category - Two Columns */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Brand
-                    </label>
-                    <Input
-                      {...form.register("Brand")}
-                      placeholder="Enter brand name"
-                      defaultValue={selectedProduct?.Brand || ""}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Category
-                    </label>
-                    <Select
-                      defaultValue={selectedProduct?.Category || "Electronics"}
-                      onValueChange={(value) =>
-                        form.setValue(
-                          "Category",
-                          value as
-                            | "Electronics"
-                            | "Books"
-                            | "Clothing"
-                            | "Home"
-                            | "Sports"
-                            | "Toys"
-                        )
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map((cat) => (
-                          <SelectItem key={cat.value} value={cat.value}>
-                            {cat.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Pricing Section */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">
-                  Pricing
-                </h3>
-
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Price */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Selling Price (USD) *
-                    </label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      {...form.register("Price")}
-                      placeholder="0.00"
-                      defaultValue={selectedProduct?.Price || ""}
-                      className={
-                        form.formState.errors.Price
-                          ? "border-red-500 focus:ring-red-500"
-                          : ""
-                      }
-                    />
-                    {form.formState.errors.Price && (
-                      <p className="text-red-600 text-sm mt-1">
-                        {form.formState.errors.Price.message}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* MRP */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Maximum Retail Price (USD) *
-                    </label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      {...form.register("MRP")}
-                      placeholder="0.00"
-                      defaultValue={selectedProduct?.MRP || ""}
-                      className={
-                        form.formState.errors.MRP
-                          ? "border-red-500 focus:ring-red-500"
-                          : ""
-                      }
-                    />
-                    {form.formState.errors.MRP && (
-                      <p className="text-red-600 text-sm mt-1">
-                        {form.formState.errors.MRP.message}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Inventory Section */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">
-                  Inventory Management
-                </h3>
-
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Stock */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Stock Quantity *
-                    </label>
-                    <Input
-                      type="number"
-                      min="0"
-                      {...form.register("Stock")}
-                      placeholder="0"
-                      defaultValue={selectedProduct?.Stock || ""}
-                      className={
-                        form.formState.errors.Stock
-                          ? "border-red-500 focus:ring-red-500"
-                          : ""
-                      }
-                    />
-                    {form.formState.errors.Stock && (
-                      <p className="text-red-600 text-sm mt-1">
-                        {form.formState.errors.Stock.message}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Reorder Level */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Reorder Level
-                    </label>
-                    <Input
-                      type="number"
-                      min="0"
-                      {...form.register("ReorderLevel")}
-                      placeholder="10"
-                      defaultValue={selectedProduct?.ReorderLevel || "10"}
-                    />
-                  </div>
-                </div>
-
-                {/* Warehouse - Full Width */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Warehouse
-                  </label>
-                  <Select
-                    defaultValue={selectedProduct?.Warehouse || "Warehouse_A"}
-                    onValueChange={(value) =>
-                      form.setValue(
-                        "Warehouse",
-                        value as "Warehouse_A" | "Warehouse_B" | "Warehouse_C"
-                      )
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select warehouse" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Warehouse_A">
-                        Warehouse A - North
-                      </SelectItem>
-                      <SelectItem value="Warehouse_B">
-                        Warehouse B - South
-                      </SelectItem>
-                      <SelectItem value="Warehouse_C">
-                        Warehouse C - East
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Computed Fields Section */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">
-                  Computed Fields (Auto-calculated)
-                </h3>
-
-                {/* Discount Percentage */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Discount %
-                    </label>
-                    <Input
-                      value={(form.watch("Discount") || 0).toFixed(2)}
-                      readOnly
-                      disabled
-                      className="bg-gray-50 cursor-not-allowed"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Auto-calculated from (MRP - Price) ÷ MRP × 100
-                    </p>
-                  </div>
-
-                  {/* Low Stock Indicator */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Stock Status
-                    </label>
-                    <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-sm">
-                      <span
-                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          form.watch("LowStock")
-                            ? "bg-red-100 text-red-800"
-                            : "bg-green-100 text-green-800"
-                        }`}
-                      >
-                        {form.watch("LowStock")
-                          ? "⚠️ Low Stock"
-                          : "✅ Good Stock"}
-                      </span>
+                  {generalError && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm mb-4">
+                      {generalError}
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Auto-calculated: Stock ≤ Reorder Level
-                    </p>
+                  )}
+
+                  {/* Root Errors (e.g. Cross-Field Validation) */}
+                  {form.formState.errors.root && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm mb-4">
+                      <p className="font-medium">Validation Error</p>
+                      <ul className="list-disc list-inside mt-1">
+                        {Object.values(form.formState.errors.root).map(
+                          (err, idx) => (
+                            <li key={idx}>{(err as any).message}</li>
+                          )
+                        )}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Basic Information Section */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">
+                      Basic Information
+                    </h3>
+
+                    {/* Title - Full Width */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Product Title *
+                      </label>
+                      <Input
+                        {...form.register("Title")}
+                        placeholder="Enter product title"
+                        defaultValue={selectedProduct?.Title || ""}
+                        className={
+                          form.formState.errors.Title
+                            ? "border-red-500 focus:ring-red-500"
+                            : ""
+                        }
+                      />
+                      {form.formState.errors.Title && (
+                        <p className="text-red-600 text-sm mt-1">
+                          {form.formState.errors.Title.message}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Description - Full Width */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Description
+                      </label>
+                      <textarea
+                        {...form.register("Description")}
+                        className={`flex w-full rounded-md border bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 ${
+                          form.formState.errors.Description
+                            ? "border-red-500 focus-visible:ring-red-500"
+                            : "border-gray-300 focus-visible:ring-blue-500"
+                        }`}
+                        rows={3}
+                        placeholder="Enter product description"
+                        defaultValue={selectedProduct?.Description || ""}
+                      />
+                      {form.formState.errors.Description && (
+                        <p className="text-red-600 text-sm mt-1">
+                          {form.formState.errors.Description.message}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Image Source URL - Full Width */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Image URL
+                      </label>
+                      <Input
+                        {...form.register("ImageSrc")}
+                        placeholder="Enter image URL (e.g., https://example.com/image.jpg)"
+                        defaultValue={selectedProduct?.ImageSrc || ""}
+                        className={
+                          form.formState.errors.ImageSrc
+                            ? "border-red-500 focus:ring-red-500"
+                            : ""
+                        }
+                      />
+                      {form.formState.errors.ImageSrc && (
+                        <p className="text-red-600 text-sm mt-1">
+                          {form.formState.errors.ImageSrc.message}
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-500 mt-1">
+                        Provide a direct link to the product image
+                      </p>
+                    </div>
+
+                    {/* Brand and Category - Two Columns */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Brand
+                        </label>
+                        <Input
+                          {...form.register("Brand")}
+                          placeholder="Enter brand name"
+                          defaultValue={selectedProduct?.Brand || ""}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Category
+                        </label>
+                        <Select
+                          value={
+                            form.watch("Category") ||
+                            selectedProduct?.Category ||
+                            ""
+                          }
+                          onValueChange={(value) =>
+                            form.setValue("Category", value)
+                          }
+                          open={categoryDropdownOpen}
+                          onOpenChange={setCategoryDropdownOpen}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select category">
+                              {form.watch("Category") ||
+                                selectedProduct?.Category ||
+                                "Select category"}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {isCategoriesLoading ? (
+                              <div className="flex items-center justify-center py-4">
+                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                                <span className="ml-2 text-sm text-gray-500">
+                                  Loading...
+                                </span>
+                              </div>
+                            ) : categories.length > 0 ? (
+                              categories.map(
+                                (cat: { Value: string; Label: string }) => (
+                                  <SelectItem key={cat.Value} value={cat.Value}>
+                                    {cat.Label}
+                                  </SelectItem>
+                                )
+                              )
+                            ) : (
+                              <div className="py-4 text-center text-sm text-gray-500">
+                                No categories available
+                              </div>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pricing Section */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">
+                      Pricing
+                    </h3>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Price */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Selling Price (USD) *
+                        </label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          {...form.register("Price")}
+                          placeholder="0.00"
+                          defaultValue={selectedProduct?.Price || ""}
+                          className={
+                            form.formState.errors.Price
+                              ? "border-red-500 focus:ring-red-500"
+                              : ""
+                          }
+                        />
+                        {form.formState.errors.Price && (
+                          <p className="text-red-600 text-sm mt-1">
+                            {form.formState.errors.Price.message}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* MRP */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Maximum Retail Price (USD) *
+                        </label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          {...form.register("MRP")}
+                          placeholder="0.00"
+                          defaultValue={selectedProduct?.MRP || ""}
+                          className={
+                            form.formState.errors.MRP
+                              ? "border-red-500 focus:ring-red-500"
+                              : ""
+                          }
+                        />
+                        {form.formState.errors.MRP && (
+                          <p className="text-red-600 text-sm mt-1">
+                            {form.formState.errors.MRP.message}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Inventory Section */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">
+                      Inventory Management
+                    </h3>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Stock */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Stock Quantity *
+                        </label>
+                        <Input
+                          type="number"
+                          min="0"
+                          {...form.register("Stock")}
+                          placeholder="0"
+                          defaultValue={selectedProduct?.Stock || ""}
+                          className={
+                            form.formState.errors.Stock
+                              ? "border-red-500 focus:ring-red-500"
+                              : ""
+                          }
+                        />
+                        {form.formState.errors.Stock && (
+                          <p className="text-red-600 text-sm mt-1">
+                            {form.formState.errors.Stock.message}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Warehouse - Full Width */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Warehouse
+                      </label>
+                      <Select
+                        defaultValue={selectedProduct?.Warehouse || ""}
+                        onValueChange={(value) =>
+                          form.setValue(
+                            "Warehouse",
+                            value as
+                              | "Warehouse_A"
+                              | "Warehouse_B"
+                              | "Warehouse_C"
+                          )
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select warehouse" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Warehouse_A">
+                            Warehouse A - North
+                          </SelectItem>
+                          <SelectItem value="Warehouse_B">
+                            Warehouse B - South
+                          </SelectItem>
+                          <SelectItem value="Warehouse_C">
+                            Warehouse C - East
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Computed Fields Section */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-gray-900 border-b pb-2">
+                      Computed Fields (Auto-calculated)
+                    </h3>
+
+                    {/* Discount Percentage */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Discount %
+                        </label>
+                        <Input
+                          value={(form.watch("Discount") || 0).toFixed(2)}
+                          readOnly
+                          disabled
+                          className="bg-gray-50 cursor-not-allowed"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Auto-calculated from (MRP - Price) ÷ MRP × 100
+                        </p>
+                      </div>
+
+                      {/* Low Stock Indicator */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Stock Status
+                        </label>
+                        <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-sm">
+                          <span
+                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              form.watch("LowStock")
+                                ? "bg-red-100 text-red-800"
+                                : "bg-green-100 text-green-800"
+                            }`}
+                          >
+                            {form.watch("LowStock")
+                              ? "⚠️ Low Stock"
+                              : "✅ Good Stock"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Auto-calculated: Stock ≤ Reorder Level
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-              </div>
               </div>
 
               <DialogFooter className="sticky bottom-0 bg-white border-t pt-4 mt-4">

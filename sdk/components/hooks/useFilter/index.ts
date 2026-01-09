@@ -4,6 +4,7 @@ export { useFilter } from './useFilter';
 // Type exports
 export type {
   FilterConditionWithId,
+  TypedFilterConditionInput,
   FilterState,
   FieldDefinition,
   ValidationResult,

@@ -9,9 +9,11 @@ import {
   CardTitle,
 } from "../components/ui/card";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Cart, BuyerCartItem } from "../../../../app/sources/ecommerce/cart";
+import { Cart, CartForRole } from "../../../../app/sources/ecommerce/cart";
 import { Roles } from "../../../../app/types/roles";
 import { CurrencyField } from "../../../../sdk/types/base-fields";
+
+type BuyerCart = CartForRole<typeof Roles.Buyer>;
 
 export function BuyerCartPage() {
   const queryClient = useQueryClient();
@@ -27,8 +29,8 @@ export function BuyerCartPage() {
     queryFn: async () => {
       const res = await cart.list();
       // Assuming list returns { Data: [...] } or array, SDK usually returns Response object
-      // Checking app/sources/ecommerce/cart.ts, list returns Promise<ListResponse<BuyerCartItem>> which has Data property
-      return (res.Data || []) as BuyerCartItem[];
+      // Checking app/sources/ecommerce/cart.ts, list returns Promise<ListResponse<CartForRole<TRole>>> which has Data property
+      return (res.Data || []) as BuyerCart[];
     },
   });
 
@@ -37,7 +39,8 @@ export function BuyerCartPage() {
   // Derive totals
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
   const totalValue = items.reduce(
-    (sum, item) => sum + (item.subtotal as { value: number; currency: string }).value,
+    (sum, item) =>
+      sum + (item.subtotal as { value: number; currency: string }).value,
     0
   );
   const total = { value: totalValue, currency: "USD" };
@@ -59,7 +62,8 @@ export function BuyerCartPage() {
     },
     onError: (error) => {
       toast.error("Failed to update quantity", {
-        description: error instanceof Error ? error.message : "An error occurred",
+        description:
+          error instanceof Error ? error.message : "An error occurred",
       });
     },
   });
@@ -76,14 +80,15 @@ export function BuyerCartPage() {
     },
     onError: (error) => {
       toast.error("Failed to remove item", {
-        description: error instanceof Error ? error.message : "An error occurred",
+        description:
+          error instanceof Error ? error.message : "An error occurred",
       });
     },
   });
 
   // Clear Cart Mutation (Loop Delete)
   const clearCartMutation = useMutation({
-    mutationFn: async (currentItems: BuyerCartItem[]) => {
+    mutationFn: async (currentItems: BuyerCart[]) => {
       const promises = currentItems.map((item) => cart.delete(item._id));
       await Promise.all(promises);
       return true;
@@ -95,7 +100,8 @@ export function BuyerCartPage() {
     },
     onError: (error) => {
       toast.error("Failed to clear cart", {
-        description: error instanceof Error ? error.message : "An error occurred",
+        description:
+          error instanceof Error ? error.message : "An error occurred",
       });
     },
   });
