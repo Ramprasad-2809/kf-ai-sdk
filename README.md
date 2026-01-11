@@ -155,7 +155,7 @@ function AdminOrderManagement() {
 
 ```tsx
 // User gets limited access to the same data
-import { Order, Roles, UserOrder } from "@kf-ai-sdk/app";
+import { Order, Roles, UserOrder } from "@ram_28/kf-ai-sdk";
 
 function UserOrderList() {
   const order = new Order(Roles.User);
@@ -783,8 +783,8 @@ The SDK uses configuration files in the `config/` directory:
 When AI generates an admin page for "Order Management", it reads the App layer and produces:
 
 ```tsx
-import { Order, Roles, AdminOrder } from "@kf-ai-sdk/app";
-import { useTable, useForm } from "@kf-ai-sdk/components";
+import { Order, Roles, AdminOrder } from "@ram_28/kf-ai-sdk";
+import { useTable, useForm } from "@ram_28/kf-ai-sdk";
 
 // AI generates type-safe code based on role
 function AdminOrderManagement() {

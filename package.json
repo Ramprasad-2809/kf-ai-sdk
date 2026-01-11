@@ -1,7 +1,9 @@
 {
-  "name": "kf-ai-sdk",
+  "name": "@ram_28/kf-ai-sdk",
   "version": "1.0.0",
   "description": "Type-safe, AI-driven SDK for building modern web applications with role-based access control",
+  "author": "Ramprasad",
+  "license": "MIT",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
@@ -21,8 +23,35 @@
   "files": [
     "dist",
     "sdk",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Ramprasad-2809/kf-ai-sdk.git"
+  },
+  "homepage": "https://github.com/Ramprasad-2809/kf-ai-sdk#readme",
+  "bugs": {
+    "url": "https://github.com/Ramprasad-2809/kf-ai-sdk/issues"
+  },
+  "keywords": [
+    "sdk",
+    "react",
+    "hooks",
+    "typescript",
+    "useForm",
+    "useTable",
+    "useKanban",
+    "useFilter",
+    "form-validation",
+    "data-table",
+    "kanban-board",
+    "api-client",
+    "type-safe"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "dev": "vite --config config/vite.config.js",
     "build": "vite build --config config/vite.config.js && tsc --project tsconfig.build.json",
