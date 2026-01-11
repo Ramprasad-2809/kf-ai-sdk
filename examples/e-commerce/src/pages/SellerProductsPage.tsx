@@ -1,9 +1,20 @@
 import { useState, useRef } from "react";
-import { Plus, Pencil, Trash2, Search } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Search,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  BarChart3,
+  Package,
+} from "lucide-react";
 import { useTable, useForm } from "kf-ai-sdk";
 import { Product, ProductForRole } from "../../../../app";
 import { Roles } from "../../../../app/types/roles";
 import { useQuery } from "@tanstack/react-query";
+import { ProductAnalytics } from "../components/analytics/ProductAnalytics";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
@@ -25,6 +36,9 @@ import {
 type SellerProduct = ProductForRole<"Seller">;
 
 export function SellerProductsPage() {
+  const [activeTab, setActiveTab] = useState<"products" | "analytics">(
+    "products"
+  );
   const [showForm, setShowForm] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<SellerProduct | null>(
     null
@@ -32,6 +46,11 @@ export function SellerProductsPage() {
   const [formMode, setFormMode] = useState<"create" | "update">("create");
   const [generalError, setGeneralError] = useState<string | null>(null);
   const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<SellerProduct | null>(
+    null
+  );
+  const [isDeleting, setIsDeleting] = useState(false);
   const product = new Product(Roles.Seller);
 
   const table = useTable<SellerProduct>({
@@ -47,7 +66,7 @@ export function SellerProductsPage() {
     enablePagination: true,
     initialState: {
       pagination: { pageNo: 1, pageSize: 10 },
-      sorting: { field: "Title", direction: "asc" },
+      sorting: { field: "_created_at", direction: "desc" },
     },
   });
 
@@ -110,14 +129,24 @@ export function SellerProductsPage() {
     setShowForm(true);
   };
 
-  const handleDelete = async (item: SellerProduct) => {
-    if (window.confirm(`Are you sure you want to delete "${item.Title}"?`)) {
-      try {
-        await product.delete(item._id);
-        table.refetch();
-      } catch (error) {
-        console.error("Failed to delete product:", error);
-      }
+  const handleDeleteClick = (item: SellerProduct) => {
+    setProductToDelete(item);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!productToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      await product.delete(productToDelete._id);
+      table.refetch();
+      setDeleteDialogOpen(false);
+      setProductToDelete(null);
+    } catch (error) {
+      console.error("Failed to delete product:", error);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -134,183 +163,265 @@ export function SellerProductsPage() {
           <h1 className="text-2xl font-bold text-gray-900">My Products</h1>
           <p className="text-gray-500">Manage your product listings</p>
         </div>
-        <Button onClick={handleCreate}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Product
-        </Button>
-      </div>
-
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-        <Input
-          placeholder="Search your products..."
-          className="pl-10"
-          value={table.search.query}
-          onChange={(e) => table.search.setQuery(e.target.value)}
-        />
-      </div>
-
-      {/* Products Table */}
-      {table.error ? (
-        <div className="text-center py-12 bg-red-50 rounded-lg">
-          <h3 className="text-xl font-medium text-red-800 mb-2">
-            Error loading products
-          </h3>
-          <p className="text-red-600 mb-6">{table.error.message}</p>
-          <Button onClick={() => table.refetch()} variant="outline">
-            Try Again
-          </Button>
-        </div>
-      ) : table.isLoading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        </div>
-      ) : table.rows.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-500 mb-4">You don't have any products yet.</p>
+        {activeTab === "products" && (
           <Button onClick={handleCreate}>
             <Plus className="h-4 w-4 mr-2" />
-            Add Your First Product
+            Add Product
           </Button>
-        </div>
-      ) : (
+        )}
+      </div>
+
+      {/* Tab Navigation */}
+      <div className="flex border-b border-gray-200">
+        <button
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            activeTab === "products"
+              ? "border-blue-600 text-blue-600"
+              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+          }`}
+          onClick={() => setActiveTab("products")}
+        >
+          <Package className="h-4 w-4" />
+          Products
+        </button>
+        <button
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            activeTab === "analytics"
+              ? "border-blue-600 text-blue-600"
+              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+          }`}
+          onClick={() => setActiveTab("analytics")}
+        >
+          <BarChart3 className="h-4 w-4" />
+          Analytics
+        </button>
+      </div>
+
+      {activeTab === "products" && (
         <>
-          <div className="bg-white rounded-lg border overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">
-                    Product
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">
-                    Category
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">
-                    Price
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">
-                    Stock
-                  </th>
-                  <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {table.rows.map((product) => (
-                  <tr key={product._id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gray-100 rounded overflow-hidden">
-                          <img
-                            src={
-                              product.ImageSrc ||
-                              "https://via.placeholder.com/40x40?text=?"
-                            }
-                            alt={product.Title}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src =
-                                "https://via.placeholder.com/40x40?text=?";
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900">
-                            {product.Title}
-                          </p>
-                          <p className="text-xs text-gray-500 truncate max-w-xs">
-                            {product.Description}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge variant="secondary" className="capitalize">
-                        {product.Category}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3 font-medium">
-                      {formatPrice(product.Price)}
-                      {product.LowStock && (
-                        <Badge variant="destructive" className="ml-2 text-xs">
-                          Low Stock
-                        </Badge>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge
-                        variant={
-                          product.Stock > 10
-                            ? "success"
-                            : product.Stock > 0
-                              ? "warning"
-                              : "destructive"
-                        }
-                      >
-                        {product.Stock} in stock
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(product)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => handleDelete(product)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          {/* Search */}
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Search your products..."
+              className="pl-10"
+              value={table.search.query}
+              onChange={(e) => table.search.setQuery(e.target.value)}
+            />
           </div>
 
-          {/* Pagination */}
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-500">
-              Showing{" "}
-              {(table.pagination.currentPage - 1) * table.pagination.pageSize +
-                1}{" "}
-              to{" "}
-              {Math.min(
-                table.pagination.currentPage * table.pagination.pageSize,
-                table.totalItems
-              )}{" "}
-              of {table.totalItems} products
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={table.pagination.goToPrevious}
-                disabled={!table.pagination.canGoPrevious}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={table.pagination.goToNext}
-                disabled={!table.pagination.canGoNext}
-              >
-                Next
+          {/* Products Table */}
+          {table.error ? (
+            <div className="text-center py-12 bg-red-50 rounded-lg">
+              <h3 className="text-xl font-medium text-red-800 mb-2">
+                Error loading products
+              </h3>
+              <p className="text-red-600 mb-6">{table.error.message}</p>
+              <Button onClick={() => table.refetch()} variant="outline">
+                Try Again
               </Button>
             </div>
-          </div>
+          ) : table.isLoading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : table.rows.length === 0 ? (
+            <div className="text-center py-12 bg-gray-50 rounded-lg">
+              <p className="text-gray-500 mb-4">
+                You don't have any products yet.
+              </p>
+              <Button onClick={handleCreate}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Your First Product
+              </Button>
+            </div>
+          ) : (
+            <>
+              <div className="bg-white rounded-lg border overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">
+                        Product
+                      </th>
+                      <th
+                        className="px-4 py-3 text-left text-sm font-medium text-gray-600 cursor-pointer hover:bg-gray-100 select-none"
+                        onClick={() => table.sort.toggle("Category")}
+                      >
+                        <div className="flex items-center gap-1">
+                          Category
+                          {table.sort.field === "Category" ? (
+                            table.sort.direction === "asc" ? (
+                              <ArrowUp className="h-4 w-4" />
+                            ) : (
+                              <ArrowDown className="h-4 w-4" />
+                            )
+                          ) : (
+                            <ArrowUpDown className="h-4 w-4 text-gray-400" />
+                          )}
+                        </div>
+                      </th>
+                      <th
+                        className="px-4 py-3 text-left text-sm font-medium text-gray-600 cursor-pointer hover:bg-gray-100 select-none"
+                        onClick={() => table.sort.toggle("Price")}
+                      >
+                        <div className="flex items-center gap-1">
+                          Price
+                          {table.sort.field === "Price" ? (
+                            table.sort.direction === "asc" ? (
+                              <ArrowUp className="h-4 w-4" />
+                            ) : (
+                              <ArrowDown className="h-4 w-4" />
+                            )
+                          ) : (
+                            <ArrowUpDown className="h-4 w-4 text-gray-400" />
+                          )}
+                        </div>
+                      </th>
+                      <th
+                        className="px-4 py-3 text-left text-sm font-medium text-gray-600 cursor-pointer hover:bg-gray-100 select-none"
+                        onClick={() => table.sort.toggle("Stock")}
+                      >
+                        <div className="flex items-center gap-1">
+                          Stock
+                          {table.sort.field === "Stock" ? (
+                            table.sort.direction === "asc" ? (
+                              <ArrowUp className="h-4 w-4" />
+                            ) : (
+                              <ArrowDown className="h-4 w-4" />
+                            )
+                          ) : (
+                            <ArrowUpDown className="h-4 w-4 text-gray-400" />
+                          )}
+                        </div>
+                      </th>
+                      <th className="px-4 py-3 text-right text-sm font-medium text-gray-600">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {table.rows.map((product) => (
+                      <tr key={product._id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-gray-100 rounded overflow-hidden">
+                              <img
+                                src={
+                                  product.ImageSrc ||
+                                  "https://via.placeholder.com/40x40?text=?"
+                                }
+                                alt={product.Title}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src =
+                                    "https://via.placeholder.com/40x40?text=?";
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900">
+                                {product.Title}
+                              </p>
+                              <p className="text-xs text-gray-500 truncate max-w-xs">
+                                {product.Description}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge variant="secondary" className="capitalize">
+                            {product.Category}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 font-medium">
+                          {formatPrice(product.Price)}
+                          {product.LowStock && (
+                            <Badge
+                              variant="destructive"
+                              className="ml-2 text-xs"
+                            >
+                              Low Stock
+                            </Badge>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge
+                            variant={
+                              product.Stock > 10
+                                ? "success"
+                                : product.Stock > 0
+                                  ? "warning"
+                                  : "destructive"
+                            }
+                          >
+                            {product.Stock} in stock
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(product)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => handleDeleteClick(product)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-500">
+                  Showing{" "}
+                  {(table.pagination.currentPage - 1) *
+                    table.pagination.pageSize +
+                    1}{" "}
+                  to{" "}
+                  {Math.min(
+                    table.pagination.currentPage * table.pagination.pageSize,
+                    table.totalItems
+                  )}{" "}
+                  of {table.totalItems} products
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={table.pagination.goToPrevious}
+                    disabled={!table.pagination.canGoPrevious}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={table.pagination.goToNext}
+                    disabled={!table.pagination.canGoNext}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </>
       )}
+
+      {activeTab === "analytics" && <ProductAnalytics />}
 
       {/* Product Form Dialog */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
@@ -642,29 +753,6 @@ export function SellerProductsPage() {
                           Auto-calculated from (MRP - Price) ÷ MRP × 100
                         </p>
                       </div>
-
-                      {/* Low Stock Indicator */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Stock Status
-                        </label>
-                        <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-sm">
-                          <span
-                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                              form.watch("LowStock")
-                                ? "bg-red-100 text-red-800"
-                                : "bg-green-100 text-green-800"
-                            }`}
-                          >
-                            {form.watch("LowStock")
-                              ? "⚠️ Low Stock"
-                              : "✅ Good Stock"}
-                          </span>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Auto-calculated: Stock ≤ Reorder Level
-                        </p>
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -690,6 +778,52 @@ export function SellerProductsPage() {
               </DialogFooter>
             </form>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Product</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-gray-600">
+              Are you sure you want to delete{" "}
+              <span className="font-semibold text-gray-900">
+                "{productToDelete?.Title}"
+              </span>
+              ? This action cannot be undone.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setProductToDelete(null);
+              }}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Deleting...
+                </div>
+              ) : (
+                "Delete"
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
