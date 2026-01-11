@@ -235,23 +235,53 @@ export function validateFormData<T>(
 }
 
 /**
- * Clean form data before submission (remove computed fields, empty values, etc.)
+ * Clean form data before submission
+ * - For create: returns all non-computed, non-undefined fields
+ * - For update: returns only fields that changed from originalData
  */
 export function cleanFormData<T>(
   data: Partial<T>,
-  computedFields: string[]
+  computedFields: string[],
+  operation: FormOperation = "create",
+  originalData?: Partial<T>
 ): Partial<T> {
-  const cleanedData = { ...data };
+  const cleanedData: Partial<T> = {};
 
-  // Remove computed fields
-  for (const field of computedFields) {
-    delete cleanedData[field as keyof T];
-  }
+  Object.keys(data).forEach((key) => {
+    const fieldKey = key as keyof T;
+    const value = data[fieldKey];
 
-  // Remove undefined values
-  Object.keys(cleanedData).forEach((key) => {
-    if (cleanedData[key as keyof T] === undefined) {
-      delete cleanedData[key as keyof T];
+    // Skip computed fields
+    if (computedFields.includes(key)) {
+      return;
+    }
+
+    // Skip undefined values
+    if (value === undefined) {
+      return;
+    }
+
+    // For create: include all non-computed, non-undefined fields
+    if (operation === "create") {
+      cleanedData[fieldKey] = value;
+      return;
+    }
+
+    // For update: only include fields that changed from original
+    if (operation === "update") {
+      if (!originalData) {
+        // No original data to compare - include the field
+        cleanedData[fieldKey] = value;
+        return;
+      }
+
+      const originalValue = originalData[fieldKey];
+      const hasChanged =
+        JSON.stringify(value) !== JSON.stringify(originalValue);
+
+      if (hasChanged) {
+        cleanedData[fieldKey] = value;
+      }
     }
   });
 

@@ -516,9 +516,13 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
       const formValues = rhfForm.getValues();
 
       // Clean data for submission
+      // - For create: includes all non-computed fields
+      // - For update: includes only fields that changed from recordData
       const cleanedData = cleanFormData(
         formValues as any,
-        processedSchema.computedFields
+        processedSchema.computedFields,
+        operation,
+        recordData as Partial<T> | undefined
       );
 
       // Submit data
@@ -549,7 +553,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     } finally {
       setIsSubmitting(false);
     }
-  }, [processedSchema, validateForm, rhfForm, source, operation, recordId]);
+  }, [processedSchema, validateForm, rhfForm, source, operation, recordId, recordData]);
 
   // ============================================================
   // HANDLE SUBMIT - Simplified API

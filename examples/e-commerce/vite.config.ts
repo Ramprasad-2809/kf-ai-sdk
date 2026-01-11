@@ -19,7 +19,12 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
       "@sdk": path.resolve(__dirname, "../../sdk"),
       "@app": path.resolve(__dirname, "../../app"),
+      // Force all imports to use app's versions (fixes context sharing issues)
+      "@tanstack/react-query": path.resolve(__dirname, "node_modules/@tanstack/react-query"),
+      "react": path.resolve(__dirname, "node_modules/react"),
+      "react-dom": path.resolve(__dirname, "node_modules/react-dom"),
     },
+    dedupe: ["@tanstack/react-query", "react", "react-dom"],
   },
   server: {
     port: 3003,
