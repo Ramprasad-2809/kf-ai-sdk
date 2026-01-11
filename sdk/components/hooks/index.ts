@@ -29,3 +29,6 @@ export type {
   KanbanColumn,
   ColumnDefinition as KanbanColumnDefinition,
 } from "./useKanban";
+
+// Filter hook
+export * from "./useFilter";

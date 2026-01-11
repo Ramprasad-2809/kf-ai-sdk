@@ -1,19 +1,16 @@
-import { defineConfig } from 'eslint-define-config';
-
-export default defineConfig({
+module.exports = {
   root: true,
   env: { browser: true, es2020: true, node: true },
   extends: [
     'eslint:recommended',
-    '@typescript-eslint/recommended',
+    'plugin:@typescript-eslint/recommended',
     'prettier'
   ],
-  ignorePatterns: ['dist', '.eslintrc.cjs'],
+  ignorePatterns: ['dist', '.eslintrc.cjs', 'node_modules'],
   parser: '@typescript-eslint/parser',
   parserOptions: {
     ecmaVersion: 'latest',
-    sourceType: 'module',
-    project: './config/tsconfig.json'
+    sourceType: 'module'
   },
   plugins: ['@typescript-eslint'],
   rules: {
@@ -21,4 +18,4 @@ export default defineConfig({
     '@typescript-eslint/no-explicit-any': 'off',
     '@typescript-eslint/no-non-null-assertion': 'warn'
   }
-});
+};
