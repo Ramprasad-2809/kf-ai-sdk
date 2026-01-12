@@ -89,7 +89,8 @@ export function AuthProvider({
     retryDelay: authConfig.retry.delay,
     staleTime: authConfig.staleTime,
     gcTime: authConfig.staleTime * 2,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: authConfig.refetchOnWindowFocus ?? true,
+    refetchOnReconnect: authConfig.refetchOnReconnect ?? true,
     refetchInterval: authConfig.sessionCheckInterval || false,
   });
 
@@ -167,6 +168,11 @@ export function AuthProvider({
   );
 
   const refreshSession = useCallback(async (): Promise<SessionResponse | null> => {
+    // Prevent concurrent refreshes - return existing data if already fetching
+    if (isFetching) {
+      return sessionData || null;
+    }
+
     try {
       const result = await refetch();
       return result.data || null;
@@ -174,7 +180,7 @@ export function AuthProvider({
       setError(err as Error);
       return null;
     }
-  }, [refetch]);
+  }, [refetch, isFetching, sessionData]);
 
   const hasRole = useCallback(
     (role: string): boolean => {

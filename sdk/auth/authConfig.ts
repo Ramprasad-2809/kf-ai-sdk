@@ -25,6 +25,8 @@ const defaultAuthConfig: AuthConfig = {
     delay: 1000,
   },
   staleTime: 5 * 60 * 1000,
+  refetchOnWindowFocus: true,
+  refetchOnReconnect: true,
 };
 
 /**

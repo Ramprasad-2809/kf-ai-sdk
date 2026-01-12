@@ -61,38 +61,86 @@ export async function fetchSession(): Promise<SessionResponse> {
 }
 
 /**
- * Initiate login flow by redirecting to the auth provider
- * The server handles the OAuth flow and sets cookies
+ * Initiates OAuth login flow by redirecting to the auth provider.
+ *
+ * @remarks
+ * This function redirects the browser and never resolves.
+ * Any code after calling this function will not execute.
+ *
+ * @param provider - OAuth provider to use (defaults to config.defaultProvider)
+ * @param options - Login options including callback URL and custom params
+ * @returns Promise that never resolves (browser redirects away)
+ *
+ * @example
+ * ```typescript
+ * // Correct usage - no code after login()
+ * function handleLoginClick() {
+ *   login('google');
+ *   // Don't put code here - it won't run
+ * }
+ * ```
  */
 export function initiateLogin(
   provider?: AuthProviderName,
   options?: LoginOptions
-): void {
-  const config = getAuthConfig();
-  const baseUrl = getAuthBaseUrl();
-  const selectedProvider = provider || config.defaultProvider;
+): Promise<never> {
+  return new Promise(() => {
+    const config = getAuthConfig();
+    const baseUrl = getAuthBaseUrl();
 
-  const providerConfig = getProviderConfig(selectedProvider);
-  if (!providerConfig) {
-    throw new Error(`Auth provider "${selectedProvider}" is not configured`);
-  }
+    // Validate base URL
+    if (!baseUrl) {
+      throw new Error(
+        'Auth base URL is not configured. Call setApiBaseUrl("https://...") or configureAuth({ baseUrl: "https://..." }) first.'
+      );
+    }
 
-  const loginUrl = new URL(`${baseUrl}${providerConfig.loginPath}`);
+    const selectedProvider = provider || config.defaultProvider;
+    const providerConfig = getProviderConfig(selectedProvider);
 
-  if (options?.callbackUrl || config.callbackUrl) {
-    loginUrl.searchParams.set(
-      "callbackUrl",
-      options?.callbackUrl || config.callbackUrl || window.location.href
-    );
-  }
+    // Validate provider config
+    if (!providerConfig) {
+      const availableProviders = Object.keys(config.providers || {}).join(", ") || "none";
+      throw new Error(
+        `Auth provider "${selectedProvider}" is not configured. Available providers: ${availableProviders}`
+      );
+    }
 
-  if (options?.params) {
-    Object.entries(options.params).forEach(([key, value]) => {
-      loginUrl.searchParams.set(key, value);
-    });
-  }
+    // Validate login path
+    if (!providerConfig.loginPath) {
+      throw new Error(
+        `Login path not configured for provider "${selectedProvider}". ` +
+        `Configure it with: configureAuth({ providers: { ${selectedProvider}: { loginPath: '/api/auth/...' } } })`
+      );
+    }
 
-  window.location.href = loginUrl.toString();
+    // Validate URL construction
+    let loginUrl: URL;
+    try {
+      loginUrl = new URL(`${baseUrl}${providerConfig.loginPath}`);
+    } catch {
+      throw new Error(
+        `Failed to construct login URL. Base URL: "${baseUrl}", Login path: "${providerConfig.loginPath}". ` +
+        `Ensure baseUrl is a valid URL (e.g., "https://example.com").`
+      );
+    }
+
+    if (options?.callbackUrl || config.callbackUrl) {
+      loginUrl.searchParams.set(
+        "callbackUrl",
+        options?.callbackUrl || config.callbackUrl || window.location.href
+      );
+    }
+
+    if (options?.params) {
+      Object.entries(options.params).forEach(([key, value]) => {
+        loginUrl.searchParams.set(key, value);
+      });
+    }
+
+    window.location.href = loginUrl.toString();
+    // Promise never resolves - browser navigates away
+  });
 }
 
 /**

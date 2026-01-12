@@ -71,6 +71,8 @@ setApiBaseUrl('https://api.example.com');
 configureAuth({
   defaultProvider: 'google',
   autoRedirect: true,
+  refetchOnWindowFocus: false,  // Disable session check on tab switch
+  refetchOnReconnect: true,     // Re-check session on network reconnect
   providers: {
     google: {
       loginPath: '/api/auth/google/login',
@@ -464,7 +466,6 @@ cn('text-red-500', condition && 'text-blue-500');
 
 Detailed documentation for each feature:
 
-- [Authentication Documentation](./docs/useAuth.md)
 - [useForm Documentation](./docs/useForm.md)
 - [useTable Documentation](./docs/useTable.md)
 - [useKanban Documentation](./docs/useKanban.md)

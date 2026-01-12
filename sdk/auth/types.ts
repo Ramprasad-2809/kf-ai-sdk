@@ -79,6 +79,12 @@ export interface AuthConfig {
 
   /** React Query stale time for session data */
   staleTime: number;
+
+  /** Refetch session when window regains focus (default: true) */
+  refetchOnWindowFocus?: boolean;
+
+  /** Refetch session when network reconnects (default: true) */
+  refetchOnReconnect?: boolean;
 }
 
 /**

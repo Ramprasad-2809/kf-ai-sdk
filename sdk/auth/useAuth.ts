@@ -3,6 +3,7 @@
 // ============================================================
 // Main hook for consuming authentication state
 
+import { useMemo } from "react";
 import type { UseAuthReturn } from "./types";
 import { useAuthContext } from "./AuthProvider";
 
@@ -33,35 +34,36 @@ import { useAuthContext } from "./AuthProvider";
 export function useAuth(): UseAuthReturn {
   const context = useAuthContext();
 
-  const {
-    user,
-    staticBaseUrl,
-    buildId,
-    status,
-    isAuthenticated,
-    isLoading,
-    login,
-    logout,
-    refreshSession,
-    hasRole,
-    hasAnyRole,
-    error,
-    clearError,
-  } = context;
-
-  return {
-    user,
-    staticBaseUrl,
-    buildId,
-    status,
-    isAuthenticated,
-    isLoading,
-    login,
-    logout,
-    refreshSession,
-    hasRole,
-    hasAnyRole,
-    error,
-    clearError,
-  };
+  return useMemo(
+    () => ({
+      user: context.user,
+      staticBaseUrl: context.staticBaseUrl,
+      buildId: context.buildId,
+      status: context.status,
+      isAuthenticated: context.isAuthenticated,
+      isLoading: context.isLoading,
+      login: context.login,
+      logout: context.logout,
+      refreshSession: context.refreshSession,
+      hasRole: context.hasRole,
+      hasAnyRole: context.hasAnyRole,
+      error: context.error,
+      clearError: context.clearError,
+    }),
+    [
+      context.user,
+      context.staticBaseUrl,
+      context.buildId,
+      context.status,
+      context.isAuthenticated,
+      context.isLoading,
+      context.login,
+      context.logout,
+      context.refreshSession,
+      context.hasRole,
+      context.hasAnyRole,
+      context.error,
+      context.clearError,
+    ]
+  );
 }
