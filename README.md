@@ -15,6 +15,7 @@ npm install react @tanstack/react-query
 
 ## Features
 
+- **Authentication** - Cookie-based auth with AuthProvider and useAuth hook
 - **useForm** - Dynamic schema-driven forms with backend validation
 - **useTable** - Data tables with sorting, pagination, and React Query integration
 - **useKanban** - Kanban board state management with drag-drop support
@@ -27,18 +28,169 @@ npm install react @tanstack/react-query
 
 ```tsx
 import {
+  // Authentication
+  AuthProvider,
+  useAuth,
+  configureAuth,
+
+  // Hooks
   useForm,
   useTable,
   useKanban,
   useFilter,
+
+  // API
   api,
   setApiBaseUrl,
+
+  // Utilities
   formatCurrency,
   formatDate
 } from '@ram_28/kf-ai-sdk';
 
 // Configure API base URL
 setApiBaseUrl('https://api.example.com');
+```
+
+## Authentication
+
+The SDK provides a complete authentication solution with cookie-based session management.
+
+### Setup
+
+Wrap your app with `AuthProvider` inside a `QueryClientProvider`:
+
+```tsx
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AuthProvider, setApiBaseUrl, configureAuth } from '@ram_28/kf-ai-sdk';
+
+// Configure API
+setApiBaseUrl('https://api.example.com');
+
+// Optional: customize auth settings
+configureAuth({
+  defaultProvider: 'google',
+  autoRedirect: true,
+  providers: {
+    google: {
+      loginPath: '/api/auth/google/login',
+      logoutPath: '/api/auth/logout',
+    },
+  },
+});
+
+const queryClient = new QueryClient();
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider
+        loadingComponent={<div>Loading...</div>}
+        onAuthChange={(status, user) => console.log('Auth:', status, user)}
+      >
+        <MyApp />
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+}
+```
+
+### useAuth Hook
+
+Access authentication state and operations in any component:
+
+```tsx
+import { useAuth } from '@ram_28/kf-ai-sdk';
+
+function UserMenu() {
+  const { user, isAuthenticated, isLoading, logout, hasRole } = useAuth();
+
+  if (isLoading) return <div>Loading...</div>;
+  if (!isAuthenticated) return null;
+
+  return (
+    <div>
+      <span>Welcome, {user._name}</span>
+      <span>Role: {user.Role}</span>
+
+      {hasRole('Admin') && <a href="/admin">Admin Dashboard</a>}
+
+      <button onClick={() => logout({ redirectUrl: '/' })}>
+        Logout
+      </button>
+    </div>
+  );
+}
+```
+
+### useAuth Return Values
+
+```tsx
+const {
+  // User state
+  user,              // UserDetails | null
+  staticBaseUrl,     // string | null
+  buildId,           // string | null
+  status,            // 'loading' | 'authenticated' | 'unauthenticated'
+  isAuthenticated,   // boolean
+  isLoading,         // boolean
+
+  // Operations
+  login,             // (provider?, options?) => void
+  logout,            // (options?) => Promise<void>
+  refreshSession,    // () => Promise<SessionResponse | null>
+  hasRole,           // (role: string) => boolean
+  hasAnyRole,        // (roles: string[]) => boolean
+
+  // Error handling
+  error,             // Error | null
+  clearError,        // () => void
+} = useAuth();
+```
+
+### Multiple Auth Providers
+
+```tsx
+import { useAuth } from '@ram_28/kf-ai-sdk';
+
+function LoginPage() {
+  const { login } = useAuth();
+
+  return (
+    <div>
+      <button onClick={() => login('google')}>
+        Continue with Google
+      </button>
+      <button onClick={() => login('microsoft')}>
+        Continue with Microsoft
+      </button>
+    </div>
+  );
+}
+```
+
+### Protected Routes
+
+```tsx
+import { useAuth } from '@ram_28/kf-ai-sdk';
+import { Navigate } from 'react-router-dom';
+
+function ProtectedRoute({ children, requiredRoles }) {
+  const { isAuthenticated, isLoading, hasAnyRole } = useAuth();
+
+  if (isLoading) return <div>Loading...</div>;
+  if (!isAuthenticated) return <Navigate to="/login" />;
+  if (requiredRoles && !hasAnyRole(requiredRoles)) {
+    return <Navigate to="/unauthorized" />;
+  }
+
+  return children;
+}
+
+// Usage
+<ProtectedRoute requiredRoles={['Admin', 'Manager']}>
+  <AdminDashboard />
+</ProtectedRoute>
 ```
 
 ## Hooks
@@ -310,8 +462,9 @@ cn('text-red-500', condition && 'text-blue-500');
 
 ## Documentation
 
-Detailed documentation for each hook:
+Detailed documentation for each feature:
 
+- [Authentication Documentation](./docs/useAuth.md)
 - [useForm Documentation](./docs/useForm.md)
 - [useTable Documentation](./docs/useTable.md)
 - [useKanban Documentation](./docs/useKanban.md)
