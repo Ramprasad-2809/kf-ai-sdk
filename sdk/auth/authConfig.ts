@@ -18,14 +18,14 @@ const defaultAuthConfig: AuthConfig = {
     },
   },
   defaultProvider: "google",
-  autoRedirect: true,
+  autoRedirect: false,
   sessionCheckInterval: 0,
   retry: {
     count: 3,
     delay: 1000,
   },
   staleTime: 5 * 60 * 1000,
-  refetchOnWindowFocus: true,
+  refetchOnWindowFocus: false,
   refetchOnReconnect: true,
 };
 
@@ -82,10 +82,10 @@ export function getAuthConfig(): Readonly<AuthConfig> {
 
 /**
  * Get the base URL for auth endpoints
- * Falls back to API base URL if not explicitly set
+ * Falls back to API base URL, then window.location.origin
  */
 export function getAuthBaseUrl(): string {
-  return authConfig.baseUrl || getApiBaseUrl();
+  return authConfig.baseUrl || getApiBaseUrl() || (typeof window !== 'undefined' ? window.location.origin : '');
 }
 
 /**

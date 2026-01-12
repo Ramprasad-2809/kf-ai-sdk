@@ -31,7 +31,6 @@ import {
   // Authentication
   AuthProvider,
   useAuth,
-  configureAuth,
 
   // Hooks
   useForm,
@@ -41,15 +40,11 @@ import {
 
   // API
   api,
-  setApiBaseUrl,
 
   // Utilities
   formatCurrency,
   formatDate
 } from '@ram_28/kf-ai-sdk';
-
-// Configure API base URL
-setApiBaseUrl('https://api.example.com');
 ```
 
 ## Authentication
@@ -58,38 +53,18 @@ The SDK provides a complete authentication solution with cookie-based session ma
 
 ### Setup
 
-Wrap your app with `AuthProvider` inside a `QueryClientProvider`:
+Wrap your app with `AuthProvider` inside a `QueryClientProvider`. No configuration required - it works out of the box:
 
 ```tsx
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider, setApiBaseUrl, configureAuth } from '@ram_28/kf-ai-sdk';
-
-// Configure API
-setApiBaseUrl('https://api.example.com');
-
-// Optional: customize auth settings
-configureAuth({
-  defaultProvider: 'google',
-  autoRedirect: true,
-  refetchOnWindowFocus: false,  // Disable session check on tab switch
-  refetchOnReconnect: true,     // Re-check session on network reconnect
-  providers: {
-    google: {
-      loginPath: '/api/auth/google/login',
-      logoutPath: '/api/auth/logout',
-    },
-  },
-});
+import { AuthProvider } from '@ram_28/kf-ai-sdk';
 
 const queryClient = new QueryClient();
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider
-        loadingComponent={<div>Loading...</div>}
-        onAuthChange={(status, user) => console.log('Auth:', status, user)}
-      >
+      <AuthProvider>
         <MyApp />
       </AuthProvider>
     </QueryClientProvider>
