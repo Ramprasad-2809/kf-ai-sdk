@@ -1,27 +1,69 @@
 {
-  "name": "kf-ai-sdk",
-  "version": "1.0.0",
+  "name": "@ram_28/kf-ai-sdk",
+  "version": "1.0.5",
   "description": "Type-safe, AI-driven SDK for building modern web applications with role-based access control",
+  "author": "Ramprasad",
+  "license": "MIT",
   "type": "module",
-  "main": "sdk/index.ts",
-  "module": "sdk/index.ts",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./sdk/index.ts",
-      "require": "./sdk/index.ts"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.cjs"
+      }
     }
+  },
+  "files": [
+    "dist",
+    "sdk",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Ramprasad-2809/kf-ai-sdk.git"
+  },
+  "homepage": "https://github.com/Ramprasad-2809/kf-ai-sdk#readme",
+  "bugs": {
+    "url": "https://github.com/Ramprasad-2809/kf-ai-sdk/issues"
+  },
+  "keywords": [
+    "sdk",
+    "react",
+    "hooks",
+    "typescript",
+    "useForm",
+    "useTable",
+    "useKanban",
+    "useFilter",
+    "form-validation",
+    "data-table",
+    "kanban-board",
+    "api-client",
+    "type-safe"
+  ],
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "dev": "vite --config config/vite.config.js",
-    "build": "tsc && vite build --config config/vite.config.js",
+    "build": "vite build --config config/vite.config.js && tsc --project tsconfig.build.json",
     "preview": "vite preview --config config/vite.config.js",
-    "lint": "eslint . --ext .ts,.tsx",
-    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "lint": "eslint sdk --ext .ts,.tsx",
+    "lint:fix": "eslint sdk --ext .ts,.tsx --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest",
     "test:watch": "vitest --watch",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.0.0-beta.68",

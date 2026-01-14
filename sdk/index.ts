@@ -11,3 +11,6 @@ export * from './utils';
 
 // Components
 export * from './components';
+
+// Authentication
+export * from './auth';

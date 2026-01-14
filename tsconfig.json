@@ -23,13 +23,11 @@
     /* Path mapping */
     "baseUrl": ".",
     "paths": {
-      "@sdk/*": ["sdk/*"],
-      "@app/*": ["app/*"]
+      "@sdk/*": ["sdk/*"]
     }
   },
   "include": [
-    "sdk/**/*",
-    "app/**/*"
+    "sdk/**/*"
   ],
   "exclude": [
     "node_modules",
