@@ -1,143 +1,177 @@
-import type { Filter, FilterOperator, FilterRHSType, LogicalOperator } from "../../../types/common";
+import type {
+  Condition,
+  ConditionGroup,
+  ConditionGroupOperator,
+  Filter,
+  FilterRHSType,
+  // Legacy types for backwards compatibility
+  FilterCondition,
+  FilterOperator,
+} from "../../../types/common";
+
+// Re-export from common types for convenience
+export type {
+  Condition,
+  ConditionGroup,
+  ConditionGroupOperator,
+  Filter,
+  FilterRHSType,
+  // Legacy re-exports
+  FilterCondition,
+  FilterOperator,
+};
 
 // ============================================================
-// TYPE DEFINITIONS
+// TYPE GUARDS
 // ============================================================
 
 /**
- * Internal filter condition with ID for management
- * Supports both simple conditions and nested logical groups
+ * Type guard to check if an item is a ConditionGroup (has nested Condition array)
  */
-export interface FilterConditionWithId {
-  /** Unique identifier for internal management */
-  id: string;
-  /** Filter operator (can be condition or logical operator) */
-  operator: FilterOperator | LogicalOperator;
-  /** Left-hand side field name (required for condition operators) */
-  lhsField?: string;
-  /** Right-hand side value (required for condition operators) */
-  rhsValue?: any;
-  /** Right-hand side type (defaults to Constant) */
-  rhsType?: FilterRHSType;
-  /** Nested conditions (for logical operators: And, Or, Not) */
-  children?: FilterConditionWithId[];
-  /** Validation state */
-  isValid: boolean;
-  /** Specific validation errors */
-  validationErrors?: string[];
-}
+export const isConditionGroup = (
+  item: Condition | ConditionGroup
+): item is ConditionGroup => {
+  return "Condition" in item;
+};
 
 /**
- * Type-safe filter condition input (for addCondition)
- * Constrains lhsField to keys of T for compile-time type checking
+ * Type guard to check if an item is a leaf Condition (has LHSField)
  */
-export interface TypedFilterConditionInput<T> {
-  /** Filter operator (can be condition or logical operator) */
-  operator: FilterOperator | LogicalOperator;
-  /** Left-hand side field name - constrained to keyof T */
-  lhsField?: keyof T & string;
-  /** Right-hand side value */
-  rhsValue?: T[keyof T] | T[keyof T][] | any;
-  /** Right-hand side type (defaults to Constant) */
-  rhsType?: FilterRHSType;
-  /** Nested conditions (for logical operators: And, Or, Not) */
-  children?: TypedFilterConditionInput<T>[];
-}
+export const isCondition = (
+  item: Condition | ConditionGroup
+): item is Condition => {
+  return "LHSField" in item;
+};
 
-export interface FilterState {
-  /** Logical operator for combining conditions */
-  logicalOperator: LogicalOperator;
-  /** Array of filter conditions with IDs */
-  conditions: FilterConditionWithId[];
-}
+// ============================================================
+// LEGACY TYPE GUARDS (for backwards compatibility)
+// ============================================================
 
-export interface ValidationResult {
-  /** Whether the validation passed */
-  isValid: boolean;
-  /** Array of error messages */
-  errors: string[];
-}
+/**
+ * @deprecated Use `isConditionGroup` instead
+ */
+export const isFilterLogical = isConditionGroup;
 
-export interface ValidationError {
-  /** ID of the condition with errors */
-  conditionId: string;
-  /** Field name */
-  field: string;
-  /** Error message */
-  message: string;
-}
+/**
+ * @deprecated Use `isCondition` instead
+ */
+export const isFilterCondition = isCondition;
 
+// ============================================================
+// HOOK-SPECIFIC TYPE DEFINITIONS
+// ============================================================
+
+/**
+ * Hook options (minimal configuration)
+ */
 export interface UseFilterOptions {
   /** Initial filter conditions */
-  initialConditions?: FilterConditionWithId[];
-  /** Initial logical operator */
-  initialLogicalOperator?: LogicalOperator;
-  /** Whether to validate conditions on change */
-  validateOnChange?: boolean;
-  /** Callback when condition is added */
-  onConditionAdd?: (condition: FilterConditionWithId) => void;
-  /** Callback when condition is updated */
-  onConditionUpdate?: (condition: FilterConditionWithId) => void;
-  /** Callback when condition is removed */
-  onConditionRemove?: (conditionId: string) => void;
-  /** Callback when validation errors occur */
-  onValidationError?: (errors: ValidationError[]) => void;
+  initialConditions?: Array<Condition | ConditionGroup>;
+  /** Initial operator for combining conditions (defaults to "And") */
+  initialOperator?: ConditionGroupOperator;
 }
 
-export interface UseFilterReturn<T = any> {
-  // Current state
-  /** Array of current filter conditions */
-  conditions: FilterConditionWithId[];
-  /** Current logical operator */
-  logicalOperator: LogicalOperator;
-  /** SDK-formatted filter payload for API calls */
-  filterPayload: Filter | undefined;
-  /** Overall validation state */
-  isValid: boolean;
-  /** Array of validation errors */
-  validationErrors: ValidationError[];
+/**
+ * Hook return interface with nested filter support
+ */
+export interface UseFilterReturn {
+  // ============================================================
+  // STATE (read-only)
+  // ============================================================
 
-  // Condition management
-  /** Add a new filter condition (type-safe: lhsField constrained to keyof T) */
-  addCondition: (condition: TypedFilterConditionInput<T>) => string;
-  /** Update an existing condition */
-  updateCondition: (id: string, updates: Partial<TypedFilterConditionInput<T>>) => boolean;
-  /** Remove a condition by ID */
-  removeCondition: (id: string) => boolean;
-  /** Clear all conditions */
-  clearConditions: () => void;
-  /** Get a specific condition by ID */
-  getCondition: (id: string) => FilterConditionWithId | undefined;
+  /** Current operator for combining root-level conditions ("And" | "Or" | "Not") */
+  operator: ConditionGroupOperator;
 
-  // Logical operator management
-  /** Set the root logical operator */
-  setLogicalOperator: (operator: LogicalOperator) => void;
+  /** Current filter items (with id populated) */
+  items: Array<Condition | ConditionGroup>;
 
-  // Bulk operations
-  /** Replace all conditions */
-  setConditions: (conditions: FilterConditionWithId[]) => void;
-  /** Replace a specific condition */
-  replaceCondition: (id: string, newCondition: TypedFilterConditionInput<T>) => boolean;
+  /** Ready-to-use API payload (id stripped, undefined if no conditions) */
+  payload: Filter | undefined;
 
-  // Validation
-  /** Validate a single condition */
-  validateCondition: (condition: Partial<FilterConditionWithId>) => ValidationResult;
-  /** Validate all current conditions */
-  validateAllConditions: () => ValidationResult;
-
-  // State management
-  /** Export current filter state */
-  exportState: () => FilterState;
-  /** Import a filter state */
-  importState: (state: FilterState) => void;
-  /** Reset to initial state */
-  resetToInitial: () => void;
-
-  // Utilities
-  /** Get total number of conditions */
-  getConditionCount: () => number;
   /** Whether any conditions exist */
   hasConditions: boolean;
-  /** Whether more conditions can be added */
-  canAddCondition: boolean;
+
+  // ============================================================
+  // ADD OPERATIONS (return id of created item)
+  // ============================================================
+
+  /**
+   * Add a leaf condition at root level
+   * @returns The id of the created condition
+   */
+  add: (condition: Omit<Condition, "id">) => string;
+
+  /**
+   * Add a condition group at root level
+   * @returns The id of the created group
+   */
+  addGroup: (operator: ConditionGroupOperator) => string;
+
+  /**
+   * Add a leaf condition to a specific parent group
+   * @param parentId - The id of the parent ConditionGroup
+   * @returns The id of the created condition
+   */
+  addTo: (parentId: string, condition: Omit<Condition, "id">) => string;
+
+  /**
+   * Add a condition group to a specific parent group
+   * @param parentId - The id of the parent ConditionGroup
+   * @returns The id of the created group
+   */
+  addGroupTo: (parentId: string, operator: ConditionGroupOperator) => string;
+
+  // ============================================================
+  // UPDATE OPERATIONS
+  // ============================================================
+
+  /**
+   * Update a leaf condition by id
+   * @param id - The id of the condition to update
+   * @param updates - Partial updates to apply
+   */
+  update: (id: string, updates: Partial<Omit<Condition, "id">>) => void;
+
+  /**
+   * Update a condition group's operator by id
+   * @param id - The id of the group to update
+   * @param operator - The new operator
+   */
+  updateOperator: (id: string, operator: ConditionGroupOperator) => void;
+
+  // ============================================================
+  // REMOVE & ACCESS
+  // ============================================================
+
+  /**
+   * Remove a condition or group by id
+   * @param id - The id of the item to remove
+   */
+  remove: (id: string) => void;
+
+  /**
+   * Get a condition or group by id
+   * @param id - The id to look up
+   * @returns The item or undefined if not found
+   */
+  get: (id: string) => Condition | ConditionGroup | undefined;
+
+  // ============================================================
+  // UTILITY
+  // ============================================================
+
+  /** Clear all conditions */
+  clear: () => void;
+
+  /** Set the root operator for combining conditions */
+  setOperator: (op: ConditionGroupOperator) => void;
+
+  // ============================================================
+  // LEGACY API (for backwards compatibility)
+  // ============================================================
+
+  /**
+   * @deprecated Use `items` instead
+   */
+  conditions: Array<Condition | ConditionGroup>;
 }

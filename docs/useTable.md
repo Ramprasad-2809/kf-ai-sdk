@@ -1,74 +1,74 @@
-# useTable Hook Documentation
+# useTable
 
-The `useTable` hook provides data fetching, sorting, searching, filtering, and pagination for tables.
+## Brief Description
 
-## Table of Contents
-
-- [Type Reference](#type-reference)
-- [Usage Example](#usage-example)
-- [API Quick Reference](#api-quick-reference)
+- Provides complete table state management including data fetching, sorting, filtering, search, and pagination
+- Integrates with `useFilter` for advanced filtering capabilities with nested condition groups
+- Handles API interactions automatically using React Query for caching and background refetching
+- Returns flattened state accessors (`sort.field`, `pagination.currentPage`) for easy component integration
 
 ## Type Reference
 
-### Import Types
-
 ```typescript
-import { useTable } from "@ram_28/kf-ai-sdk";
+import { useTable, isCondition, isConditionGroup } from "@ram_28/kf-ai-sdk";
 import type {
   UseTableOptions,
   UseTableReturn,
   ColumnDefinition,
-  FilterConditionWithId,
-  ValidationError,
+  Condition,
+  ConditionGroup,
+  ConditionOperator,
+  ConditionGroupOperator,
+  Filter,
+  UseFilterReturn,
   ListResponse,
-  LogicalOperator,
 } from "@ram_28/kf-ai-sdk";
-```
 
-### ColumnDefinition<T>
+// Condition operators for comparing field values
+type ConditionOperator =
+  | "EQ" | "NE" | "GT" | "GTE" | "LT" | "LTE"
+  | "Between" | "NotBetween"
+  | "IN" | "NIN"
+  | "Empty" | "NotEmpty"
+  | "Contains" | "NotContains"
+  | "MinLength" | "MaxLength";
 
-Configuration for table columns.
+// Group operators for combining conditions
+type ConditionGroupOperator = "And" | "Or" | "Not";
 
-```typescript
+// Column configuration
 interface ColumnDefinition<T> {
-  fieldId: keyof T;                              // Field from your data type
-  label?: string;                                // Display label
-  enableSorting?: boolean;                       // Allow sorting
-  enableFiltering?: boolean;                     // Allow filtering
-  transform?: (value: any, row: T) => ReactNode; // Custom render
+  fieldId: keyof T;
+  label?: string;
+  enableSorting?: boolean;
+  enableFiltering?: boolean;
+  transform?: (value: any, row: T) => React.ReactNode;
 }
-```
 
-### UseTableOptions<T>
-
-```typescript
+// Hook options
 interface UseTableOptions<T> {
-  source: string;                    // Business Object ID
-  columns: ColumnDefinition<T>[];    // Column configs
+  source: string;
+  columns: ColumnDefinition<T>[];
   enableSorting?: boolean;
   enableFiltering?: boolean;
   enablePagination?: boolean;
   initialState?: {
     pagination?: { pageNo: number; pageSize: number };
     sorting?: { field: keyof T; direction: "asc" | "desc" };
-    filters?: FilterConditionWithId[];
-    filterOperator?: LogicalOperator;
+    filters?: Array<Condition | ConditionGroup>;
+    filterOperator?: ConditionGroupOperator;
   };
   onError?: (error: Error) => void;
   onSuccess?: (data: T[]) => void;
-  onFilterError?: (errors: ValidationError[]) => void;
 }
-```
 
-### UseTableReturn<T>
-
-```typescript
+// Hook return type
 interface UseTableReturn<T> {
   // Data
   rows: T[];
   totalItems: number;
 
-  // Loading
+  // Loading states
   isLoading: boolean;
   isFetching: boolean;
   error: Error | null;
@@ -86,27 +86,18 @@ interface UseTableReturn<T> {
     direction: "asc" | "desc" | null;
     toggle: (field: keyof T) => void;
     clear: () => void;
+    set: (field: keyof T, direction: "asc" | "desc") => void;
   };
 
-  // Filter (see useFilter docs for full API)
-  filter: {
-    conditions: FilterConditionWithId[];
-    logicalOperator: LogicalOperator;
-    isValid: boolean;
-    validationErrors: ValidationError[];
-    hasConditions: boolean;
-    addCondition: (condition: Omit<FilterConditionWithId, "id" | "isValid">) => string;
-    removeCondition: (id: string) => boolean;
-    clearConditions: () => void;
-    setLogicalOperator: (operator: LogicalOperator) => void;
-    getConditionCount: () => number;
-  };
+  // Filter (uses useFilter internally)
+  filter: UseFilterReturn;
 
   // Pagination
   pagination: {
     currentPage: number;
     pageSize: number;
     totalPages: number;
+    totalItems: number;
     canGoNext: boolean;
     canGoPrevious: boolean;
     goToNext: () => void;
@@ -118,13 +109,8 @@ interface UseTableReturn<T> {
   // Operations
   refetch: () => Promise<ListResponse<T>>;
 }
-```
 
-### ListResponse<T>
-
-API response structure returned by `refetch()`.
-
-```typescript
+// API response structure
 interface ListResponse<T> {
   Data: T[];
 }
@@ -132,41 +118,46 @@ interface ListResponse<T> {
 
 ## Usage Example
 
-From `ecommerce-app/src/pages/SellerProductsPage.tsx`. This example demonstrates all imported types:
-
 ```tsx
-import { useState } from "react";
-import { useTable } from "@ram_28/kf-ai-sdk";
+import { useTable, isCondition, isConditionGroup } from "@ram_28/kf-ai-sdk";
 import type {
   UseTableOptions,
   UseTableReturn,
   ColumnDefinition,
-  FilterConditionWithId,
-  ValidationError,
+  Condition,
+  ConditionGroup,
+  ConditionOperator,
+  ConditionGroupOperator,
+  Filter,
+  UseFilterReturn,
   ListResponse,
-  LogicalOperator,
 } from "@ram_28/kf-ai-sdk";
 import { Product, ProductType } from "../sources";
 import { Roles } from "../sources/roles";
 
-// ProductType<TRole> - conditional type mapping role to field permissions
-type SellerProduct = ProductType<typeof Roles.Seller>;
+// Get the typed product for the Buyer role
+type BuyerProduct = ProductType<typeof Roles.Buyer>;
 
-export function SellerProductsPage() {
-  const product = new Product(Roles.Seller);
-  const [savedFilters, setSavedFilters] = useState<FilterConditionWithId[]>([]);
+function ProductsPage() {
+  // Instantiate the Product source with role
+  const product = new Product(Roles.Buyer);
 
-  // ColumnDefinition<T> - defines table columns with type-safe fieldId
-  const columns: ColumnDefinition<SellerProduct>[] = [
+  // Column definitions with type safety
+  const columns: ColumnDefinition<BuyerProduct>[] = [
     { fieldId: "Title", label: "Name", enableSorting: true },
-    { fieldId: "Price", label: "Price", enableSorting: true },
-    { fieldId: "Category", label: "Category", enableSorting: true },
+    {
+      fieldId: "Price",
+      label: "Price",
+      enableSorting: true,
+      transform: (value) => `$${value.toFixed(2)}`,
+    },
+    { fieldId: "Category", label: "Category", enableSorting: true, enableFiltering: true },
     { fieldId: "Stock", label: "Stock", enableSorting: true },
   ];
 
-  // UseTableOptions<T> - configuration for the hook
-  const tableOptions: UseTableOptions<SellerProduct> = {
-    source: product._id,  // "BDO_AmazonProductMaster"
+  // Hook configuration with full options
+  const options: UseTableOptions<BuyerProduct> = {
+    source: product._id, // Use the Business Object ID from the Product class
     columns,
     enableSorting: true,
     enableFiltering: true,
@@ -174,119 +165,141 @@ export function SellerProductsPage() {
     initialState: {
       pagination: { pageNo: 1, pageSize: 10 },
       sorting: { field: "_created_at", direction: "desc" },
-      // LogicalOperator - how filter conditions are combined
-      filterOperator: "And" as LogicalOperator,
+      filterOperator: "And",
     },
-    // ValidationError[] - called when filter validation fails
-    onFilterError: (errors: ValidationError[]) => {
-      errors.forEach((err: ValidationError) => {
-        console.error(`Filter error [${err.conditionId}]: ${err.field} - ${err.message}`);
-      });
-    },
-    onError: (error: Error) => {
-      console.error("Table error:", error.message);
-    },
+    onError: (error: Error) => console.error("Table error:", error.message),
+    onSuccess: (data: BuyerProduct[]) => console.log("Loaded", data.length, "products"),
   };
 
-  // UseTableReturn<T> - the hook return type with all methods
-  const table: UseTableReturn<SellerProduct> = useTable<SellerProduct>(tableOptions);
+  const table: UseTableReturn<BuyerProduct> = useTable<BuyerProduct>(options);
 
-  // Add a filter condition
-  const filterByCategory = (category: string) => {
-    table.filter.clearConditions();
-    table.filter.addCondition({
-      operator: "EQ",
-      lhsField: "Category",
-      rhsValue: category,
+  // Access filter functionality (UseFilterReturn)
+  const filterState: UseFilterReturn = table.filter;
+
+  // Add a filter with dynamic operator selection
+  const addFilter = (field: keyof BuyerProduct, operator: ConditionOperator, value: any) => {
+    table.filter.add({
+      Operator: operator,
+      LHSField: field as string,
+      RHSValue: value,
     });
   };
 
-  // FilterConditionWithId - internal condition with ID and validation state
-  const displayActiveFilters = () => {
-    const conditions: FilterConditionWithId[] = table.filter.conditions;
-    return conditions.map((condition: FilterConditionWithId) => (
-      <span key={condition.id}>
-        {condition.lhsField} {condition.operator} {condition.rhsValue}
-        {!condition.isValid && " (invalid)"}
-        <button onClick={() => table.filter.removeCondition(condition.id)}>×</button>
-      </span>
-    ));
+  // Add a simple filter condition
+  const filterByCategory = (category: string) => {
+    table.filter.clear();
+    addFilter("Category", "EQ", category);
   };
 
-  // LogicalOperator - toggle between And/Or
+  // Add a complex nested filter (Price > 100 OR Stock < 10)
+  const addComplexFilter = () => {
+    const groupId = table.filter.addGroup("Or");
+    table.filter.addTo(groupId, { Operator: "GT", LHSField: "Price", RHSValue: 100 });
+    table.filter.addTo(groupId, { Operator: "LT", LHSField: "Stock", RHSValue: 10 });
+  };
+
+  // Display active filters using type guards
+  const renderActiveFilters = () => (
+    <div className="active-filters">
+      {table.filter.items.map((item) => {
+        if (isCondition(item)) {
+          return (
+            <span key={item.id} className="filter-tag">
+              {item.LHSField} {item.Operator} {String(item.RHSValue)}
+              <button onClick={() => table.filter.remove(item.id!)}>×</button>
+            </span>
+          );
+        }
+        if (isConditionGroup(item)) {
+          return (
+            <span key={item.id} className="filter-group-tag">
+              {item.Operator} Group ({item.Condition.length} conditions)
+              <button onClick={() => table.filter.remove(item.id!)}>×</button>
+            </span>
+          );
+        }
+        return null;
+      })}
+    </div>
+  );
+
+  // Toggle filter logic operator
   const toggleFilterLogic = () => {
-    const current: LogicalOperator = table.filter.logicalOperator;
-    const next: LogicalOperator = current === "And" ? "Or" : "And";
-    table.filter.setLogicalOperator(next);
+    const next: ConditionGroupOperator = table.filter.operator === "And" ? "Or" : "And";
+    table.filter.setOperator(next);
   };
 
-  // ListResponse<T> - returned by refetch()
+  // Refetch data manually
   const handleRefresh = async () => {
-    const response: ListResponse<SellerProduct> = await table.refetch();
+    const response: ListResponse<BuyerProduct> = await table.refetch();
     console.log(`Refreshed: ${response.Data.length} items`);
   };
 
-  // Save/restore filters using FilterConditionWithId[]
-  const saveFilters = () => setSavedFilters([...table.filter.conditions]);
-  const restoreFilters = () => table.filter.setConditions(savedFilters);
+  // Access filter payload for debugging
+  const getFilterPayload = (): Filter | undefined => {
+    return table.filter.payload;
+  };
+
+  if (table.isLoading) {
+    return <div>Loading products...</div>;
+  }
+
+  if (table.error) {
+    return <div>Error: {table.error.message}</div>;
+  }
 
   return (
-    <div>
+    <div className="products-page">
       {/* Search */}
-      <input
-        placeholder="Search products..."
-        value={table.search.query}
-        onChange={(e) => table.search.setQuery(e.target.value)}
-      />
+      <div className="search-bar">
+        <input
+          type="text"
+          placeholder="Search products..."
+          value={table.search.query}
+          onChange={(e) => table.search.setQuery(e.target.value)}
+        />
+        <button onClick={table.search.clear}>Clear</button>
+      </div>
 
       {/* Filter Controls */}
-      <div>
+      <div className="filter-controls">
         <button onClick={() => filterByCategory("Electronics")}>Electronics</button>
         <button onClick={() => filterByCategory("Books")}>Books</button>
+        <button onClick={addComplexFilter}>Add Complex Filter</button>
         <button onClick={toggleFilterLogic}>
-          Logic: {table.filter.logicalOperator}
+          Logic: {table.filter.operator}
         </button>
         {table.filter.hasConditions && (
-          <button onClick={table.filter.clearConditions}>
-            Clear ({table.filter.getConditionCount()})
-          </button>
+          <button onClick={() => table.filter.clear()}>Clear All Filters</button>
         )}
       </div>
 
       {/* Active Filters */}
-      <div>{displayActiveFilters()}</div>
-
-      {/* Validation Errors */}
-      {table.filter.validationErrors.map((err: ValidationError) => (
-        <div key={err.conditionId} className="error">{err.message}</div>
-      ))}
-
-      {/* Loading/Error States */}
-      {table.isLoading && <div>Loading...</div>}
-      {table.error && <div>Error: {table.error.message}</div>}
+      {renderActiveFilters()}
 
       {/* Table */}
       <table>
         <thead>
           <tr>
-            {columns.map((col: ColumnDefinition<SellerProduct>) => (
+            {columns.map((col) => (
               <th
                 key={String(col.fieldId)}
                 onClick={() => col.enableSorting && table.sort.toggle(col.fieldId)}
+                style={{ cursor: col.enableSorting ? "pointer" : "default" }}
               >
                 {col.label || String(col.fieldId)}
                 {table.sort.field === col.fieldId && (
-                  table.sort.direction === "asc" ? " ↑" : " ↓"
+                  <span>{table.sort.direction === "asc" ? " ↑" : " ↓"}</span>
                 )}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {table.rows.map((row: SellerProduct) => (
+          {table.rows.map((row: BuyerProduct) => (
             <tr key={row._id}>
               <td>{row.Title}</td>
-              <td>${row.Price}</td>
+              <td>${row.Price.toFixed(2)}</td>
               <td>{row.Category}</td>
               <td>{row.Stock}</td>
             </tr>
@@ -295,17 +308,17 @@ export function SellerProductsPage() {
       </table>
 
       {/* Pagination */}
-      <div>
-        <span>
-          Page {table.pagination.currentPage} of {table.pagination.totalPages}
-          ({table.totalItems} total)
-        </span>
+      <div className="pagination">
         <button
           onClick={table.pagination.goToPrevious}
           disabled={!table.pagination.canGoPrevious}
         >
           Previous
         </button>
+        <span>
+          Page {table.pagination.currentPage} of {table.pagination.totalPages}
+          ({table.pagination.totalItems} total)
+        </span>
         <button
           onClick={table.pagination.goToNext}
           disabled={!table.pagination.canGoNext}
@@ -316,88 +329,38 @@ export function SellerProductsPage() {
           value={table.pagination.pageSize}
           onChange={(e) => table.pagination.setPageSize(Number(e.target.value))}
         >
-          <option value={10}>10</option>
-          <option value={25}>25</option>
-          <option value={50}>50</option>
+          <option value={10}>10 per page</option>
+          <option value={25}>25 per page</option>
+          <option value={50}>50 per page</option>
         </select>
+        <input
+          type="number"
+          min={1}
+          max={table.pagination.totalPages}
+          placeholder="Go to page"
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              table.pagination.goToPage(Number((e.target as HTMLInputElement).value));
+            }
+          }}
+        />
       </div>
 
-      {/* Save/Restore/Refresh */}
-      <div>
-        <button onClick={saveFilters}>Save Filters</button>
-        <button onClick={restoreFilters}>Restore Filters</button>
-        <button onClick={handleRefresh}>Refresh</button>
+      {/* Actions */}
+      <div className="table-actions">
+        <button onClick={handleRefresh} disabled={table.isFetching}>
+          {table.isFetching ? "Refreshing..." : "Refresh"}
+        </button>
+        <button onClick={() => table.sort.clear()}>Clear Sort</button>
+        <button onClick={() => table.sort.set("Price", "desc")}>Sort by Price (desc)</button>
       </div>
+
+      {/* Debug: Filter payload */}
+      <details>
+        <summary>Filter Payload (Debug)</summary>
+        <pre>{JSON.stringify(getFilterPayload(), null, 2)}</pre>
+      </details>
     </div>
   );
 }
-```
-
-**Type explanations:**
-
-| Type | Purpose | Where Used |
-|------|---------|------------|
-| `ColumnDefinition<T>` | Column config with type-safe `fieldId` | `columns` array |
-| `UseTableOptions<T>` | Hook configuration | `useTable(options)` |
-| `UseTableReturn<T>` | Hook return with all methods | Return value of `useTable()` |
-| `FilterConditionWithId` | Filter condition with ID and validation | `table.filter.conditions`, saved filters |
-| `ValidationError` | Filter validation error info | `table.filter.validationErrors`, `onFilterError` |
-| `LogicalOperator` | "And" \| "Or" \| "Not" | `table.filter.logicalOperator` |
-| `ListResponse<T>` | API response structure | Return value of `table.refetch()` |
-
-## API Quick Reference
-
-### Search
-
-```typescript
-table.search.query              // Current search string
-table.search.setQuery("text")   // Set search (auto-resets to page 1)
-table.search.clear()            // Clear search
-```
-
-### Sort
-
-```typescript
-table.sort.field                // Current sort field or null
-table.sort.direction            // "asc" | "desc" | null
-table.sort.toggle("Price")      // Toggle sort (asc → desc → none)
-table.sort.clear()              // Clear sorting
-```
-
-### Filter
-
-```typescript
-table.filter.conditions                       // FilterConditionWithId[]
-table.filter.logicalOperator                  // "And" | "Or"
-table.filter.addCondition({ operator, lhsField, rhsValue })
-table.filter.removeCondition(id)
-table.filter.clearConditions()
-table.filter.setLogicalOperator("Or")
-table.filter.hasConditions                    // boolean
-table.filter.getConditionCount()              // number
-```
-
-### Pagination
-
-```typescript
-table.pagination.currentPage    // 1-indexed
-table.pagination.pageSize
-table.pagination.totalPages
-table.pagination.canGoNext      // boolean
-table.pagination.canGoPrevious  // boolean
-table.pagination.goToNext()
-table.pagination.goToPrevious()
-table.pagination.goToPage(3)
-table.pagination.setPageSize(25)
-```
-
-### Data & State
-
-```typescript
-table.rows                      // T[] - current page data
-table.totalItems                // Total count across all pages
-table.isLoading                 // Initial load
-table.isFetching                // Any fetch (including refetch)
-table.error                     // Error | null
-table.refetch()                 // Returns Promise<ListResponse<T>>
 ```

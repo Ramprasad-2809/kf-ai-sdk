@@ -1,684 +1,402 @@
-# useAuth Hook - Usage Guide
+# useAuth
 
-The `useAuth` hook provides a complete authentication solution for managing user sessions, login/logout flows, and role-based access control. It integrates with OAuth providers and handles session persistence automatically.
+## Brief Description
 
-## Table of Contents
-
-- [Quick Start](#quick-start)
-- [Type Reference](#type-reference)
-- [API Reference](#api-reference)
-- [Features](#features)
-  - [Authentication Status](#authentication-status)
-  - [Login Flow](#login-flow)
-  - [Logout Flow](#logout-flow)
-  - [Role Checking](#role-checking)
-  - [Session Management](#session-management)
-- [Complete Example](#complete-example)
-- [Best Practices](#best-practices)
-- [Troubleshooting](#troubleshooting)
-
-## Quick Start
-
-### Basic Usage
-
-```tsx
-import { useAuth } from 'kf-ai-sdk';
-
-function UserProfile() {
-  const { user, isAuthenticated, isLoading, logout } = useAuth();
-
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
-
-  if (!isAuthenticated) {
-    return <div>Please log in</div>;
-  }
-
-  return (
-    <div>
-      <h1>Welcome, {user._name}</h1>
-      <p>Role: {user.Role}</p>
-      <button onClick={() => logout()}>Logout</button>
-    </div>
-  );
-}
-```
-
-### With AuthProvider
-
-```tsx
-import { AuthProvider } from 'kf-ai-sdk';
-
-function App() {
-  return (
-    <AuthProvider
-      onAuthChange={(status, user) => {
-        console.log('Auth status changed:', status, user);
-      }}
-    >
-      <Router>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-        </Routes>
-      </Router>
-    </AuthProvider>
-  );
-}
-```
+- Provides authentication state management with support for multiple OAuth providers (Google, Microsoft, GitHub, custom)
+- Handles session checking, login flow initiation, and logout operations with automatic session refresh
+- Includes role-based access control helpers (`hasRole`, `hasAnyRole`) for permission checking
+- Must be used within an `AuthProvider` component that manages the authentication context
 
 ## Type Reference
 
-### Import Types
-
 ```typescript
-import { useAuth } from 'kf-ai-sdk';
+import { useAuth, AuthProvider } from "@ram_28/kf-ai-sdk";
 import type {
   UseAuthReturn,
   UserDetails,
   AuthStatus,
   AuthProviderProps,
-  LoginOptions,
-  LogoutOptions,
   AuthProviderName,
   AuthConfig,
-} from 'kf-ai-sdk';
-```
+  AuthEndpointConfig,
+  LoginOptions,
+  LogoutOptions,
+  SessionResponse,
+} from "@ram_28/kf-ai-sdk";
 
-### UserDetails
-
-User information returned from the session endpoint.
-
-```typescript
+// User details from session
 interface UserDetails {
-  /** Unique user identifier */
   _id: string;
-  /** User's display name */
   _name: string;
-  /** User's current role */
   Role: string;
-  /** Additional custom fields from the backend */
   [key: string]: unknown;
 }
-```
 
-### AuthStatus
+// Session response from API
+interface SessionResponse {
+  userDetails: UserDetails;
+  staticBaseUrl: string;
+  buildId: string;
+}
 
-Authentication state indicator.
-
-```typescript
+// Authentication status
 type AuthStatus = "loading" | "authenticated" | "unauthenticated";
-```
 
-### AuthProviderName
-
-Supported OAuth providers.
-
-```typescript
+// Supported auth providers
 type AuthProviderName = "google" | "microsoft" | "github" | "custom";
-```
 
-### LoginOptions
-
-Options for the login operation.
-
-```typescript
-interface LoginOptions {
-  /** URL to redirect after successful login */
-  callbackUrl?: string;
-  /** Additional query parameters for login URL */
-  params?: Record<string, string>;
+// Auth endpoint configuration for a provider
+interface AuthEndpointConfig {
+  loginPath: string;
+  logoutPath?: string;
+  callbackPath?: string;
 }
-```
 
-### LogoutOptions
-
-Options for the logout operation.
-
-```typescript
-interface LogoutOptions {
-  /** URL to redirect after logout */
-  redirectUrl?: string;
-  /** Whether to call logout endpoint (default: true) */
-  callLogoutEndpoint?: boolean;
-}
-```
-
-### AuthProviderProps
-
-Props for the AuthProvider component.
-
-```typescript
-interface AuthProviderProps {
-  /** Child components */
-  children: React.ReactNode;
-  /** Override global config for this provider instance */
-  config?: Partial<AuthConfig>;
-  /** Callback when authentication status changes */
-  onAuthChange?: (status: AuthStatus, user: UserDetails | null) => void;
-  /** Callback on authentication error */
-  onError?: (error: Error) => void;
-  /** Custom loading component */
-  loadingComponent?: React.ReactNode;
-  /** Custom unauthenticated component (shown when autoRedirect is false) */
-  unauthenticatedComponent?: React.ReactNode;
-  /** Disable automatic session check on mount */
-  skipInitialCheck?: boolean;
-}
-```
-
-### AuthConfig
-
-Global authentication configuration.
-
-```typescript
+// Global auth configuration
 interface AuthConfig {
-  /** Base URL for auth endpoints (defaults to apiBaseUrl) */
   baseUrl?: string;
-  /** Session check endpoint (default: "/api/id") */
   sessionEndpoint: string;
-  /** Auth provider configurations */
   providers: Partial<Record<AuthProviderName, AuthEndpointConfig>>;
-  /** Default provider to use for login */
   defaultProvider: AuthProviderName;
-  /** Auto-redirect to login when unauthenticated */
   autoRedirect: boolean;
-  /** Custom redirect URL (if not using provider's login path) */
   loginRedirectUrl?: string;
-  /** URL to redirect after successful login */
   callbackUrl?: string;
-  /** Session check interval in milliseconds (0 to disable) */
   sessionCheckInterval: number;
-  /** Retry configuration for session check */
-  retry: {
-    count: number;
-    delay: number;
-  };
-  /** React Query stale time for session data */
+  retry: { count: number; delay: number };
   staleTime: number;
-  /** Refetch session when window regains focus (default: true) */
   refetchOnWindowFocus?: boolean;
-  /** Refetch session when network reconnects (default: true) */
   refetchOnReconnect?: boolean;
 }
-```
 
-### UseAuthReturn
+// AuthProvider component props
+interface AuthProviderProps {
+  children: React.ReactNode;
+  config?: Partial<AuthConfig>;
+  onAuthChange?: (status: AuthStatus, user: UserDetails | null) => void;
+  onError?: (error: Error) => void;
+  loadingComponent?: React.ReactNode;
+  unauthenticatedComponent?: React.ReactNode;
+  skipInitialCheck?: boolean;
+}
 
-Return type for the useAuth hook.
+// Login options
+interface LoginOptions {
+  callbackUrl?: string;
+  params?: Record<string, string>;
+}
 
-```typescript
+// Logout options
+interface LogoutOptions {
+  redirectUrl?: string;
+  callLogoutEndpoint?: boolean;
+}
+
+// Hook return type
 interface UseAuthReturn {
-  /** Current authenticated user (null if not authenticated) */
+  // User state
   user: UserDetails | null;
-  /** Static base URL from session */
   staticBaseUrl: string | null;
-  /** Build ID from session */
   buildId: string | null;
-  /** Current authentication status */
   status: AuthStatus;
-  /** Convenience boolean for authenticated state */
   isAuthenticated: boolean;
-  /** Convenience boolean for loading state */
   isLoading: boolean;
-  /**
-   * Initiate login flow
-   * @param provider - Auth provider to use (defaults to configured default)
-   * @param options - Additional options for login
-   */
+
+  // Auth operations
   login: (provider?: AuthProviderName, options?: LoginOptions) => void;
-  /**
-   * Logout the current user
-   * @param options - Additional options for logout
-   */
   logout: (options?: LogoutOptions) => Promise<void>;
-  /**
-   * Manually refresh the session
-   */
   refreshSession: () => Promise<SessionResponse | null>;
-  /**
-   * Check if user has a specific role
-   */
   hasRole: (role: string) => boolean;
-  /**
-   * Check if user has any of the specified roles
-   */
   hasAnyRole: (roles: string[]) => boolean;
-  /** Last authentication error */
+
+  // Error state
   error: Error | null;
-  /** Clear the current error */
   clearError: () => void;
 }
 ```
 
-## API Reference
-
-### useAuth()
-
-Hook to access authentication state and operations. Must be used within an AuthProvider component.
-
-```typescript
-function useAuth(): UseAuthReturn;
-```
-
-**Returns:** `UseAuthReturn` - Authentication state and methods
-
-## Features
-
-### Authentication Status
-
-Track the current authentication state.
+## Usage Example
 
 ```tsx
-function AuthStatusDisplay() {
-  const { status, isAuthenticated, isLoading } = useAuth();
+import { useAuth, AuthProvider } from "@ram_28/kf-ai-sdk";
+import type {
+  UseAuthReturn,
+  UserDetails,
+  AuthStatus,
+  AuthProviderProps,
+  AuthProviderName,
+  AuthConfig,
+  AuthEndpointConfig,
+  LoginOptions,
+  LogoutOptions,
+  SessionResponse,
+} from "@ram_28/kf-ai-sdk";
 
-  // Using status directly
-  switch (status) {
-    case "loading":
-      return <LoadingSpinner />;
-    case "authenticated":
-      return <Dashboard />;
-    case "unauthenticated":
-      return <LoginPrompt />;
-  }
+// Define available roles
+type Role = "Admin" | "Buyer" | "Seller" | "InventoryManager";
 
-  // Or using convenience booleans
-  if (isLoading) return <LoadingSpinner />;
-  if (!isAuthenticated) return <LoginPrompt />;
-  return <Dashboard />;
-}
-```
+// Auth configuration
+const authConfig: Partial<AuthConfig> = {
+  sessionEndpoint: "/api/id",
+  defaultProvider: "google",
+  autoRedirect: false,
+  sessionCheckInterval: 5 * 60 * 1000, // 5 minutes
+  providers: {
+    google: {
+      loginPath: "/api/auth/google/login",
+      logoutPath: "/api/auth/logout",
+    },
+    microsoft: {
+      loginPath: "/api/auth/microsoft/login",
+      logoutPath: "/api/auth/logout",
+    },
+  },
+  refetchOnWindowFocus: true,
+  refetchOnReconnect: true,
+};
 
-### Login Flow
-
-Initiate OAuth login with various providers.
-
-```tsx
-function LoginPage() {
-  const { login, isLoading } = useAuth();
-
-  const handleGoogleLogin = () => {
-    login("google", {
-      callbackUrl: "/dashboard",
-    });
+// App wrapper with AuthProvider
+function App() {
+  // Auth status change handler
+  const handleAuthChange = (status: AuthStatus, user: UserDetails | null) => {
+    console.log("Auth status:", status, "User:", user?._name);
   };
 
+  // Auth error handler
+  const handleAuthError = (error: Error) => {
+    console.error("Auth error:", error.message);
+  };
+
+  // AuthProviderProps configuration
+  const providerProps: AuthProviderProps = {
+    children: <AppRoutes />,
+    config: authConfig,
+    onAuthChange: handleAuthChange,
+    onError: handleAuthError,
+    loadingComponent: <div>Checking authentication...</div>,
+    unauthenticatedComponent: <LoginPage />,
+    skipInitialCheck: false,
+  };
+
+  return <AuthProvider {...providerProps} />;
+}
+
+// Login page component
+function LoginPage() {
+  const auth: UseAuthReturn = useAuth();
+
+  // Login with Google
+  const handleGoogleLogin = () => {
+    const options: LoginOptions = {
+      callbackUrl: "/dashboard",
+    };
+    auth.login("google", options);
+  };
+
+  // Login with Microsoft
   const handleMicrosoftLogin = () => {
-    login("microsoft", {
+    const options: LoginOptions = {
       callbackUrl: "/dashboard",
       params: { prompt: "select_account" },
-    });
-  };
-
-  return (
-    <div>
-      <button onClick={handleGoogleLogin} disabled={isLoading}>
-        Sign in with Google
-      </button>
-      <button onClick={handleMicrosoftLogin} disabled={isLoading}>
-        Sign in with Microsoft
-      </button>
-    </div>
-  );
-}
-```
-
-### Logout Flow
-
-Handle user logout with options.
-
-```tsx
-function LogoutButton() {
-  const { logout } = useAuth();
-
-  const handleLogout = async () => {
-    await logout({
-      redirectUrl: "/login",
-      callLogoutEndpoint: true,
-    });
-  };
-
-  return <button onClick={handleLogout}>Sign Out</button>;
-}
-```
-
-### Role Checking
-
-Check user roles for authorization.
-
-```tsx
-function AdminPanel() {
-  const { user, hasRole, hasAnyRole } = useAuth();
-
-  // Single role check
-  if (!hasRole("Admin")) {
-    return <AccessDenied />;
-  }
-
-  // Multiple role check (any)
-  const canManageProducts = hasAnyRole(["Admin", "Seller", "InventoryManager"]);
-
-  return (
-    <div>
-      <h1>Admin Panel</h1>
-      <p>Welcome, {user._name}</p>
-      {canManageProducts && <ProductManagement />}
-    </div>
-  );
-}
-```
-
-### Session Management
-
-Manually refresh or check the session.
-
-```tsx
-function SessionManager() {
-  const { refreshSession, user, error, clearError } = useAuth();
-
-  const handleRefresh = async () => {
-    try {
-      const session = await refreshSession();
-      if (session) {
-        console.log("Session refreshed:", session.userDetails);
-      }
-    } catch (err) {
-      console.error("Failed to refresh session");
-    }
-  };
-
-  return (
-    <div>
-      {error && (
-        <div className="error">
-          {error.message}
-          <button onClick={clearError}>Dismiss</button>
-        </div>
-      )}
-      <button onClick={handleRefresh}>Refresh Session</button>
-    </div>
-  );
-}
-```
-
-## Complete Example
-
-Here's a complete login page example from the e-commerce app:
-
-```tsx
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
-import { useAuth } from "kf-ai-sdk";
-import type { AuthStatus, UserDetails } from "kf-ai-sdk";
-
-type Role = "Admin" | "Buyer" | "Seller" | "InventoryManager" | "WarehouseStaff";
-
-export function LoginPage() {
-  const navigate = useNavigate();
-  const { user, login, refreshSession, isLoading } = useAuth();
-  const [isSettingRole, setIsSettingRole] = useState(false);
-
-  const currentRole = (user?.Role as Role) ?? null;
-  const userName = user?._name ?? "";
-
-  // Helper function to set role and navigate
-  const setRoleAndNavigate = async (userId: string, role: Role) => {
-    try {
-      const response = await fetch(
-        `/api/user/${userId}/preview/role/${role}/set`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to set role: ${response.status}`);
-      }
-
-      // Refresh session to get updated user data
-      await refreshSession();
-
-      // Navigate based on role
-      if (role === "InventoryManager" || role === "WarehouseStaff") {
-        navigate("/inventory/restocking");
-      } else {
-        navigate("/products");
-      }
-    } finally {
-      setIsSettingRole(false);
-    }
-  };
-
-  // Handle pending role after OAuth callback
-  useEffect(() => {
-    const applyPendingRole = async () => {
-      const pendingRole = sessionStorage.getItem("pendingRole");
-
-      if (pendingRole && user?._id) {
-        sessionStorage.removeItem("pendingRole");
-
-        try {
-          setIsSettingRole(true);
-          await setRoleAndNavigate(user._id, pendingRole as Role);
-        } catch (err) {
-          console.error("Failed to apply pending role:", err);
-          toast.error("Failed to set role. Please try again.");
-          setIsSettingRole(false);
-        }
-      }
     };
-
-    applyPendingRole();
-  }, [user?._id]);
-
-  // Main login handler
-  const handleLogin = async (role: Role) => {
-    try {
-      setIsSettingRole(true);
-
-      // If no user, store pending role and redirect to OAuth
-      if (!user?._id) {
-        sessionStorage.setItem("pendingRole", role);
-        login(); // Uses default provider
-        return;
-      }
-
-      // User exists - switch role directly
-      await setRoleAndNavigate(user._id, role);
-    } catch (err) {
-      console.error("Failed to set role:", err);
-      toast.error("Failed to switch role. Please try again.");
-      setIsSettingRole(false);
-    }
+    auth.login("microsoft", options);
   };
 
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
+  // Login with default provider
+  const handleDefaultLogin = () => {
+    auth.login(); // Uses defaultProvider from config
+  };
+
+  // Access auth status
+  const status: AuthStatus = auth.status;
 
   return (
     <div className="login-page">
-      {/* Current Role Display */}
-      {currentRole && (
-        <div className="current-role">
-          <span>{userName}</span>
-          <span>{currentRole}</span>
+      <h1>Welcome</h1>
+      <p>Please sign in to continue</p>
+
+      {/* Error display */}
+      {auth.error && (
+        <div className="error">
+          {auth.error.message}
+          <button onClick={auth.clearError}>Dismiss</button>
         </div>
       )}
 
-      {/* Role Selection */}
-      <div className="role-cards">
-        {["Admin", "Buyer", "Seller", "InventoryManager", "WarehouseStaff"].map(
-          (role) => (
-            <button
-              key={role}
-              onClick={() => handleLogin(role as Role)}
-              disabled={isSettingRole}
-            >
-              {currentRole === role ? "Continue" : `Login as ${role}`}
-            </button>
-          )
-        )}
+      {/* Login buttons */}
+      <div className="login-buttons">
+        <button onClick={handleGoogleLogin} disabled={auth.isLoading}>
+          Sign in with Google
+        </button>
+        <button onClick={handleMicrosoftLogin} disabled={auth.isLoading}>
+          Sign in with Microsoft
+        </button>
+        <button onClick={handleDefaultLogin} disabled={auth.isLoading}>
+          Sign in (Default)
+        </button>
       </div>
+
+      {/* Loading state */}
+      {auth.isLoading && <span>Loading...</span>}
+
+      {/* Status display */}
+      <p>Current status: {status}</p>
     </div>
   );
 }
-```
 
-## Best Practices
+// Dashboard component (authenticated users)
+function Dashboard() {
+  const auth: UseAuthReturn = useAuth();
 
-### 1. Wrap App with AuthProvider
+  // Logout handler
+  const handleLogout = async () => {
+    const options: LogoutOptions = {
+      redirectUrl: "/login",
+      callLogoutEndpoint: true,
+    };
+    await auth.logout(options);
+  };
 
-```tsx
-function App() {
+  // Refresh session handler
+  const handleRefreshSession = async () => {
+    const session: SessionResponse | null = await auth.refreshSession();
+    if (session) {
+      console.log("Session refreshed:", session.userDetails._name);
+      console.log("Static URL:", session.staticBaseUrl);
+      console.log("Build ID:", session.buildId);
+    }
+  };
+
+  // Access user details
+  const user: UserDetails | null = auth.user;
+
+  // Role-based access control
+  const isAdmin: boolean = auth.hasRole("Admin");
+  const canManageProducts: boolean = auth.hasAnyRole(["Admin", "Seller"]);
+  const canViewReports: boolean = auth.hasAnyRole(["Admin", "InventoryManager"]);
+
+  // Guard against unauthenticated access
+  if (!auth.isAuthenticated) {
+    return <div>Please log in to access the dashboard</div>;
+  }
+
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider
-        onAuthChange={(status, user) => {
-          // Log auth changes for debugging
-          console.log("Auth:", status, user?._name);
-        }}
-        onError={(error) => {
-          // Handle auth errors globally
-          toast.error(error.message);
-        }}
-      >
-        <Router>
-          <AppRoutes />
-        </Router>
-      </AuthProvider>
-    </QueryClientProvider>
+    <div className="dashboard">
+      {/* Header */}
+      <header>
+        <h1>Dashboard</h1>
+        <div className="user-info">
+          <span>Welcome, {user?._name}</span>
+          <span>Role: {user?.Role}</span>
+          <button onClick={handleRefreshSession}>Refresh Session</button>
+          <button onClick={handleLogout}>Logout</button>
+        </div>
+      </header>
+
+      {/* Main content */}
+      <main>
+        {/* User info section */}
+        <section className="user-section">
+          <h2>User Information</h2>
+          <p>User ID: {user?._id}</p>
+          <p>Name: {user?._name}</p>
+          <p>Role: {user?.Role}</p>
+          <p>Static Base URL: {auth.staticBaseUrl}</p>
+          <p>Build ID: {auth.buildId}</p>
+          <p>Status: {auth.status}</p>
+          <p>Authenticated: {auth.isAuthenticated ? "Yes" : "No"}</p>
+        </section>
+
+        {/* Role-based sections */}
+        {canManageProducts && (
+          <section className="products-section">
+            <h2>Product Management</h2>
+            <p>You have access to manage products.</p>
+          </section>
+        )}
+
+        {canViewReports && (
+          <section className="reports-section">
+            <h2>Reports</h2>
+            <p>You have access to view reports.</p>
+          </section>
+        )}
+
+        {isAdmin && (
+          <section className="admin-section">
+            <h2>Admin Panel</h2>
+            <p>Full administrative access.</p>
+          </section>
+        )}
+
+        {!isAdmin && (
+          <section className="restricted-section">
+            <p>Admin panel is restricted to administrators.</p>
+          </section>
+        )}
+      </main>
+
+      {/* Error banner */}
+      {auth.error && (
+        <div className="error-banner">
+          Error: {auth.error.message}
+          <button onClick={auth.clearError}>Dismiss</button>
+        </div>
+      )}
+    </div>
   );
 }
-```
 
-### 2. Create Protected Route Component
-
-```tsx
-function ProtectedRoute({ children, roles }: {
+// Protected route component
+function ProtectedRoute({
+  children,
+  requiredRoles,
+}: {
   children: React.ReactNode;
-  roles?: string[];
+  requiredRoles?: string[];
 }) {
-  const { isAuthenticated, isLoading, hasAnyRole } = useAuth();
-  const location = useLocation();
+  const auth: UseAuthReturn = useAuth();
 
-  if (isLoading) {
-    return <LoadingSpinner />;
+  // Show loading while checking auth
+  if (auth.isLoading) {
+    return <div>Loading...</div>;
   }
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+  // Redirect if not authenticated
+  if (!auth.isAuthenticated) {
+    return <div>Access denied. Please log in.</div>;
   }
 
-  if (roles && !hasAnyRole(roles)) {
-    return <AccessDenied />;
+  // Check role requirements
+  if (requiredRoles && !auth.hasAnyRole(requiredRoles)) {
+    return <div>Access denied. Insufficient permissions.</div>;
   }
 
   return <>{children}</>;
 }
 
-// Usage
-<Route
-  path="/admin"
-  element={
-    <ProtectedRoute roles={["Admin"]}>
-      <AdminDashboard />
-    </ProtectedRoute>
-  }
-/>
-```
-
-### 3. Handle Session Expiration
-
-```tsx
-function SessionExpirationHandler() {
-  const { status, refreshSession, logout } = useAuth();
-  const prevStatus = useRef(status);
-
-  useEffect(() => {
-    // Detect transition from authenticated to unauthenticated
-    if (
-      prevStatus.current === "authenticated" &&
-      status === "unauthenticated"
-    ) {
-      toast.warning("Your session has expired. Please log in again.");
-    }
-    prevStatus.current = status;
-  }, [status]);
-
-  return null;
-}
-```
-
-### 4. Store User Context for Easy Access
-
-```tsx
-function UserContextProvider({ children }: { children: React.ReactNode }) {
-  const auth = useAuth();
-
-  // Derive additional user properties
-  const userContext = useMemo(() => ({
-    ...auth,
-    isAdmin: auth.hasRole("Admin"),
-    isSeller: auth.hasRole("Seller"),
-    isBuyer: auth.hasRole("Buyer"),
-    canManageProducts: auth.hasAnyRole(["Admin", "Seller"]),
-  }), [auth]);
-
+// App routes with protected routes
+function AppRoutes() {
   return (
-    <UserContext.Provider value={userContext}>
-      {children}
-    </UserContext.Provider>
+    <div>
+      {/* Public route */}
+      <LoginPage />
+
+      {/* Protected route - any authenticated user */}
+      <ProtectedRoute>
+        <Dashboard />
+      </ProtectedRoute>
+
+      {/* Protected route - admin only */}
+      <ProtectedRoute requiredRoles={["Admin"]}>
+        <div>Admin Only Content</div>
+      </ProtectedRoute>
+
+      {/* Protected route - multiple roles */}
+      <ProtectedRoute requiredRoles={["Admin", "Seller", "InventoryManager"]}>
+        <div>Staff Only Content</div>
+      </ProtectedRoute>
+    </div>
   );
 }
 ```
-
-## Troubleshooting
-
-### Issue: Session Not Persisting
-
-**Symptoms:** User is logged out after page refresh
-
-**Solutions:**
-1. Verify cookies are being set correctly with proper domain/path
-2. Check that credentials are included in fetch requests
-3. Ensure session endpoint returns valid session data
-4. Check browser's cookie storage for session cookies
-
-### Issue: Login Redirect Loop
-
-**Symptoms:** User keeps being redirected to login page
-
-**Solutions:**
-1. Check that session endpoint is returning correct status
-2. Verify AuthProvider is wrapping the entire app
-3. Check for CORS issues with authentication endpoints
-4. Ensure `autoRedirect` is configured correctly
-
-### Issue: Role Not Updated After Change
-
-**Symptoms:** User role shows old value after role switch
-
-**Solutions:**
-1. Call `refreshSession()` after changing role on backend
-2. Check that role endpoint returns updated user data
-3. Verify React Query cache is invalidated properly
-
-### Issue: OAuth Callback Not Working
-
-**Symptoms:** OAuth login completes but app doesn't recognize user
-
-**Solutions:**
-1. Verify callback URL matches OAuth provider configuration
-2. Check that session cookies are set after OAuth callback
-3. Ensure `refetchOnWindowFocus` is enabled for session updates
-4. Debug network requests to verify session endpoint response
-
----
-
-For more examples, see the [e-commerce example](../examples/e-commerce/) in the repository.

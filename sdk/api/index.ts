@@ -26,12 +26,16 @@ export type {
   SortDirection,
   SortOption,
   Sort,
-  // Filter types
+  // Filter types (new names)
+  Condition,
+  ConditionGroup,
+  ConditionGroupOperator,
   Filter,
+  FilterRHSType,
+  ConditionOperator,
+  // Filter types (legacy - deprecated)
   FilterCondition,
   FilterOperator,
-  FilterRHSType,
-  LogicalOperator,
   FilterLogical,
   FilterNode,
   // List types

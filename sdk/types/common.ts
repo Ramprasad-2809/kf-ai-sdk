@@ -15,18 +15,20 @@ export type SortOption = Record<string, SortDirection>;
 export type Sort = SortOption[];
 
 /**
- * Filter operators for individual conditions (leaf nodes)
+ * Condition operators for individual conditions (leaf nodes)
+ * Used in Condition.Operator
  */
-export type FilterOperator =
+export type ConditionOperator =
   | "EQ" | "NE" | "GT" | "GTE" | "LT" | "LTE"
   | "Between" | "NotBetween" | "IN" | "NIN"
   | "Empty" | "NotEmpty" | "Contains" | "NotContains"
   | "MinLength" | "MaxLength";
 
 /**
- * Logical operators for combining filter conditions (tree nodes)
+ * Operators for combining conditions in a group (tree nodes)
+ * Used in ConditionGroup.Operator
  */
-export type LogicalOperator = "And" | "Or" | "Not";
+export type ConditionGroupOperator = "And" | "Or" | "Not";
 
 /**
  * RHS value type for filter conditions
@@ -34,19 +36,13 @@ export type LogicalOperator = "And" | "Or" | "Not";
 export type FilterRHSType = "Constant" | "BOField" | "AppVariable";
 
 /**
- * Base interface for all filter nodes
+ * Leaf condition (actual field comparison)
  */
-interface FilterNodeBase {
-  /** Operator type */
-  Operator: FilterOperator | LogicalOperator;
-}
-
-/**
- * Leaf filter condition (actual field comparison)
- */
-export interface FilterCondition extends FilterNodeBase {
+export interface Condition {
+  /** Optional ID for hook state management (omitted in API payload) */
+  id?: string;
   /** Condition operator */
-  Operator: FilterOperator;
+  Operator: ConditionOperator;
   /** Left-hand side field name */
   LHSField: string;
   /** Right-hand side value */
@@ -56,25 +52,45 @@ export interface FilterCondition extends FilterNodeBase {
 }
 
 /**
- * Logical filter node (combines multiple conditions)
+ * Group combining conditions (recursive structure)
  */
-export interface FilterLogical extends FilterNodeBase {
-  /** Logical operator */
-  Operator: LogicalOperator;
-  /** Nested conditions (can be FilterCondition or FilterLogical) */
-  Condition: Array<FilterCondition | FilterLogical>;
+export interface ConditionGroup {
+  /** Optional ID for hook state management (omitted in API payload) */
+  id?: string;
+  /** Group operator (And, Or, Not) */
+  Operator: ConditionGroupOperator;
+  /** Nested conditions (can be Condition or ConditionGroup) */
+  Condition: Array<Condition | ConditionGroup>;
 }
 
 /**
- * Filter structure matching API specification (root level)
- * This is a discriminated union - a filter is either a logical node or a condition
+ * Root filter type (alias for ConditionGroup)
  */
-export type Filter = FilterLogical;
+export type Filter = ConditionGroup;
+
+// ============================================================
+// LEGACY TYPE ALIASES (for backwards compatibility)
+// ============================================================
 
 /**
- * Convenience type for any filter node (leaf or logical)
+ * @deprecated Use `Condition` instead
  */
-export type FilterNode = FilterCondition | FilterLogical;
+export type FilterCondition = Condition;
+
+/**
+ * @deprecated Use `ConditionGroup` instead
+ */
+export type FilterLogical = ConditionGroup;
+
+/**
+ * @deprecated Use `ConditionGroupOperator` instead
+ */
+export type FilterOperator = ConditionGroupOperator;
+
+/**
+ * @deprecated Use `Condition | ConditionGroup` instead
+ */
+export type FilterNode = Condition | ConditionGroup;
 
 /**
  * DateTime encoding format used by the API

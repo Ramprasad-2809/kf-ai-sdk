@@ -17,7 +17,6 @@ export type {
   // Operations
   CardOperations,
   SearchOperations,
-  FilterOperations,
 
   // Drag & Drop
   DragDropState,

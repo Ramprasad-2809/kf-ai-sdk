@@ -1,16 +1,13 @@
-# useForm Hook Documentation
+# useForm
 
-The `useForm` hook integrates React Hook Form with backend-driven schemas, validation, and computed fields.
+## Brief Description
 
-## Table of Contents
-
-- [Type Reference](#type-reference)
-- [Usage Example](#usage-example)
-- [API Quick Reference](#api-quick-reference)
+- Integrates react-hook-form with backend Business Object schemas for automatic validation and computed field handling
+- Fetches schema metadata from the API and generates validation rules, default values, and field permissions automatically
+- Supports both create and update operations with automatic draft API calls for server-side computed fields
+- Provides flattened state accessors (`errors`, `isValid`, `isDirty`) alongside react-hook-form's standard methods
 
 ## Type Reference
-
-### Import Types
 
 ```typescript
 import { useForm } from "@ram_28/kf-ai-sdk";
@@ -24,23 +21,24 @@ import type {
   BackendSchema,
   RuleExecutionContext,
 } from "@ram_28/kf-ai-sdk";
-```
 
-### FormOperation
+// Re-exported from react-hook-form
+import type {
+  UseFormRegister,
+  FieldErrors,
+  FormState,
+  Path,
+  PathValue,
+} from "react-hook-form";
 
-```typescript
+// Form operation type
 type FormOperation = "create" | "update";
-```
 
-### ProcessedField
-
-Processed field with validation rules and metadata.
-
-```typescript
+// Processed field with validation rules and metadata
 interface ProcessedField {
   id: string;
   label: string;
-  type: 'string' | 'number' | 'boolean' | 'date' | 'datetime' | 'currency' | 'email' | 'select';
+  type: "string" | "number" | "boolean" | "date" | "datetime" | "currency" | "email" | "select";
   required: boolean;
   computed: boolean;
   readOnly: boolean;
@@ -55,24 +53,16 @@ interface ProcessedField {
   computationExpression?: string;
   dependsOn?: string[];
 }
-```
 
-### ProcessedSchema
-
-```typescript
+// Processed schema with field lists
 interface ProcessedSchema {
   fields: Record<string, ProcessedField>;
   requiredFields: string[];
   computedFields: string[];
   fieldOrder: string[];
 }
-```
 
-### BackendFieldDefinition
-
-Raw field definition from backend.
-
-```typescript
+// Raw field definition from backend
 interface BackendFieldDefinition {
   name: string;
   dataType: string;
@@ -84,22 +74,14 @@ interface BackendFieldDefinition {
   computations?: BackendComputation[];
   options?: Array<{ label: string; value: any }>;
 }
-```
 
-### BackendSchema
-
-```typescript
+// Raw schema from backend
 interface BackendSchema {
   name: string;
   fields: BackendFieldDefinition[];
 }
-```
 
-### RuleExecutionContext<T>
-
-Context for computation rule callbacks.
-
-```typescript
+// Context for computation rule callbacks
 interface RuleExecutionContext<T> {
   values: T;
   triggerField: keyof T;
@@ -108,11 +90,8 @@ interface RuleExecutionContext<T> {
   getValue: <K extends keyof T>(field: K) => T[K];
   setValue: <K extends keyof T>(field: K, value: T[K]) => void;
 }
-```
 
-### UseFormOptions<T>
-
-```typescript
+// Hook options
 interface UseFormOptions<T> {
   source: string;
   operation: FormOperation;
@@ -127,18 +106,15 @@ interface UseFormOptions<T> {
   onSchemaError?: (error: Error) => void;
   onSubmitError?: (error: Error) => void;
 }
-```
 
-### UseFormReturn<T>
-
-```typescript
+// Hook return type
 interface UseFormReturn<T> {
   // React Hook Form methods
   register: UseFormRegister<T>;
   handleSubmit: () => (e?: React.FormEvent) => Promise<void>;
-  watch: UseFormWatch<T>;
-  setValue: UseFormSetValue<T>;
-  reset: UseFormReset<T>;
+  watch: <K extends Path<T>>(name?: K) => K extends Path<T> ? PathValue<T, K> : T;
+  setValue: <K extends Path<T>>(name: K, value: PathValue<T, K>) => void;
+  reset: (values?: T) => void;
   getValues: () => T;
   trigger: (name?: keyof T | (keyof T)[]) => Promise<boolean>;
 
@@ -147,6 +123,7 @@ interface UseFormReturn<T> {
   isValid: boolean;
   isDirty: boolean;
   isSubmitting: boolean;
+  isSubmitSuccessful: boolean;
 
   // Legacy (backward compatible)
   formState: FormState<T>;
@@ -159,6 +136,7 @@ interface UseFormReturn<T> {
   // Error handling
   loadError: Error | null;
   submitError: Error | null;
+  hasError: boolean;
 
   // Schema info
   schema: BackendSchema | null;
@@ -168,6 +146,8 @@ interface UseFormReturn<T> {
 
   // Field helpers
   getField: <K extends keyof T>(fieldName: K) => ProcessedField | null;
+  getFields: () => Record<keyof T, ProcessedField>;
+  hasField: <K extends keyof T>(fieldName: K) => boolean;
   isFieldRequired: <K extends keyof T>(fieldName: K) => boolean;
   isFieldComputed: <K extends keyof T>(fieldName: K) => boolean;
 
@@ -181,14 +161,15 @@ interface UseFormReturn<T> {
 
 ## Usage Example
 
-From `ecommerce-app/src/pages/SellerProductsPage.tsx`. This example demonstrates all imported types:
-
 ```tsx
 import { useState } from "react";
 import { useTable, useForm } from "@ram_28/kf-ai-sdk";
 import type {
   UseFormOptions,
   UseFormReturn,
+  UseTableOptions,
+  UseTableReturn,
+  ColumnDefinition,
   FormOperation,
   ProcessedField,
   ProcessedSchema,
@@ -199,172 +180,214 @@ import type {
 import { Product, ProductType } from "../sources";
 import { Roles } from "../sources/roles";
 
+// Get the typed product for the Seller role (who can create/update products)
 type SellerProduct = ProductType<typeof Roles.Seller>;
 
-export function SellerProductsPage() {
+function ProductManagementPage() {
+  // Instantiate the Product source with role
   const product = new Product(Roles.Seller);
+
   const [showForm, setShowForm] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<SellerProduct | null>(null);
-  // FormOperation - "create" or "update"
   const [formMode, setFormMode] = useState<FormOperation>("create");
 
-  // Table for listing
+  // Table for listing products
   const table = useTable<SellerProduct>({
-    source: product._id,
-    columns: [{ fieldId: "Title" }, { fieldId: "Price" }],
+    source: product._id, // Use the Business Object ID from the Product class
+    columns: [
+      { fieldId: "Title", label: "Name" },
+      { fieldId: "Price", label: "Price" },
+      { fieldId: "Discount", label: "Discount %" },
+    ],
     enablePagination: true,
   });
 
-  // UseFormOptions<T> - configuration for the hook
+  // Form configuration with all options
   const formOptions: UseFormOptions<SellerProduct> = {
-    source: product._id,
-    operation: formMode,              // FormOperation: "create" | "update"
-    recordId: selectedProduct?._id,   // Required for update mode
-    enabled: showForm,                // Only fetch when form is visible
-    mode: "onBlur",                   // Validate on blur
+    source: product._id, // Use the Business Object ID from the Product class
+    operation: formMode,
+    recordId: selectedProduct?._id,
+    enabled: showForm,
+    mode: "onBlur",
     defaultValues: {
       Title: "",
+      Description: "",
       Price: 0,
+      MRP: 0,
+      Category: "Electronics",
       Stock: 0,
     },
-    // RuleExecutionContext<T> - context for custom computation rules
+    // Custom computation rule callback
     onComputationRule: async (context: RuleExecutionContext<SellerProduct>) => {
-      // Access current values
       const price = context.getValue("Price");
       const mrp = context.getValue("MRP");
 
-      // Return computed values
-      if (mrp > 0) {
-        return {
-          Discount: ((mrp - price) / mrp) * 100,
-        };
+      // Calculate discount when Price or MRP changes
+      if (context.triggerField === "Price" || context.triggerField === "MRP") {
+        if (mrp > 0) {
+          return {
+            Discount: Math.round(((mrp - price) / mrp) * 100),
+          };
+        }
       }
       return {};
     },
-    onSuccess: () => {
+    onSuccess: (data: SellerProduct) => {
+      console.log("Product saved:", data);
       setShowForm(false);
       table.refetch();
     },
-    onError: (error: Error) => console.error(error.message),
+    onError: (error: Error) => console.error("Form error:", error.message),
     onSchemaError: (error: Error) => console.error("Schema error:", error.message),
     onSubmitError: (error: Error) => console.error("Submit error:", error.message),
   };
 
-  // UseFormReturn<T> - the hook return type
   const form: UseFormReturn<SellerProduct> = useForm<SellerProduct>(formOptions);
 
-  // ProcessedSchema - access schema information
+  // Access processed schema
   const displaySchemaInfo = () => {
     const schema: ProcessedSchema | null = form.processedSchema;
     if (!schema) return null;
 
     return (
-      <div>
-        <p>Required fields: {schema.requiredFields.join(", ")}</p>
-        <p>Computed fields: {schema.computedFields.join(", ")}</p>
-        <p>Field order: {schema.fieldOrder.join(", ")}</p>
+      <div className="schema-info">
+        <p>Required: {schema.requiredFields.join(", ")}</p>
+        <p>Computed: {schema.computedFields.join(", ")}</p>
+        <p>Field Order: {schema.fieldOrder.join(", ")}</p>
       </div>
     );
   };
 
-  // ProcessedField - access individual field metadata
-  const renderFieldWithMeta = (fieldName: keyof SellerProduct) => {
+  // Render a field using ProcessedField metadata
+  const renderField = (fieldName: keyof SellerProduct) => {
     const field: ProcessedField | null = form.getField(fieldName);
-    if (!field) return null;
+    if (!field || field.hidden) return null;
+
+    const isDisabled = field.readOnly || field.computed;
+    const error = form.errors[fieldName];
 
     return (
-      <div key={field.id}>
-        <label>
+      <div key={field.id} className="form-field">
+        <label htmlFor={field.id}>
           {field.label}
           {field.required && <span className="required">*</span>}
           {field.computed && <span className="computed">(auto)</span>}
         </label>
-        {field.computed ? (
-          // Computed fields are read-only
+
+        {field.type === "select" && field.options ? (
+          <select
+            id={field.id}
+            disabled={isDisabled}
+            {...form.register(fieldName as any)}
+          >
+            <option value="">Select {field.label}</option>
+            {field.options.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        ) : field.computed ? (
           <input
-            value={form.watch(fieldName) || field.defaultValue || ""}
+            id={field.id}
+            type={field.type === "number" ? "number" : "text"}
+            value={form.watch(fieldName as any) ?? field.defaultValue ?? ""}
             readOnly
             disabled
           />
         ) : (
           <input
-            {...form.register(fieldName)}
+            id={field.id}
             type={field.type === "number" ? "number" : "text"}
             min={field.min}
             max={field.max}
             minLength={field.minLength}
             maxLength={field.maxLength}
             pattern={field.pattern}
+            disabled={isDisabled}
+            {...form.register(fieldName as any)}
           />
         )}
-        {field.options && (
-          <select {...form.register(fieldName)}>
-            {field.options.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
-        )}
+
+        {error && <span className="error">{error.message as string}</span>}
       </div>
     );
   };
 
-  // BackendSchema - raw schema from API
+  // Access raw backend schema
   const displayRawSchema = () => {
     const schema: BackendSchema | null = form.schema;
     if (!schema) return null;
 
     return (
-      <div>
-        <p>Business Object: {schema.name}</p>
-        <p>Field count: {schema.fields.length}</p>
-        {schema.fields.map((field: BackendFieldDefinition) => (
-          <div key={field.name}>
-            {field.displayName || field.name} ({field.dataType})
-            {field.isMandatory && " - Required"}
-            {field.isComputed && " - Computed"}
-          </div>
-        ))}
-      </div>
+      <details>
+        <summary>Raw Schema: {schema.name}</summary>
+        <ul>
+          {schema.fields.map((field: BackendFieldDefinition) => (
+            <li key={field.name}>
+              {field.displayName || field.name} ({field.dataType})
+              {field.isMandatory && " - Required"}
+              {field.isComputed && " - Computed"}
+            </li>
+          ))}
+        </ul>
+      </details>
     );
   };
 
-  // Field helpers
-  const checkFieldProperties = () => {
+  // Check field properties using helpers
+  const checkFieldStatus = () => {
     console.log("Is Title required?", form.isFieldRequired("Title"));
     console.log("Is Discount computed?", form.isFieldComputed("Discount"));
-    console.log("Computed fields:", form.computedFields);
-    console.log("Required fields:", form.requiredFields);
+    console.log("Has Category field?", form.hasField("Category"));
+    console.log("All computed fields:", form.computedFields);
+    console.log("All required fields:", form.requiredFields);
   };
 
+  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await form.handleSubmit()();
   };
 
+  // Open create form
   const handleCreate = () => {
     setFormMode("create");
     setSelectedProduct(null);
     setShowForm(true);
   };
 
-  const handleEdit = (item: SellerProduct) => {
+  // Open edit form
+  const handleEdit = (productItem: SellerProduct) => {
     setFormMode("update");
-    setSelectedProduct(item);
+    setSelectedProduct(productItem);
     setShowForm(true);
   };
 
   return (
-    <div>
+    <div className="product-management">
+      <h1>Products</h1>
       <button onClick={handleCreate}>Add Product</button>
 
-      {/* Table */}
+      {/* Product Table */}
       <table>
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Price</th>
+            <th>Discount</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
         <tbody>
-          {table.rows.map((row) => (
+          {table.rows.map((row: SellerProduct) => (
             <tr key={row._id}>
               <td>{row.Title}</td>
-              <td>${row.Price}</td>
-              <td><button onClick={() => handleEdit(row)}>Edit</button></td>
+              <td>${row.Price.toFixed(2)}</td>
+              <td>{row.Discount}%</td>
+              <td>
+                <button onClick={() => handleEdit(row)}>Edit</button>
+              </td>
             </tr>
           ))}
         </tbody>
@@ -382,63 +405,75 @@ export function SellerProductsPage() {
             </div>
           ) : (
             <form onSubmit={handleSubmit}>
+              <h2>{formMode === "create" ? "Create Product" : "Edit Product"}</h2>
+
               {/* Schema Info */}
               {displaySchemaInfo()}
 
-              {/* Title Field */}
-              <div>
-                <label>
-                  Title {form.isFieldRequired("Title") && "*"}
-                </label>
-                <input {...form.register("Title")} />
-                {form.errors.Title && (
-                  <span className="error">{form.errors.Title.message}</span>
-                )}
-              </div>
+              {/* Form Fields */}
+              {renderField("Title")}
+              {renderField("Description")}
+              {renderField("MRP")}
+              {renderField("Price")}
+              {renderField("Discount")}
+              {renderField("Category")}
+              {renderField("Stock")}
 
-              {/* Price Field */}
-              <div>
-                <label>Price *</label>
-                <input type="number" step="0.01" {...form.register("Price")} />
-                {form.errors.Price && (
-                  <span className="error">{form.errors.Price.message}</span>
-                )}
-              </div>
-
-              {/* Computed Discount Field */}
-              <div>
-                <label>Discount % (computed)</label>
-                <input
-                  value={(form.watch("Discount") || 0).toFixed(2)}
-                  readOnly
-                  disabled
-                />
+              {/* Form Status */}
+              <div className="form-status">
+                {form.isDirty && <span>Unsaved changes</span>}
+                {!form.isValid && <span>Please fix validation errors</span>}
               </div>
 
               {/* Cross-field validation errors */}
               {form.errors.root && (
-                <div className="error-banner">
+                <div className="cross-field-errors">
                   {Object.values(form.errors.root).map((err, i) => (
-                    <p key={i}>{(err as any).message}</p>
+                    <p key={i} className="error">{(err as any).message}</p>
                   ))}
                 </div>
               )}
 
               {/* Submit error */}
               {form.submitError && (
-                <div className="error">{form.submitError.message}</div>
+                <div className="submit-error">
+                  <p>{form.submitError.message}</p>
+                  <button type="button" onClick={form.clearErrors}>
+                    Dismiss
+                  </button>
+                </div>
               )}
 
-              {/* Actions */}
-              <div>
+              {/* Raw Schema Debug */}
+              {displayRawSchema()}
+
+              {/* Form Actions */}
+              <div className="form-actions">
                 <button type="button" onClick={() => setShowForm(false)}>
                   Cancel
                 </button>
-                <button type="submit" disabled={form.isSubmitting || !form.isValid}>
+                <button type="button" onClick={() => form.reset()}>
+                  Reset
+                </button>
+                <button type="button" onClick={() => form.validateForm()}>
+                  Validate
+                </button>
+                <button
+                  type="submit"
+                  disabled={form.isSubmitting || form.isLoading}
+                >
                   {form.isSubmitting
                     ? "Saving..."
-                    : formMode === "create" ? "Create" : "Update"}
+                    : formMode === "create"
+                    ? "Create"
+                    : "Update"}
                 </button>
+              </div>
+
+              {/* Watch specific fields */}
+              <div className="field-preview">
+                <p>Current Price: ${form.watch("Price")}</p>
+                <p>Current Discount: {form.watch("Discount")}%</p>
               </div>
             </form>
           )}
@@ -447,71 +482,4 @@ export function SellerProductsPage() {
     </div>
   );
 }
-```
-
-**Type explanations:**
-
-| Type | Purpose | Where Used |
-|------|---------|------------|
-| `FormOperation` | "create" \| "update" | `options.operation`, `formMode` state |
-| `UseFormOptions<T>` | Hook configuration | `useForm(options)` |
-| `UseFormReturn<T>` | Hook return with all methods | Return value of `useForm()` |
-| `ProcessedField` | Field metadata with validation rules | `form.getField()` return value |
-| `ProcessedSchema` | Full schema with field lists | `form.processedSchema` |
-| `BackendFieldDefinition` | Raw field from API | `form.schema.fields[]` |
-| `BackendSchema` | Raw schema from API | `form.schema` |
-| `RuleExecutionContext<T>` | Context for computation callbacks | `onComputationRule` callback parameter |
-
-## API Quick Reference
-
-### Form Methods
-
-```typescript
-form.register("fieldName")           // Register input (type-safe)
-form.handleSubmit()                  // Returns submit handler
-form.watch("fieldName")              // Watch field value
-form.setValue("fieldName", value)    // Set field value
-form.reset()                         // Reset form
-form.getValues()                     // Get all values
-form.trigger("fieldName")            // Trigger validation
-```
-
-### State
-
-```typescript
-form.errors                          // Field errors (FieldErrors<T>)
-form.errors.root                     // Cross-field validation errors
-form.isValid                         // All validations pass
-form.isDirty                         // Form has changes
-form.isSubmitting                    // Submit in progress
-```
-
-### Loading & Errors
-
-```typescript
-form.isLoadingInitialData            // Schema + record loading
-form.isLoadingRecord                 // Just record loading
-form.loadError                       // Schema/record load error
-form.submitError                     // Submission error
-```
-
-### Schema Info
-
-```typescript
-form.schema                          // BackendSchema | null
-form.processedSchema                 // ProcessedSchema | null
-form.computedFields                  // Array of computed field names
-form.requiredFields                  // Array of required field names
-form.getField("fieldName")           // ProcessedField | null
-form.isFieldRequired("fieldName")    // boolean
-form.isFieldComputed("fieldName")    // boolean
-```
-
-### Operations
-
-```typescript
-form.submit()                        // Programmatic submit
-form.refreshSchema()                 // Reload schema
-form.validateForm()                  // Validate all fields
-form.clearErrors()                   // Clear all errors
 ```

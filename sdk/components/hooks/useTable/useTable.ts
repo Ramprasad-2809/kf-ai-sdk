@@ -18,43 +18,10 @@ interface SortingState<T> {
   direction: "asc" | "desc" | null;
 }
 
-interface FilteringState {
-  global: string;
-}
-
 interface PaginationState {
   pageNo: number; // 1-indexed page number
   pageSize: number;
 }
-
-// ============================================================
-// FIELD TYPE DETECTION
-// ============================================================
-
-/**
- * Detect field type for auto-formatting
- * This will be enhanced with actual type introspection in the future
- * Currently unused but kept for future auto-formatting implementation
- */
-// function _detectFieldType<T>(fieldId: keyof T): string {
-//   const fieldName = String(fieldId);
-//
-//   // Basic pattern matching - will be replaced with actual type introspection
-//   if (fieldName.includes('price') || fieldName.includes('cost') || fieldName.includes('amount')) {
-//     return 'currency';
-//   }
-//   if (fieldName.includes('date') || fieldName.includes('At') || fieldName === 'created' || fieldName === 'updated') {
-//     return 'datetime';
-//   }
-//   if (fieldName.includes('stock') || fieldName.includes('quantity') || fieldName.includes('count')) {
-//     return 'number';
-//   }
-//   if (fieldName.includes('status') || fieldName.includes('type') || fieldName.includes('category')) {
-//     return 'string';
-//   }
-//
-//   return 'string'; // default
-// }
 
 // ============================================================
 // MAIN HOOK
@@ -76,12 +43,8 @@ export function useTable<T = any>(
     direction: options.initialState?.sorting?.direction || null,
   });
 
-  const [filtering, setFiltering] = useState<FilteringState>({
-    global: options.initialState?.globalFilter || "",
-  });
-
   const [pagination, setPagination] = useState<PaginationState>({
-    pageNo: options.initialState?.pagination?.pageNo || 1, // Start at page 1
+    pageNo: options.initialState?.pagination?.pageNo || 1,
     pageSize: options.initialState?.pagination?.pageSize || 10,
   });
 
@@ -89,23 +52,9 @@ export function useTable<T = any>(
   // FILTER HOOK INTEGRATION
   // ============================================================
 
-  const filterHook = useFilter<T>({
+  const filter = useFilter({
     initialConditions: options.initialState?.filters,
-    initialLogicalOperator: options.initialState?.filterOperator || "And",
-    validateOnChange: true,
-    onValidationError: options.onFilterError,
-    onConditionAdd: () => {
-      // Reset to first page when adding filters
-      setPagination((prev) => ({ ...prev, pageNo: 1 }));
-    },
-    onConditionUpdate: () => {
-      // Reset to first page when updating filters
-      setPagination((prev) => ({ ...prev, pageNo: 1 }));
-    },
-    onConditionRemove: () => {
-      // Reset to first page when removing filters
-      setPagination((prev) => ({ ...prev, pageNo: 1 }));
-    },
+    initialOperator: options.initialState?.filterOperator || "And",
   });
 
   // ============================================================
@@ -122,12 +71,12 @@ export function useTable<T = any>(
     }
 
     // Add filter conditions (affects count)
-    if (filterHook.filterPayload) {
-      opts.Filter = filterHook.filterPayload;
+    if (filter.payload) {
+      opts.Filter = filter.payload;
     }
 
     return opts;
-  }, [search.query, filterHook.filterPayload]);
+  }, [search.query, filter.payload]);
 
   // Options for list query - includes all options
   const apiOptions = useMemo((): ListOptions => {
@@ -144,7 +93,7 @@ export function useTable<T = any>(
 
     // Add pagination
     if (options.enablePagination) {
-      opts.Page = pagination.pageNo; // Already 1-indexed
+      opts.Page = pagination.pageNo;
       opts.PageSize = pagination.pageSize;
     }
 
@@ -181,7 +130,7 @@ export function useTable<T = any>(
     gcTime: 0,
   });
 
-  // Count query for accurate total items (only depends on filters/search, not sorting/pagination)
+  // Count query for accurate total items
   const {
     data: countData,
     isLoading: isCountLoading,
@@ -222,14 +171,12 @@ export function useTable<T = any>(
   const toggleSort = useCallback((field: keyof T) => {
     setSorting((prev) => {
       if (prev.field === field) {
-        // Same field - toggle direction or clear
         if (prev.direction === "asc") {
           return { field, direction: "desc" };
         } else if (prev.direction === "desc") {
           return { field: null, direction: null };
         }
       }
-      // New field or no current sort
       return { field, direction: "asc" };
     });
   }, []);
@@ -251,26 +198,11 @@ export function useTable<T = any>(
 
   const setSearchQuery = useCallback((value: string) => {
     setSearch({ query: value });
-    // Reset to first page when searching
     setPagination((prev) => ({ ...prev, pageNo: 1 }));
   }, []);
 
   const clearSearch = useCallback(() => {
     setSearch({ query: "" });
-  }, []);
-
-  // ============================================================
-  // FILTERING OPERATIONS
-  // ============================================================
-
-  const setGlobalFilter = useCallback((value: string) => {
-    setFiltering((prev) => ({ ...prev, global: value }));
-    // Reset to first page when filtering
-    setPagination((prev) => ({ ...prev, pageNo: 1 }));
-  }, []);
-
-  const clearFilter = useCallback(() => {
-    setFiltering({ global: "" });
   }, []);
 
   // ============================================================
@@ -294,7 +226,7 @@ export function useTable<T = any>(
 
   const goToPage = useCallback(
     (page: number) => {
-      const pageNo = Math.max(1, Math.min(page, totalPages)); // Clamp between 1 and totalPages
+      const pageNo = Math.max(1, Math.min(page, totalPages));
       setPagination((prev) => ({ ...prev, pageNo }));
     },
     [totalPages]
@@ -304,7 +236,7 @@ export function useTable<T = any>(
     setPagination((prev) => ({
       ...prev,
       pageSize: size,
-      pageNo: 1, // Reset to first page
+      pageNo: 1,
     }));
   }, []);
 
@@ -349,52 +281,12 @@ export function useTable<T = any>(
       set: setSort,
     },
 
-    // Legacy Global Filtering (Flat Access)
-    globalFilter: {
-      value: filtering.global,
-      setValue: setGlobalFilter,
-      clear: clearFilter,
-    },
-
-    // Advanced Filtering (Filter Conditions)
-    filter: {
-      // State
-      conditions: filterHook.conditions,
-      logicalOperator: filterHook.logicalOperator,
-      isValid: filterHook.isValid,
-      validationErrors: filterHook.validationErrors,
-      hasConditions: filterHook.hasConditions,
-
-      // Condition Management
-      addCondition: filterHook.addCondition,
-      updateCondition: filterHook.updateCondition,
-      removeCondition: filterHook.removeCondition,
-      clearConditions: filterHook.clearConditions,
-      getCondition: filterHook.getCondition,
-
-      // Logical Operator
-      setLogicalOperator: filterHook.setLogicalOperator,
-
-      // Bulk Operations
-      setConditions: filterHook.setConditions,
-      replaceCondition: filterHook.replaceCondition,
-
-      // Validation
-      validateCondition: filterHook.validateCondition,
-      validateAllConditions: filterHook.validateAllConditions,
-
-      // State Management
-      exportState: filterHook.exportState,
-      importState: filterHook.importState,
-      resetToInitial: filterHook.resetToInitial,
-
-      // Utilities
-      getConditionCount: filterHook.getConditionCount,
-    },
+    // Filter (Simplified chainable API)
+    filter,
 
     // Pagination (Flat Access)
     pagination: {
-      currentPage: pagination.pageNo, // Already 1-indexed
+      currentPage: pagination.pageNo,
       pageSize: pagination.pageSize,
       totalPages,
       totalItems,
