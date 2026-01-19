@@ -34,12 +34,11 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
     onCardUpdate,
     onCardDelete,
     onError,
-    onFilterError,
   } = options;
 
   // Use source or cardSource (backwards compatibility)
   const dataSource = source || cardSource;
-  
+
   if (!dataSource) {
     throw new Error('useKanban requires either "source" or "cardSource" parameter');
   }
@@ -89,11 +88,9 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
   // FILTER INTEGRATION
   // ============================================================
 
-  const filterHook = useFilter<T>({
+  const filter = useFilter({
     initialConditions: initialState?.filters,
-    initialLogicalOperator: initialState?.filterOperator || "And",
-    validateOnChange: true,
-    onValidationError: onFilterError,
+    initialOperator: initialState?.filterOperator || "And",
   });
 
   // Helper to generate API options for a specific column
@@ -107,7 +104,7 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
         RHSType: "Constant"
       };
 
-      const basePayload = filterHook.filterPayload;
+      const basePayload = filter.payload;
       let combinedPayload: any;
 
       if (!basePayload) {
@@ -154,9 +151,9 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
       if (search.query) {
         opts.Search = search.query;
       }
-      
+
       return opts;
-  }, [filterHook.filterPayload, columnPagination, sorting, search.query]);
+  }, [filter.payload, columnPagination, sorting, search.query]);
 
   // ============================================================
   // COLUMN QUERY GENERATION
@@ -188,21 +185,13 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
     await Promise.all(columnQueries.map(q => q.refetch()));
   };
 
-  // Get total card count (Global count, or sum of columns? Usually global might differ if filters applied)
-  // For simplicity, we can fetch global count but restricted by filters?
-  // Actually, standard Kanban usually doesn't show "Total Cards" unless it's per column.
-  // We will keep the global count query for now but it might be slightly inaccurate if we want "Total Visible".
-  // Let's rely on summing up column counts for "Total Visible" and keep this for "Total Database"?
-  // Or just query with base filters?
-  // Let's keep existing logic but apply ONLY base filters + search.
-  
   const cardApiOptions = useMemo((): ListOptions => {
       // This is for the GLOBAL count (ignoring column split)
       const opts: ListOptions = {};
       if (search.query) opts.Search = search.query;
-      if (filterHook.filterPayload) opts.Filter = filterHook.filterPayload;
+      if (filter.payload) opts.Filter = filter.payload;
       return opts;
-  }, [search.query, filterHook.filterPayload]);
+  }, [search.query, filter.payload]);
 
   const {
     data: countData,
@@ -230,11 +219,6 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
 
   const createCardMutation = useMutation({
     mutationFn: async (card: Partial<KanbanCard<T>> & { columnId: string }) => {
-      // We need to fetch the current count or max position to append correclty if not provided
-      // Simplification: just send position=999999 or let backend handle it?
-      // Since we want optimistic UI, we should calculate it.
-      // But calculating it from partial data (paginated) is risky.
-      // Let's rely on backend or default to top/bottom logic.
       const position = card.position ?? 999999;
       const response = await api<KanbanCard<T>>(dataSource).create({ ...card, position });
       return response._id;
@@ -249,7 +233,6 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
       const previousCards = queryClient.getQueryData<ListResponse<KanbanCard<T>>>(queryKey);
 
       if (previousCards) {
-         // Determine position
          const currentCards = previousCards.Data;
          const position = newCardVariables.position ?? currentCards.length;
 
@@ -271,7 +254,6 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
       return { previousCards, queryKey };
     },
     onSuccess: async (cardId, _variables, context) => {
-       // Refetch the specific column
        if (context?.queryKey) {
            await queryClient.invalidateQueries({ queryKey: context.queryKey });
        }
@@ -299,22 +281,10 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
       return { id, updates };
     },
     onMutate: async () => {
-      // We don't know the columnId easily without passing it.
-      // We can try to finding it in all column queries
-      // For now, simpler to just invalidate everything on success/error
-      // OR pass columnId in updates if available.
-      // If we want optimistic updates, we need to iterate all queries.
-      
-      // Strategy: Invalidate all columns. Optimistic update is hard without knowing columnId.
-      // If the user passes columnId in updates, we can optimize.
-      
       await queryClient.cancelQueries({ queryKey: ["kanban-cards", dataSource] });
       return {};
     },
     onSuccess: async (result) => {
-      // Find the card to trigger callback
-      // Since we don't have a single list, this is harder.
-      // We can skip finding it for now or iterate queries.
       onCardUpdateRef.current?.({ _id: result.id, ...result.updates } as any);
     },
     onError: (error, _variables, _context) => {
@@ -332,8 +302,6 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
     },
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ["kanban-cards", dataSource] });
-      // Optimistic delete: Iterate all column queries and remove?
-      // For now, simple invalidation
       return {};
     },
     onSuccess: async (id) => {
@@ -354,7 +322,6 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
       return { cardId, fromColumnId, toColumnId, position };
     },
     onMutate: async ({ cardId, fromColumnId, toColumnId, position }) => {
-       // Cancel queries for only the affected columns
        const fromOpts = getColumnApiOptions(fromColumnId);
        const toOpts = getColumnApiOptions(toColumnId);
        const fromQueryKey = ["kanban-cards", dataSource, fromColumnId, fromOpts];
@@ -363,23 +330,18 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
        await queryClient.cancelQueries({ queryKey: fromQueryKey });
        await queryClient.cancelQueries({ queryKey: toQueryKey });
 
-       // Get current data for both columns
        const previousFromData = queryClient.getQueryData<ListResponse<KanbanCard<T>>>(fromQueryKey);
        const previousToData = queryClient.getQueryData<ListResponse<KanbanCard<T>>>(toQueryKey);
 
-       // Optimistic update: move card between columns
        if (previousFromData && previousToData) {
-         // Find the card in the source column
          const cardToMove = previousFromData.Data.find(c => c._id === cardId);
 
          if (cardToMove) {
-           // Remove card from source column
            const newFromData = {
              ...previousFromData,
              Data: previousFromData.Data.filter(c => c._id !== cardId)
            };
 
-           // Add card to target column with updated columnId
            const movedCard = {
              ...cardToMove,
              columnId: toColumnId,
@@ -392,7 +354,6 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
              Data: [...previousToData.Data, movedCard].sort((a, b) => a.position - b.position)
            };
 
-           // Update cache optimistically
            queryClient.setQueryData(fromQueryKey, newFromData);
            queryClient.setQueryData(toQueryKey, newToData);
          }
@@ -415,7 +376,6 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
        );
     },
     onError: (error, _variables, context) => {
-      // Rollback optimistic update on error
       if (context?.previousFromData && context?.fromQueryKey) {
         queryClient.setQueryData(context.fromQueryKey, context.previousFromData);
       }
@@ -425,7 +385,6 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
       onErrorRef.current?.(error as Error);
     },
     onSettled: (_data, _error, variables) => {
-       // Invalidate queries to ensure sync with server
        const fromOpts = getColumnApiOptions(variables.fromColumnId);
        const toOpts = getColumnApiOptions(variables.toColumnId);
        queryClient.invalidateQueries({ queryKey: ["kanban-cards", dataSource, variables.fromColumnId, fromOpts] });
@@ -443,15 +402,12 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
       );
     },
     onMutate: async ({ columnId }) => {
-       // Optimistic reorder restricted to single column
        const opts = getColumnApiOptions(columnId);
        const queryKey = ["kanban-cards", dataSource, columnId, opts];
        await queryClient.cancelQueries({ queryKey });
-       // Can implement optimistic reorder here if we want to parse cardIds
-       // But simpler to just invalidate.
        return {};
     },
-    onSuccess: () => {}, 
+    onSuccess: () => {},
     onError: (error, _variables, _context) => {
       onErrorRef.current?.(error as Error);
     },
@@ -472,7 +428,7 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
           cardId: card._id,
           fromColumnId,
           toColumnId,
-          position: undefined, // Let the backend calculate optimal position
+          position: undefined,
         });
       } catch (error) {
         // Error already handled in mutation onError
@@ -482,11 +438,10 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
   );
 
   // ============================================================
-  // COMPUTED VALUES (Moved up for dependencies)
+  // COMPUTED VALUES
   // ============================================================
 
   const processedColumns = useMemo(() => {
-    // Map column configs to KanbanColumn structure using query results
     return columnConfigs
       .sort((a, b) => a.position - b.position)
       .map((config, index) => {
@@ -500,7 +455,6 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
           color: config.color,
           limit: config.limit,
           cards: cards.sort((a, b) => a.position - b.position),
-          // We can expose loading/error state per column here if needed in the future
            _created_at: new Date(),
            _modified_at: new Date(),
         };
@@ -530,9 +484,7 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
       "aria-grabbed": enableDragDrop && dragDropManager.draggedCard?._id === card._id,
       onDragStart: (e: any) => {
         if (!enableDragDrop) return;
-        // Abstracting the dataTransfer logic
         e.dataTransfer.setData("text/plain", JSON.stringify(card));
-        // Use native event if available (ShadCN/Radix sometimes wraps events) or fallback to e
         const nativeEvent = e.nativeEvent || e;
         dragDropManager.handleDragStart(nativeEvent, card);
       },
@@ -575,14 +527,6 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
   const clearSearch = useCallback(() => {
     setSearch({ query: "" });
   }, []);
-
-
-
-  // ============================================================
-  // PROP GETTERS
-  // ============================================================
-
-
 
   const totalCards = countData?.Count || 0;
 
@@ -656,9 +600,7 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
     ),
     moveCard: useCallback(
       async (cardId: string, toColumnId: string, position?: number, fromColumnId?: string) => {
-        // If fromColumnId is not provided, we need to find it
         if (!fromColumnId) {
-          // Find the card in the columns to get its current columnId
           for (const column of processedColumns) {
             const card = column.cards.find(c => c._id === cardId);
             if (card) {
@@ -686,8 +628,8 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
     setSearchQuery,
     clearSearch,
 
-    // Filter (Nested - following useTable pattern)
-    filter: filterHook,
+    // Filter (Simplified chainable API)
+    filter,
 
     // Drag Drop (Flat Access)
     isDragging: enableDragDrop ? dragDropManager.isDragging : false,
@@ -700,13 +642,10 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
     handleDrop: enableDragDrop ? dragDropManager.handleDrop : () => {},
     handleDragEnd: enableDragDrop ? dragDropManager.handleDragEnd : () => {},
     handleKeyDown: enableDragDrop ? dragDropManager.handleKeyDown : () => {},
-    
-    // Prop Getters
+
     // Prop Getters
     getCardProps: enableDragDrop ? getCardProps : (_card: any) => ({} as any),
     getColumnProps: enableDragDrop ? getColumnProps : (_columnId: string) => ({} as any),
-    
-
 
     // Load More (Per Column)
     loadMore: useCallback((columnId: string) => {

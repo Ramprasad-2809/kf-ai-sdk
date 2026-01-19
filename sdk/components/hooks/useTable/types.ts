@@ -1,9 +1,5 @@
-import type { ListResponse, LogicalOperator } from "../../../types/common";
-import type {
-  FilterConditionWithId,
-  TypedFilterConditionInput,
-  ValidationError,
-} from "../useFilter";
+import type { ListResponse, ConditionGroupOperator } from "../../../types/common";
+import type { Condition, ConditionGroup, UseFilterReturn } from "../useFilter";
 
 // ============================================================
 // TYPE DEFINITIONS
@@ -36,23 +32,20 @@ export interface UseTableOptions<T> {
   /** Initial state */
   initialState?: {
     pagination?: {
-      pageNo: number; // 1-indexed page number
+      pageNo: number;
       pageSize: number;
     };
     sorting?: {
       field: keyof T;
       direction: "asc" | "desc";
     };
-    globalFilter?: string;
-    filters?: FilterConditionWithId[];
-    filterOperator?: LogicalOperator;
+    filters?: Array<Condition | ConditionGroup>;
+    filterOperator?: ConditionGroupOperator;
   };
   /** Error callback */
   onError?: (error: Error) => void;
   /** Success callback */
   onSuccess?: (data: T[]) => void;
-  /** Filter error callback */
-  onFilterError?: (errors: ValidationError[]) => void;
 }
 
 export interface UseTableReturn<T> {
@@ -83,54 +76,8 @@ export interface UseTableReturn<T> {
     set: (field: keyof T, direction: "asc" | "desc") => void;
   };
 
-  // Legacy Global Filtering (Flat Access)
-  globalFilter: {
-    value: string;
-    setValue: (value: string) => void;
-    clear: () => void;
-  };
-
-  // Advanced Filtering (Filter Conditions) - Type-safe: lhsField constrained to keyof T
-  filter: {
-    // State
-    conditions: FilterConditionWithId[];
-    logicalOperator: LogicalOperator;
-    isValid: boolean;
-    validationErrors: ValidationError[];
-    hasConditions: boolean;
-
-    // Condition Management (type-safe)
-    addCondition: (condition: TypedFilterConditionInput<T>) => string;
-    updateCondition: (
-      id: string,
-      updates: Partial<TypedFilterConditionInput<T>>
-    ) => boolean;
-    removeCondition: (id: string) => boolean;
-    clearConditions: () => void;
-    getCondition: (id: string) => FilterConditionWithId | undefined;
-
-    // Logical Operator
-    setLogicalOperator: (operator: LogicalOperator) => void;
-
-    // Bulk Operations
-    setConditions: (conditions: FilterConditionWithId[]) => void;
-    replaceCondition: (
-      id: string,
-      newCondition: TypedFilterConditionInput<T>
-    ) => boolean;
-
-    // Validation
-    validateCondition: (condition: Partial<FilterConditionWithId>) => any;
-    validateAllConditions: () => any;
-
-    // State Management
-    exportState: () => any;
-    importState: (state: any) => void;
-    resetToInitial: () => void;
-
-    // Utilities
-    getConditionCount: () => number;
-  };
+  // Filter (Simplified chainable API)
+  filter: UseFilterReturn;
 
   // Pagination (Flat Access)
   pagination: {

@@ -4,11 +4,8 @@
 // Core TypeScript interfaces for the kanban board functionality
 // Following patterns from useTable and useForm
 
-import type {
-  FilterConditionWithId,
-  ValidationError,
-} from "../useFilter";
-import type { LogicalOperator } from "../../../types/common";
+import type { Condition, ConditionGroup, UseFilterReturn } from "../useFilter";
+import type { ConditionGroupOperator } from "../../../types/common";
 
 // ============================================================
 // CORE DATA STRUCTURES
@@ -201,9 +198,9 @@ export interface UseKanbanOptions<T> {
   /** Initial state */
   initialState?: {
     /** Initial filter conditions */
-    filters?: FilterConditionWithId[];
-    /** Initial filter operator */
-    filterOperator?: LogicalOperator;
+    filters?: Array<Condition | ConditionGroup>;
+    /** Initial filter operator for combining filter conditions */
+    filterOperator?: ConditionGroupOperator;
     /** Initial search query */
     search?: string;
     /** Initial column order */
@@ -226,7 +223,6 @@ export interface UseKanbanOptions<T> {
   onCardDelete?: (cardId: string) => void;
   onSuccess?: (data: any) => void;
   onError?: (error: Error) => void;
-  onFilterError?: (errors: ValidationError[]) => void;
 }
 
 // ============================================================
@@ -266,60 +262,6 @@ export interface SearchOperations {
   setQuery: (value: string) => void;
   /** Clear search query */
   clear: () => void;
-}
-
-/**
- * Filter functionality interface (reusing from useFilter)
- */
-export interface FilterOperations {
-  /** Current filter conditions */
-  conditions: FilterConditionWithId[];
-  /** Logical operator for combining conditions */
-  logicalOperator: LogicalOperator;
-  /** Whether all conditions are valid */
-  isValid: boolean;
-  /** Current validation errors */
-  validationErrors: ValidationError[];
-  /** Whether there are any conditions */
-  hasConditions: boolean;
-
-  /** Add a new filter condition */
-  addCondition: (
-    condition: Omit<FilterConditionWithId, "id" | "isValid">
-  ) => string;
-  /** Update an existing condition */
-  updateCondition: (
-    id: string,
-    updates: Partial<FilterConditionWithId>
-  ) => boolean;
-  /** Remove a condition */
-  removeCondition: (id: string) => boolean;
-  /** Clear all conditions */
-  clearConditions: () => void;
-  /** Get a specific condition */
-  getCondition: (id: string) => FilterConditionWithId | undefined;
-
-  /** Set logical operator */
-  setLogicalOperator: (operator: LogicalOperator) => void;
-
-  /** Bulk operations */
-  setConditions: (conditions: FilterConditionWithId[]) => void;
-  replaceCondition: (
-    id: string,
-    newCondition: Omit<FilterConditionWithId, "id" | "isValid">
-  ) => boolean;
-
-  /** Validation */
-  validateCondition: (condition: Partial<FilterConditionWithId>) => any;
-  validateAllConditions: () => any;
-
-  /** State management */
-  exportState: () => any;
-  importState: (state: any) => void;
-  resetToInitial: () => void;
-
-  /** Utilities */
-  getConditionCount: () => number;
 }
 
 /**
@@ -388,11 +330,11 @@ export interface UseKanbanReturn<T> {
   clearSearch: () => void;
 
   // ============================================================
-  // FILTER (Nested - following useTable pattern)
+  // FILTER (Simplified chainable API)
   // ============================================================
 
   /** Filter functionality */
-  filter: FilterOperations;
+  filter: UseFilterReturn;
 
   // ============================================================
   // DRAG DROP (Flat Access)
@@ -487,7 +429,7 @@ export interface MoveCardRequest {
  */
 export interface ReorderRequest {
   itemIds: string[];
-  containerId?: string; // for cards, this would be columnId
+  containerId?: string;
 }
 
 /**

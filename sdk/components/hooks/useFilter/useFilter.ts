@@ -1,473 +1,339 @@
-import { useState, useCallback, useMemo, useEffect } from "react";
-import type { Filter, LogicalOperator } from "../../../types/common";
+import { useState, useCallback, useMemo } from "react";
 import type {
-  FilterConditionWithId,
-  TypedFilterConditionInput,
-  ValidationResult,
-  ValidationError,
-  FilterState,
-  UseFilterOptions,
-  UseFilterReturn,
-} from "./types";
+  Condition,
+  ConditionGroup,
+  ConditionGroupOperator,
+  Filter,
+} from "../../../types/common";
+import type { UseFilterOptions, UseFilterReturn } from "./types";
+import { isConditionGroup } from "./types";
 
 // ============================================================
-// VALIDATION HELPERS
+// HELPER FUNCTIONS
 // ============================================================
+
+let idCounter = 0;
 
 /**
- * Generate a unique ID for conditions
+ * Generate a unique ID for conditions and groups
  */
 const generateId = (): string => {
-  return crypto.randomUUID();
+  return `filter_${Date.now()}_${++idCounter}`;
 };
 
 /**
- * Helper to check if operator is a logical operator
+ * Ensure an item has an id
  */
-const isLogicalOperator = (operator: string): operator is LogicalOperator => {
-  return operator === 'And' || operator === 'Or' || operator === 'Not';
+const ensureId = <T extends Condition | ConditionGroup>(item: T): T => {
+  if (!item.id) {
+    return { ...item, id: generateId() };
+  }
+  return item;
 };
 
 /**
- * Validate a filter condition (supports both simple conditions and nested logical groups)
+ * Deep clone and ensure all items have ids
  */
-const validateFilterCondition = (
-  condition: Partial<FilterConditionWithId>
-): ValidationResult => {
-  const errors: string[] = [];
-
-  // Check required fields
-  if (!condition.operator) {
-    errors.push('Operator is required');
-  }
-
-  // Check if this is a logical operator (nested group)
-  if (condition.operator && isLogicalOperator(condition.operator)) {
-    // Validate logical group
-    if (!condition.children || !Array.isArray(condition.children)) {
-      errors.push('Logical operators require a children array');
-    } else if (condition.children.length === 0) {
-      errors.push('Logical operators require at least one child condition');
-    } else if (condition.operator === 'Not' && condition.children.length > 1) {
-      errors.push('Not operator can only have one child condition');
+const cloneWithIds = (
+  items: Array<Condition | ConditionGroup>
+): Array<Condition | ConditionGroup> => {
+  return items.map((item) => {
+    const withId = ensureId(item);
+    if (isConditionGroup(withId)) {
+      return {
+        ...withId,
+        Condition: cloneWithIds(withId.Condition),
+      };
     }
-
-    // Recursively validate children
-    if (condition.children && Array.isArray(condition.children)) {
-      condition.children.forEach((child, index) => {
-        const childValidation = validateFilterCondition(child);
-        if (!childValidation.isValid) {
-          errors.push(...childValidation.errors.map(err => `Child ${index + 1}: ${err}`));
-        }
-      });
-    }
-
-    // Logical operators should not have lhsField or rhsValue
-    if (condition.lhsField) {
-      errors.push('Logical operators should not have lhsField');
-    }
-    if (condition.rhsValue !== undefined) {
-      errors.push('Logical operators should not have rhsValue');
-    }
-  } else {
-    // Validate simple condition
-    if (!condition.lhsField) {
-      errors.push('Field is required for condition operators');
-    }
-
-    // Validate operator-specific requirements
-    if (condition.operator && condition.rhsValue !== undefined) {
-      switch (condition.operator) {
-        case 'Between':
-        case 'NotBetween':
-          if (!Array.isArray(condition.rhsValue) || condition.rhsValue.length !== 2) {
-            errors.push('Between operators require an array of two values');
-          }
-          break;
-        case 'IN':
-        case 'NIN':
-          if (!Array.isArray(condition.rhsValue) || condition.rhsValue.length === 0) {
-            errors.push('IN/NIN operators require a non-empty array');
-          }
-          break;
-        case 'Empty':
-        case 'NotEmpty':
-          // These operators don't need RHS values
-          break;
-        default:
-          if (condition.rhsValue === null || condition.rhsValue === undefined || condition.rhsValue === '') {
-            errors.push('Value is required for this operator');
-          }
-          break;
-      }
-    }
-
-    // Simple conditions should not have children
-    if (condition.children && condition.children.length > 0) {
-      errors.push('Condition operators should not have children');
-    }
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors
-  };
-};
-
-/**
- * Convert a single FilterConditionWithId to API format (FilterCondition or FilterLogical)
- */
-const convertConditionToAPI = (condition: FilterConditionWithId): any => {
-  // Check if this is a logical operator (nested group)
-  if (isLogicalOperator(condition.operator)) {
-    // Build nested logical filter
-    return {
-      Operator: condition.operator,
-      Condition: (condition.children || [])
-        .filter(child => child.isValid)
-        .map(child => convertConditionToAPI(child))
-    };
-  } else {
-    // Build simple condition
-    return {
-      Operator: condition.operator,
-      LHSField: condition.lhsField,
-      RHSValue: condition.rhsValue,
-      RHSType: condition.rhsType || "Constant"
-    };
-  }
-};
-
-/**
- * Convert filter state to SDK Filter format
- * Supports both flat and nested filter structures
- */
-const buildFilterPayload = (
-  conditions: FilterConditionWithId[],
-  logicalOperator: LogicalOperator
-): Filter | undefined => {
-  if (conditions.length === 0) {
-    return undefined;
-  }
-
-  const validConditions = conditions.filter(c => c.isValid);
-  if (validConditions.length === 0) {
-    return undefined;
-  }
-
-  return {
-    Operator: logicalOperator,
-    Condition: validConditions.map(c => convertConditionToAPI(c))
-  };
-};
-
-// ============================================================
-// MAIN HOOK
-// ============================================================
-
-export function useFilter<T = any>(
-  options: UseFilterOptions = {}
-): UseFilterReturn<T> {
-  // ============================================================
-  // STATE MANAGEMENT
-  // ============================================================
-
-  const [filterState, setFilterState] = useState<FilterState>({
-    logicalOperator: options.initialLogicalOperator || "And",
-    conditions: options.initialConditions || []
+    return withId;
   });
+};
 
-  // Store initial state for reset functionality
-  const [initialState] = useState<FilterState>({
-    logicalOperator: options.initialLogicalOperator || "And",
-    conditions: options.initialConditions || []
+/**
+ * Strip id fields from items for API payload
+ */
+const stripIds = (
+  items: Array<Condition | ConditionGroup>
+): Array<Condition | ConditionGroup> => {
+  return items.map((item) => {
+    if (isConditionGroup(item)) {
+      const { id, ...rest } = item;
+      return {
+        ...rest,
+        Condition: stripIds(item.Condition),
+      } as ConditionGroup;
+    }
+    const { id, ...rest } = item;
+    return rest as Condition;
   });
+};
 
-  // ============================================================
-  // VALIDATION
-  // ============================================================
+/**
+ * Find an item by id in a tree structure
+ */
+const findById = (
+  items: Array<Condition | ConditionGroup>,
+  id: string
+): Condition | ConditionGroup | undefined => {
+  for (const item of items) {
+    if (item.id === id) {
+      return item;
+    }
+    if (isConditionGroup(item)) {
+      const found = findById(item.Condition, id);
+      if (found) return found;
+    }
+  }
+  return undefined;
+};
 
-  const validateCondition = useCallback((condition: Partial<FilterConditionWithId>): ValidationResult => {
-    return validateFilterCondition(condition);
-  }, []);
+/**
+ * Find a parent group by child id
+ */
+const findParentById = (
+  items: Array<Condition | ConditionGroup>,
+  childId: string,
+  parent: ConditionGroup | null = null
+): ConditionGroup | null => {
+  for (const item of items) {
+    if (item.id === childId) {
+      return parent;
+    }
+    if (isConditionGroup(item)) {
+      const found = findParentById(item.Condition, childId, item);
+      if (found !== null) return found;
+    }
+  }
+  return null;
+};
 
-  const validateAllConditions = useCallback((): ValidationResult => {
-    const allErrors: string[] = [];
+/**
+ * Update an item in the tree by id
+ */
+const updateInTree = (
+  items: Array<Condition | ConditionGroup>,
+  id: string,
+  updater: (item: Condition | ConditionGroup) => Condition | ConditionGroup
+): Array<Condition | ConditionGroup> => {
+  return items.map((item) => {
+    if (item.id === id) {
+      return updater(item);
+    }
+    if (isConditionGroup(item)) {
+      return {
+        ...item,
+        Condition: updateInTree(item.Condition, id, updater),
+      };
+    }
+    return item;
+  });
+};
 
-    filterState.conditions.forEach(condition => {
-      const validation = validateCondition(condition);
-      if (!validation.isValid) {
-        allErrors.push(...validation.errors.map(err => `Condition ${condition.id}: ${err}`));
+/**
+ * Remove an item from the tree by id
+ */
+const removeFromTree = (
+  items: Array<Condition | ConditionGroup>,
+  id: string
+): Array<Condition | ConditionGroup> => {
+  return items
+    .filter((item) => item.id !== id)
+    .map((item) => {
+      if (isConditionGroup(item)) {
+        return {
+          ...item,
+          Condition: removeFromTree(item.Condition, id),
+        };
       }
+      return item;
     });
+};
 
+/**
+ * Add an item to a specific parent in the tree
+ */
+const addToParent = (
+  items: Array<Condition | ConditionGroup>,
+  parentId: string,
+  newItem: Condition | ConditionGroup
+): Array<Condition | ConditionGroup> => {
+  return items.map((item) => {
+    if (item.id === parentId && isConditionGroup(item)) {
+      return {
+        ...item,
+        Condition: [...item.Condition, newItem],
+      };
+    }
+    if (isConditionGroup(item)) {
+      return {
+        ...item,
+        Condition: addToParent(item.Condition, parentId, newItem),
+      };
+    }
+    return item;
+  });
+};
+
+// ============================================================
+// USE FILTER HOOK - Nested Filter Support
+// ============================================================
+
+export function useFilter(options: UseFilterOptions = {}): UseFilterReturn {
+  // Initialize items with ids
+  const [items, setItems] = useState<Array<Condition | ConditionGroup>>(() =>
+    cloneWithIds(options.initialConditions || [])
+  );
+
+  const [operator, setOperatorState] = useState<ConditionGroupOperator>(
+    options.initialOperator || "And"
+  );
+
+  // Build payload for API (strip ids)
+  const payload = useMemo((): Filter | undefined => {
+    if (items.length === 0) return undefined;
     return {
-      isValid: allErrors.length === 0,
-      errors: allErrors
+      Operator: operator,
+      Condition: stripIds(items),
     };
-  }, [filterState.conditions, validateCondition]);
+  }, [items, operator]);
+
+  const hasConditions = items.length > 0;
 
   // ============================================================
-  // CONDITION MANAGEMENT
+  // ADD OPERATIONS
   // ============================================================
 
-  const addCondition = useCallback((condition: TypedFilterConditionInput<T>): string => {
+  const add = useCallback((condition: Omit<Condition, "id">): string => {
     const id = generateId();
-    // Convert typed input to internal format (using unknown for type narrowing)
-    const internalCondition = condition as unknown as Omit<FilterConditionWithId, 'id' | 'isValid'>;
-    const validation = validateCondition(internalCondition);
-
-    const newCondition: FilterConditionWithId = {
-      ...internalCondition,
-      id,
-      isValid: validation.isValid,
-      validationErrors: validation.errors
-    };
-
-    setFilterState(prev => ({
-      ...prev,
-      conditions: [...prev.conditions, newCondition]
-    }));
-
-    if (options.onConditionAdd) {
-      options.onConditionAdd(newCondition);
-    }
-
+    const newCondition: Condition = { ...condition, id };
+    setItems((prev) => [...prev, newCondition]);
     return id;
-  }, [validateCondition, options]);
-
-  const updateCondition = useCallback((id: string, updates: Partial<TypedFilterConditionInput<T>>): boolean => {
-    let found = false;
-    // Convert typed input to internal format (using unknown for type narrowing)
-    const internalUpdates = updates as unknown as Partial<FilterConditionWithId>;
-
-    setFilterState(prev => ({
-      ...prev,
-      conditions: prev.conditions.map(condition => {
-        if (condition.id === id) {
-          found = true;
-          const updatedCondition = { ...condition, ...internalUpdates };
-          const validation = validateCondition(updatedCondition);
-
-          const finalCondition = {
-            ...updatedCondition,
-            isValid: validation.isValid,
-            validationErrors: validation.errors
-          };
-
-          if (options.onConditionUpdate) {
-            options.onConditionUpdate(finalCondition);
-          }
-
-          return finalCondition;
-        }
-        return condition;
-      })
-    }));
-
-    return found;
-  }, [validateCondition, options]);
-
-  const removeCondition = useCallback((id: string): boolean => {
-    let found = false;
-
-    setFilterState(prev => ({
-      ...prev,
-      conditions: prev.conditions.filter(condition => {
-        if (condition.id === id) {
-          found = true;
-          if (options.onConditionRemove) {
-            options.onConditionRemove(id);
-          }
-          return false;
-        }
-        return true;
-      })
-    }));
-
-    return found;
-  }, [options]);
-
-  const clearConditions = useCallback(() => {
-    setFilterState(prev => ({
-      ...prev,
-      conditions: []
-    }));
   }, []);
 
-  const getCondition = useCallback((id: string): FilterConditionWithId | undefined => {
-    return filterState.conditions.find(condition => condition.id === id);
-  }, [filterState.conditions]);
+  const addGroup = useCallback((groupOperator: ConditionGroupOperator): string => {
+    const id = generateId();
+    const newGroup: ConditionGroup = {
+      id,
+      Operator: groupOperator,
+      Condition: [],
+    };
+    setItems((prev) => [...prev, newGroup]);
+    return id;
+  }, []);
+
+  const addTo = useCallback(
+    (parentId: string, condition: Omit<Condition, "id">): string => {
+      const id = generateId();
+      const newCondition: Condition = { ...condition, id };
+      setItems((prev) => addToParent(prev, parentId, newCondition));
+      return id;
+    },
+    []
+  );
+
+  const addGroupTo = useCallback(
+    (parentId: string, groupOperator: ConditionGroupOperator): string => {
+      const id = generateId();
+      const newGroup: ConditionGroup = {
+        id,
+        Operator: groupOperator,
+        Condition: [],
+      };
+      setItems((prev) => addToParent(prev, parentId, newGroup));
+      return id;
+    },
+    []
+  );
 
   // ============================================================
-  // LOGICAL OPERATOR MANAGEMENT
+  // UPDATE OPERATIONS
   // ============================================================
 
-  const setLogicalOperator = useCallback((operator: LogicalOperator) => {
-    setFilterState(prev => ({
-      ...prev,
-      logicalOperator: operator
-    }));
+  const update = useCallback(
+    (id: string, updates: Partial<Omit<Condition, "id">>): void => {
+      setItems((prev) =>
+        updateInTree(prev, id, (item) => {
+          if (!isConditionGroup(item)) {
+            return { ...item, ...updates };
+          }
+          return item;
+        })
+      );
+    },
+    []
+  );
+
+  const updateOperator = useCallback(
+    (id: string, newOperator: ConditionGroupOperator): void => {
+      setItems((prev) =>
+        updateInTree(prev, id, (item) => {
+          if (isConditionGroup(item)) {
+            return { ...item, Operator: newOperator };
+          }
+          return item;
+        })
+      );
+    },
+    []
+  );
+
+  // ============================================================
+  // REMOVE & ACCESS
+  // ============================================================
+
+  const remove = useCallback((id: string): void => {
+    setItems((prev) => removeFromTree(prev, id));
+  }, []);
+
+  const get = useCallback(
+    (id: string): Condition | ConditionGroup | undefined => {
+      return findById(items, id);
+    },
+    [items]
+  );
+
+  // ============================================================
+  // UTILITY
+  // ============================================================
+
+  const clear = useCallback((): void => {
+    setItems([]);
+  }, []);
+
+  const setOperator = useCallback((op: ConditionGroupOperator): void => {
+    setOperatorState(op);
   }, []);
 
   // ============================================================
-  // BULK OPERATIONS
-  // ============================================================
-
-  const setConditions = useCallback((conditions: FilterConditionWithId[]) => {
-    const validatedConditions = conditions.map(condition => {
-      const validation = validateCondition(condition);
-      return {
-        ...condition,
-        isValid: validation.isValid,
-        validationErrors: validation.errors
-      };
-    });
-
-    setFilterState(prev => ({
-      ...prev,
-      conditions: validatedConditions
-    }));
-  }, [validateCondition]);
-
-  const replaceCondition = useCallback((id: string, newCondition: TypedFilterConditionInput<T>): boolean => {
-    let found = false;
-    // Convert typed input to internal format (using unknown for type narrowing)
-    const internalCondition = newCondition as unknown as Omit<FilterConditionWithId, 'id' | 'isValid'>;
-
-    setFilterState(prev => ({
-      ...prev,
-      conditions: prev.conditions.map(condition => {
-        if (condition.id === id) {
-          found = true;
-          const validation = validateCondition(internalCondition);
-          return {
-            ...internalCondition,
-            id,
-            isValid: validation.isValid,
-            validationErrors: validation.errors
-          };
-        }
-        return condition;
-      })
-    }));
-
-    return found;
-  }, [validateCondition]);
-
-  // ============================================================
-  // STATE MANAGEMENT
-  // ============================================================
-
-  const exportState = useCallback((): FilterState => ({
-    logicalOperator: filterState.logicalOperator,
-    conditions: filterState.conditions.map(condition => ({ ...condition })) // Deep copy
-  }), [filterState]);
-
-  const importState = useCallback((state: FilterState) => {
-    const validatedConditions = state.conditions.map(condition => {
-      const validation = validateCondition(condition);
-      return {
-        ...condition,
-        isValid: validation.isValid,
-        validationErrors: validation.errors
-      };
-    });
-
-    setFilterState({
-      logicalOperator: state.logicalOperator,
-      conditions: validatedConditions
-    });
-  }, [validateCondition]);
-
-  const resetToInitial = useCallback(() => {
-    setFilterState({ ...initialState });
-  }, [initialState]);
-
-  // ============================================================
-  // COMPUTED VALUES
-  // ============================================================
-
-  const filterPayload = useMemo(() =>
-    buildFilterPayload(filterState.conditions, filterState.logicalOperator),
-    [filterState.conditions, filterState.logicalOperator]
-  );
-
-  const validationErrors = useMemo((): ValidationError[] => {
-    const errors: ValidationError[] = [];
-
-    filterState.conditions.forEach(condition => {
-      if (!condition.isValid && condition.validationErrors) {
-        condition.validationErrors.forEach(error => {
-          errors.push({
-            conditionId: condition.id,
-            field: condition.lhsField || '', // Empty string for logical operators
-            message: error
-          });
-        });
-      }
-    });
-
-    return errors;
-  }, [filterState.conditions]);
-
-  const isValid = useMemo(() =>
-    filterState.conditions.every(condition => condition.isValid),
-    [filterState.conditions]
-  );
-
-  const getConditionCount = useCallback(() => filterState.conditions.length, [filterState.conditions]);
-  const hasConditions = useMemo(() => filterState.conditions.length > 0, [filterState.conditions]);
-  const canAddCondition = useMemo(() => true, []); // Can always add more conditions
-
-  // ============================================================
-  // VALIDATION ERROR CALLBACK
-  // ============================================================
-
-  useEffect(() => {
-    if (options.onValidationError && validationErrors.length > 0) {
-      options.onValidationError(validationErrors);
-    }
-  }, [validationErrors, options]);
-
-  // ============================================================
-  // RETURN OBJECT
+  // RETURN
   // ============================================================
 
   return {
-    // Current state
-    conditions: filterState.conditions,
-    logicalOperator: filterState.logicalOperator,
-    filterPayload,
-    isValid,
-    validationErrors,
-
-    // Condition management
-    addCondition,
-    updateCondition,
-    removeCondition,
-    clearConditions,
-    getCondition,
-
-    // Logical operator management
-    setLogicalOperator,
-
-    // Bulk operations
-    setConditions,
-    replaceCondition,
-
-    // Validation
-    validateCondition,
-    validateAllConditions,
-
-    // State management
-    exportState,
-    importState,
-    resetToInitial,
-
-    // Utilities
-    getConditionCount,
+    // State
+    operator,
+    items,
+    payload,
     hasConditions,
-    canAddCondition
+
+    // Add operations
+    add,
+    addGroup,
+    addTo,
+    addGroupTo,
+
+    // Update operations
+    update,
+    updateOperator,
+
+    // Remove & access
+    remove,
+    get,
+
+    // Utility
+    clear,
+    setOperator,
+
+    // Legacy API
+    conditions: items,
   };
 }

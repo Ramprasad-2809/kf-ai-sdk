@@ -1,24 +1,25 @@
 // Main hook export
-export { useFilter } from './useFilter';
+export { useFilter } from "./useFilter";
 
-// Type exports
+// Type exports (new names)
 export type {
-  FilterConditionWithId,
-  TypedFilterConditionInput,
-  FilterState,
-  ValidationResult,
-  ValidationError,
+  Condition,
+  ConditionGroup,
+  ConditionGroupOperator,
+  Filter,
+  FilterRHSType,
   UseFilterOptions,
-  UseFilterReturn
-} from './types';
+  UseFilterReturn,
+  // Legacy type exports
+  FilterCondition,
+  FilterOperator,
+} from "./types";
 
-// Payload building utilities
+// Type guard exports
 export {
-  buildFilterPayload,
-  buildFilterPayloadFromState,
-  validateFilterPayload,
-  cloneFilterPayload,
-  mergeFilterPayloads,
-  filterPayloadToString,
-  areFilterPayloadsEqual
-} from './payloadBuilder.utils';
+  isCondition,
+  isConditionGroup,
+  // Legacy type guard exports
+  isFilterCondition,
+  isFilterLogical,
+} from "./types";

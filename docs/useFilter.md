@@ -1,320 +1,278 @@
-# useFilter Hook Documentation
+# useFilter
 
-The `useFilter` hook provides a powerful interface for building and managing complex filter conditions.
+## Brief Description
 
-## Table of Contents
-
-- [Type Reference](#type-reference)
-- [Usage Example](#usage-example)
-- [Operator Reference](#operator-reference)
+- Manages filter conditions with support for nested filter groups (AND/OR/NOT operators)
+- Provides a clean API for building complex filter payloads that match the backend API format
+- Supports both flat conditions and nested condition groups for advanced filtering scenarios
+- Includes type guards (`isCondition`, `isConditionGroup`) for safely working with the filter tree structure
 
 ## Type Reference
 
-### Import Types
-
 ```typescript
-import { useFilter } from "@ram_28/kf-ai-sdk";
+import { useFilter, isCondition, isConditionGroup } from "@ram_28/kf-ai-sdk";
 import type {
   UseFilterOptions,
   UseFilterReturn,
-  FilterConditionWithId,
-  ValidationError,
-  LogicalOperator,
-  FilterOperator,
+  Condition,
+  ConditionGroup,
+  ConditionOperator,
+  ConditionGroupOperator,
+  Filter,
+  FilterRHSType,
 } from "@ram_28/kf-ai-sdk";
-```
 
-### FilterOperator
+// Condition operators for comparing field values
+type ConditionOperator =
+  | "EQ" | "NE" | "GT" | "GTE" | "LT" | "LTE"
+  | "Between" | "NotBetween"
+  | "IN" | "NIN"
+  | "Empty" | "NotEmpty"
+  | "Contains" | "NotContains"
+  | "MinLength" | "MaxLength";
 
-Operators for filter conditions.
+// Group operators for combining conditions
+type ConditionGroupOperator = "And" | "Or" | "Not";
 
-```typescript
-type FilterOperator =
-  | "EQ"          // Equal
-  | "NE"          // Not equal
-  | "GT"          // Greater than
-  | "GTE"         // Greater than or equal
-  | "LT"          // Less than
-  | "LTE"         // Less than or equal
-  | "Between"     // Between two values (array of 2)
-  | "NotBetween"  // Not between two values
-  | "IN"          // In list
-  | "NIN"         // Not in list
-  | "Empty"       // Null or empty
-  | "NotEmpty"    // Not null/empty
-  | "Contains"    // String contains
-  | "NotContains";// String does not contain
-```
+// RHS type for condition values
+type FilterRHSType = "Constant" | "BOField" | "AppVariable";
 
-### LogicalOperator
-
-Operators for combining conditions.
-
-```typescript
-type LogicalOperator = "And" | "Or" | "Not";
-```
-
-### FilterConditionWithId
-
-Internal condition with ID for state management. Returned by `filter.conditions` and `filter.getCondition()`.
-
-```typescript
-interface FilterConditionWithId {
-  id: string;
-  operator: FilterOperator | LogicalOperator;
-  lhsField?: string;
-  rhsValue?: any;
-  rhsType?: "Constant" | "BOField" | "AppVariable";
-  children?: FilterConditionWithId[];
-  isValid: boolean;
-  validationErrors?: string[];
+// Leaf condition (matches API format)
+interface Condition {
+  id?: string;
+  Operator: ConditionOperator;
+  LHSField: string;
+  RHSValue: any;
+  RHSType?: FilterRHSType;
 }
-```
 
-### ValidationError
-
-Error information for invalid conditions.
-
-```typescript
-interface ValidationError {
-  conditionId: string;
-  field: string;
-  message: string;
+// Condition group (recursive structure)
+interface ConditionGroup {
+  id?: string;
+  Operator: ConditionGroupOperator;
+  Condition: Array<Condition | ConditionGroup>;
 }
-```
 
-### UseFilterOptions
+// Filter payload (alias for ConditionGroup)
+type Filter = ConditionGroup;
 
-```typescript
+// Hook options
 interface UseFilterOptions {
-  initialConditions?: FilterConditionWithId[];
-  initialLogicalOperator?: LogicalOperator;
-  validateOnChange?: boolean;
-  onConditionAdd?: (condition: FilterConditionWithId) => void;
-  onConditionUpdate?: (condition: FilterConditionWithId) => void;
-  onConditionRemove?: (conditionId: string) => void;
-  onValidationError?: (errors: ValidationError[]) => void;
+  initialConditions?: Array<Condition | ConditionGroup>;
+  initialOperator?: ConditionGroupOperator;
 }
-```
 
-### UseFilterReturn<T>
-
-```typescript
-interface UseFilterReturn<T> {
-  // State
-  conditions: FilterConditionWithId[];
-  logicalOperator: LogicalOperator;
-  isValid: boolean;
-  validationErrors: ValidationError[];
+// Hook return type
+interface UseFilterReturn {
+  // State (read-only)
+  operator: ConditionGroupOperator;
+  items: Array<Condition | ConditionGroup>;
+  payload: Filter | undefined;
   hasConditions: boolean;
 
-  // Condition Management
-  addCondition: (condition: Omit<FilterConditionWithId, "id" | "isValid">) => string;
-  updateCondition: (id: string, updates: Partial<FilterConditionWithId>) => boolean;
-  removeCondition: (id: string) => boolean;
-  clearConditions: () => void;
-  getCondition: (id: string) => FilterConditionWithId | undefined;
-  setLogicalOperator: (operator: LogicalOperator) => void;
+  // Add operations (return id of created item)
+  add: (condition: Omit<Condition, "id">) => string;
+  addGroup: (operator: ConditionGroupOperator) => string;
+  addTo: (parentId: string, condition: Omit<Condition, "id">) => string;
+  addGroupTo: (parentId: string, operator: ConditionGroupOperator) => string;
 
-  // Bulk Operations
-  setConditions: (conditions: FilterConditionWithId[]) => void;
+  // Update operations
+  update: (id: string, updates: Partial<Omit<Condition, "id">>) => void;
+  updateOperator: (id: string, operator: ConditionGroupOperator) => void;
 
-  // Utilities
-  getConditionCount: () => number;
-  exportState: () => { logicalOperator: LogicalOperator; conditions: FilterConditionWithId[] };
-  importState: (state: { logicalOperator: LogicalOperator; conditions: FilterConditionWithId[] }) => void;
+  // Remove & access
+  remove: (id: string) => void;
+  get: (id: string) => Condition | ConditionGroup | undefined;
+
+  // Utility
+  clear: () => void;
+  setOperator: (op: ConditionGroupOperator) => void;
+
+  // Legacy (deprecated)
+  conditions: Array<Condition | ConditionGroup>;
 }
+
+// Type guards
+const isCondition: (item: Condition | ConditionGroup) => item is Condition;
+const isConditionGroup: (item: Condition | ConditionGroup) => item is ConditionGroup;
 ```
 
 ## Usage Example
 
-Filters are typically used through `useTable`. This example shows all types in action:
-
 ```tsx
-import { useState } from "react";
-import { useTable } from "@ram_28/kf-ai-sdk";
+import { useFilter, isCondition, isConditionGroup } from "@ram_28/kf-ai-sdk";
 import type {
-  FilterConditionWithId,
-  ValidationError,
-  LogicalOperator,
-  FilterOperator,
+  Condition,
+  ConditionGroup,
+  ConditionGroupOperator,
+  Filter,
+  UseFilterOptions,
+  UseFilterReturn,
 } from "@ram_28/kf-ai-sdk";
-import { Product, ProductType } from "../sources";
-import { Roles } from "../sources/roles";
 
-type SellerProduct = ProductType<typeof Roles.Seller>;
+function ProductFilterBuilder() {
+  // Initialize hook with options
+  const options: UseFilterOptions = {
+    initialOperator: "And",
+  };
+  const filter: UseFilterReturn = useFilter(options);
 
-export function ProductFilterPage() {
-  const product = new Product(Roles.Seller);
-  const [savedFilters, setSavedFilters] = useState<FilterConditionWithId[]>([]);
-
-  const table = useTable<SellerProduct>({
-    source: product._id,
-    columns: [{ fieldId: "Title" }, { fieldId: "Price" }, { fieldId: "Category" }],
-    enableFiltering: true,
-    initialState: {
-      // LogicalOperator - determines how conditions are combined
-      filterOperator: "And" as LogicalOperator,
-    },
-    // ValidationError[] - called when filter validation fails
-    onFilterError: (errors: ValidationError[]) => {
-      errors.forEach((err) => {
-        console.error(`Filter error on ${err.field}: ${err.message}`);
-      });
-    },
-  });
-
-  // Add a filter condition
-  const addCategoryFilter = (category: string) => {
-    table.filter.addCondition({
-      operator: "EQ" as FilterOperator,  // FilterOperator - the comparison type
-      lhsField: "Category",
-      rhsValue: category,
+  // Add a simple condition at root level
+  const handleAddCondition = () => {
+    const id = filter.add({
+      Operator: "EQ",
+      LHSField: "Category",
+      RHSValue: "Electronics",
+      RHSType: "Constant",
     });
+    console.log("Created condition with id:", id);
   };
 
-  // FilterConditionWithId - internal representation with ID and validation state
-  // Returned by filter.conditions and filter.getCondition()
-  const displayActiveFilters = () => {
-    const conditions: FilterConditionWithId[] = table.filter.conditions;
-    return conditions.map((condition: FilterConditionWithId) => (
-      <div key={condition.id}>
-        <span>
-          {condition.lhsField} {condition.operator} {condition.rhsValue}
-        </span>
-        <span>{condition.isValid ? "Valid" : "Invalid"}</span>
-        {condition.validationErrors?.map((err, i) => (
-          <span key={i} className="error">{err}</span>
-        ))}
-        <button onClick={() => table.filter.removeCondition(condition.id)}>
-          Remove
-        </button>
-      </div>
-    ));
+  // Build nested filter: (Category = "Electronics") AND (Price > 100 OR OnSale = true)
+  const handleBuildComplexFilter = () => {
+    filter.clear();
+
+    // Add root condition
+    filter.add({
+      Operator: "EQ",
+      LHSField: "Category",
+      RHSValue: "Electronics",
+    });
+
+    // Create nested OR group
+    const groupId = filter.addGroup("Or");
+
+    // Add conditions to the group
+    filter.addTo(groupId, {
+      Operator: "GT",
+      LHSField: "Price",
+      RHSValue: 100,
+    });
+
+    const saleConditionId = filter.addTo(groupId, {
+      Operator: "EQ",
+      LHSField: "OnSale",
+      RHSValue: true,
+    });
+
+    // Update a condition
+    filter.update(saleConditionId, { RHSValue: false });
+
+    // Toggle group operator
+    filter.updateOperator(groupId, "And");
   };
 
-  // Get a specific condition by ID
-  const getConditionDetails = (id: string) => {
-    const condition: FilterConditionWithId | undefined = table.filter.getCondition(id);
-    if (condition) {
-      console.log(`Condition ${condition.id}: ${condition.lhsField} ${condition.operator}`);
+  // Render filter tree recursively
+  const renderFilterItem = (item: Condition | ConditionGroup, depth = 0): JSX.Element => {
+    const indent = { marginLeft: depth * 20 };
+
+    if (isCondition(item)) {
+      return (
+        <div key={item.id} style={indent} className="filter-condition">
+          <span>
+            {item.LHSField} {item.Operator} {String(item.RHSValue)}
+          </span>
+          <button onClick={() => filter.remove(item.id!)}>Remove</button>
+          <button onClick={() => filter.update(item.id!, { RHSValue: "Updated" })}>
+            Update
+          </button>
+        </div>
+      );
+    }
+
+    if (isConditionGroup(item)) {
+      return (
+        <div key={item.id} style={indent} className="filter-group">
+          <div className="group-header">
+            <select
+              value={item.Operator}
+              onChange={(e) =>
+                filter.updateOperator(item.id!, e.target.value as ConditionGroupOperator)
+              }
+            >
+              <option value="And">AND</option>
+              <option value="Or">OR</option>
+              <option value="Not">NOT</option>
+            </select>
+            <button onClick={() => filter.addTo(item.id!, { Operator: "EQ", LHSField: "Field", RHSValue: "" })}>
+              + Condition
+            </button>
+            <button onClick={() => filter.addGroupTo(item.id!, "And")}>+ Group</button>
+            <button onClick={() => filter.remove(item.id!)}>Remove Group</button>
+          </div>
+          <div className="group-conditions">
+            {item.Condition.map((child) => renderFilterItem(child, depth + 1))}
+          </div>
+        </div>
+      );
+    }
+
+    return <></>;
+  };
+
+  // Use filter payload in API call
+  const handleApplyFilter = async () => {
+    const payload: Filter | undefined = filter.payload;
+    if (payload) {
+      console.log("API Payload (no ids):", JSON.stringify(payload, null, 2));
+      const response = await fetch("/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ Filter: payload }),
+      });
+      return response.json();
     }
   };
 
-  // LogicalOperator - switch between And/Or/Not
-  const toggleLogic = () => {
-    const current: LogicalOperator = table.filter.logicalOperator;
-    const next: LogicalOperator = current === "And" ? "Or" : "And";
-    table.filter.setLogicalOperator(next);
-  };
-
-  // Save/restore filter state using FilterConditionWithId[]
-  const saveFilters = () => {
-    setSavedFilters([...table.filter.conditions]);
-  };
-
-  const restoreFilters = () => {
-    table.filter.setConditions(savedFilters);
-  };
-
-  // ValidationError[] - access current validation errors
-  const showErrors = () => {
-    const errors: ValidationError[] = table.filter.validationErrors;
-    return errors.map((err: ValidationError) => (
-      <div key={err.conditionId} className="error">
-        {err.field}: {err.message}
-      </div>
-    ));
+  // Access individual item by id
+  const handleGetItem = (id: string) => {
+    const item = filter.get(id);
+    if (item) {
+      console.log("Found item:", item);
+    }
   };
 
   return (
-    <div>
-      {/* Filter Controls */}
-      <div>
-        <button onClick={() => addCategoryFilter("Electronics")}>
-          Filter: Electronics
-        </button>
-        <button onClick={() => {
-          table.filter.addCondition({
-            operator: "Between",
-            lhsField: "Price",
-            rhsValue: [10, 100],
-          });
-        }}>
-          Filter: $10-$100
-        </button>
-        <button onClick={toggleLogic}>
-          Logic: {table.filter.logicalOperator}
+    <div className="filter-builder">
+      {/* Root operator control */}
+      <div className="root-controls">
+        <label>
+          Root Operator:
+          <select
+            value={filter.operator}
+            onChange={(e) => filter.setOperator(e.target.value as ConditionGroupOperator)}
+          >
+            <option value="And">AND</option>
+            <option value="Or">OR</option>
+          </select>
+        </label>
+        <button onClick={handleAddCondition}>Add Condition</button>
+        <button onClick={() => filter.addGroup("Or")}>Add Group</button>
+        <button onClick={handleBuildComplexFilter}>Build Complex Filter</button>
+        <button onClick={filter.clear} disabled={!filter.hasConditions}>
+          Clear All
         </button>
       </div>
 
-      {/* Active Filters */}
-      <div>
-        <h3>Active Filters ({table.filter.getConditionCount()})</h3>
-        {displayActiveFilters()}
-        {table.filter.hasConditions && (
-          <button onClick={table.filter.clearConditions}>Clear All</button>
-        )}
+      {/* Filter tree display */}
+      <div className="filter-tree">
+        <h3>Filter Tree ({filter.items.length} root items)</h3>
+        {filter.items.map((item) => renderFilterItem(item))}
       </div>
 
-      {/* Validation Status */}
-      <div>
-        <span>Valid: {table.filter.isValid ? "Yes" : "No"}</span>
-        {showErrors()}
+      {/* Apply filter */}
+      <div className="filter-actions">
+        <button onClick={handleApplyFilter} disabled={!filter.hasConditions}>
+          Apply Filter
+        </button>
+        <span>Has conditions: {filter.hasConditions ? "Yes" : "No"}</span>
       </div>
 
-      {/* Save/Restore */}
-      <div>
-        <button onClick={saveFilters}>Save Filters</button>
-        <button onClick={restoreFilters}>Restore Filters</button>
-      </div>
+      {/* Debug payload (id fields are stripped) */}
+      <pre className="filter-payload">
+        {JSON.stringify(filter.payload, null, 2)}
+      </pre>
     </div>
   );
 }
 ```
-
-**Type explanations:**
-
-| Type | Purpose | Where Used |
-|------|---------|------------|
-| `FilterOperator` | Comparison operators like "EQ", "GT", "Contains" | `condition.operator` for leaf conditions |
-| `LogicalOperator` | Combining operators: "And", "Or", "Not" | `filter.logicalOperator`, `filter.setLogicalOperator()` |
-| `FilterConditionWithId` | Condition with ID and validation state | `filter.conditions`, `filter.getCondition()`, saved filters |
-| `ValidationError` | Error info for invalid conditions | `filter.validationErrors`, `onFilterError` callback |
-
-## Operator Reference
-
-### Comparison Operators (FilterOperator)
-
-| Operator | Description | Example rhsValue |
-|----------|-------------|------------------|
-| `EQ` | Equals | `"Electronics"` |
-| `NE` | Not equals | `"Inactive"` |
-| `GT` | Greater than | `100` |
-| `GTE` | Greater than or equal | `100` |
-| `LT` | Less than | `50` |
-| `LTE` | Less than or equal | `50` |
-| `Between` | Between two values | `[10, 100]` |
-| `NotBetween` | Not between | `[10, 100]` |
-| `IN` | In list | `["A", "B", "C"]` |
-| `NIN` | Not in list | `["X", "Y"]` |
-| `Empty` | Is null/empty | (no value needed) |
-| `NotEmpty` | Is not null/empty | (no value needed) |
-| `Contains` | String contains | `"search"` |
-| `NotContains` | String doesn't contain | `"exclude"` |
-
-### Logical Operators (LogicalOperator)
-
-| Operator | Description |
-|----------|-------------|
-| `And` | All conditions must match |
-| `Or` | Any condition can match |
-| `Not` | Negate condition (single child only) |
-
-### rhsType Options
-
-| Type | Description |
-|------|-------------|
-| `"Constant"` | Direct value (default) |
-| `"BOField"` | Compare to another field: `lhsField: "endDate", rhsValue: "startDate"` |
-| `"AppVariable"` | Compare to app variable |
