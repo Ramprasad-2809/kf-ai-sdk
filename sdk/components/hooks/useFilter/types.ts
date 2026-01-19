@@ -67,7 +67,7 @@ export interface ValidationError {
   message: string;
 }
 
-export interface UseFilterOptions<T = any> {
+export interface UseFilterOptions {
   /** Initial filter conditions */
   initialConditions?: FilterConditionWithId[];
   /** Initial logical operator */

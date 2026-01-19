@@ -166,7 +166,7 @@ const buildFilterPayload = (
 // ============================================================
 
 export function useFilter<T = any>(
-  options: UseFilterOptions<T> = {}
+  options: UseFilterOptions = {}
 ): UseFilterReturn<T> {
   // ============================================================
   // STATE MANAGEMENT

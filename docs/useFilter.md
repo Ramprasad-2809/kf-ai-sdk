@@ -83,10 +83,10 @@ interface ValidationError {
 }
 ```
 
-### UseFilterOptions<T>
+### UseFilterOptions
 
 ```typescript
-interface UseFilterOptions<T> {
+interface UseFilterOptions {
   initialConditions?: FilterConditionWithId[];
   initialLogicalOperator?: LogicalOperator;
   validateOnChange?: boolean;
