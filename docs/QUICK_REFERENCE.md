@@ -349,18 +349,76 @@ const form = useForm({
 
 ## 📦 Type Definitions
 
+### Hook Types
+
+```typescript
+// useTable types
+import type {
+  UseTableOptions,
+  UseTableReturn,
+  ColumnDefinition,
+} from 'kf-ai-sdk';
+
+// useFilter types
+import type {
+  UseFilterOptions,
+  UseFilterReturn,
+  FilterConditionWithId,
+  TypedFilterConditionInput,
+  ValidationError,
+  ValidationResult,
+  FilterState,
+} from 'kf-ai-sdk';
+
+// useForm types
+import type {
+  UseFormOptions,
+  UseFormReturn,
+  ProcessedField,
+  ProcessedSchema,
+  FormOperation,
+  BackendSchema,
+  RuleExecutionContext,
+} from 'kf-ai-sdk';
+
+// useKanban types
+import type {
+  UseKanbanOptions,
+  UseKanbanReturn,
+  KanbanCard,
+  KanbanColumn,
+  ColumnConfig,
+} from 'kf-ai-sdk';
+
+// useAuth types
+import type {
+  UseAuthReturn,
+  UserDetails,
+  AuthStatus,
+  AuthProviderProps,
+  LoginOptions,
+  LogoutOptions,
+} from 'kf-ai-sdk';
+```
+
 ### Common Types
 
 ```typescript
 import type {
+  // Filter operators
+  FilterOperator,      // "EQ" | "NE" | "GT" | "GTE" | "LT" | "LTE" | "Between" | "NotBetween" | "IN" | "NIN" | "Empty" | "NotEmpty" | "Contains" | "NotContains" | "MinLength" | "MaxLength"
+  LogicalOperator,     // "And" | "Or" | "Not"
+  FilterRHSType,       // "Constant" | "BOField" | "AppVariable"
+
+  // API types
   ListOptions,
   ListResponse,
   CreateUpdateResponse,
-  UseTableReturn,
-  UseFormReturn,
+
+  // Validation
   ValidationRule,
   RolePermission,
-} from "kf-ai-sdk";
+} from 'kf-ai-sdk';
 ```
 
 ### Business Object Types
@@ -371,8 +429,18 @@ import type {
   AdminAmazonProduct,
   SellerAmazonProduct,
   BuyerAmazonProduct,
-} from "kf-ai-sdk";
+} from 'kf-ai-sdk';
 ```
+
+### Quick Type Summary
+
+| Type | Values/Purpose |
+|------|----------------|
+| `FilterOperator` | `"EQ"`, `"NE"`, `"GT"`, `"GTE"`, `"LT"`, `"LTE"`, `"Between"`, `"NotBetween"`, `"IN"`, `"NIN"`, `"Empty"`, `"NotEmpty"`, `"Contains"`, `"NotContains"`, `"MinLength"`, `"MaxLength"` |
+| `LogicalOperator` | `"And"`, `"Or"`, `"Not"` (title case) |
+| `FormOperation` | `"create"`, `"update"` |
+| `AuthStatus` | `"loading"`, `"authenticated"`, `"unauthenticated"` |
+| `FilterRHSType` | `"Constant"`, `"BOField"`, `"AppVariable"` |
 
 ## 🐛 Debugging Tips
 

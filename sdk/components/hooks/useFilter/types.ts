@@ -51,19 +51,6 @@ export interface FilterState {
   conditions: FilterConditionWithId[];
 }
 
-export interface FieldDefinition {
-  /** Field data type */
-  type: 'string' | 'number' | 'date' | 'boolean' | 'currency' | 'select';
-  /** Operators allowed for this field type */
-  allowedOperators: FilterOperator[];
-  /** Custom value validation function */
-  validateValue?: (value: any, operator: FilterOperator) => ValidationResult;
-  /** Value transformation function */
-  transformValue?: (value: any) => any;
-  /** Options for select fields */
-  selectOptions?: Array<{ label: string; value: any }>;
-}
-
 export interface ValidationResult {
   /** Whether the validation passed */
   isValid: boolean;
@@ -80,13 +67,11 @@ export interface ValidationError {
   message: string;
 }
 
-export interface UseFilterOptions<T = any> {
+export interface UseFilterOptions {
   /** Initial filter conditions */
   initialConditions?: FilterConditionWithId[];
   /** Initial logical operator */
   initialLogicalOperator?: LogicalOperator;
-  /** Field definitions for validation */
-  fieldDefinitions?: Record<keyof T, FieldDefinition>;
   /** Whether to validate conditions on change */
   validateOnChange?: boolean;
   /** Callback when condition is added */

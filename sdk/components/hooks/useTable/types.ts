@@ -3,7 +3,6 @@ import type {
   FilterConditionWithId,
   TypedFilterConditionInput,
   ValidationError,
-  FieldDefinition,
 } from "../useFilter";
 
 // ============================================================
@@ -34,8 +33,6 @@ export interface UseTableOptions<T> {
   enableFiltering?: boolean;
   /** Enable pagination */
   enablePagination?: boolean;
-  /** Field definitions for filter validation */
-  fieldDefinitions?: Record<keyof T, FieldDefinition>;
   /** Initial state */
   initialState?: {
     pagination?: {

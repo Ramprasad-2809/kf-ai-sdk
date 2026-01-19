@@ -92,7 +92,6 @@ export function useTable<T = any>(
   const filterHook = useFilter<T>({
     initialConditions: options.initialState?.filters,
     initialLogicalOperator: options.initialState?.filterOperator || "And",
-    fieldDefinitions: options.fieldDefinitions,
     validateOnChange: true,
     onValidationError: options.onFilterError,
     onConditionAdd: () => {

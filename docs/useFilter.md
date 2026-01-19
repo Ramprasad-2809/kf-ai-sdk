@@ -1,426 +1,320 @@
 # useFilter Hook Documentation
 
-The `useFilter` hook provides a powerful interface for building and managing complex filter conditions that match the official filter specification.
+The `useFilter` hook provides a powerful interface for building and managing complex filter conditions.
 
-## Key Changes
+## Table of Contents
 
-### ✅ Fixed Issues
+- [Type Reference](#type-reference)
+- [Usage Example](#usage-example)
+- [Operator Reference](#operator-reference)
 
-1. **Logical operator casing**: Changed from `"AND" | "OR"` to `"And" | "Or" | "Not"` (title case as per spec)
-2. **Separated operator types**:
-   - `FilterOperator` - for leaf conditions (EQ, NE, GT, etc.)
-   - `LogicalOperator` - for combining conditions (And, Or, Not)
-3. **Added nested filter support**: Can now build complex nested logical structures
-4. **Recursive validation**: Validates nested filter trees
+## Type Reference
 
-## Basic Usage (Flat Filters)
-
-### Simple Equals Filter
+### Import Types
 
 ```typescript
-const filter = useFilter({
-  initialLogicalOperator: "And",
-});
-
-// Add a simple condition
-const conditionId = filter.addCondition({
-  operator: "EQ",
-  lhsField: "leave_status",
-  rhsValue: "Approved",
-  rhsType: "Constant",
-});
-
-// Generated API payload:
-// {
-//   "Operator": "And",
-//   "Condition": [
-//     {
-//       "Operator": "EQ",
-//       "LHSField": "leave_status",
-//       "RHSValue": "Approved",
-//       "RHSType": "Constant"
-//     }
-//   ]
-// }
+import { useFilter } from "@ram_28/kf-ai-sdk";
+import type {
+  UseFilterOptions,
+  UseFilterReturn,
+  FilterConditionWithId,
+  ValidationError,
+  LogicalOperator,
+  FilterOperator,
+} from "@ram_28/kf-ai-sdk";
 ```
 
-### Multiple Conditions with AND
+### FilterOperator
+
+Operators for filter conditions.
 
 ```typescript
-const filter = useFilter({
-  initialLogicalOperator: "And",
-});
-
-filter.addCondition({
-  operator: "IN",
-  lhsField: "leave_type",
-  rhsValue: ["Casual", "Sick"],
-  rhsType: "Constant",
-});
-
-filter.addCondition({
-  operator: "EQ",
-  lhsField: "leave_status",
-  rhsValue: "Approved",
-  rhsType: "Constant",
-});
-
-// Generated API payload:
-// {
-//   "Operator": "And",
-//   "Condition": [
-//     {
-//       "Operator": "IN",
-//       "LHSField": "leave_type",
-//       "RHSValue": ["Casual", "Sick"],
-//       "RHSType": "Constant"
-//     },
-//     {
-//       "Operator": "EQ",
-//       "LHSField": "leave_status",
-//       "RHSValue": "Approved",
-//       "RHSType": "Constant"
-//     }
-//   ]
-// }
+type FilterOperator =
+  | "EQ"          // Equal
+  | "NE"          // Not equal
+  | "GT"          // Greater than
+  | "GTE"         // Greater than or equal
+  | "LT"          // Less than
+  | "LTE"         // Less than or equal
+  | "Between"     // Between two values (array of 2)
+  | "NotBetween"  // Not between two values
+  | "IN"          // In list
+  | "NIN"         // Not in list
+  | "Empty"       // Null or empty
+  | "NotEmpty"    // Not null/empty
+  | "Contains"    // String contains
+  | "NotContains";// String does not contain
 ```
 
-## Advanced Usage (Nested Filters)
+### LogicalOperator
 
-### Complex Nested: OR with nested AND
-
-Example: (department = "Engineering" AND salary > 80000) OR is_manager = true
+Operators for combining conditions.
 
 ```typescript
-const filter = useFilter({
-  initialLogicalOperator: "Or",
-});
+type LogicalOperator = "And" | "Or" | "Not";
+```
 
-// Add a nested AND group
-filter.addCondition({
-  operator: "And",
-  children: [
-    {
-      id: crypto.randomUUID(),
-      operator: "EQ",
-      lhsField: "department",
-      rhsValue: "Engineering",
-      rhsType: "Constant",
-      isValid: true,
+### FilterConditionWithId
+
+Internal condition with ID for state management. Returned by `filter.conditions` and `filter.getCondition()`.
+
+```typescript
+interface FilterConditionWithId {
+  id: string;
+  operator: FilterOperator | LogicalOperator;
+  lhsField?: string;
+  rhsValue?: any;
+  rhsType?: "Constant" | "BOField" | "AppVariable";
+  children?: FilterConditionWithId[];
+  isValid: boolean;
+  validationErrors?: string[];
+}
+```
+
+### ValidationError
+
+Error information for invalid conditions.
+
+```typescript
+interface ValidationError {
+  conditionId: string;
+  field: string;
+  message: string;
+}
+```
+
+### UseFilterOptions
+
+```typescript
+interface UseFilterOptions {
+  initialConditions?: FilterConditionWithId[];
+  initialLogicalOperator?: LogicalOperator;
+  validateOnChange?: boolean;
+  onConditionAdd?: (condition: FilterConditionWithId) => void;
+  onConditionUpdate?: (condition: FilterConditionWithId) => void;
+  onConditionRemove?: (conditionId: string) => void;
+  onValidationError?: (errors: ValidationError[]) => void;
+}
+```
+
+### UseFilterReturn<T>
+
+```typescript
+interface UseFilterReturn<T> {
+  // State
+  conditions: FilterConditionWithId[];
+  logicalOperator: LogicalOperator;
+  isValid: boolean;
+  validationErrors: ValidationError[];
+  hasConditions: boolean;
+
+  // Condition Management
+  addCondition: (condition: Omit<FilterConditionWithId, "id" | "isValid">) => string;
+  updateCondition: (id: string, updates: Partial<FilterConditionWithId>) => boolean;
+  removeCondition: (id: string) => boolean;
+  clearConditions: () => void;
+  getCondition: (id: string) => FilterConditionWithId | undefined;
+  setLogicalOperator: (operator: LogicalOperator) => void;
+
+  // Bulk Operations
+  setConditions: (conditions: FilterConditionWithId[]) => void;
+
+  // Utilities
+  getConditionCount: () => number;
+  exportState: () => { logicalOperator: LogicalOperator; conditions: FilterConditionWithId[] };
+  importState: (state: { logicalOperator: LogicalOperator; conditions: FilterConditionWithId[] }) => void;
+}
+```
+
+## Usage Example
+
+Filters are typically used through `useTable`. This example shows all types in action:
+
+```tsx
+import { useState } from "react";
+import { useTable } from "@ram_28/kf-ai-sdk";
+import type {
+  FilterConditionWithId,
+  ValidationError,
+  LogicalOperator,
+  FilterOperator,
+} from "@ram_28/kf-ai-sdk";
+import { Product, ProductType } from "../sources";
+import { Roles } from "../sources/roles";
+
+type SellerProduct = ProductType<typeof Roles.Seller>;
+
+export function ProductFilterPage() {
+  const product = new Product(Roles.Seller);
+  const [savedFilters, setSavedFilters] = useState<FilterConditionWithId[]>([]);
+
+  const table = useTable<SellerProduct>({
+    source: product._id,
+    columns: [{ fieldId: "Title" }, { fieldId: "Price" }, { fieldId: "Category" }],
+    enableFiltering: true,
+    initialState: {
+      // LogicalOperator - determines how conditions are combined
+      filterOperator: "And" as LogicalOperator,
     },
-    {
-      id: crypto.randomUUID(),
-      operator: "GT",
-      lhsField: "salary",
-      rhsValue: 80000,
-      rhsType: "Constant",
-      isValid: true,
+    // ValidationError[] - called when filter validation fails
+    onFilterError: (errors: ValidationError[]) => {
+      errors.forEach((err) => {
+        console.error(`Filter error on ${err.field}: ${err.message}`);
+      });
     },
-  ],
-});
+  });
 
-// Add a simple condition at the OR level
-filter.addCondition({
-  operator: "EQ",
-  lhsField: "is_manager",
-  rhsValue: true,
-  rhsType: "Constant",
-});
+  // Add a filter condition
+  const addCategoryFilter = (category: string) => {
+    table.filter.addCondition({
+      operator: "EQ" as FilterOperator,  // FilterOperator - the comparison type
+      lhsField: "Category",
+      rhsValue: category,
+    });
+  };
 
-// Generated API payload:
-// {
-//   "Operator": "Or",
-//   "Condition": [
-//     {
-//       "Operator": "And",
-//       "Condition": [
-//         {
-//           "Operator": "EQ",
-//           "LHSField": "department",
-//           "RHSValue": "Engineering",
-//           "RHSType": "Constant"
-//         },
-//         {
-//           "Operator": "GT",
-//           "LHSField": "salary",
-//           "RHSValue": 80000,
-//           "RHSType": "Constant"
-//         }
-//       ]
-//     },
-//     {
-//       "Operator": "EQ",
-//       "LHSField": "is_manager",
-//       "RHSValue": true,
-//       "RHSType": "Constant"
-//     }
-//   ]
-// }
+  // FilterConditionWithId - internal representation with ID and validation state
+  // Returned by filter.conditions and filter.getCondition()
+  const displayActiveFilters = () => {
+    const conditions: FilterConditionWithId[] = table.filter.conditions;
+    return conditions.map((condition: FilterConditionWithId) => (
+      <div key={condition.id}>
+        <span>
+          {condition.lhsField} {condition.operator} {condition.rhsValue}
+        </span>
+        <span>{condition.isValid ? "Valid" : "Invalid"}</span>
+        {condition.validationErrors?.map((err, i) => (
+          <span key={i} className="error">{err}</span>
+        ))}
+        <button onClick={() => table.filter.removeCondition(condition.id)}>
+          Remove
+        </button>
+      </div>
+    ));
+  };
+
+  // Get a specific condition by ID
+  const getConditionDetails = (id: string) => {
+    const condition: FilterConditionWithId | undefined = table.filter.getCondition(id);
+    if (condition) {
+      console.log(`Condition ${condition.id}: ${condition.lhsField} ${condition.operator}`);
+    }
+  };
+
+  // LogicalOperator - switch between And/Or/Not
+  const toggleLogic = () => {
+    const current: LogicalOperator = table.filter.logicalOperator;
+    const next: LogicalOperator = current === "And" ? "Or" : "And";
+    table.filter.setLogicalOperator(next);
+  };
+
+  // Save/restore filter state using FilterConditionWithId[]
+  const saveFilters = () => {
+    setSavedFilters([...table.filter.conditions]);
+  };
+
+  const restoreFilters = () => {
+    table.filter.setConditions(savedFilters);
+  };
+
+  // ValidationError[] - access current validation errors
+  const showErrors = () => {
+    const errors: ValidationError[] = table.filter.validationErrors;
+    return errors.map((err: ValidationError) => (
+      <div key={err.conditionId} className="error">
+        {err.field}: {err.message}
+      </div>
+    ));
+  };
+
+  return (
+    <div>
+      {/* Filter Controls */}
+      <div>
+        <button onClick={() => addCategoryFilter("Electronics")}>
+          Filter: Electronics
+        </button>
+        <button onClick={() => {
+          table.filter.addCondition({
+            operator: "Between",
+            lhsField: "Price",
+            rhsValue: [10, 100],
+          });
+        }}>
+          Filter: $10-$100
+        </button>
+        <button onClick={toggleLogic}>
+          Logic: {table.filter.logicalOperator}
+        </button>
+      </div>
+
+      {/* Active Filters */}
+      <div>
+        <h3>Active Filters ({table.filter.getConditionCount()})</h3>
+        {displayActiveFilters()}
+        {table.filter.hasConditions && (
+          <button onClick={table.filter.clearConditions}>Clear All</button>
+        )}
+      </div>
+
+      {/* Validation Status */}
+      <div>
+        <span>Valid: {table.filter.isValid ? "Yes" : "No"}</span>
+        {showErrors()}
+      </div>
+
+      {/* Save/Restore */}
+      <div>
+        <button onClick={saveFilters}>Save Filters</button>
+        <button onClick={restoreFilters}>Restore Filters</button>
+      </div>
+    </div>
+  );
+}
 ```
 
-### Using NOT Operator
+**Type explanations:**
 
-Example: NOT (status = "Inactive")
-
-```typescript
-const filter = useFilter({
-  initialLogicalOperator: "And",
-});
-
-filter.addCondition({
-  operator: "Not",
-  children: [
-    {
-      id: crypto.randomUUID(),
-      operator: "EQ",
-      lhsField: "status",
-      rhsValue: "Inactive",
-      rhsType: "Constant",
-      isValid: true,
-    },
-  ],
-});
-
-// Generated API payload:
-// {
-//   "Operator": "And",
-//   "Condition": [
-//     {
-//       "Operator": "Not",
-//       "Condition": [
-//         {
-//           "Operator": "EQ",
-//           "LHSField": "status",
-//           "RHSValue": "Inactive",
-//           "RHSType": "Constant"
-//         }
-//       ]
-//     }
-//   ]
-// }
-```
+| Type | Purpose | Where Used |
+|------|---------|------------|
+| `FilterOperator` | Comparison operators like "EQ", "GT", "Contains" | `condition.operator` for leaf conditions |
+| `LogicalOperator` | Combining operators: "And", "Or", "Not" | `filter.logicalOperator`, `filter.setLogicalOperator()` |
+| `FilterConditionWithId` | Condition with ID and validation state | `filter.conditions`, `filter.getCondition()`, saved filters |
+| `ValidationError` | Error info for invalid conditions | `filter.validationErrors`, `onFilterError` callback |
 
 ## Operator Reference
 
-### Condition Operators (FilterOperator)
+### Comparison Operators (FilterOperator)
 
-#### Common Operators (All field types)
-
-- `EQ` - Equals
-- `NE` - Not equals
-- `IN` - In list
-- `NIN` - Not in list
-- `Empty` - Null or empty string
-- `NotEmpty` - Not null and not empty
-
-#### Numeric Operators (Number, Long, Date fields)
-
-- `GT` - Greater than
-- `GTE` - Greater than or equal
-- `LT` - Less than
-- `LTE` - Less than or equal
-- `Between` - Between two values (requires array of 2)
-- `NotBetween` - Not between two values (requires array of 2)
-
-#### String Operators
-
-- `Contains` - String contains substring
-- `NotContains` - String does not contain
-- `MinLength` - Minimum length
-- `MaxLength` - Maximum length
+| Operator | Description | Example rhsValue |
+|----------|-------------|------------------|
+| `EQ` | Equals | `"Electronics"` |
+| `NE` | Not equals | `"Inactive"` |
+| `GT` | Greater than | `100` |
+| `GTE` | Greater than or equal | `100` |
+| `LT` | Less than | `50` |
+| `LTE` | Less than or equal | `50` |
+| `Between` | Between two values | `[10, 100]` |
+| `NotBetween` | Not between | `[10, 100]` |
+| `IN` | In list | `["A", "B", "C"]` |
+| `NIN` | Not in list | `["X", "Y"]` |
+| `Empty` | Is null/empty | (no value needed) |
+| `NotEmpty` | Is not null/empty | (no value needed) |
+| `Contains` | String contains | `"search"` |
+| `NotContains` | String doesn't contain | `"exclude"` |
 
 ### Logical Operators (LogicalOperator)
 
-- `And` - Combines conditions with AND logic
-- `Or` - Combines conditions with OR logic
-- `Not` - Negates a condition (single child only)
+| Operator | Description |
+|----------|-------------|
+| `And` | All conditions must match |
+| `Or` | Any condition can match |
+| `Not` | Negate condition (single child only) |
 
-## RHSType Options
+### rhsType Options
 
-1. **`"Constant"`** - Direct values (strings, numbers, booleans, lists, ranges)
-2. **`"BOField"`** - Reference to another field in the business object
-3. **`"AppVariable"`** - Reference to application variables
-
-## Validation
-
-The hook automatically validates conditions based on:
-
-1. **Required fields**: operator, lhsField (for conditions)
-2. **Operator-specific requirements**:
-   - `Between`/`NotBetween`: Requires array of exactly 2 values
-   - `IN`/`NIN`: Requires non-empty array
-   - `Empty`/`NotEmpty`: No value required
-   - Other operators: Value is required
-3. **Logical operator requirements**:
-   - Must have `children` array
-   - `Not` operator: Exactly 1 child
-   - `And`/`Or`: At least 1 child
-4. **Field-specific validation**: Custom validators via `fieldDefinitions`
-
-## Field Definitions
-
-You can provide field definitions for enhanced validation:
-
-```typescript
-const filter = useFilter<MyDataType>({
-  fieldDefinitions: {
-    salary: {
-      type: "number",
-      allowedOperators: ["EQ", "GT", "GTE", "LT", "LTE", "Between"],
-      validateValue: (value, operator) => {
-        if (operator === "Between") {
-          if (value[0] >= value[1]) {
-            return {
-              isValid: false,
-              errors: ["First value must be less than second value"],
-            };
-          }
-        }
-        return { isValid: true, errors: [] };
-      },
-    },
-    department: {
-      type: "select",
-      allowedOperators: ["EQ", "NE", "IN", "NIN"],
-      selectOptions: [
-        { label: "Engineering", value: "Engineering" },
-        { label: "Sales", value: "Sales" },
-        { label: "HR", value: "HR" },
-      ],
-    },
-  },
-});
-```
-
-## useFilter with useTable
-
-The `useTable` hook integrates `useFilter` automatically:
-
-```typescript
-const table = useTable({
-  source: "employees",
-  columns: [...],
-  fieldDefinitions: {
-    salary: {
-      type: 'number',
-      allowedOperators: ['GT', 'LT', 'Between']
-    }
-  },
-  initialState: {
-    filterOperator: "And",
-    filters: [
-      {
-        id: crypto.randomUUID(),
-        operator: "GT",
-        lhsField: "salary",
-        rhsValue: 50000,
-        isValid: true
-      }
-    ]
-  }
-});
-
-// Access filter methods
-table.filter.addCondition({
-  operator: "EQ",
-  lhsField: "department",
-  rhsValue: "Engineering"
-});
-
-table.filter.setLogicalOperator("Or");
-```
-
-## API Payload Generation
-
-The hook automatically generates the correct API payload format:
-
-```typescript
-const { filterPayload } = useFilter();
-
-// Use in API call
-const response = await api("employees").list({
-  Type: "List",
-  Field: ["name", "salary", "department"],
-  Filter: filterPayload, // Automatically formatted
-  Sort: [{ name: "ASC" }],
-});
-```
-
-## Migration Guide
-
-If you were using the old hook with `"AND"` / `"OR"`:
-
-### Before:
-
-```typescript
-filter.setLogicalOperator("AND");
-// OR
-filter.setLogicalOperator("OR");
-```
-
-### After:
-
-```typescript
-filter.setLogicalOperator("And");
-// OR
-filter.setLogicalOperator("Or");
-// OR (new!)
-filter.setLogicalOperator("Not");
-```
-
-**Note**: The API now expects title case (`"And"`, `"Or"`, `"Not"`) instead of uppercase (`"AND"`, `"OR"`).
-
-## Complete Examples from Spec
-
-### Example 1: Between Operator (Range)
-
-```typescript
-filter.addCondition({
-  operator: "Between",
-  lhsField: "salary",
-  rhsValue: [50000, 100000],
-  rhsType: "Constant",
-});
-```
-
-### Example 2: String Contains
-
-```typescript
-filter.addCondition({
-  operator: "Contains",
-  lhsField: "name",
-  rhsValue: "John",
-  rhsType: "Constant",
-});
-```
-
-### Example 3: Field Reference (BOField)
-
-```typescript
-filter.addCondition({
-  operator: "GT",
-  lhsField: "end_date",
-  rhsValue: "start_date",
-  rhsType: "BOField", // Compare end_date > start_date
-});
-```
-
-### Example 4: App Variable
-
-```typescript
-filter.addCondition({
-  operator: "EQ",
-  lhsField: "department",
-  rhsValue: "current_user_department",
-  rhsType: "AppVariable",
-});
-```
-
-## Benefits
-
-✅ **Type-safe**: Full TypeScript support with discriminated unions
-✅ **Spec-compliant**: Matches official API specification exactly
-✅ **Flexible**: Supports both simple and complex nested filters
-✅ **Validated**: Automatic validation with detailed error messages
-✅ **Extensible**: Custom field validators and transformers
-✅ **Integrated**: Works seamlessly with useTable hook
+| Type | Description |
+|------|-------------|
+| `"Constant"` | Direct value (default) |
+| `"BOField"` | Compare to another field: `lhsField: "endDate", rhsValue: "startDate"` |
+| `"AppVariable"` | Compare to app variable |

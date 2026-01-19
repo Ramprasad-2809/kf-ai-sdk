@@ -3,7 +3,6 @@ import type { Filter, LogicalOperator } from "../../../types/common";
 import type {
   FilterConditionWithId,
   TypedFilterConditionInput,
-  FieldDefinition,
   ValidationResult,
   ValidationError,
   FilterState,
@@ -32,9 +31,8 @@ const isLogicalOperator = (operator: string): operator is LogicalOperator => {
 /**
  * Validate a filter condition (supports both simple conditions and nested logical groups)
  */
-const validateFilterCondition = <T>(
-  condition: Partial<FilterConditionWithId>,
-  fieldDefinitions?: Record<keyof T, FieldDefinition>
+const validateFilterCondition = (
+  condition: Partial<FilterConditionWithId>
 ): ValidationResult => {
   const errors: string[] = [];
 
@@ -57,7 +55,7 @@ const validateFilterCondition = <T>(
     // Recursively validate children
     if (condition.children && Array.isArray(condition.children)) {
       condition.children.forEach((child, index) => {
-        const childValidation = validateFilterCondition(child, fieldDefinitions);
+        const childValidation = validateFilterCondition(child);
         if (!childValidation.isValid) {
           errors.push(...childValidation.errors.map(err => `Child ${index + 1}: ${err}`));
         }
@@ -101,25 +99,6 @@ const validateFilterCondition = <T>(
             errors.push('Value is required for this operator');
           }
           break;
-      }
-    }
-
-    // Field-specific validation
-    if (fieldDefinitions && condition.lhsField && condition.operator) {
-      const fieldDef = fieldDefinitions[condition.lhsField as keyof T];
-      if (fieldDef) {
-        // Check if operator is allowed for this field
-        if (!fieldDef.allowedOperators.includes(condition.operator as any)) {
-          errors.push(`Operator ${condition.operator} is not allowed for field ${condition.lhsField}`);
-        }
-
-        // Custom field validation
-        if (fieldDef.validateValue && condition.rhsValue !== undefined) {
-          const fieldValidation = fieldDef.validateValue(condition.rhsValue, condition.operator as any);
-          if (!fieldValidation.isValid) {
-            errors.push(...fieldValidation.errors);
-          }
-        }
       }
     }
 
@@ -187,7 +166,7 @@ const buildFilterPayload = (
 // ============================================================
 
 export function useFilter<T = any>(
-  options: UseFilterOptions<T> = {}
+  options: UseFilterOptions = {}
 ): UseFilterReturn<T> {
   // ============================================================
   // STATE MANAGEMENT
@@ -209,8 +188,8 @@ export function useFilter<T = any>(
   // ============================================================
 
   const validateCondition = useCallback((condition: Partial<FilterConditionWithId>): ValidationResult => {
-    return validateFilterCondition(condition, options.fieldDefinitions);
-  }, [options.fieldDefinitions]);
+    return validateFilterCondition(condition);
+  }, []);
 
   const validateAllConditions = useCallback((): ValidationResult => {
     const allErrors: string[] = [];
