@@ -28,7 +28,6 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
     cardSource,
     source,
     enableDragDrop = true,
-    cardFieldDefinitions,
     initialState,
     onCardMove,
     onCardCreate,
@@ -93,7 +92,6 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
   const filterHook = useFilter<T>({
     initialConditions: initialState?.filters,
     initialLogicalOperator: initialState?.filterOperator || "And",
-    fieldDefinitions: cardFieldDefinitions,
     validateOnChange: true,
     onValidationError: onFilterError,
   });

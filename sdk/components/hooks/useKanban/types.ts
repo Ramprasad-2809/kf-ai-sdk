@@ -7,7 +7,6 @@
 import type {
   FilterConditionWithId,
   ValidationError,
-  FieldDefinition,
 } from "../useFilter";
 import type { LogicalOperator } from "../../../types/common";
 
@@ -198,9 +197,6 @@ export interface UseKanbanOptions<T> {
 
   /** Enable search functionality */
   enableSearch?: boolean;
-
-  /** Field definitions for card validation */
-  cardFieldDefinitions?: Record<keyof T, FieldDefinition>;
 
   /** Initial state */
   initialState?: {
@@ -537,7 +533,6 @@ export interface CardValidationContext<T> {
   card: Partial<KanbanCard<T>>;
   column?: KanbanColumn<T>;
   allColumns: KanbanColumn<T>[];
-  fieldDefinitions?: Record<keyof T, FieldDefinition>;
 }
 
 /**

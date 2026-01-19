@@ -1,196 +1,76 @@
-# useTable Hook - Usage Guide
+# useTable Hook Documentation
 
-The `useTable` hook is a powerful data table management solution that handles data fetching, sorting, searching, filtering, and pagination with minimal configuration. It integrates seamlessly with TanStack Query for efficient data management.
+The `useTable` hook provides data fetching, sorting, searching, filtering, and pagination for tables.
 
 ## Table of Contents
 
-- [Quick Start](#quick-start)
-- [Core Concepts](#core-concepts)
-- [API Reference](#api-reference)
-- [Features](#features)
-  - [Sorting](#sorting)
-  - [Searching](#searching)
-  - [Advanced Filtering](#advanced-filtering)
-  - [Pagination](#pagination)
-- [Complete Example](#complete-example)
-- [Best Practices](#best-practices)
-- [Common Patterns](#common-patterns)
-- [Troubleshooting](#troubleshooting)
+- [Type Reference](#type-reference)
+- [Usage Example](#usage-example)
+- [API Quick Reference](#api-quick-reference)
 
-## Quick Start
+## Type Reference
 
-### Basic Usage
+### Import Types
 
-```tsx
-import { useTable } from 'kf-ai-sdk';
+```typescript
+import { useTable } from "@ram_28/kf-ai-sdk";
+import type {
+  UseTableOptions,
+  UseTableReturn,
+  ColumnDefinition,
+  FilterConditionWithId,
+  ValidationError,
+  ListResponse,
+  LogicalOperator,
+} from "@ram_28/kf-ai-sdk";
+```
 
-interface Product {
-  _id: string;
-  Title: string;
-  Price: number;
-  Category: string;
-  Stock: number;
-}
+### ColumnDefinition<T>
 
-function ProductList() {
-  const table = useTable<Product>({
-    source: "BDO_AmazonProductMaster",
-    columns: [
-      { fieldId: "Title", label: "Name", enableSorting: true },
-      { fieldId: "Price", label: "Price", enableSorting: true },
-      { fieldId: "Category", label: "Category" },
-      { fieldId: "Stock", label: "Stock" },
-    ],
-    enablePagination: true,
-  });
+Configuration for table columns.
 
-  if (table.isLoading) {
-    return <div>Loading...</div>;
-  }
-
-  if (table.error) {
-    return <div>Error: {table.error.message}</div>;
-  }
-
-  return (
-    <div>
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Price</th>
-            <th>Category</th>
-            <th>Stock</th>
-          </tr>
-        </thead>
-        <tbody>
-          {table.rows.map((product) => (
-            <tr key={product._id}>
-              <td>{product.Title}</td>
-              <td>${product.Price}</td>
-              <td>{product.Category}</td>
-              <td>{product.Stock}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {/* Pagination */}
-      <button
-        onClick={table.pagination.goToPrevious}
-        disabled={!table.pagination.canGoPrevious}
-      >
-        Previous
-      </button>
-      <button
-        onClick={table.pagination.goToNext}
-        disabled={!table.pagination.canGoNext}
-      >
-        Next
-      </button>
-    </div>
-  );
+```typescript
+interface ColumnDefinition<T> {
+  fieldId: keyof T;                              // Field from your data type
+  label?: string;                                // Display label
+  enableSorting?: boolean;                       // Allow sorting
+  enableFiltering?: boolean;                     // Allow filtering
+  transform?: (value: any, row: T) => ReactNode; // Custom render
 }
 ```
 
-## Core Concepts
-
-### Data Source
-The `source` parameter identifies your backend data source (Business Object). The hook automatically fetches data from the API endpoint.
-
-### Columns Configuration
-Define which fields to display and their behavior:
-- `fieldId`: The field name from your data type
-- `label`: Display label (optional, defaults to fieldId)
-- `enableSorting`: Allow sorting on this column
-- `enableFiltering`: Allow filtering on this column
-- `transform`: Custom render function for the cell value
-
-### State Management
-All table state (pagination, sorting, filtering, search) is managed internally and synchronized with the backend via API calls.
-
-## API Reference
-
-### useTable(options)
-
-#### Parameters
+### UseTableOptions<T>
 
 ```typescript
 interface UseTableOptions<T> {
-  /** Data source identifier (Business Object name) */
-  source: string;
-
-  /** Column configurations */
-  columns: ColumnDefinition<T>[];
-
-  /** Enable sorting functionality (default: false) */
+  source: string;                    // Business Object ID
+  columns: ColumnDefinition<T>[];    // Column configs
   enableSorting?: boolean;
-
-  /** Enable filtering functionality (default: false) */
   enableFiltering?: boolean;
-
-  /** Enable pagination (default: false) */
   enablePagination?: boolean;
-
-  /** Field definitions for filter validation */
-  fieldDefinitions?: Record<keyof T, FieldDefinition>;
-
-  /** Initial state */
   initialState?: {
-    pagination?: {
-      pageNo: number;      // 1-indexed page number
-      pageSize: number;
-    };
-    sorting?: {
-      field: keyof T;
-      direction: "asc" | "desc";
-    };
-    globalFilter?: string;
+    pagination?: { pageNo: number; pageSize: number };
+    sorting?: { field: keyof T; direction: "asc" | "desc" };
     filters?: FilterConditionWithId[];
-    filterOperator?: "AND" | "OR";
+    filterOperator?: LogicalOperator;
   };
-
-  /** Error callback */
   onError?: (error: Error) => void;
-
-  /** Success callback */
   onSuccess?: (data: T[]) => void;
-
-  /** Filter error callback */
   onFilterError?: (errors: ValidationError[]) => void;
-}
-
-interface ColumnDefinition<T> {
-  /** Field name from the data type */
-  fieldId: keyof T;
-
-  /** Display label (optional, defaults to fieldId) */
-  label?: string;
-
-  /** Enable sorting for this column */
-  enableSorting?: boolean;
-
-  /** Enable filtering for this column */
-  enableFiltering?: boolean;
-
-  /** Custom transform function for rendering */
-  transform?: (value: any, row: T) => React.ReactNode;
 }
 ```
 
-#### Return Value
+### UseTableReturn<T>
 
 ```typescript
 interface UseTableReturn<T> {
   // Data
-  rows: T[];                    // Current page rows
-  totalItems: number;           // Total count across all pages
+  rows: T[];
+  totalItems: number;
 
-  // Loading States
-  isLoading: boolean;           // Initial data load
-  isFetching: boolean;          // Any data fetch (including refetch)
-
-  // Error Handling
+  // Loading
+  isLoading: boolean;
+  isFetching: boolean;
   error: Error | null;
 
   // Search
@@ -200,7 +80,7 @@ interface UseTableReturn<T> {
     clear: () => void;
   };
 
-  // Sorting
+  // Sort
   sort: {
     field: keyof T | null;
     direction: "asc" | "desc" | null;
@@ -208,35 +88,25 @@ interface UseTableReturn<T> {
     clear: () => void;
   };
 
-  // Advanced Filtering
+  // Filter (see useFilter docs for full API)
   filter: {
-    // State
     conditions: FilterConditionWithId[];
-    logicalOperator: "AND" | "OR";
+    logicalOperator: LogicalOperator;
     isValid: boolean;
     validationErrors: ValidationError[];
     hasConditions: boolean;
-
-    // Condition Management
     addCondition: (condition: Omit<FilterConditionWithId, "id" | "isValid">) => string;
-    updateCondition: (id: string, updates: Partial<FilterConditionWithId>) => boolean;
     removeCondition: (id: string) => boolean;
     clearConditions: () => void;
-    getCondition: (id: string) => FilterConditionWithId | undefined;
-
-    // Logical Operator
-    setLogicalOperator: (operator: "AND" | "OR") => void;
-
-    // Utilities
+    setLogicalOperator: (operator: LogicalOperator) => void;
     getConditionCount: () => number;
   };
 
   // Pagination
   pagination: {
-    currentPage: number;        // 1-indexed
+    currentPage: number;
     pageSize: number;
     totalPages: number;
-    totalItems: number;
     canGoNext: boolean;
     canGoPrevious: boolean;
     goToNext: () => void;
@@ -250,961 +120,284 @@ interface UseTableReturn<T> {
 }
 ```
 
-## Features
+### ListResponse<T>
 
-### Sorting
+API response structure returned by `refetch()`.
 
-Enable sorting on specific columns and let users toggle sort direction.
-
-```tsx
-function ProductList() {
-  const table = useTable<Product>({
-    source: "BDO_AmazonProductMaster",
-    columns: [
-      { fieldId: "Title", label: "Name", enableSorting: true },
-      { fieldId: "Price", label: "Price", enableSorting: true },
-      { fieldId: "Stock", label: "Stock", enableSorting: true },
-    ],
-    enableSorting: true,
-    initialState: {
-      sorting: { field: "Title", direction: "asc" }
-    }
-  });
-
-  return (
-    <table>
-      <thead>
-        <tr>
-          <th onClick={() => table.sort.toggle("Title")}>
-            Name {table.sort.field === "Title" && (
-              table.sort.direction === "asc" ? "↑" : "↓"
-            )}
-          </th>
-          <th onClick={() => table.sort.toggle("Price")}>
-            Price {table.sort.field === "Price" && (
-              table.sort.direction === "asc" ? "↑" : "↓"
-            )}
-          </th>
-        </tr>
-      </thead>
-      {/* ... */}
-    </table>
-  );
+```typescript
+interface ListResponse<T> {
+  Data: T[];
 }
 ```
 
-**Sorting Behavior:**
-- Click once: Sort ascending
-- Click twice: Sort descending
-- Click thrice: Clear sorting
+## Usage Example
 
-### Searching
-
-Full-text search across your data.
+From `ecommerce-app/src/pages/SellerProductsPage.tsx`. This example demonstrates all imported types:
 
 ```tsx
-import { Search } from "lucide-react";
+import { useState } from "react";
+import { useTable } from "@ram_28/kf-ai-sdk";
+import type {
+  UseTableOptions,
+  UseTableReturn,
+  ColumnDefinition,
+  FilterConditionWithId,
+  ValidationError,
+  ListResponse,
+  LogicalOperator,
+} from "@ram_28/kf-ai-sdk";
+import { Product, ProductType } from "../sources";
+import { Roles } from "../sources/roles";
 
-function ProductList() {
-  const table = useTable<Product>({
-    source: "BDO_AmazonProductMaster",
-    columns: [
-      { fieldId: "Title", label: "Name" },
-      { fieldId: "Category", label: "Category" },
-    ],
+// ProductType<TRole> - conditional type mapping role to field permissions
+type SellerProduct = ProductType<typeof Roles.Seller>;
+
+export function SellerProductsPage() {
+  const product = new Product(Roles.Seller);
+  const [savedFilters, setSavedFilters] = useState<FilterConditionWithId[]>([]);
+
+  // ColumnDefinition<T> - defines table columns with type-safe fieldId
+  const columns: ColumnDefinition<SellerProduct>[] = [
+    { fieldId: "Title", label: "Name", enableSorting: true },
+    { fieldId: "Price", label: "Price", enableSorting: true },
+    { fieldId: "Category", label: "Category", enableSorting: true },
+    { fieldId: "Stock", label: "Stock", enableSorting: true },
+  ];
+
+  // UseTableOptions<T> - configuration for the hook
+  const tableOptions: UseTableOptions<SellerProduct> = {
+    source: product._id,  // "BDO_AmazonProductMaster"
+    columns,
+    enableSorting: true,
+    enableFiltering: true,
     enablePagination: true,
-  });
+    initialState: {
+      pagination: { pageNo: 1, pageSize: 10 },
+      sorting: { field: "_created_at", direction: "desc" },
+      // LogicalOperator - how filter conditions are combined
+      filterOperator: "And" as LogicalOperator,
+    },
+    // ValidationError[] - called when filter validation fails
+    onFilterError: (errors: ValidationError[]) => {
+      errors.forEach((err: ValidationError) => {
+        console.error(`Filter error [${err.conditionId}]: ${err.field} - ${err.message}`);
+      });
+    },
+    onError: (error: Error) => {
+      console.error("Table error:", error.message);
+    },
+  };
+
+  // UseTableReturn<T> - the hook return type with all methods
+  const table: UseTableReturn<SellerProduct> = useTable<SellerProduct>(tableOptions);
+
+  // Add a filter condition
+  const filterByCategory = (category: string) => {
+    table.filter.clearConditions();
+    table.filter.addCondition({
+      operator: "EQ",
+      lhsField: "Category",
+      rhsValue: category,
+    });
+  };
+
+  // FilterConditionWithId - internal condition with ID and validation state
+  const displayActiveFilters = () => {
+    const conditions: FilterConditionWithId[] = table.filter.conditions;
+    return conditions.map((condition: FilterConditionWithId) => (
+      <span key={condition.id}>
+        {condition.lhsField} {condition.operator} {condition.rhsValue}
+        {!condition.isValid && " (invalid)"}
+        <button onClick={() => table.filter.removeCondition(condition.id)}>×</button>
+      </span>
+    ));
+  };
+
+  // LogicalOperator - toggle between And/Or
+  const toggleFilterLogic = () => {
+    const current: LogicalOperator = table.filter.logicalOperator;
+    const next: LogicalOperator = current === "And" ? "Or" : "And";
+    table.filter.setLogicalOperator(next);
+  };
+
+  // ListResponse<T> - returned by refetch()
+  const handleRefresh = async () => {
+    const response: ListResponse<SellerProduct> = await table.refetch();
+    console.log(`Refreshed: ${response.Data.length} items`);
+  };
+
+  // Save/restore filters using FilterConditionWithId[]
+  const saveFilters = () => setSavedFilters([...table.filter.conditions]);
+  const restoreFilters = () => table.filter.setConditions(savedFilters);
 
   return (
     <div>
-      {/* Search Input */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" />
-        <input
-          placeholder="Search products..."
-          className="pl-10"
-          value={table.search.query}
-          onChange={(e) => table.search.setQuery(e.target.value)}
-        />
-        {table.search.query && (
-          <button onClick={table.search.clear}>Clear</button>
+      {/* Search */}
+      <input
+        placeholder="Search products..."
+        value={table.search.query}
+        onChange={(e) => table.search.setQuery(e.target.value)}
+      />
+
+      {/* Filter Controls */}
+      <div>
+        <button onClick={() => filterByCategory("Electronics")}>Electronics</button>
+        <button onClick={() => filterByCategory("Books")}>Books</button>
+        <button onClick={toggleFilterLogic}>
+          Logic: {table.filter.logicalOperator}
+        </button>
+        {table.filter.hasConditions && (
+          <button onClick={table.filter.clearConditions}>
+            Clear ({table.filter.getConditionCount()})
+          </button>
         )}
       </div>
 
-      {/* Results */}
-      <p>Found {table.totalItems} results</p>
+      {/* Active Filters */}
+      <div>{displayActiveFilters()}</div>
 
-      {/* Table */}
-      {/* ... */}
-    </div>
-  );
-}
-```
+      {/* Validation Errors */}
+      {table.filter.validationErrors.map((err: ValidationError) => (
+        <div key={err.conditionId} className="error">{err.message}</div>
+      ))}
 
-**Search Features:**
-- Automatically resets to page 1 when search query changes
-- Debounced API calls (via react-query)
-- Case-insensitive search
-- Searches across all fields (backend-controlled)
+      {/* Loading/Error States */}
+      {table.isLoading && <div>Loading...</div>}
+      {table.error && <div>Error: {table.error.message}</div>}
 
-### Advanced Filtering
-
-Build complex filter conditions with AND/OR logic.
-
-```tsx
-function ProductList() {
-  const table = useTable<Product>({
-    source: "BDO_AmazonProductMaster",
-    columns: [
-      { fieldId: "Title", label: "Name" },
-      { fieldId: "Price", label: "Price" },
-      { fieldId: "Category", label: "Category" },
-    ],
-    enableFiltering: true,
-  });
-
-  const handleCategoryFilter = (category: string) => {
-    // Clear existing filters
-    table.filter.clearConditions();
-
-    // Add category filter
-    if (category !== "all") {
-      table.filter.addCondition({
-        lhsField: "Category",
-        operator: "EQ",
-        rhsValue: category,
-        rhsType: "Constant",
-      });
-    }
-  };
-
-  const handlePriceRangeFilter = () => {
-    // Add price range filter (between $25 and $100)
-    table.filter.addCondition({
-      lhsField: "Price",
-      operator: "GTE",
-      rhsValue: 25,
-      rhsType: "Constant",
-    });
-
-    table.filter.addCondition({
-      lhsField: "Price",
-      operator: "LTE",
-      rhsValue: 100,
-      rhsType: "Constant",
-    });
-
-    // Combine with AND logic
-    table.filter.setLogicalOperator("AND");
-  };
-
-  return (
-    <div>
-      {/* Category Filters */}
-      <button onClick={() => handleCategoryFilter("Electronics")}>
-        Electronics
-      </button>
-      <button onClick={() => handleCategoryFilter("Books")}>
-        Books
-      </button>
-      <button onClick={() => handleCategoryFilter("all")}>
-        All
-      </button>
-
-      {/* Price Range Filter */}
-      <button onClick={handlePriceRangeFilter}>
-        $25 - $100
-      </button>
-
-      {/* Clear All Filters */}
-      {table.filter.hasConditions && (
-        <button onClick={table.filter.clearConditions}>
-          Clear Filters ({table.filter.getConditionCount()})
-        </button>
-      )}
-
-      {/* Table */}
-      {/* ... */}
-    </div>
-  );
-}
-```
-
-**Filter Operators:**
-- `EQ`: Equal
-- `NEQ`: Not equal
-- `GT`: Greater than
-- `GTE`: Greater than or equal
-- `LT`: Less than
-- `LTE`: Less than or equal
-- `CONTAINS`: String contains
-- `STARTS_WITH`: String starts with
-- `ENDS_WITH`: String ends with
-- `IN`: Value in list
-- `NOT_IN`: Value not in list
-
-**Filter Condition Structure:**
-```typescript
-interface FilterCondition {
-  lhsField: string;           // Left-hand side field name
-  operator: FilterOperator;    // Comparison operator
-  rhsValue: any;              // Right-hand side value
-  rhsType: "Constant" | "Field";  // Value type
-  rhsField?: string;          // For field-to-field comparison
-}
-```
-
-### Pagination
-
-Handle large datasets with built-in pagination.
-
-```tsx
-function ProductList() {
-  const table = useTable<Product>({
-    source: "BDO_AmazonProductMaster",
-    columns: [
-      { fieldId: "Title", label: "Name" },
-      { fieldId: "Price", label: "Price" },
-    ],
-    enablePagination: true,
-    initialState: {
-      pagination: {
-        pageNo: 1,      // Start at page 1
-        pageSize: 10    // 10 items per page
-      }
-    }
-  });
-
-  return (
-    <div>
       {/* Table */}
       <table>
-        {/* ... */}
+        <thead>
+          <tr>
+            {columns.map((col: ColumnDefinition<SellerProduct>) => (
+              <th
+                key={String(col.fieldId)}
+                onClick={() => col.enableSorting && table.sort.toggle(col.fieldId)}
+              >
+                {col.label || String(col.fieldId)}
+                {table.sort.field === col.fieldId && (
+                  table.sort.direction === "asc" ? " ↑" : " ↓"
+                )}
+              </th>
+            ))}
+          </tr>
+        </thead>
         <tbody>
-          {table.rows.map((product) => (
-            <tr key={product._id}>
-              <td>{product.Title}</td>
-              <td>${product.Price}</td>
+          {table.rows.map((row: SellerProduct) => (
+            <tr key={row._id}>
+              <td>{row.Title}</td>
+              <td>${row.Price}</td>
+              <td>{row.Category}</td>
+              <td>{row.Stock}</td>
             </tr>
           ))}
         </tbody>
       </table>
 
-      {/* Pagination Info */}
+      {/* Pagination */}
       <div>
-        Showing {(table.pagination.currentPage - 1) * table.pagination.pageSize + 1}
-        {" "}to{" "}
-        {Math.min(
-          table.pagination.currentPage * table.pagination.pageSize,
-          table.totalItems
-        )}
-        {" "}of {table.totalItems} products
-      </div>
-
-      {/* Pagination Controls */}
-      <div>
+        <span>
+          Page {table.pagination.currentPage} of {table.pagination.totalPages}
+          ({table.totalItems} total)
+        </span>
         <button
           onClick={table.pagination.goToPrevious}
           disabled={!table.pagination.canGoPrevious}
         >
           Previous
         </button>
-
-        <span>
-          Page {table.pagination.currentPage} of {table.pagination.totalPages}
-        </span>
-
         <button
           onClick={table.pagination.goToNext}
           disabled={!table.pagination.canGoNext}
         >
           Next
         </button>
-      </div>
-
-      {/* Page Size Selector */}
-      <select
-        value={table.pagination.pageSize}
-        onChange={(e) => table.pagination.setPageSize(Number(e.target.value))}
-      >
-        <option value={10}>10 per page</option>
-        <option value={25}>25 per page</option>
-        <option value={50}>50 per page</option>
-        <option value={100}>100 per page</option>
-      </select>
-    </div>
-  );
-}
-```
-
-**Pagination Features:**
-- 1-indexed pages (page 1, 2, 3, not 0, 1, 2)
-- Automatic page reset when filters/search change
-- Efficient server-side pagination
-- Total count tracked separately for accuracy
-
-## Complete Example
-
-Here's a full-featured product list with all features enabled:
-
-```tsx
-import { useState } from "react";
-import { useTable } from "kf-ai-sdk";
-import { Search, Filter, X } from "lucide-react";
-
-interface Product {
-  _id: string;
-  Title: string;
-  Description: string;
-  Price: number;
-  Category: string;
-  Stock: number;
-  Brand: string;
-}
-
-const categories = ["Electronics", "Clothing", "Books", "Home", "Sports"];
-
-export function ProductListPage() {
-  const [selectedCategory, setSelectedCategory] = useState("all");
-
-  const table = useTable<Product>({
-    source: "BDO_AmazonProductMaster",
-    columns: [
-      { fieldId: "Title", label: "Name", enableSorting: true },
-      { fieldId: "Price", label: "Price", enableSorting: true },
-      { fieldId: "Category", label: "Category", enableSorting: true },
-      { fieldId: "Stock", label: "Stock", enableSorting: true },
-    ],
-    enableSorting: true,
-    enableFiltering: true,
-    enablePagination: true,
-    initialState: {
-      pagination: { pageNo: 1, pageSize: 10 },
-      sorting: { field: "Title", direction: "asc" },
-    },
-    onError: (error) => {
-      console.error("Table error:", error);
-    },
-  });
-
-  const handleCategoryChange = (category: string) => {
-    setSelectedCategory(category);
-    table.filter.clearConditions();
-
-    if (category !== "all") {
-      table.filter.addCondition({
-        lhsField: "Category",
-        operator: "EQ",
-        rhsValue: category,
-        rhsType: "Constant",
-      });
-    }
-  };
-
-  return (
-    <div className="container">
-      {/* Header */}
-      <div className="header">
-        <h1>Products</h1>
-        <p>{table.totalItems} items found</p>
-      </div>
-
-      {/* Search Bar */}
-      <div className="search-bar">
-        <Search className="icon" />
-        <input
-          placeholder="Search products..."
-          value={table.search.query}
-          onChange={(e) => table.search.setQuery(e.target.value)}
-        />
-        {table.search.query && (
-          <button onClick={table.search.clear}>
-            <X className="icon" />
-          </button>
-        )}
-      </div>
-
-      {/* Filters */}
-      <div className="filters">
-        <h3>Category</h3>
-        <button
-          className={selectedCategory === "all" ? "active" : ""}
-          onClick={() => handleCategoryChange("all")}
+        <select
+          value={table.pagination.pageSize}
+          onChange={(e) => table.pagination.setPageSize(Number(e.target.value))}
         >
-          All Categories
-        </button>
-        {categories.map((cat) => (
-          <button
-            key={cat}
-            className={selectedCategory === cat ? "active" : ""}
-            onClick={() => handleCategoryChange(cat)}
-          >
-            {cat}
-          </button>
-        ))}
-
-        {table.filter.hasConditions && (
-          <button onClick={table.filter.clearConditions}>
-            Clear Filters ({table.filter.getConditionCount()})
-          </button>
-        )}
+          <option value={10}>10</option>
+          <option value={25}>25</option>
+          <option value={50}>50</option>
+        </select>
       </div>
 
-      {/* Loading State */}
-      {table.isLoading ? (
-        <div className="loading">Loading...</div>
-      ) : table.error ? (
-        <div className="error">
-          <h3>Error loading products</h3>
-          <p>{table.error.message}</p>
-          <button onClick={() => table.refetch()}>Try Again</button>
-        </div>
-      ) : table.rows.length === 0 ? (
-        <div className="empty">
-          <Filter className="icon" />
-          <h3>No products found</h3>
-          <p>Try adjusting your search or filters</p>
-          <button
-            onClick={() => {
-              table.search.clear();
-              table.filter.clearConditions();
-              setSelectedCategory("all");
-            }}
-          >
-            Clear All Filters
-          </button>
-        </div>
-      ) : (
-        <>
-          {/* Table */}
-          <table>
-            <thead>
-              <tr>
-                <th onClick={() => table.sort.toggle("Title")}>
-                  Product
-                  {table.sort.field === "Title" && (
-                    <span>{table.sort.direction === "asc" ? " ↑" : " ↓"}</span>
-                  )}
-                </th>
-                <th onClick={() => table.sort.toggle("Category")}>
-                  Category
-                  {table.sort.field === "Category" && (
-                    <span>{table.sort.direction === "asc" ? " ↑" : " ↓"}</span>
-                  )}
-                </th>
-                <th onClick={() => table.sort.toggle("Price")}>
-                  Price
-                  {table.sort.field === "Price" && (
-                    <span>{table.sort.direction === "asc" ? " ↑" : " ↓"}</span>
-                  )}
-                </th>
-                <th onClick={() => table.sort.toggle("Stock")}>
-                  Stock
-                  {table.sort.field === "Stock" && (
-                    <span>{table.sort.direction === "asc" ? " ↑" : " ↓"}</span>
-                  )}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {table.rows.map((product) => (
-                <tr key={product._id}>
-                  <td>
-                    <div>
-                      <strong>{product.Title}</strong>
-                      <p>{product.Description}</p>
-                    </div>
-                  </td>
-                  <td>
-                    <span className="badge">{product.Category}</span>
-                  </td>
-                  <td>${product.Price.toFixed(2)}</td>
-                  <td>
-                    <span
-                      className={
-                        product.Stock > 10
-                          ? "stock-good"
-                          : product.Stock > 0
-                          ? "stock-low"
-                          : "stock-out"
-                      }
-                    >
-                      {product.Stock} in stock
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {/* Pagination */}
-          <div className="pagination">
-            <div className="pagination-info">
-              Showing{" "}
-              {(table.pagination.currentPage - 1) * table.pagination.pageSize + 1}{" "}
-              to{" "}
-              {Math.min(
-                table.pagination.currentPage * table.pagination.pageSize,
-                table.totalItems
-              )}{" "}
-              of {table.totalItems} products
-            </div>
-
-            <div className="pagination-controls">
-              <button
-                onClick={table.pagination.goToPrevious}
-                disabled={!table.pagination.canGoPrevious}
-              >
-                Previous
-              </button>
-
-              <span>
-                Page {table.pagination.currentPage} of{" "}
-                {table.pagination.totalPages}
-              </span>
-
-              <button
-                onClick={table.pagination.goToNext}
-                disabled={!table.pagination.canGoNext}
-              >
-                Next
-              </button>
-            </div>
-
-            <select
-              value={table.pagination.pageSize}
-              onChange={(e) =>
-                table.pagination.setPageSize(Number(e.target.value))
-              }
-            >
-              <option value={10}>10 per page</option>
-              <option value={25}>25 per page</option>
-              <option value={50}>50 per page</option>
-            </select>
-          </div>
-        </>
-      )}
+      {/* Save/Restore/Refresh */}
+      <div>
+        <button onClick={saveFilters}>Save Filters</button>
+        <button onClick={restoreFilters}>Restore Filters</button>
+        <button onClick={handleRefresh}>Refresh</button>
+      </div>
     </div>
   );
 }
 ```
 
-## Best Practices
+**Type explanations:**
 
-### 1. Always Define Types
+| Type | Purpose | Where Used |
+|------|---------|------------|
+| `ColumnDefinition<T>` | Column config with type-safe `fieldId` | `columns` array |
+| `UseTableOptions<T>` | Hook configuration | `useTable(options)` |
+| `UseTableReturn<T>` | Hook return with all methods | Return value of `useTable()` |
+| `FilterConditionWithId` | Filter condition with ID and validation | `table.filter.conditions`, saved filters |
+| `ValidationError` | Filter validation error info | `table.filter.validationErrors`, `onFilterError` |
+| `LogicalOperator` | "And" \| "Or" \| "Not" | `table.filter.logicalOperator` |
+| `ListResponse<T>` | API response structure | Return value of `table.refetch()` |
 
-Use TypeScript for better type safety and autocomplete:
+## API Quick Reference
 
-```tsx
-interface Product {
-  _id: string;
-  Title: string;
-  Price: number;
-  Category: string;
-  Stock: number;
-}
+### Search
 
-const table = useTable<Product>({
-  source: "BDO_AmazonProductMaster",
-  columns: [
-    { fieldId: "Title", label: "Name" },  // TypeScript validates fieldId
-    { fieldId: "Price", label: "Price" },
-  ]
-});
+```typescript
+table.search.query              // Current search string
+table.search.setQuery("text")   // Set search (auto-resets to page 1)
+table.search.clear()            // Clear search
 ```
 
-### 2. Handle Loading and Error States
+### Sort
 
-Always show appropriate UI for loading and error states:
-
-```tsx
-if (table.isLoading) {
-  return <LoadingSpinner />;
-}
-
-if (table.error) {
-  return (
-    <ErrorMessage
-      message={table.error.message}
-      onRetry={() => table.refetch()}
-    />
-  );
-}
+```typescript
+table.sort.field                // Current sort field or null
+table.sort.direction            // "asc" | "desc" | null
+table.sort.toggle("Price")      // Toggle sort (asc → desc → none)
+table.sort.clear()              // Clear sorting
 ```
 
-### 3. Show Empty States
+### Filter
 
-Provide helpful empty states when no data matches:
-
-```tsx
-if (table.rows.length === 0) {
-  return (
-    <EmptyState
-      title="No products found"
-      description="Try adjusting your filters"
-      onClearFilters={() => {
-        table.search.clear();
-        table.filter.clearConditions();
-      }}
-    />
-  );
-}
+```typescript
+table.filter.conditions                       // FilterConditionWithId[]
+table.filter.logicalOperator                  // "And" | "Or"
+table.filter.addCondition({ operator, lhsField, rhsValue })
+table.filter.removeCondition(id)
+table.filter.clearConditions()
+table.filter.setLogicalOperator("Or")
+table.filter.hasConditions                    // boolean
+table.filter.getConditionCount()              // number
 ```
 
-### 4. Reset to Page 1 on Filter Changes
+### Pagination
 
-The hook automatically resets to page 1 when:
-- Search query changes
-- Filters are added/removed/updated
-- Sort changes
-
-No manual intervention needed!
-
-### 5. Use Initial State for Better UX
-
-Set sensible defaults:
-
-```tsx
-const table = useTable({
-  source: "BDO_AmazonProductMaster",
-  columns: [...],
-  initialState: {
-    pagination: { pageNo: 1, pageSize: 10 },
-    sorting: { field: "Title", direction: "asc" },  // Default sort
-  }
-});
+```typescript
+table.pagination.currentPage    // 1-indexed
+table.pagination.pageSize
+table.pagination.totalPages
+table.pagination.canGoNext      // boolean
+table.pagination.canGoPrevious  // boolean
+table.pagination.goToNext()
+table.pagination.goToPrevious()
+table.pagination.goToPage(3)
+table.pagination.setPageSize(25)
 ```
 
-### 6. Memoize Callbacks
+### Data & State
 
-When using callbacks, memoize them to prevent unnecessary re-renders:
-
-```tsx
-const handleError = useCallback((error: Error) => {
-  toast.error(error.message);
-}, []);
-
-const table = useTable({
-  source: "BDO_AmazonProductMaster",
-  columns: [...],
-  onError: handleError,
-});
+```typescript
+table.rows                      // T[] - current page data
+table.totalItems                // Total count across all pages
+table.isLoading                 // Initial load
+table.isFetching                // Any fetch (including refetch)
+table.error                     // Error | null
+table.refetch()                 // Returns Promise<ListResponse<T>>
 ```
-
-### 7. Combine Search and Filters
-
-Search and filters work independently and are combined on the backend:
-
-```tsx
-// Both search AND category filter will be applied
-table.search.setQuery("laptop");  // Searches for "laptop"
-table.filter.addCondition({        // Within Electronics category
-  lhsField: "Category",
-  operator: "EQ",
-  rhsValue: "Electronics",
-  rhsType: "Constant",
-});
-```
-
-## Common Patterns
-
-### Pattern 1: Filter Sidebar
-
-```tsx
-function ProductListWithSidebar() {
-  const table = useTable<Product>({...});
-
-  return (
-    <div className="layout">
-      {/* Sidebar with filters */}
-      <aside className="sidebar">
-        <h3>Filters</h3>
-
-        {/* Category Filter */}
-        <div>
-          <h4>Category</h4>
-          {categories.map(cat => (
-            <button
-              key={cat}
-              onClick={() => {
-                table.filter.clearConditions();
-                table.filter.addCondition({
-                  lhsField: "Category",
-                  operator: "EQ",
-                  rhsValue: cat,
-                  rhsType: "Constant",
-                });
-              }}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-
-        {/* Price Range */}
-        <div>
-          <h4>Price</h4>
-          <input
-            type="range"
-            min="0"
-            max="1000"
-            onChange={(e) => {
-              const maxPrice = Number(e.target.value);
-              table.filter.addCondition({
-                lhsField: "Price",
-                operator: "LTE",
-                rhsValue: maxPrice,
-                rhsType: "Constant",
-              });
-            }}
-          />
-        </div>
-      </aside>
-
-      {/* Main content with table */}
-      <main>
-        {/* Table rendering */}
-      </main>
-    </div>
-  );
-}
-```
-
-### Pattern 2: Search with Debounce
-
-The hook uses react-query which automatically debounces API calls, but you can add UI debounce:
-
-```tsx
-import { useDeferredValue } from "react";
-
-function SearchableTable() {
-  const [searchInput, setSearchInput] = useState("");
-  const deferredSearch = useDeferredValue(searchInput);
-
-  const table = useTable<Product>({...});
-
-  // Sync deferred value with table search
-  useEffect(() => {
-    table.search.setQuery(deferredSearch);
-  }, [deferredSearch]);
-
-  return (
-    <input
-      value={searchInput}
-      onChange={(e) => setSearchInput(e.target.value)}
-      placeholder="Search..."
-    />
-  );
-}
-```
-
-### Pattern 3: Sortable Column Headers
-
-```tsx
-function SortableHeader({
-  field,
-  label,
-  table
-}: {
-  field: keyof Product;
-  label: string;
-  table: ReturnType<typeof useTable<Product>>;
-}) {
-  const isSorted = table.sort.field === field;
-
-  return (
-    <th
-      onClick={() => table.sort.toggle(field)}
-      className="sortable"
-    >
-      {label}
-      {isSorted && (
-        <span className="sort-indicator">
-          {table.sort.direction === "asc" ? "↑" : "↓"}
-        </span>
-      )}
-    </th>
-  );
-}
-
-// Usage
-<thead>
-  <tr>
-    <SortableHeader field="Title" label="Name" table={table} />
-    <SortableHeader field="Price" label="Price" table={table} />
-    <SortableHeader field="Stock" label="Stock" table={table} />
-  </tr>
-</thead>
-```
-
-### Pattern 4: Bulk Actions with Selection
-
-```tsx
-function TableWithSelection() {
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const table = useTable<Product>({...});
-
-  const toggleSelection = (id: string) => {
-    setSelectedIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
-
-  const selectAll = () => {
-    setSelectedIds(new Set(table.rows.map(r => r._id)));
-  };
-
-  const clearSelection = () => {
-    setSelectedIds(new Set());
-  };
-
-  return (
-    <div>
-      {selectedIds.size > 0 && (
-        <div className="bulk-actions">
-          <p>{selectedIds.size} items selected</p>
-          <button onClick={clearSelection}>Clear</button>
-          <button>Delete Selected</button>
-        </div>
-      )}
-
-      <table>
-        <thead>
-          <tr>
-            <th>
-              <input
-                type="checkbox"
-                checked={selectedIds.size === table.rows.length}
-                onChange={selectAll}
-              />
-            </th>
-            <th>Name</th>
-            <th>Price</th>
-          </tr>
-        </thead>
-        <tbody>
-          {table.rows.map(row => (
-            <tr key={row._id}>
-              <td>
-                <input
-                  type="checkbox"
-                  checked={selectedIds.has(row._id)}
-                  onChange={() => toggleSelection(row._id)}
-                />
-              </td>
-              <td>{row.Title}</td>
-              <td>${row.Price}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-```
-
-## Troubleshooting
-
-### Issue: Data Not Loading
-
-**Symptoms:** Table shows loading state indefinitely
-
-**Solutions:**
-1. Check if the backend API endpoint is accessible
-2. Verify the `source` parameter matches your backend Business Object
-3. Check browser console for network errors
-4. Use `onError` callback to log errors:
-
-```tsx
-const table = useTable({
-  source: "BDO_AmazonProductMaster",
-  columns: [...],
-  onError: (error) => {
-    console.error("Table error:", error);
-  }
-});
-```
-
-### Issue: Sorting Not Working
-
-**Symptoms:** Clicking column headers doesn't sort data
-
-**Solutions:**
-1. Ensure `enableSorting: true` is set on the table
-2. Verify individual columns have `enableSorting: true`
-3. Check that the `sort.toggle()` function is called on click
-4. Backend must support the `Sort` parameter in list API
-
-### Issue: Filters Not Applied
-
-**Symptoms:** Adding filters doesn't change displayed data
-
-**Solutions:**
-1. Ensure `enableFiltering: true` is set
-2. Check filter condition structure is correct
-3. Verify backend supports the `Filter` parameter
-4. Use validation to catch filter errors:
-
-```tsx
-const table = useTable({
-  source: "BDO_AmazonProductMaster",
-  columns: [...],
-  enableFiltering: true,
-  onFilterError: (errors) => {
-    console.error("Filter validation errors:", errors);
-  }
-});
-```
-
-### Issue: Pagination Shows Wrong Total
-
-**Symptoms:** Total item count doesn't match actual data
-
-**Solutions:**
-- The hook fetches count separately for accuracy
-- If count seems wrong, check backend count API endpoint
-- Ensure filters are properly applied to count query
-
-### Issue: Performance Issues with Large Datasets
-
-**Symptoms:** Table is slow to render or update
-
-**Solutions:**
-1. Enable pagination to limit rows per page
-2. Use smaller page sizes (10-25 items)
-3. Implement virtual scrolling for very large tables
-4. Optimize custom `transform` functions
-5. Memoize row rendering components
-
-```tsx
-const ProductRow = memo(({ product }: { product: Product }) => (
-  <tr>
-    <td>{product.Title}</td>
-    <td>${product.Price}</td>
-  </tr>
-));
-
-// Use in table
-{table.rows.map(product => (
-  <ProductRow key={product._id} product={product} />
-))}
-```
-
-### Issue: Search Triggers Too Many API Calls
-
-**Symptoms:** API called on every keystroke
-
-**Solutions:**
-- React Query automatically batches and caches requests
-- Adjust `staleTime` for less frequent refetches
-- The hook is optimized for this - no action needed in most cases
-
----
-
-For more examples, see the [e-commerce example](../examples/e-commerce/) in the repository.
