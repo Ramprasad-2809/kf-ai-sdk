@@ -1,38 +1,29 @@
-// Main API client
-export {
-  api,
-  setApiBaseUrl,
-  setDefaultHeaders,
-  getDefaultHeaders,
-  getApiBaseUrl,
-} from "./client";
-export type { ResourceClient } from "./client";
+// ============================================================
+// API MODULE - Type Exports
+// @ram_28/kf-ai-sdk/api/types
+// ============================================================
 
-// DateTime utilities
-export {
-  encodeDatetime,
-  decodeDatetime,
-  encodeDate,
-  decodeDate,
-} from "./datetime";
+// Resource client type
+export type { ResourceClient } from './api/client';
 
-// Metadata API client
-export { getBdoSchema, listMetadata } from "./metadata";
-export type { BackendSchema, MetadataItem, FieldMetadata } from "./metadata";
+// Metadata types
+export type { BackendSchema, MetadataItem, FieldMetadata } from './api/metadata';
 
-// Re-export common types for convenience
+// Common API types
 export type {
   // Sort types
   SortDirectionType,
   SortOptionType,
   SortType,
+
   // Filter types
   ConditionType,
   ConditionGroupType,
   ConditionGroupOperatorType,
+  ConditionOperatorType,
   FilterType,
   FilterRHSTypeType,
-  ConditionOperatorType,
+
   // List types
   ListOptionsType,
   ListResponseType,
@@ -40,21 +31,28 @@ export type {
   CreateUpdateResponseType,
   DeleteResponseType,
   CountResponseType,
+
   // DateTime types
   DateTimeEncodedType,
   DateEncodedType,
+
   // Metric types
   MetricTypeType,
   MetricFieldType,
   MetricOptionsType,
   MetricResponseType,
+
   // Pivot types
   PivotHeaderItemType,
   PivotResponseDataType,
   PivotOptionsType,
   PivotResponseType,
+
   // Draft types
   DraftResponseType,
+
   // Fields types
   FieldsResponseType,
-} from "../types/common";
+  FetchFieldOptionType,
+  FetchFieldResponseType,
+} from './types/common';

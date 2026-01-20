@@ -4,10 +4,10 @@
 // Low-level functions for authentication API calls
 
 import type {
-  SessionResponse,
-  AuthProviderName,
-  LoginOptions,
-  LogoutOptions,
+  SessionResponseType,
+  AuthProviderNameType,
+  LoginOptionsType,
+  LogoutOptionsType,
 } from "./types";
 import {
   getAuthBaseUrl,
@@ -35,7 +35,7 @@ export class AuthenticationError extends Error {
  *
  * @throws AuthenticationError if session check fails or user is not authenticated
  */
-export async function fetchSession(): Promise<SessionResponse> {
+export async function fetchSession(): Promise<SessionResponseType> {
   const config = getAuthConfig();
   const baseUrl = getAuthBaseUrl();
   const headers = getDefaultHeaders();
@@ -56,7 +56,7 @@ export async function fetchSession(): Promise<SessionResponse> {
     );
   }
 
-  const data: SessionResponse = await response.json();
+  const data: SessionResponseType = await response.json();
   return data;
 }
 
@@ -81,8 +81,8 @@ export async function fetchSession(): Promise<SessionResponse> {
  * ```
  */
 export function initiateLogin(
-  provider?: AuthProviderName,
-  options?: LoginOptions
+  provider?: AuthProviderNameType,
+  options?: LoginOptionsType
 ): Promise<never> {
   return new Promise(() => {
     const config = getAuthConfig();
@@ -147,7 +147,7 @@ export function initiateLogin(
  * Logout the current user
  * Optionally calls the logout endpoint before clearing client state
  */
-export async function performLogout(options?: LogoutOptions): Promise<void> {
+export async function performLogout(options?: LogoutOptionsType): Promise<void> {
   const config = getAuthConfig();
   const baseUrl = getAuthBaseUrl();
   const headers = getDefaultHeaders();

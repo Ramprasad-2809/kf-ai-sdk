@@ -1,24 +1,24 @@
 /**
  * Sort direction for API queries (matching API spec)
  */
-export type SortDirection = "ASC" | "DESC";
+export type SortDirectionType = "ASC" | "DESC";
 
 /**
  * Sort configuration: array of field-direction mappings
  * Format: [{ "fieldName": "ASC" }, { "anotherField": "DESC" }]
  */
-export type SortOption = Record<string, SortDirection>;
+export type SortOptionType = Record<string, SortDirectionType>;
 
 /**
  * Sort configuration: array of sort options
  */
-export type Sort = SortOption[];
+export type SortType = SortOptionType[];
 
 /**
  * Condition operators for individual conditions (leaf nodes)
  * Used in Condition.Operator
  */
-export type ConditionOperator =
+export type ConditionOperatorType =
   | "EQ" | "NE" | "GT" | "GTE" | "LT" | "LTE"
   | "Between" | "NotBetween" | "IN" | "NIN"
   | "Empty" | "NotEmpty" | "Contains" | "NotContains"
@@ -28,81 +28,57 @@ export type ConditionOperator =
  * Operators for combining conditions in a group (tree nodes)
  * Used in ConditionGroup.Operator
  */
-export type ConditionGroupOperator = "And" | "Or" | "Not";
+export type ConditionGroupOperatorType = "And" | "Or" | "Not";
 
 /**
  * RHS value type for filter conditions
  */
-export type FilterRHSType = "Constant" | "BOField" | "AppVariable";
+export type FilterRHSTypeType = "Constant" | "BOField" | "AppVariable";
 
 /**
  * Leaf condition (actual field comparison)
  */
-export interface Condition {
+export interface ConditionType {
   /** Optional ID for hook state management (omitted in API payload) */
   id?: string;
   /** Condition operator */
-  Operator: ConditionOperator;
+  Operator: ConditionOperatorType;
   /** Left-hand side field name */
   LHSField: string;
   /** Right-hand side value */
   RHSValue: any;
   /** Right-hand side type (optional, defaults to Constant) */
-  RHSType?: FilterRHSType;
+  RHSType?: FilterRHSTypeType;
 }
 
 /**
  * Group combining conditions (recursive structure)
  */
-export interface ConditionGroup {
+export interface ConditionGroupType {
   /** Optional ID for hook state management (omitted in API payload) */
   id?: string;
   /** Group operator (And, Or, Not) */
-  Operator: ConditionGroupOperator;
+  Operator: ConditionGroupOperatorType;
   /** Nested conditions (can be Condition or ConditionGroup) */
-  Condition: Array<Condition | ConditionGroup>;
+  Condition: Array<ConditionType | ConditionGroupType>;
 }
 
 /**
  * Root filter type (alias for ConditionGroup)
  */
-export type Filter = ConditionGroup;
-
-// ============================================================
-// LEGACY TYPE ALIASES (for backwards compatibility)
-// ============================================================
-
-/**
- * @deprecated Use `Condition` instead
- */
-export type FilterCondition = Condition;
-
-/**
- * @deprecated Use `ConditionGroup` instead
- */
-export type FilterLogical = ConditionGroup;
-
-/**
- * @deprecated Use `ConditionGroupOperator` instead
- */
-export type FilterOperator = ConditionGroupOperator;
-
-/**
- * @deprecated Use `Condition | ConditionGroup` instead
- */
-export type FilterNode = Condition | ConditionGroup;
+export type FilterType = ConditionGroupType;
 
 /**
  * DateTime encoding format used by the API
  */
-export interface DateTimeEncoded {
+export interface DateTimeEncodedType {
   $__dt__: number;
 }
 
 /**
- * Date encoding format used by the API  
+ * Date encoding format used by the API
  */
-export interface DateEncoded {
+export interface DateEncodedType {
   $__d__: string;
 }
 
@@ -110,7 +86,7 @@ export interface DateEncoded {
  * Standard paginated list response
  * @template T - Type of items in the list
  */
-export interface ListResponse<T> {
+export interface ListResponseType<T> {
   /** Array of items for current page */
   Data: T[];
 }
@@ -119,7 +95,7 @@ export interface ListResponse<T> {
  * Read API response wrapper
  * @template T - Type of the data object
  */
-export interface ReadResponse<T> {
+export interface ReadResponseType<T> {
   /** The data object */
   Data: T;
 }
@@ -127,7 +103,7 @@ export interface ReadResponse<T> {
 /**
  * Create/Update API response
  */
-export interface CreateUpdateResponse {
+export interface CreateUpdateResponseType {
   /** ID of the created/updated record */
   _id: string;
 }
@@ -135,7 +111,7 @@ export interface CreateUpdateResponse {
 /**
  * Delete API response
  */
-export interface DeleteResponse {
+export interface DeleteResponseType {
   /** Status of the delete operation */
   status: "success";
 }
@@ -143,7 +119,7 @@ export interface DeleteResponse {
 /**
  * Count API response
  */
-export interface CountResponse {
+export interface CountResponseType {
   /** Total count of matching records */
   Count: number;
 }
@@ -151,7 +127,7 @@ export interface CountResponse {
 /**
  * Options for list queries (API request format)
  */
-export interface ListOptions {
+export interface ListOptionsType {
   /** Query type (defaults to "List") */
   Type?: "List";
 
@@ -159,10 +135,10 @@ export interface ListOptions {
   Field?: string[];
 
   /** Filter criteria */
-  Filter?: Filter;
+  Filter?: FilterType;
 
   /** Sort configuration */
-  Sort?: Sort;
+  Sort?: SortType;
 
   /** Search query (separate from filters) */
   Search?: string;
@@ -181,7 +157,7 @@ export interface ListOptions {
 /**
  * Metric aggregation function types
  */
-export type MetricType =
+export type MetricTypeType =
   | "Sum"
   | "Avg"
   | "Count"
@@ -196,31 +172,31 @@ export type MetricType =
 /**
  * Metric field configuration
  */
-export interface MetricField {
+export interface MetricFieldType {
   /** Field to aggregate */
   Field: string;
   /** Aggregation function type */
-  Type: MetricType;
+  Type: MetricTypeType;
 }
 
 /**
  * Options for metric/aggregate queries
  */
-export interface MetricOptions {
+export interface MetricOptionsType {
   /** Query type (always "Metric") */
   Type: "Metric";
   /** Fields to group by */
   GroupBy: string[];
   /** Metric definitions */
-  Metric: MetricField[];
+  Metric: MetricFieldType[];
   /** Optional filter criteria */
-  Filter?: Filter;
+  Filter?: FilterType;
 }
 
 /**
  * Response from metric endpoint
  */
-export interface MetricResponse {
+export interface MetricResponseType {
   /** Aggregated data rows */
   Data: Record<string, any>[];
 }
@@ -232,21 +208,21 @@ export interface MetricResponse {
 /**
  * Pivot table header item (hierarchical)
  */
-export interface PivotHeaderItem {
+export interface PivotHeaderItemType {
   /** Header key/label */
   Key: string;
   /** Child headers for nested grouping */
-  Children?: PivotHeaderItem[] | null;
+  Children?: PivotHeaderItemType[] | null;
 }
 
 /**
  * Pivot response data structure
  */
-export interface PivotResponseData {
+export interface PivotResponseDataType {
   /** Row headers */
-  RowHeader: PivotHeaderItem[];
+  RowHeader: PivotHeaderItemType[];
   /** Column headers */
-  ColumnHeader: PivotHeaderItem[];
+  ColumnHeader: PivotHeaderItemType[];
   /** Value matrix [row][column] */
   Value: (number | string | null)[][];
 }
@@ -254,7 +230,7 @@ export interface PivotResponseData {
 /**
  * Options for pivot queries
  */
-export interface PivotOptions {
+export interface PivotOptionsType {
   /** Query type (always "Pivot") */
   Type: "Pivot";
   /** Row dimension fields */
@@ -262,17 +238,17 @@ export interface PivotOptions {
   /** Column dimension fields */
   Column: string[];
   /** Metric definitions */
-  Metric: MetricField[];
+  Metric: MetricFieldType[];
   /** Optional filter criteria */
-  Filter?: Filter;
+  Filter?: FilterType;
 }
 
 /**
  * Response from pivot endpoint
  */
-export interface PivotResponse {
+export interface PivotResponseType {
   /** Pivot data including headers and values */
-  Data: PivotResponseData;
+  Data: PivotResponseDataType;
 }
 
 // ============================================================
@@ -282,7 +258,7 @@ export interface PivotResponse {
 /**
  * Response from draft operations
  */
-export interface DraftResponse {
+export interface DraftResponseType {
   /** Computed field values */
   [fieldName: string]: any;
 }
@@ -294,7 +270,7 @@ export interface DraftResponse {
 /**
  * Response from fields endpoint
  */
-export interface FieldsResponse {
+export interface FieldsResponseType {
   /** Field metadata */
   Data: Record<string, any>[];
 }
@@ -306,7 +282,7 @@ export interface FieldsResponse {
 /**
  * Single option returned from fetch field endpoint
  */
-export interface FetchFieldOption {
+export interface FetchFieldOptionType {
   /** The value to be stored */
   Value: string;
   /** The display label */
@@ -316,7 +292,7 @@ export interface FetchFieldOption {
 /**
  * Response from fetch field endpoint
  */
-export interface FetchFieldResponse {
+export interface FetchFieldResponseType {
   /** Array of field options */
-  Data: FetchFieldOption[];
+  Data: FetchFieldOptionType[];
 }

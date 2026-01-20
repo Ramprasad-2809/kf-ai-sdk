@@ -1,35 +1,35 @@
 // Table hook
 export { useTable } from "./useTable";
 export type {
-  UseTableOptions,
-  UseTableReturn,
-  ColumnDefinition,
+  UseTableOptionsType,
+  UseTableReturnType,
+  ColumnDefinitionType,
 } from "./useTable";
 
 // Form hook
 export { useForm } from "./useForm";
 export type {
   // Core types
-  UseFormOptions,
-  UseFormReturn,
-  FormOperation,
-  FormMode,
+  UseFormOptionsType,
+  UseFormReturnType,
+  FormOperationType,
+  FormModeType,
 
   // Form field configuration
-  FormFieldConfig,
-  FormSchemaConfig,
-  FormFieldType,
-  SelectOption,
-  FieldPermission,
+  FormFieldConfigType,
+  FormSchemaConfigType,
+  FormFieldTypeType,
+  SelectOptionType,
+  FieldPermissionType,
 
   // Result types
-  FieldValidationResult,
-  SubmissionResult,
+  FieldValidationResultType,
+  SubmissionResultType,
 
   // BDO Schema types (advanced)
-  BDOSchema,
-  BDOFieldDefinition,
-  SchemaValidationRule,
+  BDOSchemaType,
+  BDOFieldDefinitionType,
+  SchemaValidationRuleType,
 } from "./useForm";
 
 // Error utilities
@@ -43,11 +43,11 @@ export {
 // Kanban hook
 export { useKanban } from "./useKanban";
 export type {
-  UseKanbanOptions,
-  UseKanbanReturn,
-  KanbanCard,
-  KanbanColumn,
-  ColumnDefinition as KanbanColumnDefinition,
+  UseKanbanOptionsType,
+  UseKanbanReturnType,
+  KanbanCardType,
+  KanbanColumnType,
+  ColumnConfigType,
 } from "./useKanban";
 
 // Filter hook

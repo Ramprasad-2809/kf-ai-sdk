@@ -7,46 +7,46 @@ export { useForm } from './useForm';
 
 // === TYPES: Core (Always needed) ===
 export type {
-  UseFormOptions,
-  UseFormReturn,
-  FormOperation,
-  FormMode,
+  UseFormOptionsType,
+  UseFormReturnType,
+  FormOperationType,
+  FormModeType,
 } from './types';
 
 // === TYPES: Form Field Configuration (For dynamic form rendering) ===
 export type {
-  FormFieldConfig,
-  FormSchemaConfig,
-  FormFieldType,
-  SelectOption,
-  FieldPermission,
-  FieldRuleIds,
+  FormFieldConfigType,
+  FormSchemaConfigType,
+  FormFieldTypeType,
+  SelectOptionType,
+  FieldPermissionType,
+  FieldRuleIdsType,
 } from './types';
 
 // === TYPES: Result Types ===
 export type {
-  FieldValidationResult,
-  SubmissionResult,
+  FieldValidationResultType,
+  SubmissionResultType,
 } from './types';
 
 // === TYPES: BDO Schema (For advanced schema manipulation) ===
 export type {
-  BDOSchema,
-  BDOFieldDefinition,
-  SchemaValidationRule,
-  ComputedFieldFormula,
-  DefaultValueExpression,
-  ReferenceFieldConfig,
-  FieldOptionsConfig,
-  ExpressionTree,
-  BusinessObjectRules,
-  RolePermission,
-  RuleType,
+  BDOSchemaType,
+  BDOFieldDefinitionType,
+  SchemaValidationRuleType,
+  ComputedFieldFormulaType,
+  DefaultValueExpressionType,
+  ReferenceFieldConfigType,
+  FieldOptionsConfigType,
+  ExpressionTreeType,
+  BusinessObjectRulesType,
+  RolePermissionType,
+  RuleTypeType,
 } from './types';
 
 // === TYPES: Expression Evaluation (For custom expression handling) ===
 export type {
-  ExpressionContext,
+  ExpressionContextType,
 } from './types';
 
 // === UTILITIES: Error Handling ===

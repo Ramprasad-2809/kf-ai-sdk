@@ -13,9 +13,9 @@ export { AuthenticationError } from "./authClient";
 
 // Type exports
 export type {
-  UserDetails,
-  SessionResponse,
-  AuthStatus,
-  AuthProviderProps,
-  UseAuthReturn,
+  UserDetailsType,
+  SessionResponseType,
+  AuthStatusType,
+  AuthProviderPropsType,
+  UseAuthReturnType,
 } from "./types";

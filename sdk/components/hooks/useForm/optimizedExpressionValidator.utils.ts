@@ -4,9 +4,9 @@
 // Enhanced expression evaluator with caching, dependency tracking, and performance optimizations
 
 import type {
-  ExpressionTree,
-  FieldValidationResult,
-  SchemaValidationRule,
+  ExpressionTreeType,
+  FieldValidationResultType,
+  SchemaValidationRuleType,
 } from "./types";
 
 // ============================================================
@@ -58,11 +58,11 @@ class LRUCache<T> {
  * Analyze expression dependencies for optimized watching
  */
 export function analyzeExpressionDependencies(
-  expression: ExpressionTree
+  expression: ExpressionTreeType
 ): Set<string> {
   const dependencies = new Set<string>();
 
-  function traverse(node: ExpressionTree): void {
+  function traverse(node: ExpressionTreeType): void {
     switch (node.Type) {
       case "Identifier":
         if (node.Name && !node.Name.startsWith("$")) {
@@ -94,7 +94,7 @@ export function analyzeExpressionDependencies(
  * Build dependency graph for multiple expressions
  */
 export function buildDependencyGraph(
-  rules: Record<string, SchemaValidationRule>
+  rules: Record<string, SchemaValidationRuleType>
 ): Map<string, Set<string>> {
   const graph = new Map<string, Set<string>>();
 
@@ -122,7 +122,7 @@ export class OptimizedExpressionEvaluator {
    * Create cache key from expression and context
    */
   private createCacheKey(
-    expression: ExpressionTree,
+    expression: ExpressionTreeType,
     context: Record<string, any>
   ): string {
     const expressionHash = JSON.stringify(expression);
@@ -133,7 +133,7 @@ export class OptimizedExpressionEvaluator {
   /**
    * Get expression dependencies (cached)
    */
-  getDependencies(expression: ExpressionTree): Set<string> {
+  getDependencies(expression: ExpressionTreeType): Set<string> {
     const expressionKey = JSON.stringify(expression);
     
     let dependencies = this.dependencyCache.get(expressionKey);
@@ -149,7 +149,7 @@ export class OptimizedExpressionEvaluator {
    * Check if expression result is cached and context hasn't changed
    */
   private getCachedResult(
-    expression: ExpressionTree,
+    expression: ExpressionTreeType,
     context: Record<string, any>,
     lastContext?: Record<string, any>
   ): any | undefined {
@@ -173,7 +173,7 @@ export class OptimizedExpressionEvaluator {
    * Evaluate expression with caching
    */
   evaluate(
-    expression: ExpressionTree,
+    expression: ExpressionTreeType,
     context: Record<string, any>,
     lastContext?: Record<string, any>
   ): any {
@@ -194,7 +194,7 @@ export class OptimizedExpressionEvaluator {
   /**
    * Core expression evaluation logic
    */
-  private evaluateNode(node: ExpressionTree, context: Record<string, any>): any {
+  private evaluateNode(node: ExpressionTreeType, context: Record<string, any>): any {
     switch (node.Type) {
       case "Literal":
         return node.Value;
@@ -222,7 +222,7 @@ export class OptimizedExpressionEvaluator {
   /**
    * Get identifier value with system context support
    */
-  private getIdentifierValue(node: ExpressionTree, context: Record<string, any>): any {
+  private getIdentifierValue(node: ExpressionTreeType, context: Record<string, any>): any {
     if (!node.Name) return undefined;
 
     // System identifiers
@@ -249,7 +249,7 @@ export class OptimizedExpressionEvaluator {
   /**
    * Evaluate binary expressions with type coercion
    */
-  private evaluateBinaryExpression(node: ExpressionTree, context: Record<string, any>): any {
+  private evaluateBinaryExpression(node: ExpressionTreeType, context: Record<string, any>): any {
     if (!node.Arguments || node.Arguments.length !== 2) {
       throw new Error("Binary expression requires exactly 2 arguments");
     }
@@ -279,7 +279,7 @@ export class OptimizedExpressionEvaluator {
   /**
    * Evaluate logical expressions with short-circuiting
    */
-  private evaluateLogicalExpression(node: ExpressionTree, context: Record<string, any>): any {
+  private evaluateLogicalExpression(node: ExpressionTreeType, context: Record<string, any>): any {
     if (!node.Arguments || node.Arguments.length < 2) {
       throw new Error("Logical expression requires at least 2 arguments");
     }
@@ -309,7 +309,7 @@ export class OptimizedExpressionEvaluator {
   /**
    * Evaluate function calls with built-in functions
    */
-  private evaluateCallExpression(node: ExpressionTree, context: Record<string, any>): any {
+  private evaluateCallExpression(node: ExpressionTreeType, context: Record<string, any>): any {
     if (!node.Callee) {
       throw new Error("Call expression requires a function name");
     }
@@ -360,7 +360,7 @@ export class OptimizedExpressionEvaluator {
   /**
    * Evaluate member expressions
    */
-  private evaluateMemberExpression(node: ExpressionTree, context: Record<string, any>): any {
+  private evaluateMemberExpression(node: ExpressionTreeType, context: Record<string, any>): any {
     if (!node.Arguments || node.Arguments.length === 0) {
       throw new Error("Member expression requires arguments");
     }
@@ -398,10 +398,10 @@ const globalEvaluator = new OptimizedExpressionEvaluator();
 export function validateFieldOptimized<T = Record<string, any>>(
   fieldName: string,
   fieldValue: any,
-  validationRules: SchemaValidationRule[],
+  validationRules: SchemaValidationRuleType[],
   formValues: T,
   lastFormValues?: T
-): FieldValidationResult<T> {
+): FieldValidationResultType<T> {
   if (!validationRules || validationRules.length === 0) {
     return { isValid: true };
   }
@@ -435,7 +435,7 @@ export function validateFieldOptimized<T = Record<string, any>>(
  * Optimized computed value calculation
  */
 export function calculateComputedValueOptimized(
-  expression: ExpressionTree,
+  expression: ExpressionTreeType,
   formValues: Record<string, any>,
   lastFormValues?: Record<string, any>
 ): any {
@@ -450,7 +450,7 @@ export function calculateComputedValueOptimized(
 /**
  * Get field dependencies for optimized watching
  */
-export function getFieldDependencies(expression: ExpressionTree): string[] {
+export function getFieldDependencies(expression: ExpressionTreeType): string[] {
   return Array.from(globalEvaluator.getDependencies(expression));
 }
 
@@ -461,11 +461,11 @@ export function batchValidateFields<T = Record<string, any>>(
   validations: Array<{
     fieldName: string;
     fieldValue: any;
-    rules: SchemaValidationRule[];
+    rules: SchemaValidationRuleType[];
   }>,
   formValues: T,
   lastFormValues?: T
-): Array<FieldValidationResult<T>> {
+): Array<FieldValidationResultType<T>> {
   return validations.map(({ fieldName, fieldValue, rules }) =>
     validateFieldOptimized(fieldName, fieldValue, rules, formValues, lastFormValues)
   );

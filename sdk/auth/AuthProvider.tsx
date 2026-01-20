@@ -15,14 +15,14 @@ import React, {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type {
-  AuthContextValue,
-  AuthProviderProps,
-  AuthStatus,
-  UserDetails,
-  SessionResponse,
-  AuthProviderName,
-  LoginOptions,
-  LogoutOptions,
+  AuthContextValueType,
+  AuthProviderPropsType,
+  AuthStatusType,
+  UserDetailsType,
+  SessionResponseType,
+  AuthProviderNameType,
+  LoginOptionsType,
+  LogoutOptionsType,
 } from "./types";
 
 import {
@@ -37,7 +37,7 @@ import { getAuthConfig, configureAuth } from "./authConfig";
 // CONTEXT
 // ============================================================
 
-const AuthContext = createContext<AuthContextValue | null>(null);
+const AuthContext = createContext<AuthContextValueType | null>(null);
 
 const SESSION_QUERY_KEY = ["auth", "session"] as const;
 
@@ -53,7 +53,7 @@ export function AuthProvider({
   loadingComponent,
   unauthenticatedComponent,
   skipInitialCheck = false,
-}: AuthProviderProps): React.ReactElement {
+}: AuthProviderPropsType): React.ReactElement {
   const configApplied = useRef(false);
 
   if (configOverride && !configApplied.current) {
@@ -74,7 +74,7 @@ export function AuthProvider({
     error: queryError,
     refetch,
     isFetching,
-  } = useQuery<SessionResponse, Error>({
+  } = useQuery<SessionResponseType, Error>({
     queryKey: SESSION_QUERY_KEY,
     queryFn: fetchSession,
     enabled: !skipInitialCheck,
@@ -100,13 +100,13 @@ export function AuthProvider({
 
   const [error, setError] = useState<Error | null>(null);
 
-  const status: AuthStatus = useMemo(() => {
+  const status: AuthStatusType = useMemo(() => {
     if (isLoading || isFetching) return "loading";
     if (sessionData?.userDetails) return "authenticated";
     return "unauthenticated";
   }, [isLoading, isFetching, sessionData]);
 
-  const user: UserDetails | null = sessionData?.userDetails || null;
+  const user: UserDetailsType | null = sessionData?.userDetails || null;
   const staticBaseUrl: string | null = sessionData?.staticBaseUrl || null;
   const buildId: string | null = sessionData?.buildId || null;
   const isAuthenticated = status === "authenticated";
@@ -153,21 +153,21 @@ export function AuthProvider({
   // ============================================================
 
   const login = useCallback(
-    (provider?: AuthProviderName, options?: LoginOptions) => {
+    (provider?: AuthProviderNameType, options?: LoginOptionsType) => {
       initiateLogin(provider, options);
     },
     []
   );
 
   const logout = useCallback(
-    async (options?: LogoutOptions) => {
+    async (options?: LogoutOptionsType) => {
       queryClient.removeQueries({ queryKey: SESSION_QUERY_KEY });
       await performLogout(options);
     },
     [queryClient]
   );
 
-  const refreshSession = useCallback(async (): Promise<SessionResponse | null> => {
+  const refreshSession = useCallback(async (): Promise<SessionResponseType | null> => {
     // Prevent concurrent refreshes - return existing data if already fetching
     if (isFetching) {
       return sessionData || null;
@@ -208,7 +208,7 @@ export function AuthProvider({
   // CONTEXT VALUE
   // ============================================================
 
-  const contextValue: AuthContextValue = useMemo(
+  const contextValue: AuthContextValueType = useMemo(
     () => ({
       user,
       staticBaseUrl,
@@ -268,7 +268,7 @@ export function AuthProvider({
 // CONTEXT HOOK (internal)
 // ============================================================
 
-export function useAuthContext(): AuthContextValue {
+export function useAuthContext(): AuthContextValueType {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error("useAuth must be used within an AuthProvider");

@@ -9,11 +9,11 @@ import { useQuery } from "@tanstack/react-query";
 import type { Path } from "react-hook-form";
 
 import type {
-  UseFormOptions,
-  UseFormReturn,
-  BDOSchema,
-  FormSchemaConfig,
-  FormFieldConfig,
+  UseFormOptionsType,
+  UseFormReturnType,
+  BDOSchemaType,
+  FormSchemaConfigType,
+  FormFieldConfigType,
 } from "./types";
 
 import { processSchema, extractReferenceFields } from "./schemaParser.utils";
@@ -39,8 +39,8 @@ import {
 // ============================================================
 
 export function useForm<T extends Record<string, any> = Record<string, any>>(
-  options: UseFormOptions<T>
-): UseFormReturn<T> {
+  options: UseFormOptionsType<T>
+): UseFormReturnType<T> {
   const {
     source,
     operation,
@@ -52,18 +52,26 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     onSchemaError,
     skipSchemaFetch = false,
     schema: manualSchema,
-    draftOnEveryChange = false,
+    interactionMode = "interactive",
   } = options;
+
+  // Derived interaction mode flags
+  const isInteractiveMode = interactionMode === "interactive";
 
   // ============================================================
   // STATE MANAGEMENT
   // ============================================================
 
   const [schemaConfig, setSchemaConfig] =
-    useState<FormSchemaConfig | null>(null);
+    useState<FormSchemaConfigType | null>(null);
   const [referenceData, setReferenceData] = useState<Record<string, any[]>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastFormValues] = useState<Partial<T>>({});
+
+  // Interactive mode state
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [isCreatingDraft, setIsCreatingDraft] = useState(false);
+  const [draftError, setDraftError] = useState<Error | null>(null);
 
   // Prevent infinite loop in API calls
   const isComputingRef = useRef(false);
@@ -190,6 +198,61 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
   }, [schemaError]);
 
   // ============================================================
+  // INTERACTIVE MODE - INITIAL DRAFT CREATION
+  // ============================================================
+
+  // Create initial draft for interactive create mode
+  useEffect(() => {
+    // Only run for interactive mode + create operation + schema loaded + no draft yet
+    if (
+      !isInteractiveMode ||
+      operation !== "create" ||
+      !schemaConfig ||
+      !enabled ||
+      draftId
+    ) {
+      return;
+    }
+
+    const createInitialDraft = async () => {
+      setIsCreatingDraft(true);
+      setDraftError(null);
+
+      try {
+        const client = api<T>(source);
+        // Call PATCH /{bdo_id}/draft with empty payload to get draft ID
+        const response = await client.draftInteraction({});
+
+        // Store the draft ID
+        setDraftId(response._id);
+
+        // Apply any computed fields returned from API
+        if (response && typeof response === "object") {
+          Object.entries(response).forEach(([fieldName, value]) => {
+            // Skip _id as it's the draft ID, not a form field
+            if (fieldName === "_id") return;
+
+            const currentValue = rhfForm.getValues(fieldName as any);
+            if (currentValue !== value) {
+              rhfForm.setValue(fieldName as any, value as any, {
+                shouldDirty: false,
+                shouldValidate: false,
+              });
+            }
+          });
+        }
+      } catch (error) {
+        console.error("Failed to create initial draft:", error);
+        setDraftError(error as Error);
+      } finally {
+        setIsCreatingDraft(false);
+      }
+    };
+
+    createInitialDraft();
+  }, [isInteractiveMode, operation, schemaConfig, enabled, draftId, source, rhfForm]);
+
+  // ============================================================
   // COMPUTED FIELD DEPENDENCY TRACKING AND OPTIMIZATION
   // ============================================================
 
@@ -253,18 +316,25 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
   // Manual computation trigger - called on blur after validation passes
   const triggerComputationAfterValidation = useCallback(
     async (fieldName: string) => {
-      if (!schemaConfig || computedFieldDependencies.length === 0) {
+      if (!schemaConfig) {
         return;
       }
 
-      // Check if this field is a dependency for any computed fields
-      // If draftOnEveryChange is true, trigger for all fields
-      // If false (default), only trigger for computed field dependencies
-      const shouldTrigger =
-        draftOnEveryChange ||
-        computedFieldDependencies.includes(fieldName as Path<T>);
+      // Determine if draft should be triggered based on interaction mode
+      // Interactive mode: Always trigger draft API on blur
+      // Non-interactive mode: Only trigger for computed field dependencies
+      const shouldTrigger = isInteractiveMode
+        ? true // Interactive mode: always trigger
+        : (computedFieldDependencies.length > 0 &&
+              computedFieldDependencies.includes(fieldName as Path<T>));
 
       if (!shouldTrigger) {
+        return;
+      }
+
+      // For interactive create, check that we have a draftId (except for initial draft creation)
+      if (isInteractiveMode && operation === "create" && !draftId) {
+        console.warn("Interactive create mode: waiting for draft ID");
         return;
       }
 
@@ -303,6 +373,11 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
             // For update mode, always include _id
             if (operation === "update" && recordId && "_id" in currentValues) {
               (changedFields as any)._id = (currentValues as any)._id;
+            }
+
+            // For interactive create mode, include draft _id
+            if (isInteractiveMode && operation === "create" && draftId) {
+              (changedFields as any)._id = draftId;
             }
 
             // Use lastSyncedValues if available, otherwise use recordData (for update) or empty object (for create)
@@ -357,10 +432,18 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
 
             lastSyncedValuesRef.current = baselineBeforeApiCall;
 
-            const computedFieldsResponse =
-              operation === "update" && recordId
-                ? await client.draftPatch(recordId, payload)
-                : await client.draft(payload);
+            // Choose API method based on operation and interaction mode
+            let computedFieldsResponse;
+            if (operation === "update" && recordId) {
+              // Update mode: use draftPatch (both interactive and non-interactive)
+              computedFieldsResponse = await client.draftPatch(recordId, payload);
+            } else if (isInteractiveMode && draftId) {
+              // Interactive create: use draftInteraction with _id
+              computedFieldsResponse = await client.draftInteraction(payload);
+            } else {
+              // Non-interactive create: use draft (POST)
+              computedFieldsResponse = await client.draft(payload);
+            }
 
             // Apply computed fields returned from API
             if (
@@ -412,7 +495,8 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
       source,
       rhfForm,
       computedFieldDependencies,
-      draftOnEveryChange,
+      isInteractiveMode,
+      draftId,
     ]
   );
 
@@ -539,21 +623,51 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
               recordData as Partial<T> | undefined
             );
 
-            // Submit data to API
-            const result = await submitFormData<T>(
-              source,
-              operation,
-              cleanedData,
-              recordId
-            );
+            let result;
 
-            if (!result.success) {
-              throw result.error || new Error("Submission failed");
+            if (isInteractiveMode) {
+              // Interactive mode submission
+              const client = api<T>(source);
+
+              if (operation === "create") {
+                // Interactive create: must have draftId
+                if (!draftId) {
+                  throw new Error(
+                    "Interactive create mode requires a draft ID. Draft creation may have failed."
+                  );
+                }
+                // POST /{bdo_id}/draft with _id in payload
+                const response = await client.draft({
+                  ...cleanedData,
+                  _id: draftId,
+                } as any);
+                result = { success: true, data: response };
+              } else {
+                // Interactive update: POST /{bdo_id}/{id}/draft
+                const response = await client.draftUpdate(recordId!, cleanedData);
+                result = { success: true, data: response };
+              }
+            } else {
+              // Non-interactive mode: use existing submitFormData
+              result = await submitFormData<T>(
+                source,
+                operation,
+                cleanedData,
+                recordId
+              );
+
+              if (!result.success) {
+                throw result.error || new Error("Submission failed");
+              }
             }
 
             // Reset form for create operations
             if (operation === "create") {
               rhfForm.reset();
+              // Clear draft state for interactive mode
+              if (isInteractiveMode) {
+                setDraftId(null);
+              }
             }
 
             // Success callback with response data
@@ -579,6 +693,8 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
       operation,
       recordId,
       recordData,
+      isInteractiveMode,
+      draftId,
     ]
   );
 
@@ -587,16 +703,16 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
   // ============================================================
 
   const getField = useCallback(
-    <K extends keyof T>(fieldName: K): FormFieldConfig | null => {
+    <K extends keyof T>(fieldName: K): FormFieldConfigType | null => {
       return schemaConfig?.fields[fieldName as string] || null;
     },
     [schemaConfig]
   );
 
-  const getFields = useCallback((): Record<keyof T, FormFieldConfig> => {
-    if (!schemaConfig) return {} as Record<keyof T, FormFieldConfig>;
+  const getFields = useCallback((): Record<keyof T, FormFieldConfigType> => {
+    if (!schemaConfig) return {} as Record<keyof T, FormFieldConfigType>;
 
-    const typedFields: Record<keyof T, FormFieldConfig> = {} as any;
+    const typedFields: Record<keyof T, FormFieldConfigType> = {} as any;
     Object.entries(schemaConfig.fields).forEach(([key, field]) => {
       (typedFields as any)[key] = field;
     });
@@ -645,10 +761,13 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
   // COMPUTED PROPERTIES
   // ============================================================
 
+  // Loading state includes interactive mode draft creation
   const isLoadingInitialData =
-    isLoadingSchema || (operation === "update" && isLoadingRecord);
+    isLoadingSchema ||
+    (operation === "update" && isLoadingRecord) ||
+    (isInteractiveMode && operation === "create" && isCreatingDraft);
   const isLoading = isLoadingInitialData || isSubmitting;
-  const loadError = schemaError || recordError;
+  const loadError = schemaError || recordError || draftError;
   const hasError = !!loadError;
 
   const computedFields = useMemo<Array<keyof T>>(
@@ -801,20 +920,21 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     isSubmitting: rhfForm.formState.isSubmitting || isSubmitting,
     isSubmitSuccessful: rhfForm.formState.isSubmitSuccessful,
 
-    // BACKWARD COMPATIBILITY - Keep formState for existing components
-    formState: rhfForm.formState,
-
     // Loading states
     isLoadingInitialData,
     isLoadingRecord,
     isLoading,
+
+    // Interactive mode state
+    draftId,
+    isCreatingDraft,
 
     // Error handling
     loadError: loadError as Error | null,
     hasError,
 
     // Schema information
-    schema: schema as BDOSchema | null,
+    schema: schema as BDOSchemaType | null,
     schemaConfig,
     computedFields,
     requiredFields,

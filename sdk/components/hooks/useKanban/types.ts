@@ -4,8 +4,8 @@
 // Core TypeScript interfaces for the kanban board functionality
 // Following patterns from useTable and useForm
 
-import type { Condition, ConditionGroup, UseFilterReturn } from "../useFilter";
-import type { ConditionGroupOperator } from "../../../types/common";
+import type { ConditionType, ConditionGroupType, UseFilterReturnType } from "../useFilter";
+import type { ConditionGroupOperatorType } from "../../../types/common";
 
 // ============================================================
 // CORE DATA STRUCTURES
@@ -15,7 +15,7 @@ import type { ConditionGroupOperator } from "../../../types/common";
  * Static column configuration (no CRUD operations)
  * Columns are defined once in the hook configuration
  */
-export interface ColumnConfig {
+export interface ColumnConfigType {
   /** Unique column identifier */
   id: string;
   /** Display title */
@@ -32,7 +32,7 @@ export interface ColumnConfig {
  * Base kanban card interface
  * @template T - Custom fields for the card
  */
-export type KanbanCard<T = Record<string, any>> = {
+export type KanbanCardType<T = Record<string, any>> = {
   /** Unique identifier */
   _id: string;
   /** Card title */
@@ -50,12 +50,12 @@ export type KanbanCard<T = Record<string, any>> = {
 /**
  * Kanban card with custom fields
  */
-export type KanbanCardWithData<T> = KanbanCard<Record<string, never>> & T;
+export type KanbanCardWithDataType<T> = KanbanCardType<Record<string, never>> & T;
 
 /**
  * Base kanban card without custom fields
  */
-export interface BaseKanbanCard {
+export interface BaseKanbanCardType {
   /** Unique identifier */
   _id: string;
   /** Card title */
@@ -74,7 +74,7 @@ export interface BaseKanbanCard {
  * Kanban column interface
  * @template T - Custom fields for cards in this column
  */
-export interface KanbanColumn<T = Record<string, any>> {
+export interface KanbanColumnType<T = Record<string, any>> {
   /** Unique identifier */
   _id: string;
   /** Column title */
@@ -82,7 +82,7 @@ export interface KanbanColumn<T = Record<string, any>> {
   /** Position among columns (0-indexed) */
   position: number;
   /** Cards in this column */
-  cards: KanbanCard<T>[];
+  cards: KanbanCardType<T>[];
   /** Optional color for the column header */
   color?: string;
   /** Optional limit on number of cards (WIP limit) */
@@ -99,7 +99,7 @@ export interface KanbanColumn<T = Record<string, any>> {
  * Column definition for display and behavior
  * Similar to ColumnDefinition in useTable
  */
-export interface ColumnDefinition<T> {
+export interface ColumnDefinitionType<T> {
   /** Field name from the card type */
   fieldId: keyof T;
   /** Display label (optional, defaults to fieldId) */
@@ -119,11 +119,11 @@ export interface ColumnDefinition<T> {
 /**
  * Drag and drop state management
  */
-export interface DragDropState<T> {
+export interface DragDropStateType<T> {
   /** Whether a drag operation is in progress */
   isDragging: boolean;
   /** The card currently being dragged */
-  draggedCard: KanbanCard<T> | null;
+  draggedCard: KanbanCardType<T> | null;
   /** The column currently being hovered over */
   dragOverColumn: string | null;
   /** The position within the column being hovered over */
@@ -135,9 +135,9 @@ export interface DragDropState<T> {
 /**
  * Drag event handlers
  */
-export interface DragDropHandlers<T> {
+export interface DragDropHandlersType<T> {
   /** Handle drag start event */
-  handleDragStart: (event: DragEvent, card: KanbanCard<T>) => void;
+  handleDragStart: (event: DragEvent, card: KanbanCardType<T>) => void;
   /** Handle drag over event */
   handleDragOver: (event: DragEvent, columnId?: string) => void;
   /** Handle drop event */
@@ -145,9 +145,9 @@ export interface DragDropHandlers<T> {
   /** Handle drag end event */
   handleDragEnd: () => void;
   /** Handle keyboard navigation */
-  handleKeyDown: (event: KeyboardEvent, card: KanbanCard<T>) => void;
+  handleKeyDown: (event: KeyboardEvent, card: KanbanCardType<T>) => void;
   /** Handle touch start for mobile */
-  handleTouchStart: (event: TouchEvent, card: KanbanCard<T>) => void;
+  handleTouchStart: (event: TouchEvent, card: KanbanCardType<T>) => void;
   /** Handle touch move for mobile */
   handleTouchMove: (event: TouchEvent) => void;
   /** Handle touch end for mobile */
@@ -157,12 +157,12 @@ export interface DragDropHandlers<T> {
 /**
  * Combined drag and drop interface
  */
-export interface DragDropManager<T>
-  extends DragDropState<T>,
-    DragDropHandlers<T> {
+export interface DragDropManagerType<T>
+  extends DragDropStateType<T>,
+    DragDropHandlersType<T> {
   /** Announce moves for accessibility */
   announceMove: (
-    card: KanbanCard<T>,
+    card: KanbanCardType<T>,
     fromColumn: string,
     toColumn: string
   ) => void;
@@ -177,14 +177,12 @@ export interface DragDropManager<T>
 /**
  * Configuration options for the useKanban hook
  */
-export interface UseKanbanOptions<T> {
+export interface UseKanbanOptionsType<T> {
   /** Card data source identifier */
-  cardSource?: string;
-  /** Card data source identifier (alias for cardSource) */
-  source?: string;
+  source: string;
 
   /** Static column definitions (required) */
-  columns: ColumnConfig[];
+  columns: ColumnConfigType[];
 
   /** Enable drag and drop functionality */
   enableDragDrop?: boolean;
@@ -198,9 +196,9 @@ export interface UseKanbanOptions<T> {
   /** Initial state */
   initialState?: {
     /** Initial filter conditions */
-    filters?: Array<Condition | ConditionGroup>;
+    filters?: Array<ConditionType | ConditionGroupType>;
     /** Initial filter operator for combining filter conditions */
-    filterOperator?: ConditionGroupOperator;
+    filterOperator?: ConditionGroupOperatorType;
     /** Initial search query */
     search?: string;
     /** Initial column order */
@@ -214,12 +212,12 @@ export interface UseKanbanOptions<T> {
 
   /** Event callbacks */
   onCardMove?: (
-    card: KanbanCard<T>,
+    card: KanbanCardType<T>,
     fromColumnId: string,
     toColumnId: string
   ) => void;
-  onCardCreate?: (card: KanbanCard<T>) => void;
-  onCardUpdate?: (card: KanbanCard<T>) => void;
+  onCardCreate?: (card: KanbanCardType<T>) => void;
+  onCardUpdate?: (card: KanbanCardType<T>) => void;
   onCardDelete?: (cardId: string) => void;
   onSuccess?: (data: any) => void;
   onError?: (error: Error) => void;
@@ -232,13 +230,13 @@ export interface UseKanbanOptions<T> {
 /**
  * Card operations interface
  */
-export interface CardOperations<T> {
+export interface CardOperationsType<T> {
   /** Create a new card */
   create: (
-    card: Partial<KanbanCard<T>> & { columnId: string }
+    card: Partial<KanbanCardType<T>> & { columnId: string }
   ) => Promise<string>;
   /** Update an existing card */
-  update: (id: string, updates: Partial<KanbanCard<T>>) => Promise<void>;
+  update: (id: string, updates: Partial<KanbanCardType<T>>) => Promise<void>;
   /** Delete a card */
   delete: (id: string) => Promise<void>;
   /** Move a card to a different column */
@@ -255,7 +253,7 @@ export interface CardOperations<T> {
 /**
  * Search functionality interface
  */
-export interface SearchOperations {
+export interface SearchOperationsType {
   /** Current search query */
   query: string;
   /** Set search query */
@@ -268,13 +266,13 @@ export interface SearchOperations {
  * Main return interface for useKanban hook
  * Follows useTable pattern with flat access
  */
-export interface UseKanbanReturn<T> {
+export interface UseKanbanReturnType<T> {
   // ============================================================
   // DATA
   // ============================================================
 
   /** All columns with their cards */
-  columns: KanbanColumn<T>[];
+  columns: KanbanColumnType<T>[];
   /** Total number of cards across all columns */
   totalCards: number;
 
@@ -302,10 +300,10 @@ export interface UseKanbanReturn<T> {
 
   /** Create a new card */
   createCard: (
-    card: Partial<KanbanCard<T>> & { columnId: string }
+    card: Partial<KanbanCardType<T>> & { columnId: string }
   ) => Promise<string>;
   /** Update an existing card */
-  updateCard: (id: string, updates: Partial<KanbanCard<T>>) => Promise<void>;
+  updateCard: (id: string, updates: Partial<KanbanCardType<T>>) => Promise<void>;
   /** Delete a card */
   deleteCard: (id: string) => Promise<void>;
   /** Move a card to a different column */
@@ -334,7 +332,7 @@ export interface UseKanbanReturn<T> {
   // ============================================================
 
   /** Filter functionality */
-  filter: UseFilterReturn;
+  filter: UseFilterReturnType;
 
   // ============================================================
   // DRAG DROP (Flat Access)
@@ -343,11 +341,11 @@ export interface UseKanbanReturn<T> {
   /** Whether a drag operation is in progress */
   isDragging: boolean;
   /** The card currently being dragged */
-  draggedCard: KanbanCard<T> | null;
+  draggedCard: KanbanCardType<T> | null;
   /** The column currently being hovered over during drag */
   dragOverColumn: string | null;
   /** Handle drag start event */
-  handleDragStart: (event: DragEvent, card: KanbanCard<T>) => void;
+  handleDragStart: (event: DragEvent, card: KanbanCardType<T>) => void;
   /** Handle drag over event */
   handleDragOver: (event: DragEvent, columnId?: string) => void;
   /** Handle drop event */
@@ -355,7 +353,7 @@ export interface UseKanbanReturn<T> {
   /** Handle drag end event */
   handleDragEnd: () => void;
   /** Handle keyboard navigation */
-  handleKeyDown: (event: KeyboardEvent, card: KanbanCard<T>) => void;
+  handleKeyDown: (event: KeyboardEvent, card: KanbanCardType<T>) => void;
 
   // ============================================================
   // PROP GETTERS
@@ -364,7 +362,7 @@ export interface UseKanbanReturn<T> {
   /**
    * Get props for a draggable card
    */
-  getCardProps: (card: KanbanCard<T>) => {
+  getCardProps: (card: KanbanCardType<T>) => {
     draggable: boolean;
     role: string;
     "aria-selected": boolean;
@@ -404,21 +402,21 @@ export interface UseKanbanReturn<T> {
 /**
  * API response for card operations
  */
-export interface CardApiResponse<T> {
-  Data: KanbanCard<T>[];
+export interface CardApiResponseType<T> {
+  Data: KanbanCardType<T>[];
 }
 
 /**
  * API response for column operations
  */
-export interface ColumnApiResponse<T> {
-  Data: KanbanColumn<T>[];
+export interface ColumnApiResponseType<T> {
+  Data: KanbanColumnType<T>[];
 }
 
 /**
  * Request payload for moving a card
  */
-export interface MoveCardRequest {
+export interface MoveCardRequestType {
   cardId: string;
   toColumnId: string;
   position?: number;
@@ -427,7 +425,7 @@ export interface MoveCardRequest {
 /**
  * Request payload for reordering items
  */
-export interface ReorderRequest {
+export interface ReorderRequestType {
   itemIds: string[];
   containerId?: string;
 }
@@ -435,20 +433,20 @@ export interface ReorderRequest {
 /**
  * Bulk card update request
  */
-export interface BulkCardUpdateRequest<T> {
+export interface BulkCardUpdateRequestType<T> {
   updates: Array<{
     cardId: string;
-    data: Partial<KanbanCard<T>>;
+    data: Partial<KanbanCardType<T>>;
   }>;
 }
 
 /**
  * Bulk column update request
  */
-export interface BulkColumnUpdateRequest<T> {
+export interface BulkColumnUpdateRequestType<T> {
   updates: Array<{
     columnId: string;
-    data: Partial<KanbanColumn<T>>;
+    data: Partial<KanbanColumnType<T>>;
   }>;
 }
 
@@ -459,7 +457,7 @@ export interface BulkColumnUpdateRequest<T> {
 /**
  * Validation result interface
  */
-export interface ValidationResult {
+export interface ValidationResultType {
   isValid: boolean;
   message?: string;
   errors?: Array<{
@@ -471,18 +469,18 @@ export interface ValidationResult {
 /**
  * Card validation context
  */
-export interface CardValidationContext<T> {
-  card: Partial<KanbanCard<T>>;
-  column?: KanbanColumn<T>;
-  allColumns: KanbanColumn<T>[];
+export interface CardValidationContextType<T> {
+  card: Partial<KanbanCardType<T>>;
+  column?: KanbanColumnType<T>;
+  allColumns: KanbanColumnType<T>[];
 }
 
 /**
  * Column validation context
  */
-export interface ColumnValidationContext<T> {
-  column: Partial<KanbanColumn<T>>;
-  allColumns: KanbanColumn<T>[];
+export interface ColumnValidationContextType<T> {
+  column: Partial<KanbanColumnType<T>>;
+  allColumns: KanbanColumnType<T>[];
 }
 
 // ============================================================
@@ -492,7 +490,7 @@ export interface ColumnValidationContext<T> {
 /**
  * Kanban event types for callbacks
  */
-export type KanbanEventType =
+export type KanbanEventTypeType =
   | "card-created"
   | "card-updated"
   | "card-deleted"
@@ -502,12 +500,12 @@ export type KanbanEventType =
 /**
  * Kanban event data
  */
-export interface KanbanEvent<T> {
-  type: KanbanEventType;
+export interface KanbanEventType<T> {
+  type: KanbanEventTypeType;
   timestamp: Date;
   data: any;
-  card?: KanbanCard<T>;
-  column?: KanbanColumn<T>;
+  card?: KanbanCardType<T>;
+  column?: KanbanColumnType<T>;
   fromColumnId?: string;
   toColumnId?: string;
 }
@@ -519,25 +517,25 @@ export interface KanbanEvent<T> {
 /**
  * Utility type for extracting card type from column
  */
-export type ExtractCardType<C> = C extends KanbanColumn<infer T> ? T : never;
+export type ExtractCardTypeType<C> = C extends KanbanColumnType<infer T> ? T : never;
 
 /**
  * Utility type for making certain fields optional
  */
-export type PartialBy<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
+export type PartialByType<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
 
 /**
  * Utility type for card creation (auto-generated fields optional)
  */
-export type CreateCardInput<T> = PartialBy<
-  KanbanCard<T>,
+export type CreateCardInputType<T> = PartialByType<
+  KanbanCardType<T>,
   "_id" | "position" | "_created_at" | "_modified_at"
 >;
 
 /**
  * Utility type for column creation (auto-generated fields optional)
  */
-export type CreateColumnInput<T> = PartialBy<
-  KanbanColumn<T>,
+export type CreateColumnInputType<T> = PartialByType<
+  KanbanColumnType<T>,
   "_id" | "position" | "cards" | "_created_at" | "_modified_at"
 >;

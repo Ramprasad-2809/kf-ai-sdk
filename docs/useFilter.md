@@ -10,20 +10,20 @@
 ## Type Reference
 
 ```typescript
-import { useFilter, isCondition, isConditionGroup } from "@ram_28/kf-ai-sdk";
+import { useFilter, isCondition, isConditionGroup } from "@ram_28/kf-ai-sdk/filter";
 import type {
-  UseFilterOptions,
-  UseFilterReturn,
-  Condition,
-  ConditionGroup,
-  ConditionOperator,
-  ConditionGroupOperator,
-  Filter,
-  FilterRHSType,
-} from "@ram_28/kf-ai-sdk";
+  UseFilterOptionsType,
+  UseFilterReturnType,
+  ConditionType,
+  ConditionGroupType,
+  ConditionOperatorType,
+  ConditionGroupOperatorType,
+  FilterType,
+  FilterRHSTypeType,
+} from "@ram_28/kf-ai-sdk/filter/types";
 
 // Condition operators for comparing field values
-type ConditionOperator =
+type ConditionOperatorType =
   | "EQ" | "NE" | "GT" | "GTE" | "LT" | "LTE"
   | "Between" | "NotBetween"
   | "IN" | "NIN"
@@ -32,90 +32,90 @@ type ConditionOperator =
   | "MinLength" | "MaxLength";
 
 // Group operators for combining conditions
-type ConditionGroupOperator = "And" | "Or" | "Not";
+type ConditionGroupOperatorType = "And" | "Or" | "Not";
 
 // RHS type for condition values
-type FilterRHSType = "Constant" | "BOField" | "AppVariable";
+type FilterRHSTypeType = "Constant" | "BOField" | "AppVariable";
 
 // Leaf condition (matches API format)
-interface Condition {
+interface ConditionType {
   id?: string;
-  Operator: ConditionOperator;
+  Operator: ConditionOperatorType;
   LHSField: string;
   RHSValue: any;
-  RHSType?: FilterRHSType;
+  RHSType?: FilterRHSTypeType;
 }
 
 // Condition group (recursive structure)
-interface ConditionGroup {
+interface ConditionGroupType {
   id?: string;
-  Operator: ConditionGroupOperator;
-  Condition: Array<Condition | ConditionGroup>;
+  Operator: ConditionGroupOperatorType;
+  Condition: Array<ConditionType | ConditionGroupType>;
 }
 
-// Filter payload (alias for ConditionGroup)
-type Filter = ConditionGroup;
+// Filter payload (alias for ConditionGroupType)
+type FilterType = ConditionGroupType;
 
 // Hook options
-interface UseFilterOptions {
-  initialConditions?: Array<Condition | ConditionGroup>;
-  initialOperator?: ConditionGroupOperator;
+interface UseFilterOptionsType {
+  initialConditions?: Array<ConditionType | ConditionGroupType>;
+  initialOperator?: ConditionGroupOperatorType;
 }
 
 // Hook return type
-interface UseFilterReturn {
+interface UseFilterReturnType {
   // State (read-only)
-  operator: ConditionGroupOperator;
-  items: Array<Condition | ConditionGroup>;
-  payload: Filter | undefined;
+  operator: ConditionGroupOperatorType;
+  items: Array<ConditionType | ConditionGroupType>;
+  payload: FilterType | undefined;
   hasConditions: boolean;
 
   // Add operations (return id of created item)
-  add: (condition: Omit<Condition, "id">) => string;
-  addGroup: (operator: ConditionGroupOperator) => string;
-  addTo: (parentId: string, condition: Omit<Condition, "id">) => string;
-  addGroupTo: (parentId: string, operator: ConditionGroupOperator) => string;
+  add: (condition: Omit<ConditionType, "id">) => string;
+  addGroup: (operator: ConditionGroupOperatorType) => string;
+  addTo: (parentId: string, condition: Omit<ConditionType, "id">) => string;
+  addGroupTo: (parentId: string, operator: ConditionGroupOperatorType) => string;
 
   // Update operations
-  update: (id: string, updates: Partial<Omit<Condition, "id">>) => void;
-  updateOperator: (id: string, operator: ConditionGroupOperator) => void;
+  update: (id: string, updates: Partial<Omit<ConditionType, "id">>) => void;
+  updateOperator: (id: string, operator: ConditionGroupOperatorType) => void;
 
   // Remove & access
   remove: (id: string) => void;
-  get: (id: string) => Condition | ConditionGroup | undefined;
+  get: (id: string) => ConditionType | ConditionGroupType | undefined;
 
   // Utility
   clear: () => void;
-  setOperator: (op: ConditionGroupOperator) => void;
+  setOperator: (op: ConditionGroupOperatorType) => void;
 
   // Legacy (deprecated)
-  conditions: Array<Condition | ConditionGroup>;
+  conditions: Array<ConditionType | ConditionGroupType>;
 }
 
 // Type guards
-const isCondition: (item: Condition | ConditionGroup) => item is Condition;
-const isConditionGroup: (item: Condition | ConditionGroup) => item is ConditionGroup;
+const isCondition: (item: ConditionType | ConditionGroupType) => item is ConditionType;
+const isConditionGroup: (item: ConditionType | ConditionGroupType) => item is ConditionGroupType;
 ```
 
 ## Usage Example
 
 ```tsx
-import { useFilter, isCondition, isConditionGroup } from "@ram_28/kf-ai-sdk";
+import { useFilter, isCondition, isConditionGroup } from "@ram_28/kf-ai-sdk/filter";
 import type {
-  Condition,
-  ConditionGroup,
-  ConditionGroupOperator,
-  Filter,
-  UseFilterOptions,
-  UseFilterReturn,
-} from "@ram_28/kf-ai-sdk";
+  ConditionType,
+  ConditionGroupType,
+  ConditionGroupOperatorType,
+  FilterType,
+  UseFilterOptionsType,
+  UseFilterReturnType,
+} from "@ram_28/kf-ai-sdk/filter/types";
 
 function ProductFilterBuilder() {
   // Initialize hook with options
-  const options: UseFilterOptions = {
+  const options: UseFilterOptionsType = {
     initialOperator: "And",
   };
-  const filter: UseFilterReturn = useFilter(options);
+  const filter: UseFilterReturnType = useFilter(options);
 
   // Add a simple condition at root level
   const handleAddCondition = () => {
@@ -163,7 +163,7 @@ function ProductFilterBuilder() {
   };
 
   // Render filter tree recursively
-  const renderFilterItem = (item: Condition | ConditionGroup, depth = 0): JSX.Element => {
+  const renderFilterItem = (item: ConditionType | ConditionGroupType, depth = 0): JSX.Element => {
     const indent = { marginLeft: depth * 20 };
 
     if (isCondition(item)) {
@@ -187,7 +187,7 @@ function ProductFilterBuilder() {
             <select
               value={item.Operator}
               onChange={(e) =>
-                filter.updateOperator(item.id!, e.target.value as ConditionGroupOperator)
+                filter.updateOperator(item.id!, e.target.value as ConditionGroupOperatorType)
               }
             >
               <option value="And">AND</option>
@@ -212,7 +212,7 @@ function ProductFilterBuilder() {
 
   // Use filter payload in API call
   const handleApplyFilter = async () => {
-    const payload: Filter | undefined = filter.payload;
+    const payload: FilterType | undefined = filter.payload;
     if (payload) {
       console.log("API Payload (no ids):", JSON.stringify(payload, null, 2));
       const response = await fetch("/api/products", {

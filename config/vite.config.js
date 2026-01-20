@@ -11,13 +11,33 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, '../dist'),
     lib: {
-      entry: path.resolve(__dirname, '../sdk/index.ts'),
+      entry: {
+        // Main entry points
+        form: path.resolve(__dirname, '../sdk/form.ts'),
+        'form.types': path.resolve(__dirname, '../sdk/form.types.ts'),
+        table: path.resolve(__dirname, '../sdk/table.ts'),
+        'table.types': path.resolve(__dirname, '../sdk/table.types.ts'),
+        kanban: path.resolve(__dirname, '../sdk/kanban.ts'),
+        'kanban.types': path.resolve(__dirname, '../sdk/kanban.types.ts'),
+        'kanban.ui': path.resolve(__dirname, '../sdk/kanban.ui.ts'),
+        filter: path.resolve(__dirname, '../sdk/filter.ts'),
+        'filter.types': path.resolve(__dirname, '../sdk/filter.types.ts'),
+        auth: path.resolve(__dirname, '../sdk/auth.ts'),
+        'auth.types': path.resolve(__dirname, '../sdk/auth.types.ts'),
+        api: path.resolve(__dirname, '../sdk/api.ts'),
+        'api.types': path.resolve(__dirname, '../sdk/api.types.ts'),
+        utils: path.resolve(__dirname, '../sdk/utils.ts'),
+        types: path.resolve(__dirname, '../sdk/base-types.ts'),
+      },
       name: 'KfAiSdk',
       formats: ['es', 'cjs'],
-      fileName: (format) => `index.${format === 'es' ? 'mjs' : 'cjs'}`,
+      fileName: (format, entryName) => {
+        const ext = format === 'es' ? 'mjs' : 'cjs';
+        return `${entryName}.${ext}`;
+      },
     },
     rollupOptions: {
-      external: ['react', 'react-dom', '@tanstack/react-query', 'react-hook-form'],
+      external: ['react', 'react-dom'],
       output: {
         globals: {
           react: 'React',
@@ -25,6 +45,8 @@ export default defineConfig({
           '@tanstack/react-query': 'ReactQuery',
           'react-hook-form': 'ReactHookForm',
         },
+        // Preserve module structure for proper tree-shaking
+        preserveModules: false,
       },
     },
   },

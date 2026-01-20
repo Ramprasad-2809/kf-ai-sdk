@@ -10,22 +10,25 @@
 ## Type Reference
 
 ```typescript
-import { useKanban, isCondition, isConditionGroup } from "@ram_28/kf-ai-sdk";
+import { useKanban } from "@ram_28/kf-ai-sdk/kanban";
+import { isCondition, isConditionGroup } from "@ram_28/kf-ai-sdk/filter";
 import type {
-  UseKanbanOptions,
-  UseKanbanReturn,
-  KanbanCard,
-  KanbanColumn,
-  ColumnConfig,
-  Condition,
-  ConditionGroup,
-  ConditionGroupOperator,
-  Filter,
-  UseFilterReturn,
-} from "@ram_28/kf-ai-sdk";
+  UseKanbanOptionsType,
+  UseKanbanReturnType,
+  KanbanCardType,
+  KanbanColumnType,
+  ColumnConfigType,
+} from "@ram_28/kf-ai-sdk/kanban/types";
+import type {
+  ConditionType,
+  ConditionGroupType,
+  ConditionGroupOperatorType,
+  FilterType,
+  UseFilterReturnType,
+} from "@ram_28/kf-ai-sdk/filter/types";
 
 // Static column configuration
-interface ColumnConfig {
+interface ColumnConfigType {
   id: string;
   title: string;
   position: number;
@@ -34,7 +37,7 @@ interface ColumnConfig {
 }
 
 // Kanban card with custom fields
-type KanbanCard<T = Record<string, any>> = {
+type KanbanCardType<T = Record<string, any>> = {
   _id: string;
   title: string;
   columnId: string;
@@ -44,38 +47,38 @@ type KanbanCard<T = Record<string, any>> = {
 } & T;
 
 // Kanban column with cards
-interface KanbanColumn<T = Record<string, any>> {
+interface KanbanColumnType<T = Record<string, any>> {
   _id: string;
   title: string;
   position: number;
-  cards: KanbanCard<T>[];
+  cards: KanbanCardType<T>[];
   color?: string;
   limit?: number;
 }
 
 // Hook options
-interface UseKanbanOptions<T> {
+interface UseKanbanOptionsType<T> {
   source: string;
-  columns: ColumnConfig[];
+  columns: ColumnConfigType[];
   enableDragDrop?: boolean;
   enableFiltering?: boolean;
   enableSearch?: boolean;
   initialState?: {
-    filters?: Array<Condition | ConditionGroup>;
-    filterOperator?: ConditionGroupOperator;
+    filters?: Array<ConditionType | ConditionGroupType>;
+    filterOperator?: ConditionGroupOperatorType;
     search?: string;
   };
-  onCardMove?: (card: KanbanCard<T>, fromColumnId: string, toColumnId: string) => void;
-  onCardCreate?: (card: KanbanCard<T>) => void;
-  onCardUpdate?: (card: KanbanCard<T>) => void;
+  onCardMove?: (card: KanbanCardType<T>, fromColumnId: string, toColumnId: string) => void;
+  onCardCreate?: (card: KanbanCardType<T>) => void;
+  onCardUpdate?: (card: KanbanCardType<T>) => void;
   onCardDelete?: (cardId: string) => void;
   onError?: (error: Error) => void;
 }
 
 // Hook return type
-interface UseKanbanReturn<T> {
+interface UseKanbanReturnType<T> {
   // Data
-  columns: KanbanColumn<T>[];
+  columns: KanbanColumnType<T>[];
   totalCards: number;
 
   // Loading states
@@ -85,8 +88,8 @@ interface UseKanbanReturn<T> {
   error: Error | null;
 
   // Card operations
-  createCard: (card: Partial<KanbanCard<T>> & { columnId: string }) => Promise<string>;
-  updateCard: (id: string, updates: Partial<KanbanCard<T>>) => Promise<void>;
+  createCard: (card: Partial<KanbanCardType<T>> & { columnId: string }) => Promise<string>;
+  updateCard: (id: string, updates: Partial<KanbanCardType<T>>) => Promise<void>;
   deleteCard: (id: string) => Promise<void>;
   moveCard: (cardId: string, toColumnId: string, position?: number) => Promise<void>;
   reorderCards: (cardIds: string[], columnId: string) => Promise<void>;
@@ -97,15 +100,15 @@ interface UseKanbanReturn<T> {
   clearSearch: () => void;
 
   // Filter (uses useFilter internally)
-  filter: UseFilterReturn;
+  filter: UseFilterReturnType;
 
   // Drag drop state
   isDragging: boolean;
-  draggedCard: KanbanCard<T> | null;
+  draggedCard: KanbanCardType<T> | null;
   dragOverColumn: string | null;
 
   // Prop getters
-  getCardProps: (card: KanbanCard<T>) => {
+  getCardProps: (card: KanbanCardType<T>) => {
     draggable: boolean;
     role: string;
     "aria-selected": boolean;
@@ -130,26 +133,29 @@ interface UseKanbanReturn<T> {
 ## Usage Example
 
 ```tsx
-import { useKanban, isCondition, isConditionGroup } from "@ram_28/kf-ai-sdk";
+import { useKanban } from "@ram_28/kf-ai-sdk/kanban";
+import { isCondition, isConditionGroup } from "@ram_28/kf-ai-sdk/filter";
 import type {
-  UseKanbanOptions,
-  UseKanbanReturn,
-  KanbanCard,
-  KanbanColumn,
-  ColumnConfig,
-  Condition,
-  ConditionGroup,
-  ConditionGroupOperator,
-  Filter,
-  UseFilterReturn,
-} from "@ram_28/kf-ai-sdk";
+  UseKanbanOptionsType,
+  UseKanbanReturnType,
+  KanbanCardType,
+  KanbanColumnType,
+  ColumnConfigType,
+} from "@ram_28/kf-ai-sdk/kanban/types";
+import type {
+  ConditionType,
+  ConditionGroupType,
+  ConditionGroupOperatorType,
+  FilterType,
+  UseFilterReturnType,
+} from "@ram_28/kf-ai-sdk/filter/types";
 import { ProductRestocking, ProductRestockingType } from "../sources";
 import { Roles } from "../sources/roles";
 
 // Get the typed restocking record for the InventoryManager role
 type RestockingRecord = ProductRestockingType<typeof Roles.InventoryManager>;
 
-// Define custom card fields that extend the base KanbanCard
+// Define custom card fields that extend the base KanbanCardType
 interface RestockingCardData {
   productTitle: string;
   productSKU: string;
@@ -160,14 +166,14 @@ interface RestockingCardData {
 }
 
 // Full card type with base fields + custom data
-type RestockingCard = KanbanCard<RestockingCardData>;
+type RestockingCard = KanbanCardType<RestockingCardData>;
 
 function InventoryRestockingBoard() {
   // Instantiate the ProductRestocking source with role
   const restocking = new ProductRestocking(Roles.InventoryManager);
 
   // Static column configurations
-  const columnConfigs: ColumnConfig[] = [
+  const columnConfigs: ColumnConfigType[] = [
     { id: "LowStockAlert", title: "Low Stock Alert", position: 0, color: "red" },
     { id: "OrderPlaced", title: "Order Placed", position: 1, color: "yellow" },
     { id: "InTransit", title: "In Transit", position: 2, color: "blue" },
@@ -175,7 +181,7 @@ function InventoryRestockingBoard() {
   ];
 
   // Hook configuration with full options
-  const options: UseKanbanOptions<RestockingCardData> = {
+  const options: UseKanbanOptionsType<RestockingCardData> = {
     source: restocking._id, // Use the Business Object ID from the source class
     columns: columnConfigs,
     enableDragDrop: true,
@@ -193,10 +199,10 @@ function InventoryRestockingBoard() {
     onError: (error: Error) => console.error("Kanban error:", error.message),
   };
 
-  const kanban: UseKanbanReturn<RestockingCardData> = useKanban<RestockingCardData>(options);
+  const kanban: UseKanbanReturnType<RestockingCardData> = useKanban<RestockingCardData>(options);
 
-  // Access filter state (UseFilterReturn)
-  const filterState: UseFilterReturn = kanban.filter;
+  // Access filter state (UseFilterReturnType)
+  const filterState: UseFilterReturnType = kanban.filter;
 
   // Create a new card
   const handleCreateCard = async (columnId: string) => {
@@ -281,7 +287,7 @@ function InventoryRestockingBoard() {
   );
 
   // Get filter payload for debugging
-  const getFilterPayload = (): Filter | undefined => {
+  const getFilterPayload = (): FilterType | undefined => {
     return kanban.filter.payload;
   };
 
@@ -337,7 +343,7 @@ function InventoryRestockingBoard() {
 
       {/* Kanban Columns */}
       <div className="columns-container">
-        {kanban.columns.map((column: KanbanColumn<RestockingCardData>) => (
+        {kanban.columns.map((column: KanbanColumnType<RestockingCardData>) => (
           <div
             key={column._id}
             className={`column ${kanban.dragOverColumn === column._id ? "drag-over" : ""}`}

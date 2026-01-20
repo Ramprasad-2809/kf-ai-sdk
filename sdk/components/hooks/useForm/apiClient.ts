@@ -4,7 +4,7 @@
 // Handles schema fetching and form submissions
 
 import { api, getBdoSchema } from "../../../api";
-import type { BDOSchema, FormOperation, SubmissionResult } from "./types";
+import type { BDOSchemaType, FormOperationType, SubmissionResultType } from "./types";
 
 // ============================================================
 // SCHEMA FETCHING
@@ -13,7 +13,7 @@ import type { BDOSchema, FormOperation, SubmissionResult } from "./types";
 /**
  * Fetch BDO schema from backend metadata endpoint
  */
-export async function fetchFormSchema(source: string): Promise<BDOSchema> {
+export async function fetchFormSchema(source: string): Promise<BDOSchemaType> {
   try {
     // Use the new metadata API client to fetch BDO schema
     const bdoResp = await getBdoSchema(source);
@@ -25,7 +25,7 @@ export async function fetchFormSchema(source: string): Promise<BDOSchema> {
     }
 
     // Return the full BDO schema - the form processor will extract what it needs
-    return bdoSchema as BDOSchema;
+    return bdoSchema as BDOSchemaType;
   } catch (error) {
     console.error(`Schema fetch error for ${source}:`, error);
     throw new Error(
@@ -40,7 +40,7 @@ export async function fetchFormSchema(source: string): Promise<BDOSchema> {
 export async function fetchFormSchemaWithRetry(
   source: string,
   maxRetries: number = 3
-): Promise<BDOSchema> {
+): Promise<BDOSchemaType> {
   let lastError: Error;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -88,10 +88,10 @@ export async function fetchRecord<T = any>(
  */
 export async function submitFormData<T = any>(
   source: string,
-  operation: FormOperation,
+  operation: FormOperationType,
   data: Partial<T>,
   recordId?: string
-): Promise<SubmissionResult> {
+): Promise<SubmissionResultType> {
   try {
     let result;
 
@@ -242,7 +242,7 @@ export function validateFormData<T>(
 export function cleanFormData<T>(
   data: Partial<T>,
   computedFields: string[],
-  operation: FormOperation = "create",
+  operation: FormOperationType = "create",
   originalData?: Partial<T>
 ): Partial<T> {
   const cleanedData: Partial<T> = {};
@@ -404,7 +404,7 @@ export function clearCache(keyPrefix?: string): void {
  */
 export async function fetchFormSchemaWithCache(
   source: string
-): Promise<BDOSchema> {
+): Promise<BDOSchemaType> {
   const cacheKey = `schema:${source}`;
   const cached = getCacheData(cacheKey);
 

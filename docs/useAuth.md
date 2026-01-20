@@ -10,22 +10,22 @@
 ## Type Reference
 
 ```typescript
-import { useAuth, AuthProvider } from "@ram_28/kf-ai-sdk";
+import { useAuth, AuthProvider } from "@ram_28/kf-ai-sdk/auth";
 import type {
-  UseAuthReturn,
-  UserDetails,
-  AuthStatus,
-  AuthProviderProps,
-  AuthProviderName,
-  AuthConfig,
-  AuthEndpointConfig,
-  LoginOptions,
-  LogoutOptions,
-  SessionResponse,
-} from "@ram_28/kf-ai-sdk";
+  UseAuthReturnType,
+  UserDetailsType,
+  AuthStatusType,
+  AuthProviderPropsType,
+  AuthProviderNameType,
+  AuthConfigType,
+  AuthEndpointConfigType,
+  LoginOptionsType,
+  LogoutOptionsType,
+  SessionResponseType,
+} from "@ram_28/kf-ai-sdk/auth/types";
 
 // User details from session
-interface UserDetails {
+interface UserDetailsType {
   _id: string;
   _name: string;
   Role: string;
@@ -33,31 +33,31 @@ interface UserDetails {
 }
 
 // Session response from API
-interface SessionResponse {
-  userDetails: UserDetails;
+interface SessionResponseType {
+  userDetails: UserDetailsType;
   staticBaseUrl: string;
   buildId: string;
 }
 
 // Authentication status
-type AuthStatus = "loading" | "authenticated" | "unauthenticated";
+type AuthStatusType = "loading" | "authenticated" | "unauthenticated";
 
 // Supported auth providers
-type AuthProviderName = "google" | "microsoft" | "github" | "custom";
+type AuthProviderNameType = "google" | "microsoft" | "github" | "custom";
 
 // Auth endpoint configuration for a provider
-interface AuthEndpointConfig {
+interface AuthEndpointConfigType {
   loginPath: string;
   logoutPath?: string;
   callbackPath?: string;
 }
 
 // Global auth configuration
-interface AuthConfig {
+interface AuthConfigType {
   baseUrl?: string;
   sessionEndpoint: string;
-  providers: Partial<Record<AuthProviderName, AuthEndpointConfig>>;
-  defaultProvider: AuthProviderName;
+  providers: Partial<Record<AuthProviderNameType, AuthEndpointConfigType>>;
+  defaultProvider: AuthProviderNameType;
   autoRedirect: boolean;
   loginRedirectUrl?: string;
   callbackUrl?: string;
@@ -69,10 +69,10 @@ interface AuthConfig {
 }
 
 // AuthProvider component props
-interface AuthProviderProps {
+interface AuthProviderPropsType {
   children: React.ReactNode;
-  config?: Partial<AuthConfig>;
-  onAuthChange?: (status: AuthStatus, user: UserDetails | null) => void;
+  config?: Partial<AuthConfigType>;
+  onAuthChange?: (status: AuthStatusType, user: UserDetailsType | null) => void;
   onError?: (error: Error) => void;
   loadingComponent?: React.ReactNode;
   unauthenticatedComponent?: React.ReactNode;
@@ -80,31 +80,31 @@ interface AuthProviderProps {
 }
 
 // Login options
-interface LoginOptions {
+interface LoginOptionsType {
   callbackUrl?: string;
   params?: Record<string, string>;
 }
 
 // Logout options
-interface LogoutOptions {
+interface LogoutOptionsType {
   redirectUrl?: string;
   callLogoutEndpoint?: boolean;
 }
 
 // Hook return type
-interface UseAuthReturn {
+interface UseAuthReturnType {
   // User state
-  user: UserDetails | null;
+  user: UserDetailsType | null;
   staticBaseUrl: string | null;
   buildId: string | null;
-  status: AuthStatus;
+  status: AuthStatusType;
   isAuthenticated: boolean;
   isLoading: boolean;
 
   // Auth operations
-  login: (provider?: AuthProviderName, options?: LoginOptions) => void;
-  logout: (options?: LogoutOptions) => Promise<void>;
-  refreshSession: () => Promise<SessionResponse | null>;
+  login: (provider?: AuthProviderNameType, options?: LoginOptionsType) => void;
+  logout: (options?: LogoutOptionsType) => Promise<void>;
+  refreshSession: () => Promise<SessionResponseType | null>;
   hasRole: (role: string) => boolean;
   hasAnyRole: (roles: string[]) => boolean;
 
@@ -117,25 +117,25 @@ interface UseAuthReturn {
 ## Usage Example
 
 ```tsx
-import { useAuth, AuthProvider } from "@ram_28/kf-ai-sdk";
+import { useAuth, AuthProvider } from "@ram_28/kf-ai-sdk/auth";
 import type {
-  UseAuthReturn,
-  UserDetails,
-  AuthStatus,
-  AuthProviderProps,
-  AuthProviderName,
-  AuthConfig,
-  AuthEndpointConfig,
-  LoginOptions,
-  LogoutOptions,
-  SessionResponse,
-} from "@ram_28/kf-ai-sdk";
+  UseAuthReturnType,
+  UserDetailsType,
+  AuthStatusType,
+  AuthProviderPropsType,
+  AuthProviderNameType,
+  AuthConfigType,
+  AuthEndpointConfigType,
+  LoginOptionsType,
+  LogoutOptionsType,
+  SessionResponseType,
+} from "@ram_28/kf-ai-sdk/auth/types";
 
 // Define available roles
 type Role = "Admin" | "Buyer" | "Seller" | "InventoryManager";
 
 // Auth configuration
-const authConfig: Partial<AuthConfig> = {
+const authConfig: Partial<AuthConfigType> = {
   sessionEndpoint: "/api/id",
   defaultProvider: "google",
   autoRedirect: false,
@@ -157,7 +157,7 @@ const authConfig: Partial<AuthConfig> = {
 // App wrapper with AuthProvider
 function App() {
   // Auth status change handler
-  const handleAuthChange = (status: AuthStatus, user: UserDetails | null) => {
+  const handleAuthChange = (status: AuthStatusType, user: UserDetailsType | null) => {
     console.log("Auth status:", status, "User:", user?._name);
   };
 
@@ -166,8 +166,8 @@ function App() {
     console.error("Auth error:", error.message);
   };
 
-  // AuthProviderProps configuration
-  const providerProps: AuthProviderProps = {
+  // AuthProviderPropsType configuration
+  const providerProps: AuthProviderPropsType = {
     children: <AppRoutes />,
     config: authConfig,
     onAuthChange: handleAuthChange,
@@ -182,11 +182,11 @@ function App() {
 
 // Login page component
 function LoginPage() {
-  const auth: UseAuthReturn = useAuth();
+  const auth: UseAuthReturnType = useAuth();
 
   // Login with Google
   const handleGoogleLogin = () => {
-    const options: LoginOptions = {
+    const options: LoginOptionsType = {
       callbackUrl: "/dashboard",
     };
     auth.login("google", options);
@@ -194,7 +194,7 @@ function LoginPage() {
 
   // Login with Microsoft
   const handleMicrosoftLogin = () => {
-    const options: LoginOptions = {
+    const options: LoginOptionsType = {
       callbackUrl: "/dashboard",
       params: { prompt: "select_account" },
     };
@@ -207,7 +207,7 @@ function LoginPage() {
   };
 
   // Access auth status
-  const status: AuthStatus = auth.status;
+  const status: AuthStatusType = auth.status;
 
   return (
     <div className="login-page">
@@ -246,11 +246,11 @@ function LoginPage() {
 
 // Dashboard component (authenticated users)
 function Dashboard() {
-  const auth: UseAuthReturn = useAuth();
+  const auth: UseAuthReturnType = useAuth();
 
   // Logout handler
   const handleLogout = async () => {
-    const options: LogoutOptions = {
+    const options: LogoutOptionsType = {
       redirectUrl: "/login",
       callLogoutEndpoint: true,
     };
@@ -259,7 +259,7 @@ function Dashboard() {
 
   // Refresh session handler
   const handleRefreshSession = async () => {
-    const session: SessionResponse | null = await auth.refreshSession();
+    const session: SessionResponseType | null = await auth.refreshSession();
     if (session) {
       console.log("Session refreshed:", session.userDetails._name);
       console.log("Static URL:", session.staticBaseUrl);
@@ -268,7 +268,7 @@ function Dashboard() {
   };
 
   // Access user details
-  const user: UserDetails | null = auth.user;
+  const user: UserDetailsType | null = auth.user;
 
   // Role-based access control
   const isAdmin: boolean = auth.hasRole("Admin");
@@ -355,7 +355,7 @@ function ProtectedRoute({
   children: React.ReactNode;
   requiredRoles?: string[];
 }) {
-  const auth: UseAuthReturn = useAuth();
+  const auth: UseAuthReturnType = useAuth();
 
   // Show loading while checking auth
   if (auth.isLoading) {

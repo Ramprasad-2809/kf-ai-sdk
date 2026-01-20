@@ -4,10 +4,10 @@
 // Evaluates backend expression trees for form validation
 
 import type {
-  ExpressionTree,
-  ExpressionContext,
-  FieldValidationResult,
-  SchemaValidationRule,
+  ExpressionTreeType,
+  ExpressionContextType,
+  FieldValidationResultType,
+  SchemaValidationRuleType,
 } from "./types";
 
 // ============================================================
@@ -137,7 +137,7 @@ const FUNCTIONS = {
 /**
  * Evaluate an expression tree node
  */
-function evaluateNode(node: ExpressionTree, context: ExpressionContext): any {
+function evaluateNode(node: ExpressionTreeType, context: ExpressionContextType): any {
   switch (node.Type) {
     case "Literal":
       return node.Value;
@@ -217,8 +217,8 @@ function evaluateNode(node: ExpressionTree, context: ExpressionContext): any {
  * Get value from identifier based on source
  */
 function getIdentifierValue(
-  node: ExpressionTree,
-  context: ExpressionContext
+  node: ExpressionTreeType,
+  context: ExpressionContextType
 ): any {
   const { Name, Source } = node;
 
@@ -292,8 +292,8 @@ function evaluateBinaryOperation(operator: string, left: any, right: any): any {
  */
 function evaluateLogicalOperation(
   operator: string,
-  args: ExpressionTree[],
-  context: ExpressionContext
+  args: ExpressionTreeType[],
+  context: ExpressionContextType
 ): boolean {
   switch (operator) {
     case "AND":
@@ -313,11 +313,11 @@ function evaluateLogicalOperation(
  * Evaluate a complete expression tree
  */
 export function evaluateExpression(
-  expressionTree: ExpressionTree,
+  expressionTree: ExpressionTreeType,
   formValues: Record<string, any>,
   referenceData: Record<string, any> = {}
 ): any {
-  const context: ExpressionContext = {
+  const context: ExpressionContextType = {
     formValues,
     systemValues: getSystemValues(),
     referenceData,
@@ -337,10 +337,10 @@ export function evaluateExpression(
 export function validateField<T = Record<string, any>>(
   fieldName: string,
   fieldValue: any,
-  validationRules: SchemaValidationRule[],
+  validationRules: SchemaValidationRuleType[],
   formValues: T,
   referenceData: Record<string, any> = {}
-): FieldValidationResult<T> {
+): FieldValidationResultType<T> {
   // If no validation rules, field is valid
   if (!validationRules || validationRules.length === 0) {
     return { isValid: true };
@@ -380,13 +380,13 @@ export function validateField<T = Record<string, any>>(
 export function validateCrossField<T = Record<string, any>>(
   validationRules: Array<{
     Id: string;
-    Condition: { ExpressionTree: ExpressionTree };
+    Condition: { ExpressionTree: ExpressionTreeType };
     Message: string;
   }>,
   formValues: T,
   referenceData: Record<string, any> = {}
-): FieldValidationResult<T>[] {
-  const results: FieldValidationResult<T>[] = [];
+): FieldValidationResultType<T>[] {
+  const results: FieldValidationResultType<T>[] = [];
 
   for (const rule of validationRules) {
     try {
@@ -415,7 +415,7 @@ export function validateCrossField<T = Record<string, any>>(
  * Calculate computed field value
  */
 export function calculateComputedValue(
-  expressionTree: ExpressionTree,
+  expressionTree: ExpressionTreeType,
   formValues: Record<string, any>,
   referenceData: Record<string, any> = {}
 ): any {
@@ -431,7 +431,7 @@ export function calculateComputedValue(
  * Calculate default field value
  */
 export function calculateDefaultValue(
-  expressionTree: ExpressionTree,
+  expressionTree: ExpressionTreeType,
   formValues: Record<string, any> = {},
   referenceData: Record<string, any> = {}
 ): any {

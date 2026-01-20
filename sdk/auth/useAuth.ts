@@ -4,7 +4,7 @@
 // Main hook for consuming authentication state
 
 import { useMemo } from "react";
-import type { UseAuthReturn } from "./types";
+import type { UseAuthReturnType } from "./types";
 import { useAuthContext } from "./AuthProvider";
 
 /**
@@ -31,7 +31,7 @@ import { useAuthContext } from "./AuthProvider";
  * }
  * ```
  */
-export function useAuth(): UseAuthReturn {
+export function useAuth(): UseAuthReturnType {
   const context = useAuthContext();
 
   return useMemo(

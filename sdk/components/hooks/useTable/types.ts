@@ -1,11 +1,11 @@
-import type { ListResponse, ConditionGroupOperator } from "../../../types/common";
-import type { Condition, ConditionGroup, UseFilterReturn } from "../useFilter";
+import type { ListResponseType, ConditionGroupOperatorType } from "../../../types/common";
+import type { ConditionType, ConditionGroupType, UseFilterReturnType } from "../useFilter";
 
 // ============================================================
 // TYPE DEFINITIONS
 // ============================================================
 
-export interface ColumnDefinition<T> {
+export interface ColumnDefinitionType<T> {
   /** Field name from the data type */
   fieldId: keyof T;
   /** Display label (optional, defaults to fieldId) */
@@ -18,11 +18,11 @@ export interface ColumnDefinition<T> {
   transform?: (value: any, row: T) => React.ReactNode;
 }
 
-export interface UseTableOptions<T> {
+export interface UseTableOptionsType<T> {
   /** Data source identifier */
   source: string;
   /** Column configurations */
-  columns: ColumnDefinition<T>[];
+  columns: ColumnDefinitionType<T>[];
   /** Enable sorting functionality */
   enableSorting?: boolean;
   /** Enable filtering functionality */
@@ -39,8 +39,8 @@ export interface UseTableOptions<T> {
       field: keyof T;
       direction: "asc" | "desc";
     };
-    filters?: Array<Condition | ConditionGroup>;
-    filterOperator?: ConditionGroupOperator;
+    filters?: Array<ConditionType | ConditionGroupType>;
+    filterOperator?: ConditionGroupOperatorType;
   };
   /** Error callback */
   onError?: (error: Error) => void;
@@ -48,7 +48,7 @@ export interface UseTableOptions<T> {
   onSuccess?: (data: T[]) => void;
 }
 
-export interface UseTableReturn<T> {
+export interface UseTableReturnType<T> {
   // Data
   rows: T[];
   totalItems: number;
@@ -77,7 +77,7 @@ export interface UseTableReturn<T> {
   };
 
   // Filter (Simplified chainable API)
-  filter: UseFilterReturn;
+  filter: UseFilterReturnType;
 
   // Pagination (Flat Access)
   pagination: {
@@ -94,5 +94,5 @@ export interface UseTableReturn<T> {
   };
 
   // Operations
-  refetch: () => Promise<ListResponse<T>>;
+  refetch: () => Promise<ListResponseType<T>>;
 }

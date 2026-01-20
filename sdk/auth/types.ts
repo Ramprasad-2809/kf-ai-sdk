@@ -5,7 +5,7 @@
 /**
  * User details returned from the session endpoint
  */
-export interface UserDetails {
+export interface UserDetailsType {
   _id: string;
   _name: string;
   Role: string;
@@ -15,8 +15,8 @@ export interface UserDetails {
 /**
  * Session response from /api/id endpoint
  */
-export interface SessionResponse {
-  userDetails: UserDetails;
+export interface SessionResponseType {
+  userDetails: UserDetailsType;
   staticBaseUrl: string;
   buildId: string;
 }
@@ -24,17 +24,17 @@ export interface SessionResponse {
 /**
  * Authentication status
  */
-export type AuthStatus = "loading" | "authenticated" | "unauthenticated";
+export type AuthStatusType = "loading" | "authenticated" | "unauthenticated";
 
 /**
  * Authentication provider type (extensible for multiple OAuth providers)
  */
-export type AuthProviderName = "google" | "microsoft" | "github" | "custom";
+export type AuthProviderNameType = "google" | "microsoft" | "github" | "custom";
 
 /**
  * Auth endpoint configuration for a specific provider
  */
-export interface AuthEndpointConfig {
+export interface AuthEndpointConfigType {
   /** Login endpoint path (e.g., "/api/auth/google/login") */
   loginPath: string;
   /** Optional logout endpoint path */
@@ -46,7 +46,7 @@ export interface AuthEndpointConfig {
 /**
  * Global authentication configuration
  */
-export interface AuthConfig {
+export interface AuthConfigType {
   /** Base URL for auth endpoints (defaults to apiBaseUrl) */
   baseUrl?: string;
 
@@ -54,10 +54,10 @@ export interface AuthConfig {
   sessionEndpoint: string;
 
   /** Auth provider configurations */
-  providers: Partial<Record<AuthProviderName, AuthEndpointConfig>>;
+  providers: Partial<Record<AuthProviderNameType, AuthEndpointConfigType>>;
 
   /** Default provider to use for login */
-  defaultProvider: AuthProviderName;
+  defaultProvider: AuthProviderNameType;
 
   /** Auto-redirect to login when unauthenticated */
   autoRedirect: boolean;
@@ -90,14 +90,14 @@ export interface AuthConfig {
 /**
  * AuthProvider component props
  */
-export interface AuthProviderProps {
+export interface AuthProviderPropsType {
   children: React.ReactNode;
 
   /** Override global config for this provider instance */
-  config?: Partial<AuthConfig>;
+  config?: Partial<AuthConfigType>;
 
   /** Callback when authentication status changes */
-  onAuthChange?: (status: AuthStatus, user: UserDetails | null) => void;
+  onAuthChange?: (status: AuthStatusType, user: UserDetailsType | null) => void;
 
   /** Callback on authentication error */
   onError?: (error: Error) => void;
@@ -115,7 +115,7 @@ export interface AuthProviderProps {
 /**
  * Options for login operation
  */
-export interface LoginOptions {
+export interface LoginOptionsType {
   /** URL to redirect after successful login */
   callbackUrl?: string;
   /** Additional query parameters for login URL */
@@ -125,7 +125,7 @@ export interface LoginOptions {
 /**
  * Options for logout operation
  */
-export interface LogoutOptions {
+export interface LogoutOptionsType {
   /** URL to redirect after logout */
   redirectUrl?: string;
   /** Whether to call logout endpoint (default: true) */
@@ -135,13 +135,13 @@ export interface LogoutOptions {
 /**
  * Return type for useAuth hook
  */
-export interface UseAuthReturn {
+export interface UseAuthReturnType {
   // ============================================================
   // USER STATE
   // ============================================================
 
   /** Current authenticated user (null if not authenticated) */
-  user: UserDetails | null;
+  user: UserDetailsType | null;
 
   /** Static base URL from session */
   staticBaseUrl: string | null;
@@ -150,7 +150,7 @@ export interface UseAuthReturn {
   buildId: string | null;
 
   /** Current authentication status */
-  status: AuthStatus;
+  status: AuthStatusType;
 
   /** Convenience boolean for authenticated state */
   isAuthenticated: boolean;
@@ -167,18 +167,18 @@ export interface UseAuthReturn {
    * @param provider - Auth provider to use (defaults to configured default)
    * @param options - Additional options for login
    */
-  login: (provider?: AuthProviderName, options?: LoginOptions) => void;
+  login: (provider?: AuthProviderNameType, options?: LoginOptionsType) => void;
 
   /**
    * Logout the current user
    * @param options - Additional options for logout
    */
-  logout: (options?: LogoutOptions) => Promise<void>;
+  logout: (options?: LogoutOptionsType) => Promise<void>;
 
   /**
    * Manually refresh the session
    */
-  refreshSession: () => Promise<SessionResponse | null>;
+  refreshSession: () => Promise<SessionResponseType | null>;
 
   /**
    * Check if user has a specific role
@@ -204,7 +204,7 @@ export interface UseAuthReturn {
 /**
  * Auth context value (internal)
  */
-export interface AuthContextValue extends UseAuthReturn {
+export interface AuthContextValueType extends UseAuthReturnType {
   /** Internal: force re-check session */
   _forceCheck: () => void;
 }

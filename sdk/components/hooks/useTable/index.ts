@@ -2,4 +2,8 @@
 export { useTable } from "./useTable";
 
 // Types
-export type { ColumnDefinition, UseTableOptions, UseTableReturn } from "./types";
+export type {
+  ColumnDefinitionType,
+  UseTableOptionsType,
+  UseTableReturnType,
+} from "./types";
