@@ -42,14 +42,12 @@ export default defineConfig({
         'react-dom',
         'react/jsx-runtime',
         '@tanstack/react-query',
-        'react-hook-form',
       ],
       output: {
         globals: {
           react: 'React',
           'react-dom': 'ReactDOM',
           '@tanstack/react-query': 'ReactQuery',
-          'react-hook-form': 'ReactHookForm',
         },
         // Preserve module structure for proper tree-shaking
         preserveModules: false,

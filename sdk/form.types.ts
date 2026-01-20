@@ -3,6 +3,15 @@
 // @ram_28/kf-ai-sdk/form/types
 // ============================================================
 
+// Re-export commonly used types from react-hook-form
+export type {
+  FieldErrors,
+  UseFormRegister,
+  FormState,
+  Path,
+  PathValue,
+} from "react-hook-form";
+
 export type {
   // Core hook types
   UseFormOptionsType,
