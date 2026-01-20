@@ -156,11 +156,13 @@
         "types": "./dist/base-types.d.ts",
         "default": "./dist/types.cjs"
       }
-    }
+    },
+    "./docs/*": "./docs/*"
   },
   "files": [
     "dist",
     "sdk",
+    "docs",
     "README.md",
     "LICENSE"
   ],
