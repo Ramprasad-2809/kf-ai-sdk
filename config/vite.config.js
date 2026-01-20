@@ -37,7 +37,7 @@ export default defineConfig({
       },
     },
     rollupOptions: {
-      external: ['react', 'react-dom', '@tanstack/react-query', 'react-hook-form'],
+      external: ['react', 'react-dom'],
       output: {
         globals: {
           react: 'React',
