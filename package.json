@@ -1,6 +1,6 @@
 {
   "name": "@ram_28/kf-ai-sdk",
-  "version": "1.0.15",
+  "version": "1.0.16",
   "description": "Type-safe, AI-driven SDK for building modern web applications with role-based access control",
   "author": "Ramprasad",
   "license": "MIT",

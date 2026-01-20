@@ -43,14 +43,14 @@ import {
   clearFormCache,
 } from "@ram_28/kf-ai-sdk/form";
 
-// Re-exported from react-hook-form
+// Re-exported from react-hook-form (available from SDK)
 import type {
   UseFormRegister,
   FieldErrors,
   FormState,
   Path,
   PathValue,
-} from "react-hook-form";
+} from "@ram_28/kf-ai-sdk/form.types";
 
 // FieldErrors type from react-hook-form
 // Maps field names to their error objects (message, type, etc.)
@@ -307,7 +307,7 @@ import type {
   UseTableReturnType,
   ColumnDefinitionType,
 } from "@ram_28/kf-ai-sdk/table/types";
-import type { FieldErrors } from "react-hook-form";
+import type { FieldErrors } from "@ram_28/kf-ai-sdk/form.types";
 import { Product, ProductType } from "../sources";
 import { Roles } from "../sources/roles";
 
