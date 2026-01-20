@@ -213,7 +213,6 @@ interface UseFormOptions<T> {
   enabled?: boolean;
   userRole?: string;
   schema?: BDOSchema;
-  draftOnEveryChange?: boolean;
   onSchemaError?: (error: Error) => void; // Schema loading errors only
 }
 
@@ -259,6 +258,10 @@ interface UseFormReturn<T> {
   isLoadingInitialData: boolean;
   isLoadingRecord: boolean;
   isLoading: boolean;
+
+  // Draft state
+  draftId: string | null;
+  isCreatingDraft: boolean;
 
   // Error handling
   loadError: Error | null;

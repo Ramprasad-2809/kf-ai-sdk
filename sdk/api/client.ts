@@ -69,6 +69,15 @@ export interface ResourceClient<T = any> {
    */
   draftPatch(id: string, data: Partial<T>): Promise<DraftResponse>;
 
+  /**
+   * Interactive draft - create/update draft without instance ID
+   * PATCH /{bo_id}/draft
+   * Used in interactive mode for create operations
+   */
+  draftInteraction(
+    data: Partial<T> & { _id?: string }
+  ): Promise<DraftResponse & { _id: string }>;
+
   // ============================================================
   // QUERY OPERATIONS
   // ============================================================
@@ -349,6 +358,24 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
       if (!response.ok) {
         throw new Error(
           `Failed to patch draft for ${bo_id} ${id}: ${response.statusText}`
+        );
+      }
+
+      return response.json();
+    },
+
+    async draftInteraction(
+      data: Partial<T> & { _id?: string }
+    ): Promise<DraftResponse & { _id: string }> {
+      const response = await fetch(`${baseUrl}/api/app/${bo_id}/draft`, {
+        method: "PATCH",
+        headers: defaultHeaders,
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to create interactive draft for ${bo_id}: ${response.statusText}`
         );
       }
 

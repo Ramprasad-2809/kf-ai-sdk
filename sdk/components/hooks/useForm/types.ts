@@ -230,6 +230,13 @@ export interface BDOSchema {
 export type FormOperation = "create" | "update";
 
 /**
+ * Form interaction mode
+ * - "interactive" (default): Real-time server-side validation and computation on every field blur
+ * - "non-interactive": Draft only for computed field dependencies (legacy behavior)
+ */
+export type InteractionMode = "interactive" | "non-interactive";
+
+/**
  * Form validation mode (from react-hook-form)
  */
 export type FormMode = Mode;
@@ -295,8 +302,17 @@ export interface UseFormOptions<
    * Trigger draft API call on every field change (after validation passes)
    * If true: draft API is called for any field change
    * If false (default): draft API is called only when computed field dependencies change
+   * @deprecated Use interactionMode: "interactive" instead
    */
   draftOnEveryChange?: boolean;
+
+  /**
+   * Form interaction mode
+   * - "interactive" (default): Real-time server-side validation and computation on every field blur
+   * - "non-interactive": Draft only for computed field dependencies (legacy behavior)
+   * @default "interactive"
+   */
+  interactionMode?: InteractionMode;
 }
 
 // ============================================================
@@ -535,6 +551,16 @@ export interface UseFormReturn<
 
   /** Any loading state active */
   isLoading: boolean;
+
+  // ============================================================
+  // INTERACTIVE MODE STATE
+  // ============================================================
+
+  /** Draft ID for interactive create mode */
+  draftId: string | null;
+
+  /** Whether draft is being created (interactive create only) */
+  isCreatingDraft: boolean;
 
   // ============================================================
   // ERROR HANDLING
