@@ -184,7 +184,7 @@ function ProductsPage() {
 
   // Add a filter with dynamic operator selection
   const addFilter = (field: keyof BuyerProduct, operator: ConditionOperatorType, value: any) => {
-    table.filter.add({
+    table.filter.addCondition({
       Operator: operator,
       LHSField: field as string,
       RHSValue: value,
@@ -193,15 +193,15 @@ function ProductsPage() {
 
   // Add a simple filter condition
   const filterByCategory = (category: string) => {
-    table.filter.clear();
+    table.filter.clearAllConditions();
     addFilter("Category", "EQ", category);
   };
 
   // Add a complex nested filter (Price > 100 OR Stock < 10)
   const addComplexFilter = () => {
-    const groupId = table.filter.addGroup("Or");
-    table.filter.addTo(groupId, { Operator: "GT", LHSField: "Price", RHSValue: 100 });
-    table.filter.addTo(groupId, { Operator: "LT", LHSField: "Stock", RHSValue: 10 });
+    const groupId = table.filter.addConditionGroup("Or");
+    table.filter.addCondition({ Operator: "GT", LHSField: "Price", RHSValue: 100 }, groupId);
+    table.filter.addCondition({ Operator: "LT", LHSField: "Stock", RHSValue: 10 }, groupId);
   };
 
   // Display active filters using type guards
@@ -212,7 +212,7 @@ function ProductsPage() {
           return (
             <span key={item.id} className="filter-tag">
               {item.LHSField} {item.Operator} {String(item.RHSValue)}
-              <button onClick={() => table.filter.remove(item.id!)}>×</button>
+              <button onClick={() => table.filter.removeCondition(item.id!)}>×</button>
             </span>
           );
         }
@@ -220,7 +220,7 @@ function ProductsPage() {
           return (
             <span key={item.id} className="filter-group-tag">
               {item.Operator} Group ({item.Condition.length} conditions)
-              <button onClick={() => table.filter.remove(item.id!)}>×</button>
+              <button onClick={() => table.filter.removeCondition(item.id!)}>×</button>
             </span>
           );
         }
@@ -232,7 +232,7 @@ function ProductsPage() {
   // Toggle filter logic operator
   const toggleFilterLogic = () => {
     const next: ConditionGroupOperatorType = table.filter.operator === "And" ? "Or" : "And";
-    table.filter.setOperator(next);
+    table.filter.setRootOperator(next);
   };
 
   // Refetch data manually
@@ -276,7 +276,7 @@ function ProductsPage() {
           Logic: {table.filter.operator}
         </button>
         {table.filter.hasConditions && (
-          <button onClick={() => table.filter.clear()}>Clear All Filters</button>
+          <button onClick={() => table.filter.clearAllConditions()}>Clear All Filters</button>
         )}
       </div>
 

@@ -42,6 +42,20 @@ export const isCondition = (
 // ============================================================
 
 /**
+ * Builder interface for fluent condition group construction
+ */
+export interface ConditionGroupBuilder {
+  /** The id of the created group */
+  readonly id: string;
+
+  /** Add a condition to this group */
+  addCondition(condition: Omit<ConditionType, "id">): ConditionGroupBuilder;
+
+  /** Add a nested condition group */
+  addConditionGroup(operator: ConditionGroupOperatorType): ConditionGroupBuilder;
+}
+
+/**
  * Hook options (minimal configuration)
  */
 export interface UseFilterOptionsType {
@@ -76,30 +90,20 @@ export interface UseFilterReturnType {
   // ============================================================
 
   /**
-   * Add a leaf condition at root level
+   * Add a leaf condition at root level or to a specific parent group
+   * @param condition - The condition to add (without id)
+   * @param parentId - Optional id of the parent ConditionGroup. If omitted, adds at root level
    * @returns The id of the created condition
    */
-  add: (condition: Omit<ConditionType, "id">) => string;
+  addCondition: (condition: Omit<ConditionType, "id">, parentId?: string) => string;
 
   /**
-   * Add a condition group at root level
+   * Add a condition group at root level or to a specific parent group
+   * @param operator - The operator for the new group ("And" | "Or" | "Not")
+   * @param parentId - Optional id of the parent ConditionGroup. If omitted, adds at root level
    * @returns The id of the created group
    */
-  addGroup: (operator: ConditionGroupOperatorType) => string;
-
-  /**
-   * Add a leaf condition to a specific parent group
-   * @param parentId - The id of the parent ConditionGroup
-   * @returns The id of the created condition
-   */
-  addTo: (parentId: string, condition: Omit<ConditionType, "id">) => string;
-
-  /**
-   * Add a condition group to a specific parent group
-   * @param parentId - The id of the parent ConditionGroup
-   * @returns The id of the created group
-   */
-  addGroupTo: (parentId: string, operator: ConditionGroupOperatorType) => string;
+  addConditionGroup: (operator: ConditionGroupOperatorType, parentId?: string) => string;
 
   // ============================================================
   // UPDATE OPERATIONS
@@ -110,14 +114,14 @@ export interface UseFilterReturnType {
    * @param id - The id of the condition to update
    * @param updates - Partial updates to apply
    */
-  update: (id: string, updates: Partial<Omit<ConditionType, "id">>) => void;
+  updateCondition: (id: string, updates: Partial<Omit<ConditionType, "id">>) => void;
 
   /**
    * Update a condition group's operator by id
    * @param id - The id of the group to update
    * @param operator - The new operator
    */
-  updateOperator: (id: string, operator: ConditionGroupOperatorType) => void;
+  updateGroupOperator: (id: string, operator: ConditionGroupOperatorType) => void;
 
   // ============================================================
   // REMOVE & ACCESS
@@ -127,22 +131,22 @@ export interface UseFilterReturnType {
    * Remove a condition or group by id
    * @param id - The id of the item to remove
    */
-  remove: (id: string) => void;
+  removeCondition: (id: string) => void;
 
   /**
    * Get a condition or group by id
    * @param id - The id to look up
    * @returns The item or undefined if not found
    */
-  get: (id: string) => ConditionType | ConditionGroupType | undefined;
+  getCondition: (id: string) => ConditionType | ConditionGroupType | undefined;
 
   // ============================================================
   // UTILITY
   // ============================================================
 
   /** Clear all conditions */
-  clear: () => void;
+  clearAllConditions: () => void;
 
   /** Set the root operator for combining conditions */
-  setOperator: (op: ConditionGroupOperatorType) => void;
+  setRootOperator: (op: ConditionGroupOperatorType) => void;
 }
