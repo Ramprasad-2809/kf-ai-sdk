@@ -3,13 +3,13 @@
 // ============================================================
 // Global auth configuration following the setApiBaseUrl pattern
 
-import type { AuthConfig, AuthProviderName, AuthEndpointConfig } from "./types";
+import type { AuthConfigType, AuthProviderNameType, AuthEndpointConfigType } from "./types";
 import { getApiBaseUrl } from "../api/client";
 
 /**
  * Default auth configuration
  */
-const defaultAuthConfig: AuthConfig = {
+const defaultAuthConfig: AuthConfigType = {
   sessionEndpoint: "/api/id",
   providers: {
     google: {
@@ -32,7 +32,7 @@ const defaultAuthConfig: AuthConfig = {
 /**
  * Current auth configuration (mutable)
  */
-let authConfig: AuthConfig = { ...defaultAuthConfig };
+let authConfig: AuthConfigType = { ...defaultAuthConfig };
 
 /**
  * Configure authentication settings globally
@@ -48,7 +48,7 @@ let authConfig: AuthConfig = { ...defaultAuthConfig };
  * });
  * ```
  */
-export function configureAuth(config: Partial<AuthConfig>): void {
+export function configureAuth(config: Partial<AuthConfigType>): void {
   authConfig = {
     ...authConfig,
     ...config,
@@ -67,8 +67,8 @@ export function configureAuth(config: Partial<AuthConfig>): void {
  * Add or update an auth provider configuration
  */
 export function setAuthProvider(
-  provider: AuthProviderName,
-  config: AuthEndpointConfig
+  provider: AuthProviderNameType,
+  config: AuthEndpointConfigType
 ): void {
   authConfig.providers[provider] = config;
 }
@@ -76,7 +76,7 @@ export function setAuthProvider(
 /**
  * Get current auth configuration
  */
-export function getAuthConfig(): Readonly<AuthConfig> {
+export function getAuthConfig(): Readonly<AuthConfigType> {
   return { ...authConfig };
 }
 
@@ -92,8 +92,8 @@ export function getAuthBaseUrl(): string {
  * Get endpoint configuration for a specific provider
  */
 export function getProviderConfig(
-  provider: AuthProviderName
-): AuthEndpointConfig | undefined {
+  provider: AuthProviderNameType
+): AuthEndpointConfigType | undefined {
   return authConfig.providers[provider];
 }
 

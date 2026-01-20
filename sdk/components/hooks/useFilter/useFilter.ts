@@ -1,11 +1,11 @@
 import { useState, useCallback, useMemo } from "react";
 import type {
-  Condition,
-  ConditionGroup,
-  ConditionGroupOperator,
-  Filter,
+  ConditionType,
+  ConditionGroupType,
+  ConditionGroupOperatorType,
+  FilterType,
 } from "../../../types/common";
-import type { UseFilterOptions, UseFilterReturn } from "./types";
+import type { UseFilterOptionsType, UseFilterReturnType } from "./types";
 import { isConditionGroup } from "./types";
 
 // ============================================================
@@ -24,7 +24,7 @@ const generateId = (): string => {
 /**
  * Ensure an item has an id
  */
-const ensureId = <T extends Condition | ConditionGroup>(item: T): T => {
+const ensureId = <T extends ConditionType | ConditionGroupType>(item: T): T => {
   if (!item.id) {
     return { ...item, id: generateId() };
   }
@@ -35,8 +35,8 @@ const ensureId = <T extends Condition | ConditionGroup>(item: T): T => {
  * Deep clone and ensure all items have ids
  */
 const cloneWithIds = (
-  items: Array<Condition | ConditionGroup>
-): Array<Condition | ConditionGroup> => {
+  items: Array<ConditionType | ConditionGroupType>
+): Array<ConditionType | ConditionGroupType> => {
   return items.map((item) => {
     const withId = ensureId(item);
     if (isConditionGroup(withId)) {
@@ -53,18 +53,18 @@ const cloneWithIds = (
  * Strip id fields from items for API payload
  */
 const stripIds = (
-  items: Array<Condition | ConditionGroup>
-): Array<Condition | ConditionGroup> => {
+  items: Array<ConditionType | ConditionGroupType>
+): Array<ConditionType | ConditionGroupType> => {
   return items.map((item) => {
     if (isConditionGroup(item)) {
       const { id, ...rest } = item;
       return {
         ...rest,
         Condition: stripIds(item.Condition),
-      } as ConditionGroup;
+      } as ConditionGroupType;
     }
     const { id, ...rest } = item;
-    return rest as Condition;
+    return rest as ConditionType;
   });
 };
 
@@ -72,9 +72,9 @@ const stripIds = (
  * Find an item by id in a tree structure
  */
 const findById = (
-  items: Array<Condition | ConditionGroup>,
+  items: Array<ConditionType | ConditionGroupType>,
   id: string
-): Condition | ConditionGroup | undefined => {
+): ConditionType | ConditionGroupType | undefined => {
   for (const item of items) {
     if (item.id === id) {
       return item;
@@ -91,10 +91,10 @@ const findById = (
  * Find a parent group by child id
  */
 const findParentById = (
-  items: Array<Condition | ConditionGroup>,
+  items: Array<ConditionType | ConditionGroupType>,
   childId: string,
-  parent: ConditionGroup | null = null
-): ConditionGroup | null => {
+  parent: ConditionGroupType | null = null
+): ConditionGroupType | null => {
   for (const item of items) {
     if (item.id === childId) {
       return parent;
@@ -111,10 +111,10 @@ const findParentById = (
  * Update an item in the tree by id
  */
 const updateInTree = (
-  items: Array<Condition | ConditionGroup>,
+  items: Array<ConditionType | ConditionGroupType>,
   id: string,
-  updater: (item: Condition | ConditionGroup) => Condition | ConditionGroup
-): Array<Condition | ConditionGroup> => {
+  updater: (item: ConditionType | ConditionGroupType) => ConditionType | ConditionGroupType
+): Array<ConditionType | ConditionGroupType> => {
   return items.map((item) => {
     if (item.id === id) {
       return updater(item);
@@ -133,9 +133,9 @@ const updateInTree = (
  * Remove an item from the tree by id
  */
 const removeFromTree = (
-  items: Array<Condition | ConditionGroup>,
+  items: Array<ConditionType | ConditionGroupType>,
   id: string
-): Array<Condition | ConditionGroup> => {
+): Array<ConditionType | ConditionGroupType> => {
   return items
     .filter((item) => item.id !== id)
     .map((item) => {
@@ -153,10 +153,10 @@ const removeFromTree = (
  * Add an item to a specific parent in the tree
  */
 const addToParent = (
-  items: Array<Condition | ConditionGroup>,
+  items: Array<ConditionType | ConditionGroupType>,
   parentId: string,
-  newItem: Condition | ConditionGroup
-): Array<Condition | ConditionGroup> => {
+  newItem: ConditionType | ConditionGroupType
+): Array<ConditionType | ConditionGroupType> => {
   return items.map((item) => {
     if (item.id === parentId && isConditionGroup(item)) {
       return {
@@ -178,18 +178,18 @@ const addToParent = (
 // USE FILTER HOOK - Nested Filter Support
 // ============================================================
 
-export function useFilter(options: UseFilterOptions = {}): UseFilterReturn {
+export function useFilter(options: UseFilterOptionsType = {}): UseFilterReturnType {
   // Initialize items with ids
-  const [items, setItems] = useState<Array<Condition | ConditionGroup>>(() =>
+  const [items, setItems] = useState<Array<ConditionType | ConditionGroupType>>(() =>
     cloneWithIds(options.initialConditions || [])
   );
 
-  const [operator, setOperatorState] = useState<ConditionGroupOperator>(
+  const [operator, setOperatorState] = useState<ConditionGroupOperatorType>(
     options.initialOperator || "And"
   );
 
   // Build payload for API (strip ids)
-  const payload = useMemo((): Filter | undefined => {
+  const payload = useMemo((): FilterType | undefined => {
     if (items.length === 0) return undefined;
     return {
       Operator: operator,
@@ -203,16 +203,16 @@ export function useFilter(options: UseFilterOptions = {}): UseFilterReturn {
   // ADD OPERATIONS
   // ============================================================
 
-  const add = useCallback((condition: Omit<Condition, "id">): string => {
+  const add = useCallback((condition: Omit<ConditionType, "id">): string => {
     const id = generateId();
-    const newCondition: Condition = { ...condition, id };
+    const newCondition: ConditionType = { ...condition, id };
     setItems((prev) => [...prev, newCondition]);
     return id;
   }, []);
 
-  const addGroup = useCallback((groupOperator: ConditionGroupOperator): string => {
+  const addGroup = useCallback((groupOperator: ConditionGroupOperatorType): string => {
     const id = generateId();
-    const newGroup: ConditionGroup = {
+    const newGroup: ConditionGroupType = {
       id,
       Operator: groupOperator,
       Condition: [],
@@ -222,9 +222,9 @@ export function useFilter(options: UseFilterOptions = {}): UseFilterReturn {
   }, []);
 
   const addTo = useCallback(
-    (parentId: string, condition: Omit<Condition, "id">): string => {
+    (parentId: string, condition: Omit<ConditionType, "id">): string => {
       const id = generateId();
-      const newCondition: Condition = { ...condition, id };
+      const newCondition: ConditionType = { ...condition, id };
       setItems((prev) => addToParent(prev, parentId, newCondition));
       return id;
     },
@@ -232,9 +232,9 @@ export function useFilter(options: UseFilterOptions = {}): UseFilterReturn {
   );
 
   const addGroupTo = useCallback(
-    (parentId: string, groupOperator: ConditionGroupOperator): string => {
+    (parentId: string, groupOperator: ConditionGroupOperatorType): string => {
       const id = generateId();
-      const newGroup: ConditionGroup = {
+      const newGroup: ConditionGroupType = {
         id,
         Operator: groupOperator,
         Condition: [],
@@ -250,7 +250,7 @@ export function useFilter(options: UseFilterOptions = {}): UseFilterReturn {
   // ============================================================
 
   const update = useCallback(
-    (id: string, updates: Partial<Omit<Condition, "id">>): void => {
+    (id: string, updates: Partial<Omit<ConditionType, "id">>): void => {
       setItems((prev) =>
         updateInTree(prev, id, (item) => {
           if (!isConditionGroup(item)) {
@@ -264,7 +264,7 @@ export function useFilter(options: UseFilterOptions = {}): UseFilterReturn {
   );
 
   const updateOperator = useCallback(
-    (id: string, newOperator: ConditionGroupOperator): void => {
+    (id: string, newOperator: ConditionGroupOperatorType): void => {
       setItems((prev) =>
         updateInTree(prev, id, (item) => {
           if (isConditionGroup(item)) {
@@ -286,7 +286,7 @@ export function useFilter(options: UseFilterOptions = {}): UseFilterReturn {
   }, []);
 
   const get = useCallback(
-    (id: string): Condition | ConditionGroup | undefined => {
+    (id: string): ConditionType | ConditionGroupType | undefined => {
       return findById(items, id);
     },
     [items]
@@ -300,7 +300,7 @@ export function useFilter(options: UseFilterOptions = {}): UseFilterReturn {
     setItems([]);
   }, []);
 
-  const setOperator = useCallback((op: ConditionGroupOperator): void => {
+  const setOperator = useCallback((op: ConditionGroupOperatorType): void => {
     setOperatorState(op);
   }, []);
 
@@ -332,8 +332,5 @@ export function useFilter(options: UseFilterOptions = {}): UseFilterReturn {
     // Utility
     clear,
     setOperator,
-
-    // Legacy API
-    conditions: items,
   };
 }

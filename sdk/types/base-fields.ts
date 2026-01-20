@@ -3,7 +3,7 @@
  * Resolves to: string
  * Use this for all ID-type fields (user IDs, order IDs, etc.)
  */
-export type IdField = string;
+export type IdFieldType = string;
 
 /**
  * String field with optional literal type constraint and length limits
@@ -14,11 +14,11 @@ export type IdField = string;
  * Storage: VARCHAR in database
  *
  * @example
- * StringField // => string
- * StringField<'active' | 'inactive'> // => 'active' | 'inactive'
- * StringField<string, 1, 100> // => string with length constraints
+ * StringFieldType // => string
+ * StringFieldType<'active' | 'inactive'> // => 'active' | 'inactive'
+ * StringFieldType<string, 1, 100> // => string with length constraints
  */
-export type StringField<
+export type StringFieldType<
   T extends string = string,
   _MinLength extends number = never,
   _MaxLength extends number = never,
@@ -31,9 +31,9 @@ export type StringField<
  * Use this for descriptions, comments, rich text content
  *
  * @example
- * TextAreaField // => string (multi-line)
+ * TextAreaFieldType // => string (multi-line)
  */
-export type TextAreaField = string;
+export type TextAreaFieldType = string;
 
 /**
  * Numeric field with optional precision constraints
@@ -43,10 +43,10 @@ export type TextAreaField = string;
  * Use this for quantities, measurements, calculations
  *
  * @example
- * NumberField // => number
- * NumberField<2> // => number with 2 decimal places
+ * NumberFieldType // => number
+ * NumberFieldType<2> // => number with 2 decimal places
  */
-export type NumberField<_Precision extends number = never> = number;
+export type NumberFieldType<_Precision extends number = never> = number;
 
 /**
  * Large integer field for big numbers
@@ -55,9 +55,9 @@ export type NumberField<_Precision extends number = never> = number;
  * Use this for large counters, timestamps, file sizes
  *
  * @example
- * LongField // => number (large integer)
+ * LongFieldType // => number (large integer)
  */
-export type LongField = number;
+export type LongFieldType = number;
 
 /**
  * Boolean field
@@ -65,7 +65,7 @@ export type LongField = number;
  * Storage: BOOLEAN in database
  * Use this for true/false values, flags, toggles
  */
-export type BooleanField = boolean;
+export type BooleanFieldType = boolean;
 
 /**
  * Date field (date only, no time)
@@ -74,9 +74,9 @@ export type BooleanField = boolean;
  * Use this for birth dates, due dates, calendar events
  *
  * @example
- * DateField // => Date (date only)
+ * DateFieldType // => Date (date only)
  */
-export type DateField = Date;
+export type DateFieldType = Date;
 
 /**
  * DateTime field (date and time)
@@ -85,9 +85,9 @@ export type DateField = Date;
  * Use this for created_at, updated_at, event timestamps
  *
  * @example
- * DateTimeField // => Date (with time)
+ * DateTimeFieldType // => Date (with time)
  */
-export type DateTimeField = Date;
+export type DateTimeFieldType = Date;
 
 // ============================================================
 // COMPLEX FIELD TYPES
@@ -95,53 +95,53 @@ export type DateTimeField = Date;
 
 /**
  * Currency field supporting multiple value formats
- * Resolves to: CurrencyValue
+ * Resolves to: CurrencyValueType
  * Storage: JSON/VARCHAR in database
  * Use this for prices, monetary amounts, financial data
  *
  * @example
- * CurrencyField // => {value: number, currency: string} | string
+ * CurrencyFieldType // => {value: number, currency: string} | string
  */
-export type CurrencyField = CurrencyValue;
+export type CurrencyFieldType = CurrencyValueType;
 
 /**
  * Currency value format - supports both object and string representations
  */
-export type CurrencyValue =
+export type CurrencyValueType =
   | { value: number; currency: string } // Object format: {value: 100.50, currency: "USD"}
   | string; // String format: "100.50 USD" or "USD 100.50"
 
 /**
  * JSON field for structured data
  * @template T - Expected JSON structure (optional)
- * Resolves to: T or JSONValue
+ * Resolves to: T or JSONValueType
  * Storage: JSON/TEXT in database
  * Use this for configurations, metadata, flexible schemas
  *
  * @example
- * JSONField // => JSONValue (any valid JSON)
- * JSONField<{settings: {theme: string}}> // => {settings: {theme: string}}
+ * JSONFieldType // => JSONValueType (any valid JSON)
+ * JSONFieldType<{settings: {theme: string}}> // => {settings: {theme: string}}
  */
-export type JSONField<T = JSONValue> = T;
+export type JSONFieldType<T = JSONValueType> = T;
 
-export type ReferenceField = string;
+export type ReferenceFieldType = string;
 
 /**
  * Valid JSON value types
  */
-export type JSONValue =
+export type JSONValueType =
   | string
   | number
   | boolean
   | null
-  | JSONObject
-  | JSONArray;
+  | JSONObjectType
+  | JSONArrayType;
 
-export interface JSONObject {
-  [key: string]: JSONValue;
+export interface JSONObjectType {
+  [key: string]: JSONValueType;
 }
 
-export interface JSONArray extends Array<JSONValue> {}
+export interface JSONArrayType extends Array<JSONValueType> {}
 
 /**
  * Select field for single choice from predefined options
@@ -151,9 +151,9 @@ export interface JSONArray extends Array<JSONValue> {}
  * Use this for status fields, categories, enum-like values
  *
  * @example
- * SelectField<'active' | 'inactive' | 'pending'> // => 'active' | 'inactive' | 'pending'
+ * SelectFieldType<'active' | 'inactive' | 'pending'> // => 'active' | 'inactive' | 'pending'
  */
-export type SelectField<T extends string> = T;
+export type SelectFieldType<T extends string> = T;
 
 /**
  * Lookup field for references to other records
@@ -163,10 +163,10 @@ export type SelectField<T extends string> = T;
  * Use this for foreign keys, relationships, references
  *
  * @example
- * LookupField // => string (referenced record ID)
- * LookupField<IdField> // => string (typed as IdField)
+ * LookupFieldType // => string (referenced record ID)
+ * LookupFieldType<IdFieldType> // => string (typed as IdFieldType)
  */
-export type LookupField<T extends string = string> = T;
+export type LookupFieldType<T extends string = string> = T;
 
 // ============================================================
 // CONTAINER AND UTILITY TYPES
@@ -180,11 +180,11 @@ export type LookupField<T extends string = string> = T;
  * Use this for tags, categories, multiple selections
  *
  * @example
- * ArrayField<string> // => string[]
- * ArrayField<IdField> // => string[]
- * ArrayField<SelectField<'tag1' | 'tag2'>> // => ('tag1' | 'tag2')[]
+ * ArrayFieldType<string> // => string[]
+ * ArrayFieldType<IdFieldType> // => string[]
+ * ArrayFieldType<SelectFieldType<'tag1' | 'tag2'>> // => ('tag1' | 'tag2')[]
  */
-export type ArrayField<T> = T[];
+export type ArrayFieldType<T> = T[];
 
 /**
  * Nested object field
@@ -194,9 +194,9 @@ export type ArrayField<T> = T[];
  * Use this for complex nested structures, embedded documents
  *
  * @example
- * ObjectField<{ name: string; age: number }> // => { name: string; age: number }
+ * ObjectFieldType<{ name: string; age: number }> // => { name: string; age: number }
  */
-export type ObjectField<T extends Record<string, any>> = T;
+export type ObjectFieldType<T extends Record<string, any>> = T;
 
 /**
  * Optional field wrapper
@@ -205,10 +205,10 @@ export type ObjectField<T extends Record<string, any>> = T;
  * Use this for fields that may not have values
  *
  * @example
- * OptionalField<StringField> // => string | undefined
- * OptionalField<NumberField> // => number | undefined
+ * OptionalFieldType<StringFieldType> // => string | undefined
+ * OptionalFieldType<NumberFieldType> // => number | undefined
  */
-export type OptionalField<T> = T | undefined;
+export type OptionalFieldType<T> = T | undefined;
 
 // ============================================================
 // UTILITY TYPES FOR FIELD VALIDATION
@@ -218,4 +218,4 @@ export type OptionalField<T> = T | undefined;
  * Utility type to extract the base type from a field type
  * Useful for runtime validation and type guards
  */
-export type ExtractFieldType<T> = T extends OptionalField<infer U> ? U : T;
+export type ExtractFieldTypeType<T> = T extends OptionalFieldType<infer U> ? U : T;

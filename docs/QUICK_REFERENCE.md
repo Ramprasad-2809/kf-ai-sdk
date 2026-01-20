@@ -1,23 +1,26 @@
 # KF AI SDK - Quick Reference
 
-## 🚀 Installation & Setup
+## Installation & Setup
 
 ```bash
-npm install kf-ai-sdk
+npm install @ram_28/kf-ai-sdk
 ```
 
 ```typescript
-import { setApiBaseUrl } from "kf-ai-sdk";
+import { setApiBaseUrl } from "@ram_28/kf-ai-sdk/api";
 
 // Configure API base URL (without /api/app - SDK adds proper paths automatically)
 setApiBaseUrl("https://api.your-domain.com");
 ```
 
-## 📊 useTable Hook
+## useTable Hook
 
 ### Basic Usage
 
 ```typescript
+import { useTable } from "@ram_28/kf-ai-sdk/table";
+import type { UseTableOptionsType, UseTableReturnType, ColumnDefinitionType } from "@ram_28/kf-ai-sdk/table/types";
+
 const table = useTable<ProductType>({
   source: "BDO_AmazonProductMaster",
   columns: [
@@ -40,11 +43,14 @@ const table = useTable<ProductType>({
 | `pagination.goToNext` | `() => void`               | Next page          |
 | `filter.addCondition` | `(condition) => string`    | Add filter         |
 
-## 📝 useForm Hook
+## useForm Hook
 
 ### Basic Usage
 
 ```typescript
+import { useForm } from "@ram_28/kf-ai-sdk/form";
+import type { UseFormOptionsType, UseFormReturnType, FormFieldConfigType } from "@ram_28/kf-ai-sdk/form/types";
+
 const form = useForm<ProductType>({
   source: "BDO_AmazonProductMaster",
   operation: "create", // or "update"
@@ -80,7 +86,7 @@ if (field.permission.hidden) {
 }
 ```
 
-## 🏢 Business Object Classes
+## Business Object Classes
 
 ### Role-Based Access
 
@@ -127,12 +133,12 @@ const list = await products.list({
 });
 ```
 
-## ⚡ Performance Optimizations
+## Performance Optimizations
 
 ### Expression Caching
 
 ```typescript
-import { clearExpressionCache } from "kf-ai-sdk";
+import { clearExpressionCache } from "@ram_28/kf-ai-sdk/form";
 
 // Clear cache when role changes
 clearExpressionCache();
@@ -148,7 +154,7 @@ const form = useForm({
 });
 ```
 
-## 🔧 Rule Types
+## Rule Types
 
 | Rule Type          | Execution   | Purpose           | Example             |
 | ------------------ | ----------- | ----------------- | ------------------- |
@@ -166,7 +172,7 @@ const form = useForm({
 "IF(MRP > 0, ((MRP - Price) / MRP) * 100, 0)";
 ```
 
-## 🛡️ Error Handling
+## Error Handling
 
 ### Form Errors
 
@@ -200,7 +206,7 @@ try {
 }
 ```
 
-## 📋 Filter Conditions
+## Filter Conditions
 
 ### Basic Filters
 
@@ -230,7 +236,7 @@ table.filter.addCondition({
 table.filter.setLogicalOperator("AND");
 ```
 
-## 📊 Sorting & Pagination
+## Sorting & Pagination
 
 ### Sorting
 
@@ -263,7 +269,7 @@ table.filter.setLogicalOperator("AND");
 </button>
 ```
 
-## 🔒 Permission Checks
+## Permission Checks
 
 ### Role-Based Field Access
 
@@ -287,7 +293,7 @@ const buyerProducts = AmazonProducts.Buyer();
 const products = await buyerProducts.list(); // ✅ OK
 ```
 
-## 🎯 Common Patterns
+## Common Patterns
 
 ### Search with Debouncing
 
@@ -347,58 +353,55 @@ const form = useForm({
 });
 ```
 
-## 📦 Type Definitions
+## Type Definitions
 
 ### Hook Types
 
 ```typescript
 // useTable types
 import type {
-  UseTableOptions,
-  UseTableReturn,
-  ColumnDefinition,
-} from 'kf-ai-sdk';
+  UseTableOptionsType,
+  UseTableReturnType,
+  ColumnDefinitionType,
+} from '@ram_28/kf-ai-sdk/table/types';
 
 // useFilter types
 import type {
-  UseFilterOptions,
-  UseFilterReturn,
-  FilterConditionWithId,
-  TypedFilterConditionInput,
-  ValidationError,
-  ValidationResult,
-  FilterState,
-} from 'kf-ai-sdk';
+  UseFilterOptionsType,
+  UseFilterReturnType,
+  ConditionType,
+  ConditionGroupType,
+  FilterType,
+} from '@ram_28/kf-ai-sdk/filter/types';
 
 // useForm types
 import type {
-  UseFormOptions,
-  UseFormReturn,
-  ProcessedField,
-  ProcessedSchema,
-  FormOperation,
-  BackendSchema,
-  RuleExecutionContext,
-} from 'kf-ai-sdk';
+  UseFormOptionsType,
+  UseFormReturnType,
+  FormFieldConfigType,
+  FormSchemaConfigType,
+  FormOperationType,
+  BDOSchemaType,
+} from '@ram_28/kf-ai-sdk/form/types';
 
 // useKanban types
 import type {
-  UseKanbanOptions,
-  UseKanbanReturn,
-  KanbanCard,
-  KanbanColumn,
-  ColumnConfig,
-} from 'kf-ai-sdk';
+  UseKanbanOptionsType,
+  UseKanbanReturnType,
+  KanbanCardType,
+  KanbanColumnType,
+  ColumnConfigType,
+} from '@ram_28/kf-ai-sdk/kanban/types';
 
 // useAuth types
 import type {
-  UseAuthReturn,
-  UserDetails,
-  AuthStatus,
-  AuthProviderProps,
-  LoginOptions,
-  LogoutOptions,
-} from 'kf-ai-sdk';
+  UseAuthReturnType,
+  UserDetailsType,
+  AuthStatusType,
+  AuthProviderPropsType,
+  LoginOptionsType,
+  LogoutOptionsType,
+} from '@ram_28/kf-ai-sdk/auth/types';
 ```
 
 ### Common Types
@@ -406,43 +409,46 @@ import type {
 ```typescript
 import type {
   // Filter operators
-  FilterOperator,      // "EQ" | "NE" | "GT" | "GTE" | "LT" | "LTE" | "Between" | "NotBetween" | "IN" | "NIN" | "Empty" | "NotEmpty" | "Contains" | "NotContains" | "MinLength" | "MaxLength"
-  LogicalOperator,     // "And" | "Or" | "Not"
-  FilterRHSType,       // "Constant" | "BOField" | "AppVariable"
+  ConditionOperatorType,      // "EQ" | "NE" | "GT" | "GTE" | "LT" | "LTE" | "Between" | "NotBetween" | "IN" | "NIN" | "Empty" | "NotEmpty" | "Contains" | "NotContains" | "MinLength" | "MaxLength"
+  ConditionGroupOperatorType, // "And" | "Or" | "Not"
+  FilterRHSTypeType,          // "Constant" | "BOField" | "AppVariable"
 
   // API types
-  ListOptions,
-  ListResponse,
-  CreateUpdateResponse,
-
-  // Validation
-  ValidationRule,
-  RolePermission,
-} from 'kf-ai-sdk';
+  ListOptionsType,
+  ListResponseType,
+  CreateUpdateResponseType,
+} from '@ram_28/kf-ai-sdk/api/types';
 ```
 
-### Business Object Types
+### Base Field Types
 
 ```typescript
 import type {
-  AmazonProductMasterType,
-  AdminAmazonProduct,
-  SellerAmazonProduct,
-  BuyerAmazonProduct,
-} from 'kf-ai-sdk';
+  IdFieldType,
+  StringFieldType,
+  TextAreaFieldType,
+  NumberFieldType,
+  BooleanFieldType,
+  DateFieldType,
+  DateTimeFieldType,
+  CurrencyFieldType,
+  SelectFieldType,
+  LookupFieldType,
+  ReferenceFieldType,
+} from '@ram_28/kf-ai-sdk/types';
 ```
 
 ### Quick Type Summary
 
 | Type | Values/Purpose |
 |------|----------------|
-| `FilterOperator` | `"EQ"`, `"NE"`, `"GT"`, `"GTE"`, `"LT"`, `"LTE"`, `"Between"`, `"NotBetween"`, `"IN"`, `"NIN"`, `"Empty"`, `"NotEmpty"`, `"Contains"`, `"NotContains"`, `"MinLength"`, `"MaxLength"` |
-| `LogicalOperator` | `"And"`, `"Or"`, `"Not"` (title case) |
-| `FormOperation` | `"create"`, `"update"` |
-| `AuthStatus` | `"loading"`, `"authenticated"`, `"unauthenticated"` |
-| `FilterRHSType` | `"Constant"`, `"BOField"`, `"AppVariable"` |
+| `ConditionOperatorType` | `"EQ"`, `"NE"`, `"GT"`, `"GTE"`, `"LT"`, `"LTE"`, `"Between"`, `"NotBetween"`, `"IN"`, `"NIN"`, `"Empty"`, `"NotEmpty"`, `"Contains"`, `"NotContains"`, `"MinLength"`, `"MaxLength"` |
+| `ConditionGroupOperatorType` | `"And"`, `"Or"`, `"Not"` (title case) |
+| `FormOperationType` | `"create"`, `"update"` |
+| `AuthStatusType` | `"loading"`, `"authenticated"`, `"unauthenticated"` |
+| `FilterRHSTypeType` | `"Constant"`, `"BOField"`, `"AppVariable"` |
 
-## 🐛 Debugging Tips
+## Debugging Tips
 
 ### Debug Table Issues
 
@@ -470,7 +476,7 @@ console.log("Form state:", {
 ### Debug API Issues
 
 ```typescript
-import { getApiBaseUrl, getDefaultHeaders } from "kf-ai-sdk";
+import { getApiBaseUrl, getDefaultHeaders } from "@ram_28/kf-ai-sdk/api";
 
 console.log("API Config:", {
   baseUrl: getApiBaseUrl(),
@@ -478,12 +484,12 @@ console.log("API Config:", {
 });
 ```
 
-## ⚙️ Configuration
+## Configuration
 
 ### API Setup
 
 ```typescript
-import { setApiBaseUrl, setDefaultHeaders } from "kf-ai-sdk";
+import { setApiBaseUrl, setDefaultHeaders } from "@ram_28/kf-ai-sdk/api";
 
 // Set base URL - SDK automatically appends /api/app/{bo_id} paths
 setApiBaseUrl("https://api.example.com");
@@ -514,7 +520,7 @@ const queryClient = new QueryClient({
 
 ---
 
-## 🔗 Quick Links
+## Quick Links
 
 - [Full Implementation Guide](./IMPLEMENTATION_GUIDE.md)
 - [Examples Directory](./examples/)

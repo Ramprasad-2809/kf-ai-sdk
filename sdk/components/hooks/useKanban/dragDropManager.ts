@@ -6,10 +6,10 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import type {
-  KanbanCard,
-  KanbanColumn,
-  DragDropState,
-  DragDropManager
+  KanbanCardType,
+  KanbanColumnType,
+  DragDropStateType,
+  DragDropManagerType
 } from "./types";
 
 // ============================================================
@@ -30,17 +30,17 @@ export function useDragDropManager<T>({
   columns,
   announceMove
 }: {
-  onCardMove?: (card: KanbanCard<T>, fromColumnId: string, toColumnId: string) => void;
+  onCardMove?: (card: KanbanCardType<T>, fromColumnId: string, toColumnId: string) => void;
   onError?: (error: Error) => void;
-  columns: KanbanColumn<T>[];
-  announceMove?: (card: KanbanCard<T>, fromColumn: string, toColumn: string) => void;
-}): DragDropManager<T> {
+  columns: KanbanColumnType<T>[];
+  announceMove?: (card: KanbanCardType<T>, fromColumn: string, toColumn: string) => void;
+}): DragDropManagerType<T> {
   
   // ============================================================
   // STATE MANAGEMENT
   // ============================================================
   
-  const [dragState, setDragState] = useState<DragDropState<T>>({
+  const [dragState, setDragState] = useState<DragDropStateType<T>>({
     isDragging: false,
     draggedCard: null,
     dragOverColumn: null,
@@ -51,7 +51,7 @@ export function useDragDropManager<T>({
   // Refs for managing drag operations
   const dragImageRef = useRef<HTMLElement | null>(null);
   const autoScrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const touchStartRef = useRef<{ x: number; y: number; card: KanbanCard<T> } | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number; card: KanbanCardType<T> } | null>(null);
   
   // ============================================================
   // UTILITY FUNCTIONS
@@ -73,11 +73,11 @@ export function useDragDropManager<T>({
     }
   }, []);
   
-  const findColumnById = useCallback((columnId: string): KanbanColumn<T> | null => {
+  const findColumnById = useCallback((columnId: string): KanbanColumnType<T> | null => {
     return columns.find(col => col._id === columnId) || null;
   }, [columns]);
   
-  const findCardById = useCallback((cardId: string): { card: KanbanCard<T>; column: KanbanColumn<T> } | null => {
+  const findCardById = useCallback((cardId: string): { card: KanbanCardType<T>; column: KanbanColumnType<T> } | null => {
     for (const column of columns) {
       const card = column.cards.find(c => c._id === cardId);
       if (card) {
@@ -91,7 +91,7 @@ export function useDragDropManager<T>({
   // MOUSE DRAG HANDLERS
   // ============================================================
   
-  const handleDragStart = useCallback((event: DragEvent, card: KanbanCard<T>) => {
+  const handleDragStart = useCallback((event: DragEvent, card: KanbanCardType<T>) => {
     try {
       const cardElement = event.target as HTMLElement;
       const sourceColumn = findColumnById(card.columnId);
@@ -260,7 +260,7 @@ export function useDragDropManager<T>({
   // KEYBOARD NAVIGATION
   // ============================================================
   
-  const handleKeyDown = useCallback((event: KeyboardEvent, card: KanbanCard<T>) => {
+  const handleKeyDown = useCallback((event: KeyboardEvent, card: KanbanCardType<T>) => {
     if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter', 'Space', 'Escape'].includes(event.key)) {
       return;
     }
@@ -323,7 +323,7 @@ export function useDragDropManager<T>({
   // TOUCH HANDLERS
   // ============================================================
   
-  const handleTouchStart = useCallback((event: TouchEvent, card: KanbanCard<T>) => {
+  const handleTouchStart = useCallback((event: TouchEvent, card: KanbanCardType<T>) => {
     const touch = event.touches[0];
     touchStartRef.current = {
       x: touch.clientX,
@@ -399,7 +399,7 @@ export function useDragDropManager<T>({
   // ACCESSIBILITY ANNOUNCEMENTS
   // ============================================================
   
-  const defaultAnnounceMove = useCallback((card: KanbanCard<T>, fromColumn: string, toColumn: string) => {
+  const defaultAnnounceMove = useCallback((card: KanbanCardType<T>, fromColumn: string, toColumn: string) => {
     const message = `Moved "${card.title}" from ${fromColumn} to ${toColumn}`;
     
     // Create live region announcement
@@ -474,7 +474,7 @@ export function useDragDropManager<T>({
  */
 export function calculateDropPosition<T>(
   event: DragEvent,
-  column: KanbanColumn<T>,
+  column: KanbanColumnType<T>,
   cardHeight = 80
 ): number {
   const columnElement = (event.target as HTMLElement).closest('.kanban-column');
@@ -511,8 +511,8 @@ export function removeDragFeedback(element: HTMLElement) {
  * Check if a column can accept a drop
  */
 export function canAcceptDrop<T>(
-  column: KanbanColumn<T>,
-  draggedCard: KanbanCard<T>
+  column: KanbanColumnType<T>,
+  draggedCard: KanbanCardType<T>
 ): { canDrop: boolean; reason?: string } {
   // Check if column has a limit
   if (column.limit && column.cards.length >= column.limit && draggedCard.columnId !== column._id) {

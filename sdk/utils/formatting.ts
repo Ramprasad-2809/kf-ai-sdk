@@ -1,4 +1,4 @@
-import type { CurrencyValue, JSONValue } from '../types/base-fields';
+import type { CurrencyValueType, JSONValueType } from '../types/base-fields';
 
 /**
  * Data formatting utilities for display and conversion
@@ -7,7 +7,7 @@ import type { CurrencyValue, JSONValue } from '../types/base-fields';
 /**
  * Format currency value for display
  */
-export function formatCurrency(value: CurrencyValue): string {
+export function formatCurrency(value: CurrencyValueType): string {
   if (typeof value === 'string') {
     return value; // Already formatted
   }
@@ -26,7 +26,7 @@ export function formatCurrency(value: CurrencyValue): string {
 /**
  * Parse currency string to currency object
  */
-export function parseCurrency(value: string): CurrencyValue | null {
+export function parseCurrency(value: string): CurrencyValueType | null {
   // Try to parse "USD 100.50" or "100.50 USD" format
   const match = value.match(/^(?:([A-Z]{3})\s+(\d+\.?\d*))|(?:(\d+\.?\d*)\s+([A-Z]{3}))$/);
   
@@ -90,7 +90,7 @@ export function formatNumber(value: number, precision: number = 2): string {
 /**
  * Format JSON value for display
  */
-export function formatJSON(value: JSONValue, indent: number = 2): string {
+export function formatJSON(value: JSONValueType, indent: number = 2): string {
   try {
     return JSON.stringify(value, null, indent);
   } catch {

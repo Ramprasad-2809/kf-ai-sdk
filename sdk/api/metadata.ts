@@ -3,7 +3,7 @@
 // ============================================================
 // Handles metadata/schema fetching operations for Business Objects
 
-import type { ListOptions, ListResponse } from "../types/common";
+import type { ListOptionsType, ListResponseType } from "../types/common";
 import { getApiBaseUrl, getDefaultHeaders } from "./client";
 
 // ============================================================
@@ -97,8 +97,8 @@ export interface MetadataItem {
  * ```
  */
 export async function listMetadata(
-  options?: ListOptions
-): Promise<ListResponse<MetadataItem>> {
+  options?: ListOptionsType
+): Promise<ListResponseType<MetadataItem>> {
   try {
     const baseUrl = getApiBaseUrl();
     const headers = getDefaultHeaders();
@@ -121,7 +121,7 @@ export async function listMetadata(
 
     const result = await response.json();
 
-    return result as ListResponse<MetadataItem>;
+    return result as ListResponseType<MetadataItem>;
   } catch (error) {
     console.error("Metadata list error:", error);
     throw new Error(

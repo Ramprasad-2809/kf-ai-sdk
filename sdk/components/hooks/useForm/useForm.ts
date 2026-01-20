@@ -9,11 +9,11 @@ import { useQuery } from "@tanstack/react-query";
 import type { Path } from "react-hook-form";
 
 import type {
-  UseFormOptions,
-  UseFormReturn,
-  BDOSchema,
-  FormSchemaConfig,
-  FormFieldConfig,
+  UseFormOptionsType,
+  UseFormReturnType,
+  BDOSchemaType,
+  FormSchemaConfigType,
+  FormFieldConfigType,
 } from "./types";
 
 import { processSchema, extractReferenceFields } from "./schemaParser.utils";
@@ -39,8 +39,8 @@ import {
 // ============================================================
 
 export function useForm<T extends Record<string, any> = Record<string, any>>(
-  options: UseFormOptions<T>
-): UseFormReturn<T> {
+  options: UseFormOptionsType<T>
+): UseFormReturnType<T> {
   const {
     source,
     operation,
@@ -52,7 +52,6 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     onSchemaError,
     skipSchemaFetch = false,
     schema: manualSchema,
-    draftOnEveryChange = false,
     interactionMode = "interactive",
   } = options;
 
@@ -64,7 +63,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
   // ============================================================
 
   const [schemaConfig, setSchemaConfig] =
-    useState<FormSchemaConfig | null>(null);
+    useState<FormSchemaConfigType | null>(null);
   const [referenceData, setReferenceData] = useState<Record<string, any[]>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastFormValues] = useState<Partial<T>>({});
@@ -323,12 +322,11 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
 
       // Determine if draft should be triggered based on interaction mode
       // Interactive mode: Always trigger draft API on blur
-      // Non-interactive mode: Only trigger for computed field dependencies (legacy behavior)
+      // Non-interactive mode: Only trigger for computed field dependencies
       const shouldTrigger = isInteractiveMode
         ? true // Interactive mode: always trigger
         : (computedFieldDependencies.length > 0 &&
-            (draftOnEveryChange ||
-              computedFieldDependencies.includes(fieldName as Path<T>)));
+              computedFieldDependencies.includes(fieldName as Path<T>));
 
       if (!shouldTrigger) {
         return;
@@ -497,7 +495,6 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
       source,
       rhfForm,
       computedFieldDependencies,
-      draftOnEveryChange,
       isInteractiveMode,
       draftId,
     ]
@@ -706,16 +703,16 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
   // ============================================================
 
   const getField = useCallback(
-    <K extends keyof T>(fieldName: K): FormFieldConfig | null => {
+    <K extends keyof T>(fieldName: K): FormFieldConfigType | null => {
       return schemaConfig?.fields[fieldName as string] || null;
     },
     [schemaConfig]
   );
 
-  const getFields = useCallback((): Record<keyof T, FormFieldConfig> => {
-    if (!schemaConfig) return {} as Record<keyof T, FormFieldConfig>;
+  const getFields = useCallback((): Record<keyof T, FormFieldConfigType> => {
+    if (!schemaConfig) return {} as Record<keyof T, FormFieldConfigType>;
 
-    const typedFields: Record<keyof T, FormFieldConfig> = {} as any;
+    const typedFields: Record<keyof T, FormFieldConfigType> = {} as any;
     Object.entries(schemaConfig.fields).forEach(([key, field]) => {
       (typedFields as any)[key] = field;
     });
@@ -923,9 +920,6 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     isSubmitting: rhfForm.formState.isSubmitting || isSubmitting,
     isSubmitSuccessful: rhfForm.formState.isSubmitSuccessful,
 
-    // BACKWARD COMPATIBILITY - Keep formState for existing components
-    formState: rhfForm.formState,
-
     // Loading states
     isLoadingInitialData,
     isLoadingRecord,
@@ -940,7 +934,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     hasError,
 
     // Schema information
-    schema: schema as BDOSchema | null,
+    schema: schema as BDOSchemaType | null,
     schemaConfig,
     computedFields,
     requiredFields,

@@ -4,12 +4,12 @@
 // Converts backend field schemas to react-hook-form validation rules
 
 import type {
-  BDOSchema,
-  BDOFieldDefinition,
-  FormFieldConfig,
-  FormSchemaConfig,
-  SchemaValidationRule,
-  FieldPermission,
+  BDOSchemaType,
+  BDOFieldDefinitionType,
+  FormFieldConfigType,
+  FormSchemaConfigType,
+  SchemaValidationRuleType,
+  FieldPermissionType,
 } from "./types";
 import {
   calculateDefaultValue,
@@ -85,8 +85,8 @@ function generateLabel(fieldName: string): string {
  */
 function convertSchemaValidationRules(
   fieldName: string,
-  fieldDef: BDOFieldDefinition,
-  _allFields: Record<string, BDOFieldDefinition>
+  fieldDef: BDOFieldDefinitionType,
+  _allFields: Record<string, BDOFieldDefinitionType>
 ): any {
   const validation: any = {};
 
@@ -130,7 +130,7 @@ function convertSchemaValidationRules(
  * Process field options for select/reference fields
  */
 function processFieldOptions(
-  fieldDef: BDOFieldDefinition
+  fieldDef: BDOFieldDefinitionType
 ): Array<{ value: any; label: string }> {
   if (!fieldDef.Values) {
     return [];
@@ -161,7 +161,7 @@ function processFieldOptions(
  * Calculate default value for a field
  */
 function processDefaultValue(
-  fieldDef: BDOFieldDefinition,
+  fieldDef: BDOFieldDefinitionType,
   formValues: Record<string, any> = {}
 ): any {
   if (!fieldDef.DefaultValue) {
@@ -197,17 +197,17 @@ function processDefaultValue(
  */
 function processField(
   fieldName: string,
-  fieldDef: BDOFieldDefinition,
-  allFields: Record<string, BDOFieldDefinition>,
+  fieldDef: BDOFieldDefinitionType,
+  allFields: Record<string, BDOFieldDefinitionType>,
   formValues: Record<string, any> = {},
-  permission?: FieldPermission,
+  permission?: FieldPermissionType,
   rules?: {
     validation: string[];
     computation: string[];
     businessLogic: string[];
   }
-): FormFieldConfig {
-  const defaultPermission: FieldPermission = {
+): FormFieldConfigType {
+  const defaultPermission: FieldPermissionType = {
     editable: true,
     readable: true,
     hidden: false,
@@ -256,21 +256,21 @@ function processField(
  * Process complete BDO schema
  */
 export function processSchema(
-  schema: BDOSchema,
+  schema: BDOSchemaType,
   formValues: Record<string, any> = {},
   userRole?: string
-): FormSchemaConfig {
+): FormSchemaConfigType {
   // Ensure schema is in BDO format
   let bdoSchema = schema;
 
   // Normalize BDO schema to ensure inline validation rules are centralized
   bdoSchema = normalizeBDOSchema(bdoSchema);
 
-  const fields: Record<string, FormFieldConfig> = {};
+  const fields: Record<string, FormFieldConfigType> = {};
   const fieldOrder: string[] = [];
   const computedFields: string[] = [];
   const requiredFields: string[] = [];
-  const crossFieldValidation: SchemaValidationRule[] = [];
+  const crossFieldValidation: SchemaValidationRuleType[] = [];
 
   // Classify rules by type
   const classifiedRules = classifyRules(bdoSchema);
@@ -339,7 +339,7 @@ export function processSchema(
  * Update computed field values based on current form values
  */
 export function updateComputedFields(
-  processedSchema: FormSchemaConfig,
+  processedSchema: FormSchemaConfigType,
   currentValues: Record<string, any>
 ): Record<string, any> {
   const computedValues: Record<string, any> = {};
@@ -401,7 +401,7 @@ function extractFieldDependencies(expressionTree: any): string[] {
  * Build field dependency map
  */
 export function buildDependencyMap(
-  processedSchema: FormSchemaConfig
+  processedSchema: FormSchemaConfigType
 ): Record<string, string[]> {
   const dependencyMap: Record<string, string[]> = {};
 
@@ -445,7 +445,7 @@ export function buildDependencyMap(
 /**
  * Validate processed schema
  */
-export function validateSchema(processedSchema: FormSchemaConfig): {
+export function validateSchema(processedSchema: FormSchemaConfigType): {
   isValid: boolean;
   errors: string[];
 } {
@@ -478,7 +478,7 @@ export function validateSchema(processedSchema: FormSchemaConfig): {
 /**
  * Build reference field configuration for API calls
  */
-export function buildReferenceFieldConfig(field: FormFieldConfig): any {
+export function buildReferenceFieldConfig(field: FormFieldConfigType): any {
   if (field.type !== "reference" || !field._bdoField.Values?.Reference) {
     return null;
   }
@@ -497,7 +497,7 @@ export function buildReferenceFieldConfig(field: FormFieldConfig): any {
  * Extract all reference field configurations from schema
  */
 export function extractReferenceFields(
-  processedSchema: FormSchemaConfig
+  processedSchema: FormSchemaConfigType
 ): Record<string, any> {
   const referenceFields: Record<string, any> = {};
 

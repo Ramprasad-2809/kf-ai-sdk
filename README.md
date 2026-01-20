@@ -28,24 +28,31 @@ npm install react @tanstack/react-query
 ## Quick Start
 
 ```tsx
-import {
-  // Authentication
-  AuthProvider,
-  useAuth,
+// Authentication
+import { AuthProvider, useAuth } from "@ram_28/kf-ai-sdk/auth";
+import type { UseAuthReturnType, UserDetailsType } from "@ram_28/kf-ai-sdk/auth/types";
 
-  // Hooks
-  useForm,
-  useTable,
-  useKanban,
-  useFilter,
+// Hooks
+import { useForm } from "@ram_28/kf-ai-sdk/form";
+import { useTable } from "@ram_28/kf-ai-sdk/table";
+import { useKanban } from "@ram_28/kf-ai-sdk/kanban";
+import { useFilter } from "@ram_28/kf-ai-sdk/filter";
 
-  // API
-  api,
+// Types
+import type { UseFormOptionsType, UseFormReturnType } from "@ram_28/kf-ai-sdk/form/types";
+import type { UseTableOptionsType, UseTableReturnType } from "@ram_28/kf-ai-sdk/table/types";
+import type { UseKanbanOptionsType, UseKanbanReturnType } from "@ram_28/kf-ai-sdk/kanban/types";
+import type { UseFilterOptionsType, UseFilterReturnType } from "@ram_28/kf-ai-sdk/filter/types";
 
-  // Utilities
-  formatCurrency,
-  formatDate,
-} from "@ram_28/kf-ai-sdk";
+// API
+import { api } from "@ram_28/kf-ai-sdk/api";
+import type { ListResponseType, FilterType } from "@ram_28/kf-ai-sdk/api/types";
+
+// Utilities
+import { formatCurrency, formatDate } from "@ram_28/kf-ai-sdk/utils";
+
+// Base Field Types
+import type { IdFieldType, StringFieldType, CurrencyFieldType } from "@ram_28/kf-ai-sdk/types";
 ```
 
 ## Authentication
@@ -58,7 +65,7 @@ Wrap your app with `AuthProvider` inside a `QueryClientProvider`. No configurati
 
 ```tsx
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { AuthProvider } from "@ram_28/kf-ai-sdk";
+import { AuthProvider } from "@ram_28/kf-ai-sdk/auth";
 
 const queryClient = new QueryClient();
 
@@ -78,7 +85,7 @@ function App() {
 Access authentication state and operations in any component:
 
 ```tsx
-import { useAuth } from "@ram_28/kf-ai-sdk";
+import { useAuth } from "@ram_28/kf-ai-sdk/auth";
 
 function UserMenu() {
   const { user, isAuthenticated, isLoading, logout, hasRole } = useAuth();
@@ -127,7 +134,7 @@ const {
 ### Multiple Auth Providers
 
 ```tsx
-import { useAuth } from "@ram_28/kf-ai-sdk";
+import { useAuth } from "@ram_28/kf-ai-sdk/auth";
 
 function LoginPage() {
   const { login } = useAuth();
@@ -146,7 +153,7 @@ function LoginPage() {
 ### Protected Routes
 
 ```tsx
-import { useAuth } from "@ram_28/kf-ai-sdk";
+import { useAuth } from "@ram_28/kf-ai-sdk/auth";
 import { Navigate } from "react-router-dom";
 
 function ProtectedRoute({ children, requiredRoles }) {
@@ -174,7 +181,7 @@ function ProtectedRoute({ children, requiredRoles }) {
 Data table hook with sorting, pagination, and React Query integration.
 
 ```tsx
-import { useTable } from "@ram_28/kf-ai-sdk";
+import { useTable } from "@ram_28/kf-ai-sdk/table";
 
 function ProductTable() {
   const table = useTable({
@@ -219,7 +226,7 @@ function ProductTable() {
 Schema-driven form hook with backend validation support.
 
 ```tsx
-import { useForm } from "@ram_28/kf-ai-sdk";
+import { useForm } from "@ram_28/kf-ai-sdk/form";
 
 function ProductForm() {
   const form = useForm({
@@ -251,7 +258,8 @@ function ProductForm() {
 Kanban board state management with drag-drop support.
 
 ```tsx
-import { useKanban, Kanban, KanbanColumn, KanbanCard } from "@ram_28/kf-ai-sdk";
+import { useKanban } from "@ram_28/kf-ai-sdk/kanban";
+import { Kanban, KanbanColumn, KanbanCard } from "@ram_28/kf-ai-sdk/kanban/ui";
 
 function TaskBoard() {
   const kanban = useKanban({
@@ -285,7 +293,7 @@ function TaskBoard() {
 Advanced filtering with logical operators.
 
 ```tsx
-import { useFilter, buildFilterPayload } from "@ram_28/kf-ai-sdk";
+import { useFilter } from "@ram_28/kf-ai-sdk/filter";
 
 function ProductFilter() {
   const filter = useFilter({
@@ -323,7 +331,7 @@ function ProductFilter() {
 Type-safe API client for CRUD operations.
 
 ```tsx
-import { api, setApiBaseUrl } from "@ram_28/kf-ai-sdk";
+import { api, setApiBaseUrl } from "@ram_28/kf-ai-sdk/api";
 
 // Configure base URL
 setApiBaseUrl("https://api.example.com");
@@ -378,28 +386,27 @@ The SDK provides semantic field types for type-safe data modeling:
 
 ```tsx
 import type {
-  IdField,
-  StringField,
-  TextAreaField,
-  NumberField,
-  BooleanField,
-  DateField,
-  DateTimeField,
-  CurrencyField,
-  PercentageField,
-  SelectField,
-} from "@ram_28/kf-ai-sdk";
+  IdFieldType,
+  StringFieldType,
+  TextAreaFieldType,
+  NumberFieldType,
+  BooleanFieldType,
+  DateFieldType,
+  DateTimeFieldType,
+  CurrencyFieldType,
+  SelectFieldType,
+} from "@ram_28/kf-ai-sdk/types";
 
 // Define your data types
 interface Product {
-  _id: IdField;
-  name: StringField<string>;
-  description: TextAreaField;
-  price: CurrencyField;
-  quantity: NumberField<0>;
-  inStock: BooleanField;
-  category: SelectField<"electronics" | "clothing" | "books">;
-  createdAt: DateTimeField;
+  _id: IdFieldType;
+  name: StringFieldType;
+  description: TextAreaFieldType;
+  price: CurrencyFieldType;
+  quantity: NumberFieldType;
+  inStock: BooleanFieldType;
+  category: SelectFieldType<"electronics" | "clothing" | "books">;
+  createdAt: DateTimeFieldType;
 }
 ```
 
@@ -414,7 +421,7 @@ import {
   formatDateTime,
   formatNumber,
   formatPercentage,
-} from "@ram_28/kf-ai-sdk";
+} from "@ram_28/kf-ai-sdk/utils";
 
 formatCurrency(99.99); // "$99.99"
 formatDate(new Date()); // "Jan 11, 2024"
@@ -426,7 +433,7 @@ formatPercentage(0.156); // "15.6%"
 ### Class Names
 
 ```tsx
-import { cn } from "@ram_28/kf-ai-sdk";
+import { cn } from "@ram_28/kf-ai-sdk/utils";
 
 // Merge Tailwind classes with conflict resolution
 cn("px-4 py-2", "px-6"); // "py-2 px-6"

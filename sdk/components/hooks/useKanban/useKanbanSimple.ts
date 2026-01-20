@@ -6,7 +6,7 @@
 import { useState, useMemo, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../api";
-import type { ListOptions, ListResponse } from "../../../types/common";
+import type { ListOptionsType, ListResponseType } from "../../../types/common";
 
 // ============================================================
 // TYPE DEFINITIONS
@@ -121,8 +121,8 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
   // API OPTIONS
   // ============================================================
 
-  const apiOptions = useMemo((): ListOptions => {
-    const opts: ListOptions = {};
+  const apiOptions = useMemo((): ListOptionsType => {
+    const opts: ListOptionsType = {};
 
     // Default sorting by column and position - using correct API format
     opts.Sort = [
@@ -151,7 +151,7 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
     refetch: refetchCards,
   } = useQuery({
     queryKey: ["kanban-cards", source, apiOptions],
-    queryFn: async (): Promise<ListResponse<KanbanCard<T>>> => {
+    queryFn: async (): Promise<ListResponseType<KanbanCard<T>>> => {
       try {
         return await api<KanbanCard<T>>(source).list(apiOptions);
       } catch (err) {

@@ -1,9 +1,9 @@
 import { useState, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../../api";
-import type { ListResponse, ListOptions } from "../../../types/common";
+import type { ListResponseType, ListOptionsType } from "../../../types/common";
 import { useFilter } from "../useFilter";
-import type { UseTableOptions, UseTableReturn } from "./types";
+import type { UseTableOptionsType, UseTableReturnType } from "./types";
 
 // ============================================================
 // INTERNAL STATE TYPES
@@ -28,8 +28,8 @@ interface PaginationState {
 // ============================================================
 
 export function useTable<T = any>(
-  options: UseTableOptions<T>
-): UseTableReturn<T> {
+  options: UseTableOptionsType<T>
+): UseTableReturnType<T> {
   // ============================================================
   // STATE MANAGEMENT
   // ============================================================
@@ -62,8 +62,8 @@ export function useTable<T = any>(
   // ============================================================
 
   // Options for count query - excludes sorting and pagination (they don't affect count)
-  const countApiOptions = useMemo((): ListOptions => {
-    const opts: ListOptions = {};
+  const countApiOptions = useMemo((): ListOptionsType => {
+    const opts: ListOptionsType = {};
 
     // Add search query (affects count)
     if (search.query) {
@@ -79,8 +79,8 @@ export function useTable<T = any>(
   }, [search.query, filter.payload]);
 
   // Options for list query - includes all options
-  const apiOptions = useMemo((): ListOptions => {
-    const opts: ListOptions = { ...countApiOptions };
+  const apiOptions = useMemo((): ListOptionsType => {
+    const opts: ListOptionsType = { ...countApiOptions };
 
     // Add sorting - using correct API format: [{ "fieldName": "ASC" }]
     if (sorting.field && sorting.direction) {
@@ -112,7 +112,7 @@ export function useTable<T = any>(
     refetch: queryRefetch,
   } = useQuery({
     queryKey: ["table", options.source, apiOptions],
-    queryFn: async (): Promise<ListResponse<T>> => {
+    queryFn: async (): Promise<ListResponseType<T>> => {
       try {
         const response = await api<T>(options.source).list(apiOptions);
         if (options.onSuccess) {
@@ -244,7 +244,7 @@ export function useTable<T = any>(
   // REFETCH OPERATION
   // ============================================================
 
-  const refetch = useCallback(async (): Promise<ListResponse<T>> => {
+  const refetch = useCallback(async (): Promise<ListResponseType<T>> => {
     const [listResult] = await Promise.all([queryRefetch(), countRefetch()]);
     return listResult.data || { Data: [] };
   }, [queryRefetch, countRefetch]);

@@ -10,30 +10,30 @@
 ## Type Reference
 
 ```typescript
-import { useForm } from "@ram_28/kf-ai-sdk";
+import { useForm } from "@ram_28/kf-ai-sdk/form";
 import type {
   // Core types
-  UseFormOptions,
-  UseFormReturn,
-  FormOperation,
-  FormMode,
+  UseFormOptionsType,
+  UseFormReturnType,
+  FormOperationType,
+  FormModeType,
 
   // Form field configuration
-  FormFieldConfig,
-  FormSchemaConfig,
-  FormFieldType,
-  SelectOption,
-  FieldPermission,
+  FormFieldConfigType,
+  FormSchemaConfigType,
+  FormFieldTypeType,
+  SelectOptionType,
+  FieldPermissionType,
 
   // Result types
-  FieldValidationResult,
-  SubmissionResult,
+  FieldValidationResultType,
+  SubmissionResultType,
 
   // BDO Schema types (advanced)
-  BDOSchema,
-  BDOFieldDefinition,
-  SchemaValidationRule,
-} from "@ram_28/kf-ai-sdk";
+  BDOSchemaType,
+  BDOFieldDefinitionType,
+  SchemaValidationRuleType,
+} from "@ram_28/kf-ai-sdk/form/types";
 
 // Error utilities
 import {
@@ -41,7 +41,7 @@ import {
   isNetworkError,
   isValidationError,
   clearFormCache,
-} from "@ram_28/kf-ai-sdk";
+} from "@ram_28/kf-ai-sdk/form";
 
 // Re-exported from react-hook-form
 import type {
@@ -82,10 +82,10 @@ interface FormState<T> {
 }
 
 // Form operation type
-type FormOperation = "create" | "update";
+type FormOperationType = "create" | "update";
 
 // Form field input types
-type FormFieldType =
+type FormFieldTypeType =
   | "text"
   | "number"
   | "email"
@@ -98,59 +98,59 @@ type FormFieldType =
   | "reference";
 
 // Select option for dropdown fields
-interface SelectOption {
+interface SelectOptionType {
   value: any;
   label: string;
 }
 
 // Field permission for current user
-interface FieldPermission {
+interface FieldPermissionType {
   editable: boolean;
   readable: boolean;
   hidden: boolean;
 }
 
 // Field rule IDs by category
-interface FieldRuleIds {
+interface FieldRuleIdsType {
   validation: string[];
   computation: string[];
   businessLogic: string[];
 }
 
 // Form field configuration for rendering
-interface FormFieldConfig {
+interface FormFieldConfigType {
   name: string;
-  type: FormFieldType;
+  type: FormFieldTypeType;
   label: string;
   required: boolean;
   computed: boolean;
   defaultValue?: any;
-  options?: SelectOption[];
+  options?: SelectOptionType[];
   validation: any;
   description?: string;
-  _bdoField: BDOFieldDefinition;
-  permission: FieldPermission;
-  rules: FieldRuleIds;
+  _bdoField: BDOFieldDefinitionType;
+  permission: FieldPermissionType;
+  rules: FieldRuleIdsType;
 }
 
 // Form schema configuration after processing
-interface FormSchemaConfig {
-  fields: Record<string, FormFieldConfig>;
+interface FormSchemaConfigType {
+  fields: Record<string, FormFieldConfigType>;
   fieldOrder: string[];
   computedFields: string[];
   requiredFields: string[];
-  crossFieldValidation: SchemaValidationRule[];
+  crossFieldValidation: SchemaValidationRuleType[];
   rules: {
-    validation: Record<string, SchemaValidationRule>;
-    computation: Record<string, SchemaValidationRule>;
-    businessLogic: Record<string, SchemaValidationRule>;
+    validation: Record<string, SchemaValidationRuleType>;
+    computation: Record<string, SchemaValidationRuleType>;
+    businessLogic: Record<string, SchemaValidationRuleType>;
   };
-  fieldRules: Record<string, FieldRuleIds>;
-  rolePermissions?: Record<string, RolePermission>;
+  fieldRules: Record<string, FieldRuleIdsType>;
+  rolePermissions?: Record<string, RolePermissionType>;
 }
 
 // BDO field definition structure
-interface BDOFieldDefinition {
+interface BDOFieldDefinitionType {
   Id: string;
   Name: string;
   Type:
@@ -164,39 +164,39 @@ interface BDOFieldDefinition {
     | "Object";
   Required?: boolean;
   Unique?: boolean;
-  DefaultValue?: DefaultValueExpression;
-  Formula?: ComputedFieldFormula;
+  DefaultValue?: DefaultValueExpressionType;
+  Formula?: ComputedFieldFormulaType;
   Computed?: boolean;
-  Validation?: string[] | SchemaValidationRule[];
-  Values?: FieldOptionsConfig;
+  Validation?: string[] | SchemaValidationRuleType[];
+  Values?: FieldOptionsConfigType;
   Description?: string;
 }
 
 // BDO schema structure
-interface BDOSchema {
+interface BDOSchemaType {
   Id: string;
   Name: string;
   Kind: "BusinessObject";
   Description: string;
   Rules: {
-    Computation?: Record<string, SchemaValidationRule>;
-    Validation?: Record<string, SchemaValidationRule>;
-    BusinessLogic?: Record<string, SchemaValidationRule>;
+    Computation?: Record<string, SchemaValidationRuleType>;
+    Validation?: Record<string, SchemaValidationRuleType>;
+    BusinessLogic?: Record<string, SchemaValidationRuleType>;
   };
-  Fields: Record<string, BDOFieldDefinition>;
-  RolePermission: Record<string, RolePermission>;
+  Fields: Record<string, BDOFieldDefinitionType>;
+  RolePermission: Record<string, RolePermissionType>;
   Roles: Record<string, { Name: string; Description: string }>;
 }
 
 // Field validation result
-interface FieldValidationResult<T = Record<string, any>> {
+interface FieldValidationResultType<T = Record<string, any>> {
   isValid: boolean;
   message?: string;
   fieldName?: keyof T;
 }
 
 // Form submission result
-interface SubmissionResult {
+interface SubmissionResultType {
   success: boolean;
   data?: any;
   error?: Error;
@@ -204,20 +204,20 @@ interface SubmissionResult {
 }
 
 // Hook options
-interface UseFormOptions<T> {
+interface UseFormOptionsType<T> {
   source: string;
-  operation: FormOperation;
+  operation: FormOperationType;
   recordId?: string;
   defaultValues?: Partial<T>;
   mode?: "onBlur" | "onChange" | "onSubmit" | "onTouched" | "all";
   enabled?: boolean;
   userRole?: string;
-  schema?: BDOSchema;
+  schema?: BDOSchemaType;
   onSchemaError?: (error: Error) => void; // Schema loading errors only
 }
 
 // Hook return type
-interface UseFormReturn<T> {
+interface UseFormReturnType<T> {
   // React Hook Form methods
   register: UseFormRegister<T>;
   /**
@@ -268,14 +268,14 @@ interface UseFormReturn<T> {
   hasError: boolean;
 
   // Schema info
-  schema: BDOSchema | null;
-  schemaConfig: FormSchemaConfig | null;
+  schema: BDOSchemaType | null;
+  schemaConfig: FormSchemaConfigType | null;
   computedFields: Array<keyof T>;
   requiredFields: Array<keyof T>;
 
   // Field helpers
-  getField: <K extends keyof T>(fieldName: K) => FormFieldConfig | null;
-  getFields: () => Record<keyof T, FormFieldConfig>;
+  getField: <K extends keyof T>(fieldName: K) => FormFieldConfigType | null;
+  getFields: () => Record<keyof T, FormFieldConfigType>;
   hasField: <K extends keyof T>(fieldName: K) => boolean;
   isFieldRequired: <K extends keyof T>(fieldName: K) => boolean;
   isFieldComputed: <K extends keyof T>(fieldName: K) => boolean;
@@ -291,19 +291,22 @@ interface UseFormReturn<T> {
 
 ```tsx
 import { useState } from "react";
-import { useTable, useForm } from "@ram_28/kf-ai-sdk";
+import { useTable } from "@ram_28/kf-ai-sdk/table";
+import { useForm } from "@ram_28/kf-ai-sdk/form";
 import type {
-  UseFormOptions,
-  UseFormReturn,
-  UseTableOptions,
-  UseTableReturn,
-  ColumnDefinition,
-  FormOperation,
-  FormFieldConfig,
-  FormSchemaConfig,
-  BDOFieldDefinition,
-  BDOSchema,
-} from "@ram_28/kf-ai-sdk";
+  UseFormOptionsType,
+  UseFormReturnType,
+  FormOperationType,
+  FormFieldConfigType,
+  FormSchemaConfigType,
+  BDOFieldDefinitionType,
+  BDOSchemaType,
+} from "@ram_28/kf-ai-sdk/form/types";
+import type {
+  UseTableOptionsType,
+  UseTableReturnType,
+  ColumnDefinitionType,
+} from "@ram_28/kf-ai-sdk/table/types";
 import type { FieldErrors } from "react-hook-form";
 import { Product, ProductType } from "../sources";
 import { Roles } from "../sources/roles";
@@ -319,7 +322,7 @@ function ProductManagementPage() {
   const [selectedProduct, setSelectedProduct] = useState<SellerProduct | null>(
     null,
   );
-  const [formMode, setFormMode] = useState<FormOperation>("create");
+  const [formMode, setFormMode] = useState<FormOperationType>("create");
 
   // Table for listing products
   const table = useTable<SellerProduct>({
@@ -333,7 +336,7 @@ function ProductManagementPage() {
   });
 
   // Form configuration with all options
-  const formOptions: UseFormOptions<SellerProduct> = {
+  const formOptions: UseFormOptionsType<SellerProduct> = {
     source: product._id,
     operation: formMode,
     recordId: selectedProduct?._id,
@@ -351,7 +354,7 @@ function ProductManagementPage() {
       console.error("Schema error:", error.message),
   };
 
-  const form: UseFormReturn<SellerProduct> =
+  const form: UseFormReturnType<SellerProduct> =
     useForm<SellerProduct>(formOptions);
 
   // Handle form submission with new RHF-style callbacks
@@ -373,7 +376,7 @@ function ProductManagementPage() {
 
   // Access processed schema
   const displaySchemaInfo = () => {
-    const schema: FormSchemaConfig | null = form.schemaConfig;
+    const schema: FormSchemaConfigType | null = form.schemaConfig;
     if (!schema) return null;
 
     return (
@@ -385,9 +388,9 @@ function ProductManagementPage() {
     );
   };
 
-  // Render a field using FormFieldConfig metadata
+  // Render a field using FormFieldConfigType metadata
   const renderField = (fieldName: keyof SellerProduct) => {
-    const field: FormFieldConfig | null = form.getField(fieldName);
+    const field: FormFieldConfigType | null = form.getField(fieldName);
     if (!field || field.permission.hidden) return null;
 
     const isDisabled = !field.permission.editable || field.computed;
@@ -438,7 +441,7 @@ function ProductManagementPage() {
 
   // Access raw BDO schema
   const displayRawSchema = () => {
-    const schema: BDOSchema | null = form.schema;
+    const schema: BDOSchemaType | null = form.schema;
     if (!schema) return null;
 
     return (
@@ -446,7 +449,7 @@ function ProductManagementPage() {
         <summary>Raw Schema: {schema.Name}</summary>
         <ul>
           {Object.entries(schema.Fields).map(
-            ([fieldName, field]: [string, BDOFieldDefinition]) => (
+            ([fieldName, field]: [string, BDOFieldDefinitionType]) => (
               <li key={fieldName}>
                 {field.Name || fieldName} ({field.Type})
                 {field.Required && " - Required"}
@@ -609,7 +612,7 @@ import {
   isNetworkError,
   isValidationError,
   clearFormCache,
-} from "@ram_28/kf-ai-sdk";
+} from "@ram_28/kf-ai-sdk/form";
 
 // Parse API error to user-friendly message
 const message = parseApiError(error); // "Failed to save: Invalid data"

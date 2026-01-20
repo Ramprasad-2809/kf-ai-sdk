@@ -10,22 +10,25 @@
 ## Type Reference
 
 ```typescript
-import { useTable, isCondition, isConditionGroup } from "@ram_28/kf-ai-sdk";
+import { useTable } from "@ram_28/kf-ai-sdk/table";
+import { isCondition, isConditionGroup } from "@ram_28/kf-ai-sdk/filter";
 import type {
-  UseTableOptions,
-  UseTableReturn,
-  ColumnDefinition,
-  Condition,
-  ConditionGroup,
-  ConditionOperator,
-  ConditionGroupOperator,
-  Filter,
-  UseFilterReturn,
-  ListResponse,
-} from "@ram_28/kf-ai-sdk";
+  UseTableOptionsType,
+  UseTableReturnType,
+  ColumnDefinitionType,
+} from "@ram_28/kf-ai-sdk/table/types";
+import type {
+  ConditionType,
+  ConditionGroupType,
+  ConditionOperatorType,
+  ConditionGroupOperatorType,
+  FilterType,
+  UseFilterReturnType,
+} from "@ram_28/kf-ai-sdk/filter/types";
+import type { ListResponseType } from "@ram_28/kf-ai-sdk/api/types";
 
 // Condition operators for comparing field values
-type ConditionOperator =
+type ConditionOperatorType =
   | "EQ" | "NE" | "GT" | "GTE" | "LT" | "LTE"
   | "Between" | "NotBetween"
   | "IN" | "NIN"
@@ -34,10 +37,10 @@ type ConditionOperator =
   | "MinLength" | "MaxLength";
 
 // Group operators for combining conditions
-type ConditionGroupOperator = "And" | "Or" | "Not";
+type ConditionGroupOperatorType = "And" | "Or" | "Not";
 
 // Column configuration
-interface ColumnDefinition<T> {
+interface ColumnDefinitionType<T> {
   fieldId: keyof T;
   label?: string;
   enableSorting?: boolean;
@@ -46,24 +49,24 @@ interface ColumnDefinition<T> {
 }
 
 // Hook options
-interface UseTableOptions<T> {
+interface UseTableOptionsType<T> {
   source: string;
-  columns: ColumnDefinition<T>[];
+  columns: ColumnDefinitionType<T>[];
   enableSorting?: boolean;
   enableFiltering?: boolean;
   enablePagination?: boolean;
   initialState?: {
     pagination?: { pageNo: number; pageSize: number };
     sorting?: { field: keyof T; direction: "asc" | "desc" };
-    filters?: Array<Condition | ConditionGroup>;
-    filterOperator?: ConditionGroupOperator;
+    filters?: Array<ConditionType | ConditionGroupType>;
+    filterOperator?: ConditionGroupOperatorType;
   };
   onError?: (error: Error) => void;
   onSuccess?: (data: T[]) => void;
 }
 
 // Hook return type
-interface UseTableReturn<T> {
+interface UseTableReturnType<T> {
   // Data
   rows: T[];
   totalItems: number;
@@ -90,7 +93,7 @@ interface UseTableReturn<T> {
   };
 
   // Filter (uses useFilter internally)
-  filter: UseFilterReturn;
+  filter: UseFilterReturnType;
 
   // Pagination
   pagination: {
@@ -107,11 +110,11 @@ interface UseTableReturn<T> {
   };
 
   // Operations
-  refetch: () => Promise<ListResponse<T>>;
+  refetch: () => Promise<ListResponseType<T>>;
 }
 
 // API response structure
-interface ListResponse<T> {
+interface ListResponseType<T> {
   Data: T[];
 }
 ```
@@ -119,19 +122,22 @@ interface ListResponse<T> {
 ## Usage Example
 
 ```tsx
-import { useTable, isCondition, isConditionGroup } from "@ram_28/kf-ai-sdk";
+import { useTable } from "@ram_28/kf-ai-sdk/table";
+import { isCondition, isConditionGroup } from "@ram_28/kf-ai-sdk/filter";
 import type {
-  UseTableOptions,
-  UseTableReturn,
-  ColumnDefinition,
-  Condition,
-  ConditionGroup,
-  ConditionOperator,
-  ConditionGroupOperator,
-  Filter,
-  UseFilterReturn,
-  ListResponse,
-} from "@ram_28/kf-ai-sdk";
+  UseTableOptionsType,
+  UseTableReturnType,
+  ColumnDefinitionType,
+} from "@ram_28/kf-ai-sdk/table/types";
+import type {
+  ConditionType,
+  ConditionGroupType,
+  ConditionOperatorType,
+  ConditionGroupOperatorType,
+  FilterType,
+  UseFilterReturnType,
+} from "@ram_28/kf-ai-sdk/filter/types";
+import type { ListResponseType } from "@ram_28/kf-ai-sdk/api/types";
 import { Product, ProductType } from "../sources";
 import { Roles } from "../sources/roles";
 
@@ -143,7 +149,7 @@ function ProductsPage() {
   const product = new Product(Roles.Buyer);
 
   // Column definitions with type safety
-  const columns: ColumnDefinition<BuyerProduct>[] = [
+  const columns: ColumnDefinitionType<BuyerProduct>[] = [
     { fieldId: "Title", label: "Name", enableSorting: true },
     {
       fieldId: "Price",
@@ -156,7 +162,7 @@ function ProductsPage() {
   ];
 
   // Hook configuration with full options
-  const options: UseTableOptions<BuyerProduct> = {
+  const options: UseTableOptionsType<BuyerProduct> = {
     source: product._id, // Use the Business Object ID from the Product class
     columns,
     enableSorting: true,
@@ -171,13 +177,13 @@ function ProductsPage() {
     onSuccess: (data: BuyerProduct[]) => console.log("Loaded", data.length, "products"),
   };
 
-  const table: UseTableReturn<BuyerProduct> = useTable<BuyerProduct>(options);
+  const table: UseTableReturnType<BuyerProduct> = useTable<BuyerProduct>(options);
 
-  // Access filter functionality (UseFilterReturn)
-  const filterState: UseFilterReturn = table.filter;
+  // Access filter functionality (UseFilterReturnType)
+  const filterState: UseFilterReturnType = table.filter;
 
   // Add a filter with dynamic operator selection
-  const addFilter = (field: keyof BuyerProduct, operator: ConditionOperator, value: any) => {
+  const addFilter = (field: keyof BuyerProduct, operator: ConditionOperatorType, value: any) => {
     table.filter.add({
       Operator: operator,
       LHSField: field as string,
@@ -225,18 +231,18 @@ function ProductsPage() {
 
   // Toggle filter logic operator
   const toggleFilterLogic = () => {
-    const next: ConditionGroupOperator = table.filter.operator === "And" ? "Or" : "And";
+    const next: ConditionGroupOperatorType = table.filter.operator === "And" ? "Or" : "And";
     table.filter.setOperator(next);
   };
 
   // Refetch data manually
   const handleRefresh = async () => {
-    const response: ListResponse<BuyerProduct> = await table.refetch();
+    const response: ListResponseType<BuyerProduct> = await table.refetch();
     console.log(`Refreshed: ${response.Data.length} items`);
   };
 
   // Access filter payload for debugging
-  const getFilterPayload = (): Filter | undefined => {
+  const getFilterPayload = (): FilterType | undefined => {
     return table.filter.payload;
   };
 

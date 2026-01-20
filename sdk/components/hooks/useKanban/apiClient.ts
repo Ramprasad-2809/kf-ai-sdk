@@ -5,18 +5,18 @@
 // Follows the same structure as useForm and useTable API clients
 
 import { api } from "../../../api";
-import type { 
-  ListOptions, 
-  ListResponse, 
-  CreateUpdateResponse,
-  DeleteResponse,
-  CountResponse 
+import type {
+  ListOptionsType,
+  ListResponseType,
+  CreateUpdateResponseType,
+  DeleteResponseType,
+  CountResponseType
 } from "../../../types/common";
 import type {
-  KanbanCard,
-  KanbanColumn,
-  BulkCardUpdateRequest,
-  BulkColumnUpdateRequest
+  KanbanCardType,
+  KanbanColumnType,
+  BulkCardUpdateRequestType,
+  BulkColumnUpdateRequestType
 } from "./types";
 
 // ============================================================
@@ -28,18 +28,18 @@ import type {
  */
 export async function fetchColumns<T>(
   source: string, 
-  options?: ListOptions
-): Promise<KanbanColumn<T>[]> {
-  const client = api<KanbanColumn<T>>(source);
+  options?: ListOptionsType
+): Promise<KanbanColumnType<T>[]> {
+  const client = api<KanbanColumnType<T>>(source);
   
   // Build API options for columns query
-  const apiOptions: ListOptions = {
+  const apiOptions: ListOptionsType = {
     ...options,
     // Default sort by position if no sort specified - using correct API format
     Sort: options?.Sort || [{ position: "ASC" }]
   };
   
-  const response: ListResponse<KanbanColumn<T>> = await client.list(apiOptions);
+  const response: ListResponseType<KanbanColumnType<T>> = await client.list(apiOptions);
   
   // Initialize empty cards array for each column
   // Cards will be fetched separately and merged
@@ -54,14 +54,14 @@ export async function fetchColumns<T>(
  */
 export async function createColumn<T>(
   source: string, 
-  column: Partial<KanbanColumn<T>>
+  column: Partial<KanbanColumnType<T>>
 ): Promise<string> {
-  const client = api<KanbanColumn<T>>(source);
+  const client = api<KanbanColumnType<T>>(source);
   
   // Exclude cards array from creation payload
   const { cards, ...columnData } = column;
   
-  const response: CreateUpdateResponse = await client.create(columnData);
+  const response: CreateUpdateResponseType = await client.create(columnData);
   return response._id;
 }
 
@@ -71,9 +71,9 @@ export async function createColumn<T>(
 export async function updateColumn<T>(
   source: string,
   id: string, 
-  updates: Partial<KanbanColumn<T>>
+  updates: Partial<KanbanColumnType<T>>
 ): Promise<void> {
-  const client = api<KanbanColumn<T>>(source);
+  const client = api<KanbanColumnType<T>>(source);
   
   // Exclude cards array from update payload
   const { cards, ...columnUpdates } = updates;
@@ -99,7 +99,7 @@ export async function reorderColumns<T>(
   source: string,
   columnIds: string[]
 ): Promise<void> {
-  const client = api<KanbanColumn<T>>(source);
+  const client = api<KanbanColumnType<T>>(source);
   
   // Update position for each column
   const updates = columnIds.map((id, index) => ({
@@ -124,12 +124,12 @@ export async function reorderColumns<T>(
  */
 export async function fetchCards<T>(
   source: string,
-  options?: ListOptions
-): Promise<KanbanCard<T>[]> {
-  const client = api<KanbanCard<T>>(source);
+  options?: ListOptionsType
+): Promise<KanbanCardType<T>[]> {
+  const client = api<KanbanCardType<T>>(source);
   
   // Build API options for cards query
-  const apiOptions: ListOptions = {
+  const apiOptions: ListOptionsType = {
     ...options,
     // Default sort by column and position if no sort specified - using correct API format
     Sort: options?.Sort || [
@@ -138,7 +138,7 @@ export async function fetchCards<T>(
     ]
   };
   
-  const response: ListResponse<KanbanCard<T>> = await client.list(apiOptions);
+  const response: ListResponseType<KanbanCardType<T>> = await client.list(apiOptions);
   return response.Data;
 }
 
@@ -147,11 +147,11 @@ export async function fetchCards<T>(
  */
 export async function createCard<T>(
   source: string,
-  card: Partial<KanbanCard<T>> & { columnId: string }
+  card: Partial<KanbanCardType<T>> & { columnId: string }
 ): Promise<string> {
-  const client = api<KanbanCard<T>>(source);
+  const client = api<KanbanCardType<T>>(source);
   
-  const response: CreateUpdateResponse = await client.create(card);
+  const response: CreateUpdateResponseType = await client.create(card);
   return response._id;
 }
 
@@ -161,9 +161,9 @@ export async function createCard<T>(
 export async function updateCard<T>(
   source: string,
   id: string,
-  updates: Partial<KanbanCard<T>>
+  updates: Partial<KanbanCardType<T>>
 ): Promise<void> {
-  const client = api<KanbanCard<T>>(source);
+  const client = api<KanbanCardType<T>>(source);
   await client.update(id, updates);
 }
 
@@ -187,7 +187,7 @@ export async function moveCard<T>(
   toColumnId: string,
   position?: number
 ): Promise<void> {
-  const client = api<KanbanCard<T>>(source);
+  const client = api<KanbanCardType<T>>(source);
   
   const updates: any = {
     columnId: toColumnId,
@@ -205,7 +205,7 @@ export async function reorderCards<T>(
   cardIds: string[],
   columnId: string
 ): Promise<void> {
-  const client = api<KanbanCard<T>>(source);
+  const client = api<KanbanCardType<T>>(source);
   
   // Update position for each card
   const updates = cardIds.map((id, index) => ({
@@ -230,9 +230,9 @@ export async function reorderCards<T>(
  */
 export async function bulkUpdateCards<T>(
   source: string,
-  request: BulkCardUpdateRequest<T>
+  request: BulkCardUpdateRequestType<T>
 ): Promise<void> {
-  const client = api<KanbanCard<T>>(source);
+  const client = api<KanbanCardType<T>>(source);
   
   await Promise.all(
     request.updates.map(update => 
@@ -246,9 +246,9 @@ export async function bulkUpdateCards<T>(
  */
 export async function bulkUpdateColumns<T>(
   source: string,
-  request: BulkColumnUpdateRequest<T>
+  request: BulkColumnUpdateRequestType<T>
 ): Promise<void> {
-  const client = api<KanbanColumn<T>>(source);
+  const client = api<KanbanColumnType<T>>(source);
   
   await Promise.all(
     request.updates.map(update =>
@@ -266,7 +266,7 @@ export async function bulkMoveCards<T>(
   toColumnId: string,
   startPosition = 0
 ): Promise<void> {
-  const client = api<KanbanCard<T>>(cardSource);
+  const client = api<KanbanCardType<T>>(cardSource);
   
   const updates = cardIds.map((cardId, index) => ({
     cardId,
@@ -296,7 +296,7 @@ export async function getCardCount(
 ): Promise<number> {
   const client = api(source);
   
-  const options: ListOptions = {
+  const options: ListOptionsType = {
     Filter: {
       Operator: "And",
       Condition: [
@@ -310,7 +310,7 @@ export async function getCardCount(
     }
   };
   
-  const response: CountResponse = await client.count(options);
+  const response: CountResponseType = await client.count(options);
   return response.Count;
 }
 
@@ -319,10 +319,10 @@ export async function getCardCount(
  */
 export async function getTotalCardCount(
   source: string,
-  options?: ListOptions
+  options?: ListOptionsType
 ): Promise<number> {
   const client = api(source);
-  const response: CountResponse = await client.count(options);
+  const response: CountResponseType = await client.count(options);
   return response.Count;
 }
 
@@ -332,11 +332,11 @@ export async function getTotalCardCount(
 export async function searchCards<T>(
   source: string,
   searchQuery: string,
-  additionalOptions?: ListOptions
-): Promise<KanbanCard<T>[]> {
-  const client = api<KanbanCard<T>>(source);
+  additionalOptions?: ListOptionsType
+): Promise<KanbanCardType<T>[]> {
+  const client = api<KanbanCardType<T>>(source);
   
-  const options: ListOptions = {
+  const options: ListOptionsType = {
     ...additionalOptions,
     Search: searchQuery,
     Sort: additionalOptions?.Sort || [
@@ -345,7 +345,7 @@ export async function searchCards<T>(
     ]
   };
   
-  const response: ListResponse<KanbanCard<T>> = await client.list(options);
+  const response: ListResponseType<KanbanCardType<T>> = await client.list(options);
   return response.Data;
 }
 
@@ -357,9 +357,9 @@ export async function searchCards<T>(
  * Merge cards into their respective columns
  */
 export function mergeCardsIntoColumns<T>(
-  columns: KanbanColumn<T>[],
-  cards: KanbanCard<T>[]
-): KanbanColumn<T>[] {
+  columns: KanbanColumnType<T>[],
+  cards: KanbanCardType<T>[]
+): KanbanColumnType<T>[] {
   // Group cards by columnId
   const cardsByColumn = cards.reduce((acc, card) => {
     if (!acc[card.columnId]) {
@@ -367,7 +367,7 @@ export function mergeCardsIntoColumns<T>(
     }
     acc[card.columnId].push(card);
     return acc;
-  }, {} as Record<string, KanbanCard<T>[]>);
+  }, {} as Record<string, KanbanCardType<T>[]>);
   
   // Assign cards to their respective columns
   return columns.map(column => ({
@@ -381,7 +381,7 @@ export function mergeCardsIntoColumns<T>(
  * Calculate optimal position for inserting a new card
  */
 export function calculateCardPosition<T>(
-  column: KanbanColumn<T>,
+  column: KanbanColumnType<T>,
   insertIndex?: number
 ): number {
   if (column.cards.length === 0) {
@@ -410,7 +410,7 @@ export function calculateCardPosition<T>(
  * Calculate optimal position for inserting a new column
  */
 export function calculateColumnPosition<T>(
-  columns: KanbanColumn<T>[],
+  columns: KanbanColumnType<T>[],
   insertIndex?: number
 ): number {
   if (columns.length === 0) {
@@ -478,7 +478,7 @@ export function handleKanbanApiError(
 export function validateApiResponse<T>(
   response: any,
   expectedType: 'list' | 'single' | 'create' | 'delete'
-): response is ListResponse<T> | T | CreateUpdateResponse | DeleteResponse {
+): response is ListResponseType<T> | T | CreateUpdateResponseType | DeleteResponseType {
   switch (expectedType) {
     case 'list':
       return response && Array.isArray(response.Data);

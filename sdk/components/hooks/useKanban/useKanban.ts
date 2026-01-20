@@ -6,13 +6,13 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient, useQueries, keepPreviousData } from "@tanstack/react-query";
 import { api } from "../../../api";
-import type { ListOptions, ListResponse } from "../../../types/common";
+import type { ListOptionsType, ListResponseType } from "../../../types/common";
 import { useFilter } from "../useFilter";
 
 import type {
-  UseKanbanOptions,
-  UseKanbanReturn,
-  KanbanCard,
+  UseKanbanOptionsType,
+  UseKanbanReturnType,
+  KanbanCardType,
 } from "./types";
 import { useDragDropManager } from "./dragDropManager";
 
@@ -21,11 +21,10 @@ import { useDragDropManager } from "./dragDropManager";
 // ============================================================
 
 export function useKanban<T extends Record<string, any> = Record<string, any>>(
-  options: UseKanbanOptions<T>
-): UseKanbanReturn<T> {
+  options: UseKanbanOptionsType<T>
+): UseKanbanReturnType<T> {
   const {
     columns: columnConfigs,
-    cardSource,
     source,
     enableDragDrop = true,
     initialState,
@@ -35,13 +34,6 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
     onCardDelete,
     onError,
   } = options;
-
-  // Use source or cardSource (backwards compatibility)
-  const dataSource = source || cardSource;
-
-  if (!dataSource) {
-    throw new Error('useKanban requires either "source" or "cardSource" parameter');
-  }
 
   // ============================================================
   // STATE MANAGEMENT
@@ -95,7 +87,7 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
 
   // Helper to generate API options for a specific column
   // This is used for both initial fetching and mutation updates
-  const getColumnApiOptions = useCallback((columnId: string): ListOptions => {
+  const getColumnApiOptions = useCallback((columnId: string): ListOptionsType => {
       // 1. Construct Compound Filter Payload
       const columnFilterObject = {
         LHSField: "columnId",
@@ -128,7 +120,7 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
       }
 
       // 2. Construct API Options
-      const opts: ListOptions = {
+      const opts: ListOptionsType = {
         Page: 1, // Always page 1 due to expanding PageSize strategy
         PageSize: columnPagination[columnId] || 10,
         Filter: combinedPayload,
@@ -163,10 +155,10 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
     queries: columnConfigs.map((column) => {
       const opts = getColumnApiOptions(column.id);
       return {
-        queryKey: ["kanban-cards", dataSource, column.id, opts],
-        queryFn: async (): Promise<ListResponse<KanbanCard<T>>> => {
+        queryKey: ["kanban-cards", source, column.id, opts],
+        queryFn: async (): Promise<ListResponseType<KanbanCardType<T>>> => {
           try {
-            return await api<KanbanCard<T>>(dataSource).list(opts);
+            return await api<KanbanCardType<T>>(source).list(opts);
           } catch (err) {
             throw err;
           }
@@ -185,9 +177,9 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
     await Promise.all(columnQueries.map(q => q.refetch()));
   };
 
-  const cardApiOptions = useMemo((): ListOptions => {
+  const cardApiOptions = useMemo((): ListOptionsType => {
       // This is for the GLOBAL count (ignoring column split)
-      const opts: ListOptions = {};
+      const opts: ListOptionsType = {};
       if (search.query) opts.Search = search.query;
       if (filter.payload) opts.Filter = filter.payload;
       return opts;
@@ -198,10 +190,10 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
     isLoading: isLoadingCount,
     error: countError,
   } = useQuery({
-    queryKey: ["kanban-count", dataSource, cardApiOptions],
+    queryKey: ["kanban-count", source, cardApiOptions],
     queryFn: async () => {
       try {
-        return await api<KanbanCard<T>>(dataSource).count(cardApiOptions);
+        return await api<KanbanCardType<T>>(source).count(cardApiOptions);
       } catch (err) {
         if (onErrorRef.current) {
           onErrorRef.current(err as Error);
@@ -218,19 +210,19 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
   // ============================================================
 
   const createCardMutation = useMutation({
-    mutationFn: async (card: Partial<KanbanCard<T>> & { columnId: string }) => {
+    mutationFn: async (card: Partial<KanbanCardType<T>> & { columnId: string }) => {
       const position = card.position ?? 999999;
-      const response = await api<KanbanCard<T>>(dataSource).create({ ...card, position });
+      const response = await api<KanbanCardType<T>>(source).create({ ...card, position });
       return response._id;
     },
     onMutate: async (newCardVariables) => {
       const columnId = newCardVariables.columnId;
       const opts = getColumnApiOptions(columnId);
-      const queryKey = ["kanban-cards", dataSource, columnId, opts];
+      const queryKey = ["kanban-cards", source, columnId, opts];
 
       await queryClient.cancelQueries({ queryKey });
 
-      const previousCards = queryClient.getQueryData<ListResponse<KanbanCard<T>>>(queryKey);
+      const previousCards = queryClient.getQueryData<ListResponseType<KanbanCardType<T>>>(queryKey);
 
       if (previousCards) {
          const currentCards = previousCards.Data;
@@ -243,9 +235,9 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
            position,
            _created_at: new Date(),
            _modified_at: new Date(),
-         } as KanbanCard<T>;
+         } as KanbanCardType<T>;
 
-         queryClient.setQueryData<ListResponse<KanbanCard<T>>>(queryKey, {
+         queryClient.setQueryData<ListResponseType<KanbanCardType<T>>>(queryKey, {
            ...previousCards,
            Data: [...previousCards.Data, newCard],
          });
@@ -260,7 +252,7 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
        onCardCreateRef.current?.({
          _id: cardId,
          ..._variables,
-       } as KanbanCard<T>);
+       } as KanbanCardType<T>);
     },
     onError: (error, _variables, context) => {
       if (context?.previousCards && context?.queryKey) {
@@ -271,17 +263,17 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
     onSettled: (_data, _error, variables) => {
        const columnId = variables.columnId;
        const opts = getColumnApiOptions(columnId);
-       queryClient.invalidateQueries({ queryKey: ["kanban-cards", dataSource, columnId, opts] });
+       queryClient.invalidateQueries({ queryKey: ["kanban-cards", source, columnId, opts] });
     }
   });
 
   const updateCardMutation = useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: Partial<KanbanCard<T>> }) => {
-      await api<KanbanCard<T>>(dataSource).update(id, updates);
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<KanbanCardType<T>> }) => {
+      await api<KanbanCardType<T>>(source).update(id, updates);
       return { id, updates };
     },
     onMutate: async () => {
-      await queryClient.cancelQueries({ queryKey: ["kanban-cards", dataSource] });
+      await queryClient.cancelQueries({ queryKey: ["kanban-cards", source] });
       return {};
     },
     onSuccess: async (result) => {
@@ -291,17 +283,17 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
       onErrorRef.current?.(error as Error);
     },
     onSettled: () => {
-       queryClient.invalidateQueries({ queryKey: ["kanban-cards", dataSource] });
+       queryClient.invalidateQueries({ queryKey: ["kanban-cards", source] });
     }
   });
 
   const deleteCardMutation = useMutation({
     mutationFn: async (id: string) => {
-      await api(dataSource).delete(id);
+      await api(source).delete(id);
       return id;
     },
     onMutate: async () => {
-      await queryClient.cancelQueries({ queryKey: ["kanban-cards", dataSource] });
+      await queryClient.cancelQueries({ queryKey: ["kanban-cards", source] });
       return {};
     },
     onSuccess: async (id) => {
@@ -311,27 +303,27 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
       onErrorRef.current?.(error as Error);
     },
     onSettled: () => {
-       queryClient.invalidateQueries({ queryKey: ["kanban-cards", dataSource] });
+       queryClient.invalidateQueries({ queryKey: ["kanban-cards", source] });
     }
   });
 
   const moveCardMutation = useMutation({
     mutationFn: async ({ cardId, fromColumnId, toColumnId, position }: { cardId: string; fromColumnId: string; toColumnId: string; position?: number }) => {
       const updates: any = { columnId: toColumnId, ...(position !== undefined && { position }) };
-      await api<KanbanCard<T>>(dataSource).update(cardId, updates);
+      await api<KanbanCardType<T>>(source).update(cardId, updates);
       return { cardId, fromColumnId, toColumnId, position };
     },
     onMutate: async ({ cardId, fromColumnId, toColumnId, position }) => {
        const fromOpts = getColumnApiOptions(fromColumnId);
        const toOpts = getColumnApiOptions(toColumnId);
-       const fromQueryKey = ["kanban-cards", dataSource, fromColumnId, fromOpts];
-       const toQueryKey = ["kanban-cards", dataSource, toColumnId, toOpts];
+       const fromQueryKey = ["kanban-cards", source, fromColumnId, fromOpts];
+       const toQueryKey = ["kanban-cards", source, toColumnId, toOpts];
 
        await queryClient.cancelQueries({ queryKey: fromQueryKey });
        await queryClient.cancelQueries({ queryKey: toQueryKey });
 
-       const previousFromData = queryClient.getQueryData<ListResponse<KanbanCard<T>>>(fromQueryKey);
-       const previousToData = queryClient.getQueryData<ListResponse<KanbanCard<T>>>(toQueryKey);
+       const previousFromData = queryClient.getQueryData<ListResponseType<KanbanCardType<T>>>(fromQueryKey);
+       const previousToData = queryClient.getQueryData<ListResponseType<KanbanCardType<T>>>(toQueryKey);
 
        if (previousFromData && previousToData) {
          const cardToMove = previousFromData.Data.find(c => c._id === cardId);
@@ -387,8 +379,8 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
     onSettled: (_data, _error, variables) => {
        const fromOpts = getColumnApiOptions(variables.fromColumnId);
        const toOpts = getColumnApiOptions(variables.toColumnId);
-       queryClient.invalidateQueries({ queryKey: ["kanban-cards", dataSource, variables.fromColumnId, fromOpts] });
-       queryClient.invalidateQueries({ queryKey: ["kanban-cards", dataSource, variables.toColumnId, toOpts] });
+       queryClient.invalidateQueries({ queryKey: ["kanban-cards", source, variables.fromColumnId, fromOpts] });
+       queryClient.invalidateQueries({ queryKey: ["kanban-cards", source, variables.toColumnId, toOpts] });
     }
   });
 
@@ -397,13 +389,13 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
        const updates = cardIds.map((id, index) => ({ id, position: index, columnId }));
        await Promise.all(
         updates.map((update) =>
-          api<KanbanCard<T>>(dataSource).update(update.id, { position: update.position, columnId: update.columnId } as Partial<KanbanCard<T>>)
+          api<KanbanCardType<T>>(source).update(update.id, { position: update.position, columnId: update.columnId } as Partial<KanbanCardType<T>>)
         )
       );
     },
     onMutate: async ({ columnId }) => {
        const opts = getColumnApiOptions(columnId);
-       const queryKey = ["kanban-cards", dataSource, columnId, opts];
+       const queryKey = ["kanban-cards", source, columnId, opts];
        await queryClient.cancelQueries({ queryKey });
        return {};
     },
@@ -413,7 +405,7 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
     },
     onSettled: (_data, _error, variables) => {
        const opts = getColumnApiOptions(variables.columnId);
-       queryClient.invalidateQueries({ queryKey: ["kanban-cards", dataSource, variables.columnId, opts] });
+       queryClient.invalidateQueries({ queryKey: ["kanban-cards", source, variables.columnId, opts] });
     }
   });
 
@@ -422,7 +414,7 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
   // ============================================================
 
   const handleCardMove = useCallback(
-    async (card: KanbanCard<T>, fromColumnId: string, toColumnId: string) => {
+    async (card: KanbanCardType<T>, fromColumnId: string, toColumnId: string) => {
       try {
         await moveCardMutation.mutateAsync({
           cardId: card._id,
@@ -477,7 +469,7 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
   // ============================================================
 
   const getCardProps = useCallback(
-    (card: KanbanCard<T>) => ({
+    (card: KanbanCardType<T>) => ({
       draggable: true,
       role: "option",
       "aria-selected": enableDragDrop && dragDropManager.draggedCard?._id === card._id,
@@ -587,7 +579,7 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
     // Card Operations (Flat Access)
     createCard: createCardMutation.mutateAsync,
     updateCard: useCallback(
-      async (id: string, updates: Partial<KanbanCard<T>>) => {
+      async (id: string, updates: Partial<KanbanCardType<T>>) => {
         await updateCardMutation.mutateAsync({ id, updates });
       },
       [updateCardMutation]

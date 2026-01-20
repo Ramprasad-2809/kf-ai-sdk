@@ -3,22 +3,22 @@
 // ============================================================
 
 import type {
-  ListOptions,
-  ListResponse,
-  ReadResponse,
-  CreateUpdateResponse,
-  DeleteResponse,
-  CountResponse,
-  DateTimeEncoded,
-  DateEncoded,
-  MetricOptions,
-  MetricResponse,
-  PivotOptions,
-  PivotResponse,
-  DraftResponse,
-  FieldsResponse,
-  FetchFieldOption,
-  FetchFieldResponse,
+  ListOptionsType,
+  ListResponseType,
+  ReadResponseType,
+  CreateUpdateResponseType,
+  DeleteResponseType,
+  CountResponseType,
+  DateTimeEncodedType,
+  DateEncodedType,
+  MetricOptionsType,
+  MetricResponseType,
+  PivotOptionsType,
+  PivotResponseType,
+  DraftResponseType,
+  FieldsResponseType,
+  FetchFieldOptionType,
+  FetchFieldResponseType,
 } from "../types/common";
 
 /**
@@ -33,19 +33,19 @@ export interface ResourceClient<T = any> {
   get(id: string): Promise<T>;
 
   /** Create new record */
-  create(data: Partial<T> & { _id?: string }): Promise<CreateUpdateResponse>;
+  create(data: Partial<T> & { _id?: string }): Promise<CreateUpdateResponseType>;
 
   /** Update existing record */
-  update(id: string, data: Partial<T>): Promise<CreateUpdateResponse>;
+  update(id: string, data: Partial<T>): Promise<CreateUpdateResponseType>;
 
   /** Delete record by ID */
-  delete(id: string): Promise<DeleteResponse>;
+  delete(id: string): Promise<DeleteResponseType>;
 
   /** List records with optional filtering, sorting, and pagination */
-  list(options?: ListOptions): Promise<ListResponse<T>>;
+  list(options?: ListOptionsType): Promise<ListResponseType<T>>;
 
   /** Get count of records matching the same criteria as list */
-  count(options?: ListOptions): Promise<CountResponse>;
+  count(options?: ListOptionsType): Promise<CountResponseType>;
 
   // ============================================================
   // DRAFT/INTERACTIVE OPERATIONS
@@ -55,19 +55,19 @@ export interface ResourceClient<T = any> {
    * Create draft - compute fields without persisting
    * POST /{bo_id}/draft
    */
-  draft(data: Partial<T>): Promise<DraftResponse>;
+  draft(data: Partial<T>): Promise<DraftResponseType>;
 
   /**
    * Update draft (commit) - compute and prepare for update
    * POST /{bo_id}/{instance_id}/draft
    */
-  draftUpdate(id: string, data: Partial<T>): Promise<CreateUpdateResponse>;
+  draftUpdate(id: string, data: Partial<T>): Promise<CreateUpdateResponseType>;
 
   /**
    * Update draft (patch) - compute fields during editing
    * PATCH /{bo_id}/{instance_id}/draft
    */
-  draftPatch(id: string, data: Partial<T>): Promise<DraftResponse>;
+  draftPatch(id: string, data: Partial<T>): Promise<DraftResponseType>;
 
   /**
    * Interactive draft - create/update draft without instance ID
@@ -76,7 +76,7 @@ export interface ResourceClient<T = any> {
    */
   draftInteraction(
     data: Partial<T> & { _id?: string }
-  ): Promise<DraftResponse & { _id: string }>;
+  ): Promise<DraftResponseType & { _id: string }>;
 
   // ============================================================
   // QUERY OPERATIONS
@@ -86,13 +86,13 @@ export interface ResourceClient<T = any> {
    * Get aggregated metrics grouped by dimensions
    * POST /{bo_id}/metric
    */
-  metric(options: Omit<MetricOptions, "Type">): Promise<MetricResponse>;
+  metric(options: Omit<MetricOptionsType, "Type">): Promise<MetricResponseType>;
 
   /**
    * Get pivot table data
    * POST /{bo_id}/pivot
    */
-  pivot(options: Omit<PivotOptions, "Type">): Promise<PivotResponse>;
+  pivot(options: Omit<PivotOptionsType, "Type">): Promise<PivotResponseType>;
 
   // ============================================================
   // METADATA OPERATIONS
@@ -102,13 +102,13 @@ export interface ResourceClient<T = any> {
    * Get field definitions for this Business Object
    * GET /{bo_id}/fields
    */
-  fields(): Promise<FieldsResponse>;
+  fields(): Promise<FieldsResponseType>;
 
   /**
    * Fetch reference data for a specific field (for lookup and dropdown fields)
    * GET /{bo_id}/{instance_id}/field/{field_id}/fetch
    */
-  fetchField(instanceId: string, fieldId: string): Promise<FetchFieldOption[]>;
+  fetchField(instanceId: string, fieldId: string): Promise<FetchFieldOptionType[]>;
 }
 
 /**
@@ -172,12 +172,12 @@ function decodeResponseData<T>(data: any): T {
   if (typeof data === "object") {
     // Check for datetime encoding
     if ("$__dt__" in data) {
-      return new Date((data as DateTimeEncoded).$__dt__ * 1000) as T;
+      return new Date((data as DateTimeEncodedType).$__dt__ * 1000) as T;
     }
 
     // Check for date encoding
     if ("$__d__" in data) {
-      return new Date((data as DateEncoded).$__d__) as T;
+      return new Date((data as DateEncodedType).$__d__) as T;
     }
 
     // Recursively process object properties
@@ -211,13 +211,13 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
         throw new Error(`Failed to get ${bo_id} ${id}: ${response.statusText}`);
       }
 
-      const responseData: ReadResponse<T> = await response.json();
+      const responseData: ReadResponseType<T> = await response.json();
       return decodeResponseData<T>(responseData.Data);
     },
 
     async create(
       data: Partial<T> & { _id?: string }
-    ): Promise<CreateUpdateResponse> {
+    ): Promise<CreateUpdateResponseType> {
       const response = await fetch(`${baseUrl}/api/app/${bo_id}/create`, {
         method: "POST",
         headers: defaultHeaders,
@@ -231,7 +231,7 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
       return response.json();
     },
 
-    async update(id: string, data: Partial<T>): Promise<CreateUpdateResponse> {
+    async update(id: string, data: Partial<T>): Promise<CreateUpdateResponseType> {
       const response = await fetch(`${baseUrl}/api/app/${bo_id}/${id}/update`, {
         method: "POST",
         headers: defaultHeaders,
@@ -247,7 +247,7 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
       return response.json();
     },
 
-    async delete(id: string): Promise<DeleteResponse> {
+    async delete(id: string): Promise<DeleteResponseType> {
       const response = await fetch(`${baseUrl}/api/app/${bo_id}/${id}/delete`, {
         method: "DELETE",
         headers: defaultHeaders,
@@ -262,8 +262,8 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
       return response.json();
     },
 
-    async list(options?: ListOptions): Promise<ListResponse<T>> {
-      const requestBody: ListOptions = {
+    async list(options?: ListOptionsType): Promise<ListResponseType<T>> {
+      const requestBody: ListOptionsType = {
         Type: "List",
         ...options,
       };
@@ -278,13 +278,13 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
         throw new Error(`Failed to list ${bo_id}: ${response.statusText}`);
       }
 
-      const responseData: ListResponse<any> = await response.json();
+      const responseData: ListResponseType<any> = await response.json();
       return {
         Data: responseData.Data.map((item) => decodeResponseData<T>(item)),
       };
     },
 
-    async count(options?: ListOptions): Promise<CountResponse> {
+    async count(options?: ListOptionsType): Promise<CountResponseType> {
       // Note: Count uses metric endpoint with Count aggregation
       const requestBody = {
         Type: "Metric",
@@ -313,7 +313,7 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
     // DRAFT/INTERACTIVE OPERATIONS
     // ============================================================
 
-    async draft(data: Partial<T>): Promise<DraftResponse> {
+    async draft(data: Partial<T>): Promise<DraftResponseType> {
       const response = await fetch(`${baseUrl}/api/app/${bo_id}/draft`, {
         method: "POST",
         headers: defaultHeaders,
@@ -332,7 +332,7 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
     async draftUpdate(
       id: string,
       data: Partial<T>
-    ): Promise<CreateUpdateResponse> {
+    ): Promise<CreateUpdateResponseType> {
       const response = await fetch(`${baseUrl}/api/app/${bo_id}/${id}/draft`, {
         method: "POST",
         headers: defaultHeaders,
@@ -348,7 +348,7 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
       return response.json();
     },
 
-    async draftPatch(id: string, data: Partial<T>): Promise<DraftResponse> {
+    async draftPatch(id: string, data: Partial<T>): Promise<DraftResponseType> {
       const response = await fetch(`${baseUrl}/api/app/${bo_id}/${id}/draft`, {
         method: "PATCH",
         headers: defaultHeaders,
@@ -366,7 +366,7 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
 
     async draftInteraction(
       data: Partial<T> & { _id?: string }
-    ): Promise<DraftResponse & { _id: string }> {
+    ): Promise<DraftResponseType & { _id: string }> {
       const response = await fetch(`${baseUrl}/api/app/${bo_id}/draft`, {
         method: "PATCH",
         headers: defaultHeaders,
@@ -387,9 +387,9 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
     // ============================================================
 
     async metric(
-      options: Omit<MetricOptions, "Type">
-    ): Promise<MetricResponse> {
-      const requestBody: MetricOptions = {
+      options: Omit<MetricOptionsType, "Type">
+    ): Promise<MetricResponseType> {
+      const requestBody: MetricOptionsType = {
         Type: "Metric",
         ...options,
       };
@@ -409,8 +409,8 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
       return response.json();
     },
 
-    async pivot(options: Omit<PivotOptions, "Type">): Promise<PivotResponse> {
-      const requestBody: PivotOptions = {
+    async pivot(options: Omit<PivotOptionsType, "Type">): Promise<PivotResponseType> {
+      const requestBody: PivotOptionsType = {
         Type: "Pivot",
         ...options,
       };
@@ -434,7 +434,7 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
     // METADATA OPERATIONS
     // ============================================================
 
-    async fields(): Promise<FieldsResponse> {
+    async fields(): Promise<FieldsResponseType> {
       const response = await fetch(`${baseUrl}/api/app/${bo_id}/fields`, {
         method: "GET",
         headers: defaultHeaders,
@@ -452,7 +452,7 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
     async fetchField(
       instanceId: string,
       fieldId: string
-    ): Promise<FetchFieldOption[]> {
+    ): Promise<FetchFieldOptionType[]> {
       const response = await fetch(
         `${baseUrl}/api/app/${bo_id}/${instanceId}/field/${fieldId}/fetch`,
         {
@@ -467,7 +467,7 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
         );
       }
 
-      const responseData: FetchFieldResponse = await response.json();
+      const responseData: FetchFieldResponseType = await response.json();
       return responseData.Data;
     },
   };

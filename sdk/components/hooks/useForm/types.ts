@@ -11,7 +11,6 @@ import type {
   PathValue,
   RegisterOptions,
   SetValueConfig,
-  FormState,
 } from "react-hook-form";
 
 // ============================================================
@@ -29,7 +28,7 @@ import type {
  * 2. Clean data & call API → FAILS → onError(apiError)
  * 3. SUCCESS → onSuccess(responseData)
  */
-export type HandleSubmit<T extends RHFFieldValues> = (
+export type HandleSubmitType<T extends RHFFieldValues> = (
   onSuccess?: (data: T, e?: React.BaseSyntheticEvent) => void | Promise<void>,
   onError?: (
     error: FieldErrors<T> | Error,
@@ -45,7 +44,7 @@ export type HandleSubmit<T extends RHFFieldValues> = (
  * Expression tree node types from backend validation system
  * Used for evaluating validation rules, computed fields, and default values
  */
-export interface ExpressionTree {
+export interface ExpressionTreeType {
   Type:
     | "BinaryExpression"
     | "LogicalExpression"
@@ -57,7 +56,7 @@ export interface ExpressionTree {
     | "Literal";
   Operator?: string;
   Callee?: string;
-  Arguments?: ExpressionTree[];
+  Arguments?: ExpressionTreeType[];
   Name?: string;
   Source?: string;
   Property?: {
@@ -77,12 +76,12 @@ export interface ExpressionTree {
  * Validation rule from BDO schema
  * Defines a validation, computation, or business logic rule
  */
-export interface SchemaValidationRule {
+export interface SchemaValidationRuleType {
   Id: string;
   Name: string;
   Description: string;
   Expression: string;
-  ExpressionTree: ExpressionTree;
+  ExpressionTree: ExpressionTreeType;
   ResultType: string;
   Message?: string;
 }
@@ -90,27 +89,27 @@ export interface SchemaValidationRule {
 /**
  * Formula definition for computed fields
  */
-export interface ComputedFieldFormula {
+export interface ComputedFieldFormulaType {
   Id?: string;
   Name?: string;
   Description?: string;
   Expression: string;
-  ExpressionTree: ExpressionTree;
+  ExpressionTree: ExpressionTreeType;
   ResultType?: string;
 }
 
 /**
  * Default value expression for a field
  */
-export interface DefaultValueExpression {
+export interface DefaultValueExpressionType {
   Expression: string;
-  ExpressionTree: ExpressionTree;
+  ExpressionTree: ExpressionTreeType;
 }
 
 /**
  * Reference field configuration for dynamic lookups
  */
-export interface ReferenceFieldConfig {
+export interface ReferenceFieldConfigType {
   Mode: "Dynamic" | "Static";
   Reference?: {
     BusinessObject: string;
@@ -120,7 +119,7 @@ export interface ReferenceFieldConfig {
         LhsField: string;
         Operator: string;
         RhsType: string;
-        RhsValue?: DefaultValueExpression;
+        RhsValue?: DefaultValueExpressionType;
       }>;
     };
     Sort?: Array<{
@@ -133,19 +132,19 @@ export interface ReferenceFieldConfig {
 /**
  * Field options configuration for select/dropdown fields
  */
-export interface FieldOptionsConfig {
+export interface FieldOptionsConfigType {
   Mode: "Static" | "Dynamic";
   Items?: Array<{
     Value: string | number | boolean;
     Label: string;
   }>;
-  Reference?: ReferenceFieldConfig["Reference"];
+  Reference?: ReferenceFieldConfigType["Reference"];
 }
 
 /**
  * BDO field definition structure
  */
-export interface BDOFieldDefinition {
+export interface BDOFieldDefinitionType {
   Id: string;
   Name: string;
   Type:
@@ -160,32 +159,32 @@ export interface BDOFieldDefinition {
     | "ActivityFlow";
   Required?: boolean;
   Unique?: boolean;
-  DefaultValue?: DefaultValueExpression;
-  Formula?: ComputedFieldFormula;
+  DefaultValue?: DefaultValueExpressionType;
+  Formula?: ComputedFieldFormulaType;
   Computed?: boolean;
-  Validation?: string[] | SchemaValidationRule[]; // Array of rule IDs OR inline validation rule objects
-  Values?: FieldOptionsConfig;
+  Validation?: string[] | SchemaValidationRuleType[]; // Array of rule IDs OR inline validation rule objects
+  Values?: FieldOptionsConfigType;
   Items?: {
     Type: string;
-    Property?: Record<string, BDOFieldDefinition>;
+    Property?: Record<string, BDOFieldDefinitionType>;
   };
-  Property?: Record<string, BDOFieldDefinition>;
+  Property?: Record<string, BDOFieldDefinitionType>;
   Description?: string;
 }
 
 /**
  * Business Object Rule definitions from BDO schema
  */
-export interface BusinessObjectRules {
-  Computation?: Record<string, SchemaValidationRule>;
-  Validation?: Record<string, SchemaValidationRule>;
-  BusinessLogic?: Record<string, SchemaValidationRule>;
+export interface BusinessObjectRulesType {
+  Computation?: Record<string, SchemaValidationRuleType>;
+  Validation?: Record<string, SchemaValidationRuleType>;
+  BusinessLogic?: Record<string, SchemaValidationRuleType>;
 }
 
 /**
  * Role permission definition from BDO schema
  */
-export interface RolePermission {
+export interface RolePermissionType {
   Editable?: string[];
   ReadOnly?: string[];
   Methods?: string[];
@@ -203,14 +202,14 @@ export interface RolePermission {
 /**
  * Complete BDO (Business Data Object) schema structure
  */
-export interface BDOSchema {
+export interface BDOSchemaType {
   Id: string;
   Name: string;
   Kind: "BusinessObject";
   Description: string;
-  Rules: BusinessObjectRules;
-  Fields: Record<string, BDOFieldDefinition>;
-  RolePermission: Record<string, RolePermission>;
+  Rules: BusinessObjectRulesType;
+  Fields: Record<string, BDOFieldDefinitionType>;
+  RolePermission: Record<string, RolePermissionType>;
   Roles: Record<
     string,
     {
@@ -227,36 +226,36 @@ export interface BDOSchema {
 /**
  * Form operation mode
  */
-export type FormOperation = "create" | "update";
+export type FormOperationType = "create" | "update";
 
 /**
  * Form interaction mode
  * - "interactive" (default): Real-time server-side validation and computation on every field blur
  * - "non-interactive": Draft only for computed field dependencies (legacy behavior)
  */
-export type InteractionMode = "interactive" | "non-interactive";
+export type InteractionModeType = "interactive" | "non-interactive";
 
 /**
  * Form validation mode (from react-hook-form)
  */
-export type FormMode = Mode;
+export type FormModeType = Mode;
 
 /**
  * Rule classification types
  */
-export type RuleType = "Validation" | "Computation" | "BusinessLogic";
+export type RuleTypeType = "Validation" | "Computation" | "BusinessLogic";
 
 /**
  * useForm hook options with strict typing
  */
-export interface UseFormOptions<
+export interface UseFormOptionsType<
   T extends Record<string, any> = Record<string, any>,
 > {
   /** Data source identifier (Business Object name) */
   source: string;
 
   /** Form operation type */
-  operation: FormOperation;
+  operation: FormOperationType;
 
   /** Record ID for update operations */
   recordId?: string;
@@ -281,7 +280,7 @@ export interface UseFormOptions<
    * @default "onBlur"
    * @see https://react-hook-form.com/docs/useform for more details on validation modes
    */
-  mode?: FormMode;
+  mode?: FormModeType;
 
   /** Whether to enable schema fetching and form initialization (default: true) */
   enabled?: boolean;
@@ -296,23 +295,15 @@ export interface UseFormOptions<
   skipSchemaFetch?: boolean;
 
   /** Manual schema (use instead of fetching) */
-  schema?: BDOSchema;
-
-  /**
-   * Trigger draft API call on every field change (after validation passes)
-   * If true: draft API is called for any field change
-   * If false (default): draft API is called only when computed field dependencies change
-   * @deprecated Use interactionMode: "interactive" instead
-   */
-  draftOnEveryChange?: boolean;
+  schema?: BDOSchemaType;
 
   /**
    * Form interaction mode
    * - "interactive" (default): Real-time server-side validation and computation on every field blur
-   * - "non-interactive": Draft only for computed field dependencies (legacy behavior)
+   * - "non-interactive": Draft only for computed field dependencies
    * @default "interactive"
    */
-  interactionMode?: InteractionMode;
+  interactionMode?: InteractionModeType;
 }
 
 // ============================================================
@@ -322,7 +313,7 @@ export interface UseFormOptions<
 /**
  * Field permission for current user
  */
-export interface FieldPermission {
+export interface FieldPermissionType {
   /** Can user edit this field */
   editable: boolean;
 
@@ -336,7 +327,7 @@ export interface FieldPermission {
 /**
  * Field input types for form rendering
  */
-export type FormFieldType =
+export type FormFieldTypeType =
   | "text"
   | "number"
   | "email"
@@ -351,7 +342,7 @@ export type FormFieldType =
 /**
  * Select option for dropdown fields
  */
-export interface SelectOption {
+export interface SelectOptionType {
   value: any;
   label: string;
 }
@@ -359,7 +350,7 @@ export interface SelectOption {
 /**
  * Field rule IDs by category
  */
-export interface FieldRuleIds {
+export interface FieldRuleIdsType {
   validation: string[];
   computation: string[];
   businessLogic: string[];
@@ -369,12 +360,12 @@ export interface FieldRuleIds {
  * Form field configuration for rendering
  * Contains all metadata needed to render and validate a form field
  */
-export interface FormFieldConfig {
+export interface FormFieldConfigType {
   /** Field name/identifier */
   name: string;
 
   /** Field input type */
-  type: FormFieldType;
+  type: FormFieldTypeType;
 
   /** Display label */
   label: string;
@@ -389,7 +380,7 @@ export interface FormFieldConfig {
   defaultValue?: any;
 
   /** Select options (for select/reference fields) */
-  options?: SelectOption[];
+  options?: SelectOptionType[];
 
   /** Validation configuration */
   validation: any;
@@ -398,22 +389,22 @@ export interface FormFieldConfig {
   description?: string;
 
   /** Original BDO field definition (for advanced use) */
-  _bdoField: BDOFieldDefinition;
+  _bdoField: BDOFieldDefinitionType;
 
   /** Field permissions for current user */
-  permission: FieldPermission;
+  permission: FieldPermissionType;
 
   /** Associated rule IDs by category */
-  rules: FieldRuleIds;
+  rules: FieldRuleIdsType;
 }
 
 /**
  * Form schema configuration after processing
  * Contains all fields and rules ready for form rendering
  */
-export interface FormSchemaConfig {
+export interface FormSchemaConfigType {
   /** All fields by name */
-  fields: Record<string, FormFieldConfig>;
+  fields: Record<string, FormFieldConfigType>;
 
   /** Field names in display order */
   fieldOrder: string[];
@@ -425,20 +416,20 @@ export interface FormSchemaConfig {
   requiredFields: string[];
 
   /** Cross-field validation rules */
-  crossFieldValidation: SchemaValidationRule[];
+  crossFieldValidation: SchemaValidationRuleType[];
 
   /** Classified rules by type */
   rules: {
-    validation: Record<string, SchemaValidationRule>;
-    computation: Record<string, SchemaValidationRule>;
-    businessLogic: Record<string, SchemaValidationRule>;
+    validation: Record<string, SchemaValidationRuleType>;
+    computation: Record<string, SchemaValidationRuleType>;
+    businessLogic: Record<string, SchemaValidationRuleType>;
   };
 
   /** Field-to-rule mapping for quick lookup */
-  fieldRules: Record<string, FieldRuleIds>;
+  fieldRules: Record<string, FieldRuleIdsType>;
 
   /** Role permissions */
-  rolePermissions?: Record<string, RolePermission>;
+  rolePermissions?: Record<string, RolePermissionType>;
 }
 
 // ============================================================
@@ -448,7 +439,7 @@ export interface FormSchemaConfig {
 /**
  * useForm hook return type with flattened state access and strict typing
  */
-export interface UseFormReturn<
+export interface UseFormReturnType<
   T extends Record<string, any> = Record<string, any>,
 > {
   // ============================================================
@@ -492,7 +483,7 @@ export interface UseFormReturn<
    * // Programmatic submission
    * await form.handleSubmit(onSuccess, onError)();
    */
-  handleSubmit: HandleSubmit<T>;
+  handleSubmit: HandleSubmitType<T>;
 
   /** Watch field values with strict typing */
   watch: <K extends Path<T> | readonly Path<T>[]>(
@@ -533,13 +524,6 @@ export interface UseFormReturn<
   isSubmitSuccessful: boolean;
 
   // ============================================================
-  // BACKWARD COMPATIBILITY
-  // ============================================================
-
-  /** Form state object (for backward compatibility with existing components) */
-  formState: FormState<T>;
-
-  // ============================================================
   // LOADING STATES
   // ============================================================
 
@@ -577,10 +561,10 @@ export interface UseFormReturn<
   // ============================================================
 
   /** Raw BDO schema */
-  schema: BDOSchema | null;
+  schema: BDOSchemaType | null;
 
   /** Processed schema configuration for rendering */
-  schemaConfig: FormSchemaConfig | null;
+  schemaConfig: FormSchemaConfigType | null;
 
   /** Computed field names as typed array */
   computedFields: Array<keyof T>;
@@ -593,10 +577,10 @@ export interface UseFormReturn<
   // ============================================================
 
   /** Get field configuration with strict typing */
-  getField: <K extends keyof T>(fieldName: K) => FormFieldConfig | null;
+  getField: <K extends keyof T>(fieldName: K) => FormFieldConfigType | null;
 
   /** Get all field configurations with strict typing */
-  getFields: () => Record<keyof T, FormFieldConfig>;
+  getFields: () => Record<keyof T, FormFieldConfigType>;
 
   /** Check if field exists with strict typing */
   hasField: <K extends keyof T>(fieldName: K) => boolean;
@@ -628,7 +612,7 @@ export interface UseFormReturn<
 /**
  * Expression evaluation context
  */
-export interface ExpressionContext<T = Record<string, any>> {
+export interface ExpressionContextType<T = Record<string, any>> {
   /** Current form values */
   formValues: Partial<T>;
 
@@ -642,7 +626,7 @@ export interface ExpressionContext<T = Record<string, any>> {
 /**
  * Field validation result
  */
-export interface FieldValidationResult<T = Record<string, any>> {
+export interface FieldValidationResultType<T = Record<string, any>> {
   /** Is validation passing */
   isValid: boolean;
 
@@ -656,7 +640,7 @@ export interface FieldValidationResult<T = Record<string, any>> {
 /**
  * Form submission result
  */
-export interface SubmissionResult {
+export interface SubmissionResultType {
   /** Was submission successful */
   success: boolean;
 

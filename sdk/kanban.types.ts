@@ -1,18 +1,20 @@
 // ============================================================
-// KANBAN SDK - Main Export
+// KANBAN MODULE - Type Exports
+// @ram_28/kf-ai-sdk/kanban/types
 // ============================================================
 
-export { useKanban } from './useKanban';
-export { KanbanContext, useKanbanContext } from './context';
-
 export type {
-  // Core interfaces
+  // Core hook types
   UseKanbanOptionsType,
   UseKanbanReturnType,
+
+  // Data structures
   KanbanCardType,
   KanbanColumnType,
   ColumnConfigType,
   ColumnDefinitionType,
+  BaseKanbanCardType,
+  KanbanCardWithDataType,
 
   // Operations
   CardOperationsType,
@@ -45,18 +47,4 @@ export type {
   PartialByType,
   CreateCardInputType,
   CreateColumnInputType,
-} from './types';
-
-// Export utility functions for advanced use cases
-export {
-  mergeCardsIntoColumns,
-  calculateCardPosition,
-  calculateColumnPosition,
-  normalizePositions,
-  handleKanbanApiError,
-  validateApiResponse
-} from './apiClient';
-
-export {
-  useDragDropManager
-} from './dragDropManager';
+} from './components/hooks/useKanban/types';

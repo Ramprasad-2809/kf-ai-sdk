@@ -4,12 +4,11 @@
 // Classifies rules by type and determines execution strategy
 
 import type {
-  BDOSchema,
-  BDOFieldDefinition,
-  FormSchemaConfig,
-  SchemaValidationRule,
-  RuleType,
-  FieldPermission,
+  BDOSchemaType,
+  FormSchemaConfigType,
+  SchemaValidationRuleType,
+  RuleTypeType,
+  FieldPermissionType,
 } from "./types";
 
 // ============================================================
@@ -20,7 +19,7 @@ import type {
  * Check if a validation rule represents a "required" validation
  * Detects patterns like: field != null, TRIM(field) != '', etc.
  */
-function isRequiredSchemaValidationRule(rule: SchemaValidationRule, fieldName: string): boolean {
+function isRequiredSchemaValidationRule(rule: SchemaValidationRuleType, fieldName: string): boolean {
   const expression = rule.Expression?.toLowerCase() || '';
   const ruleName = rule.Name?.toLowerCase() || '';
   const ruleId = rule.Id?.toLowerCase() || '';
@@ -48,7 +47,7 @@ function isRequiredSchemaValidationRule(rule: SchemaValidationRule, fieldName: s
  * Normalize BDO schema to ensure validation rules are in centralized format
  * Extracts inline validation rules from fields and adds them to Rules.Validation
  */
-export function normalizeBDOSchema(schema: BDOSchema): BDOSchema {
+export function normalizeBDOSchema(schema: BDOSchemaType): BDOSchemaType {
   const normalizedSchema = { ...schema };
 
   // Initialize Rules section if it doesn't exist
@@ -84,7 +83,7 @@ export function normalizeBDOSchema(schema: BDOSchema): BDOSchema {
         // Extract inline validation rules
         const ruleIds: string[] = [];
 
-        (field.Validation as SchemaValidationRule[]).forEach((rule) => {
+        (field.Validation as SchemaValidationRuleType[]).forEach((rule) => {
           // Add rule to centralized Rules.Validation
           normalizedSchema.Rules.Validation![rule.Id] = rule;
           ruleIds.push(rule.Id);
@@ -146,11 +145,11 @@ export function normalizeBDOSchema(schema: BDOSchema): BDOSchema {
 /**
  * Classify rules by type from BDO schema
  */
-export function classifyRules(schema: BDOSchema): FormSchemaConfig["rules"] {
+export function classifyRules(schema: BDOSchemaType): FormSchemaConfigType["rules"] {
   const rules = {
-    validation: {} as Record<string, SchemaValidationRule>,
-    computation: {} as Record<string, SchemaValidationRule>,
-    businessLogic: {} as Record<string, SchemaValidationRule>,
+    validation: {} as Record<string, SchemaValidationRuleType>,
+    computation: {} as Record<string, SchemaValidationRuleType>,
+    businessLogic: {} as Record<string, SchemaValidationRuleType>,
   };
 
   // Extract rules from BDO Rules section
@@ -178,7 +177,7 @@ export function classifyRules(schema: BDOSchema): FormSchemaConfig["rules"] {
  * by analyzing the rule's target field from its name/description
  */
 function inferComputationRuleTargets(
-  schema: BDOSchema
+  schema: BDOSchemaType
 ): Record<string, string> {
   const ruleToField: Record<string, string> = {};
 
@@ -222,10 +221,10 @@ function inferComputationRuleTargets(
 }
 
 export function createFieldRuleMapping(
-  schema: BDOSchema,
-  classifiedRules: FormSchemaConfig["rules"]
-): FormSchemaConfig["fieldRules"] {
-  const fieldRules: FormSchemaConfig["fieldRules"] = {};
+  schema: BDOSchemaType,
+  classifiedRules: FormSchemaConfigType["rules"]
+): FormSchemaConfigType["fieldRules"] {
+  const fieldRules: FormSchemaConfigType["fieldRules"] = {};
 
   // Initialize all fields
   Object.keys(schema.Fields).forEach((fieldName) => {
@@ -288,13 +287,13 @@ export function createFieldRuleMapping(
  * Calculate field permissions based on user role
  */
 export function calculateFieldPermissions(
-  schema: BDOSchema,
+  schema: BDOSchemaType,
   userRole?: string
-): Record<string, FieldPermission> {
-  const fieldPermissions: Record<string, FieldPermission> = {};
+): Record<string, FieldPermissionType> {
+  const fieldPermissions: Record<string, FieldPermissionType> = {};
 
   // Default permissions (no role specified)
-  const defaultPermission: FieldPermission = {
+  const defaultPermission: FieldPermissionType = {
     editable: true,
     readable: true,
     hidden: false,
@@ -338,7 +337,7 @@ export function calculateFieldPermissions(
  * Determine if rule should execute client-side or server-side
  */
 export function getRuleExecutionStrategy(
-  ruleType: RuleType
+  ruleType: RuleTypeType
 ): "client" | "server" {
   switch (ruleType) {
     case "Validation":
@@ -356,11 +355,11 @@ export function getRuleExecutionStrategy(
  */
 export function getRulesForField(
   fieldName: string,
-  fieldRules: FormSchemaConfig["fieldRules"],
-  classifiedRules: FormSchemaConfig["rules"],
+  fieldRules: FormSchemaConfigType["fieldRules"],
+  classifiedRules: FormSchemaConfigType["rules"],
   executionType: "client" | "server"
-): SchemaValidationRule[] {
-  const rules: SchemaValidationRule[] = [];
+): SchemaValidationRuleType[] {
+  const rules: SchemaValidationRuleType[] = [];
   const fieldRuleMap = fieldRules[fieldName];
 
   if (!fieldRuleMap) return rules;
@@ -387,39 +386,4 @@ export function getRulesForField(
   }
 
   return rules;
-}
-
-// ============================================================
-// LEGACY SCHEMA SUPPORT
-// ============================================================
-
-/**
- * Convert legacy schema format to BDO format
- * @deprecated Legacy schema format is no longer supported
- */
-export function convertLegacySchema(legacySchema: Record<string, BDOFieldDefinition>): BDOSchema {
-  return {
-    Id: "legacy_schema",
-    Name: "Legacy Schema",
-    Kind: "BusinessObject",
-    Description: "Converted from legacy schema format",
-    Rules: {
-      Validation: {},
-      Computation: {},
-      BusinessLogic: {},
-    },
-    Fields: Object.fromEntries(
-      Object.entries(legacySchema).map(([fieldName, field]) => [
-        fieldName,
-        {
-          ...field,
-          Id: fieldName,
-          Name: field.Description || fieldName,
-          Validation: [], // Legacy format needs to be processed separately
-        },
-      ])
-    ),
-    RolePermission: {},
-    Roles: {},
-  };
 }
