@@ -71,25 +71,20 @@ interface UseFilterReturnType {
   hasConditions: boolean;
 
   // Add operations (return id of created item)
-  add: (condition: Omit<ConditionType, "id">) => string;
-  addGroup: (operator: ConditionGroupOperatorType) => string;
-  addTo: (parentId: string, condition: Omit<ConditionType, "id">) => string;
-  addGroupTo: (parentId: string, operator: ConditionGroupOperatorType) => string;
+  addCondition: (condition: Omit<ConditionType, "id">, parentId?: string) => string;
+  addConditionGroup: (operator: ConditionGroupOperatorType, parentId?: string) => string;
 
   // Update operations
-  update: (id: string, updates: Partial<Omit<ConditionType, "id">>) => void;
-  updateOperator: (id: string, operator: ConditionGroupOperatorType) => void;
+  updateCondition: (id: string, updates: Partial<Omit<ConditionType, "id">>) => void;
+  updateGroupOperator: (id: string, operator: ConditionGroupOperatorType) => void;
 
   // Remove & access
-  remove: (id: string) => void;
-  get: (id: string) => ConditionType | ConditionGroupType | undefined;
+  removeCondition: (id: string) => void;
+  getCondition: (id: string) => ConditionType | ConditionGroupType | undefined;
 
   // Utility
-  clear: () => void;
-  setOperator: (op: ConditionGroupOperatorType) => void;
-
-  // Legacy (deprecated)
-  conditions: Array<ConditionType | ConditionGroupType>;
+  clearAllConditions: () => void;
+  setRootOperator: (op: ConditionGroupOperatorType) => void;
 }
 
 // Type guards
@@ -119,7 +114,7 @@ function ProductFilterBuilder() {
 
   // Add a simple condition at root level
   const handleAddCondition = () => {
-    const id = filter.add({
+    const id = filter.addCondition({
       Operator: "EQ",
       LHSField: "Category",
       RHSValue: "Electronics",
@@ -130,36 +125,36 @@ function ProductFilterBuilder() {
 
   // Build nested filter: (Category = "Electronics") AND (Price > 100 OR OnSale = true)
   const handleBuildComplexFilter = () => {
-    filter.clear();
+    filter.clearAllConditions();
 
     // Add root condition
-    filter.add({
+    filter.addCondition({
       Operator: "EQ",
       LHSField: "Category",
       RHSValue: "Electronics",
     });
 
     // Create nested OR group
-    const groupId = filter.addGroup("Or");
+    const groupId = filter.addConditionGroup("Or");
 
     // Add conditions to the group
-    filter.addTo(groupId, {
+    filter.addCondition({
       Operator: "GT",
       LHSField: "Price",
       RHSValue: 100,
-    });
+    }, groupId);
 
-    const saleConditionId = filter.addTo(groupId, {
+    const saleConditionId = filter.addCondition({
       Operator: "EQ",
       LHSField: "OnSale",
       RHSValue: true,
-    });
+    }, groupId);
 
     // Update a condition
-    filter.update(saleConditionId, { RHSValue: false });
+    filter.updateCondition(saleConditionId, { RHSValue: false });
 
     // Toggle group operator
-    filter.updateOperator(groupId, "And");
+    filter.updateGroupOperator(groupId, "And");
   };
 
   // Render filter tree recursively
@@ -172,8 +167,8 @@ function ProductFilterBuilder() {
           <span>
             {item.LHSField} {item.Operator} {String(item.RHSValue)}
           </span>
-          <button onClick={() => filter.remove(item.id!)}>Remove</button>
-          <button onClick={() => filter.update(item.id!, { RHSValue: "Updated" })}>
+          <button onClick={() => filter.removeCondition(item.id!)}>Remove</button>
+          <button onClick={() => filter.updateCondition(item.id!, { RHSValue: "Updated" })}>
             Update
           </button>
         </div>
@@ -187,18 +182,18 @@ function ProductFilterBuilder() {
             <select
               value={item.Operator}
               onChange={(e) =>
-                filter.updateOperator(item.id!, e.target.value as ConditionGroupOperatorType)
+                filter.updateGroupOperator(item.id!, e.target.value as ConditionGroupOperatorType)
               }
             >
               <option value="And">AND</option>
               <option value="Or">OR</option>
               <option value="Not">NOT</option>
             </select>
-            <button onClick={() => filter.addTo(item.id!, { Operator: "EQ", LHSField: "Field", RHSValue: "" })}>
+            <button onClick={() => filter.addCondition({ Operator: "EQ", LHSField: "Field", RHSValue: "" }, item.id!)}>
               + Condition
             </button>
-            <button onClick={() => filter.addGroupTo(item.id!, "And")}>+ Group</button>
-            <button onClick={() => filter.remove(item.id!)}>Remove Group</button>
+            <button onClick={() => filter.addConditionGroup("And", item.id!)}>+ Group</button>
+            <button onClick={() => filter.removeCondition(item.id!)}>Remove Group</button>
           </div>
           <div className="group-conditions">
             {item.Condition.map((child) => renderFilterItem(child, depth + 1))}
@@ -226,7 +221,7 @@ function ProductFilterBuilder() {
 
   // Access individual item by id
   const handleGetItem = (id: string) => {
-    const item = filter.get(id);
+    const item = filter.getCondition(id);
     if (item) {
       console.log("Found item:", item);
     }
@@ -240,16 +235,16 @@ function ProductFilterBuilder() {
           Root Operator:
           <select
             value={filter.operator}
-            onChange={(e) => filter.setOperator(e.target.value as ConditionGroupOperator)}
+            onChange={(e) => filter.setRootOperator(e.target.value as ConditionGroupOperator)}
           >
             <option value="And">AND</option>
             <option value="Or">OR</option>
           </select>
         </label>
         <button onClick={handleAddCondition}>Add Condition</button>
-        <button onClick={() => filter.addGroup("Or")}>Add Group</button>
+        <button onClick={() => filter.addConditionGroup("Or")}>Add Group</button>
         <button onClick={handleBuildComplexFilter}>Build Complex Filter</button>
-        <button onClick={filter.clear} disabled={!filter.hasConditions}>
+        <button onClick={filter.clearAllConditions} disabled={!filter.hasConditions}>
           Clear All
         </button>
       </div>

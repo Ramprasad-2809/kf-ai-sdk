@@ -203,43 +203,33 @@ export function useFilter(options: UseFilterOptionsType = {}): UseFilterReturnTy
   // ADD OPERATIONS
   // ============================================================
 
-  const add = useCallback((condition: Omit<ConditionType, "id">): string => {
-    const id = generateId();
-    const newCondition: ConditionType = { ...condition, id };
-    setItems((prev) => [...prev, newCondition]);
-    return id;
-  }, []);
-
-  const addGroup = useCallback((groupOperator: ConditionGroupOperatorType): string => {
-    const id = generateId();
-    const newGroup: ConditionGroupType = {
-      id,
-      Operator: groupOperator,
-      Condition: [],
-    };
-    setItems((prev) => [...prev, newGroup]);
-    return id;
-  }, []);
-
-  const addTo = useCallback(
-    (parentId: string, condition: Omit<ConditionType, "id">): string => {
+  const addCondition = useCallback(
+    (condition: Omit<ConditionType, "id">, parentId?: string): string => {
       const id = generateId();
       const newCondition: ConditionType = { ...condition, id };
-      setItems((prev) => addToParent(prev, parentId, newCondition));
+      if (parentId) {
+        setItems((prev) => addToParent(prev, parentId, newCondition));
+      } else {
+        setItems((prev) => [...prev, newCondition]);
+      }
       return id;
     },
     []
   );
 
-  const addGroupTo = useCallback(
-    (parentId: string, groupOperator: ConditionGroupOperatorType): string => {
+  const addConditionGroup = useCallback(
+    (groupOperator: ConditionGroupOperatorType, parentId?: string): string => {
       const id = generateId();
       const newGroup: ConditionGroupType = {
         id,
         Operator: groupOperator,
         Condition: [],
       };
-      setItems((prev) => addToParent(prev, parentId, newGroup));
+      if (parentId) {
+        setItems((prev) => addToParent(prev, parentId, newGroup));
+      } else {
+        setItems((prev) => [...prev, newGroup]);
+      }
       return id;
     },
     []
@@ -249,7 +239,7 @@ export function useFilter(options: UseFilterOptionsType = {}): UseFilterReturnTy
   // UPDATE OPERATIONS
   // ============================================================
 
-  const update = useCallback(
+  const updateCondition = useCallback(
     (id: string, updates: Partial<Omit<ConditionType, "id">>): void => {
       setItems((prev) =>
         updateInTree(prev, id, (item) => {
@@ -263,7 +253,7 @@ export function useFilter(options: UseFilterOptionsType = {}): UseFilterReturnTy
     []
   );
 
-  const updateOperator = useCallback(
+  const updateGroupOperator = useCallback(
     (id: string, newOperator: ConditionGroupOperatorType): void => {
       setItems((prev) =>
         updateInTree(prev, id, (item) => {
@@ -281,11 +271,11 @@ export function useFilter(options: UseFilterOptionsType = {}): UseFilterReturnTy
   // REMOVE & ACCESS
   // ============================================================
 
-  const remove = useCallback((id: string): void => {
+  const removeCondition = useCallback((id: string): void => {
     setItems((prev) => removeFromTree(prev, id));
   }, []);
 
-  const get = useCallback(
+  const getCondition = useCallback(
     (id: string): ConditionType | ConditionGroupType | undefined => {
       return findById(items, id);
     },
@@ -296,11 +286,11 @@ export function useFilter(options: UseFilterOptionsType = {}): UseFilterReturnTy
   // UTILITY
   // ============================================================
 
-  const clear = useCallback((): void => {
+  const clearAllConditions = useCallback((): void => {
     setItems([]);
   }, []);
 
-  const setOperator = useCallback((op: ConditionGroupOperatorType): void => {
+  const setRootOperator = useCallback((op: ConditionGroupOperatorType): void => {
     setOperatorState(op);
   }, []);
 
@@ -316,21 +306,19 @@ export function useFilter(options: UseFilterOptionsType = {}): UseFilterReturnTy
     hasConditions,
 
     // Add operations
-    add,
-    addGroup,
-    addTo,
-    addGroupTo,
+    addCondition,
+    addConditionGroup,
 
     // Update operations
-    update,
-    updateOperator,
+    updateCondition,
+    updateGroupOperator,
 
     // Remove & access
-    remove,
-    get,
+    removeCondition,
+    getCondition,
 
     // Utility
-    clear,
-    setOperator,
+    clearAllConditions,
+    setRootOperator,
   };
 }

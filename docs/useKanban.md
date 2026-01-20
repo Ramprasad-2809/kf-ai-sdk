@@ -236,9 +236,9 @@ function InventoryRestockingBoard() {
 
   // Filter by priority
   const filterByPriority = (priority: string) => {
-    kanban.filter.clear();
+    kanban.filter.clearAllConditions();
     if (priority !== "all") {
-      kanban.filter.add({
+      kanban.filter.addCondition({
         Operator: "EQ",
         LHSField: "priority",
         RHSValue: priority,
@@ -248,17 +248,17 @@ function InventoryRestockingBoard() {
 
   // Add complex filter (Critical OR High priority)
   const addUrgentFilter = () => {
-    const groupId = kanban.filter.addGroup("Or");
-    kanban.filter.addTo(groupId, {
+    const groupId = kanban.filter.addConditionGroup("Or");
+    kanban.filter.addCondition({
       Operator: "EQ",
       LHSField: "priority",
       RHSValue: "Critical",
-    });
-    kanban.filter.addTo(groupId, {
+    }, groupId);
+    kanban.filter.addCondition({
       Operator: "EQ",
       LHSField: "priority",
       RHSValue: "High",
-    });
+    }, groupId);
   };
 
   // Render active filters using type guards
@@ -269,7 +269,7 @@ function InventoryRestockingBoard() {
           return (
             <span key={item.id} className="filter-tag">
               {item.LHSField} {item.Operator} {String(item.RHSValue)}
-              <button onClick={() => kanban.filter.remove(item.id!)}>×</button>
+              <button onClick={() => kanban.filter.removeCondition(item.id!)}>×</button>
             </span>
           );
         }
@@ -277,7 +277,7 @@ function InventoryRestockingBoard() {
           return (
             <span key={item.id} className="filter-group-tag">
               {item.Operator} Group ({item.Condition.length})
-              <button onClick={() => kanban.filter.remove(item.id!)}>×</button>
+              <button onClick={() => kanban.filter.removeCondition(item.id!)}>×</button>
             </span>
           );
         }
@@ -324,7 +324,7 @@ function InventoryRestockingBoard() {
         <button onClick={addUrgentFilter}>Urgent (Critical OR High)</button>
         <button onClick={() => filterByPriority("all")}>All</button>
         {kanban.filter.hasConditions && (
-          <button onClick={() => kanban.filter.clear()}>Clear Filters</button>
+          <button onClick={() => kanban.filter.clearAllConditions()}>Clear Filters</button>
         )}
         <span>Logic: {kanban.filter.operator}</span>
       </div>
