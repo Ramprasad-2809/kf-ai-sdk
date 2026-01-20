@@ -10,7 +10,7 @@
 ## Type Reference
 
 ```typescript
-import { useForm } from "@anthropic/kf-ai-sdk";
+import { useForm } from "@ram_28/kf-ai-sdk";
 import type {
   // Core types
   UseFormOptions,
@@ -33,7 +33,7 @@ import type {
   BDOSchema,
   BDOFieldDefinition,
   SchemaValidationRule,
-} from "@anthropic/kf-ai-sdk";
+} from "@ram_28/kf-ai-sdk";
 
 // Error utilities
 import {
@@ -41,7 +41,7 @@ import {
   isNetworkError,
   isValidationError,
   clearFormCache,
-} from "@anthropic/kf-ai-sdk";
+} from "@ram_28/kf-ai-sdk";
 
 // Re-exported from react-hook-form
 import type {
@@ -51,6 +51,35 @@ import type {
   Path,
   PathValue,
 } from "react-hook-form";
+
+// FieldErrors type from react-hook-form
+// Maps field names to their error objects (message, type, etc.)
+// Used in handleSubmit's onError callback for validation errors
+type FieldErrors<T> = {
+  [K in keyof T]?: {
+    type: string;
+    message?: string;
+    ref?: React.RefObject<any>;
+  };
+} & {
+  root?: Record<string, { type: string; message?: string }>; // Cross-field errors
+};
+
+// FormState type from react-hook-form
+// Contains all form state information
+interface FormState<T> {
+  isDirty: boolean; // Form has been modified
+  isValid: boolean; // All validations pass
+  isSubmitting: boolean; // Form is being submitted
+  isSubmitted: boolean; // Form has been submitted at least once
+  isSubmitSuccessful: boolean; // Last submission was successful
+  isLoading: boolean; // Form is loading async default values
+  isValidating: boolean; // Form is validating
+  submitCount: number; // Number of times form was submitted
+  errors: FieldErrors<T>; // Current validation errors
+  touchedFields: Partial<Record<keyof T, boolean>>; // Fields that have been touched
+  dirtyFields: Partial<Record<keyof T, boolean>>; // Fields that have been modified
+}
 
 // Form operation type
 type FormOperation = "create" | "update";
@@ -124,7 +153,15 @@ interface FormSchemaConfig {
 interface BDOFieldDefinition {
   Id: string;
   Name: string;
-  Type: "String" | "Number" | "Boolean" | "Date" | "DateTime" | "Reference" | "Array" | "Object";
+  Type:
+    | "String"
+    | "Number"
+    | "Boolean"
+    | "Date"
+    | "DateTime"
+    | "Reference"
+    | "Array"
+    | "Object";
   Required?: boolean;
   Unique?: boolean;
   DefaultValue?: DefaultValueExpression;
@@ -177,18 +214,34 @@ interface UseFormOptions<T> {
   userRole?: string;
   schema?: BDOSchema;
   draftOnEveryChange?: boolean;
-  onSuccess?: (data: T) => void;
-  onError?: (error: Error) => void;
-  onSchemaError?: (error: Error) => void;
-  onSubmitError?: (error: Error) => void;
+  onSchemaError?: (error: Error) => void; // Schema loading errors only
 }
 
 // Hook return type
 interface UseFormReturn<T> {
   // React Hook Form methods
   register: UseFormRegister<T>;
-  handleSubmit: () => (e?: React.FormEvent) => Promise<void>;
-  watch: <K extends Path<T>>(name?: K) => K extends Path<T> ? PathValue<T, K> : T;
+  /**
+   * handleSubmit follows RHF pattern with optional callbacks:
+   * - onSuccess: Called with API response data on successful submission
+   * - onError: Called with FieldErrors (validation) or Error (API failure)
+   *
+   * Usage:
+   *   form.handleSubmit()                    // No callbacks
+   *   form.handleSubmit(onSuccess)           // Success only
+   *   form.handleSubmit(onSuccess, onError)  // Both callbacks
+   *   form.handleSubmit(undefined, onError)  // Error only
+   */
+  handleSubmit: (
+    onSuccess?: (data: T, e?: React.FormEvent) => void | Promise<void>,
+    onError?: (
+      error: FieldErrors<T> | Error,
+      e?: React.FormEvent,
+    ) => void | Promise<void>,
+  ) => (e?: React.FormEvent) => Promise<void>;
+  watch: <K extends Path<T>>(
+    name?: K,
+  ) => K extends Path<T> ? PathValue<T, K> : T;
   setValue: <K extends Path<T>>(name: K, value: PathValue<T, K>) => void;
   reset: (values?: T) => void;
 
@@ -209,7 +262,6 @@ interface UseFormReturn<T> {
 
   // Error handling
   loadError: Error | null;
-  submitError: Error | null;
   hasError: boolean;
 
   // Schema info
@@ -226,7 +278,6 @@ interface UseFormReturn<T> {
   isFieldComputed: <K extends keyof T>(fieldName: K) => boolean;
 
   // Operations
-  submit: () => Promise<void>;
   refreshSchema: () => Promise<void>;
   validateForm: () => Promise<boolean>;
   clearErrors: () => void;
@@ -237,7 +288,7 @@ interface UseFormReturn<T> {
 
 ```tsx
 import { useState } from "react";
-import { useTable, useForm } from "@anthropic/kf-ai-sdk";
+import { useTable, useForm } from "@ram_28/kf-ai-sdk";
 import type {
   UseFormOptions,
   UseFormReturn,
@@ -249,7 +300,8 @@ import type {
   FormSchemaConfig,
   BDOFieldDefinition,
   BDOSchema,
-} from "@anthropic/kf-ai-sdk";
+} from "@ram_28/kf-ai-sdk";
+import type { FieldErrors } from "react-hook-form";
 import { Product, ProductType } from "../sources";
 import { Roles } from "../sources/roles";
 
@@ -261,7 +313,9 @@ function ProductManagementPage() {
   const product = new Product(Roles.Seller);
 
   const [showForm, setShowForm] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<SellerProduct | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<SellerProduct | null>(
+    null,
+  );
   const [formMode, setFormMode] = useState<FormOperation>("create");
 
   // Table for listing products
@@ -290,17 +344,29 @@ function ProductManagementPage() {
       Category: "Electronics",
       Stock: 0,
     },
-    onSuccess: (data: SellerProduct) => {
-      console.log("Product saved:", data);
-      setShowForm(false);
-      table.refetch();
-    },
-    onError: (error: Error) => console.error("Form error:", error.message),
-    onSchemaError: (error: Error) => console.error("Schema error:", error.message),
-    onSubmitError: (error: Error) => console.error("Submit error:", error.message),
+    onSchemaError: (error: Error) =>
+      console.error("Schema error:", error.message),
   };
 
-  const form: UseFormReturn<SellerProduct> = useForm<SellerProduct>(formOptions);
+  const form: UseFormReturn<SellerProduct> =
+    useForm<SellerProduct>(formOptions);
+
+  // Handle form submission with new RHF-style callbacks
+  const onFormSuccess = (data: SellerProduct) => {
+    console.log("Product saved:", data);
+    setShowForm(false);
+    table.refetch();
+  };
+
+  const onFormError = (error: FieldErrors<SellerProduct> | Error) => {
+    if (error instanceof Error) {
+      // API error
+      console.error("Submit error:", error.message);
+    } else {
+      // Validation errors (FieldErrors)
+      console.error("Validation errors:", error);
+    }
+  };
 
   // Access processed schema
   const displaySchemaInfo = () => {
@@ -376,13 +442,15 @@ function ProductManagementPage() {
       <details>
         <summary>Raw Schema: {schema.Name}</summary>
         <ul>
-          {Object.entries(schema.Fields).map(([fieldName, field]: [string, BDOFieldDefinition]) => (
-            <li key={fieldName}>
-              {field.Name || fieldName} ({field.Type})
-              {field.Required && " - Required"}
-              {field.Computed && " - Computed"}
-            </li>
-          ))}
+          {Object.entries(schema.Fields).map(
+            ([fieldName, field]: [string, BDOFieldDefinition]) => (
+              <li key={fieldName}>
+                {field.Name || fieldName} ({field.Type})
+                {field.Required && " - Required"}
+                {field.Computed && " - Computed"}
+              </li>
+            ),
+          )}
         </ul>
       </details>
     );
@@ -397,11 +465,8 @@ function ProductManagementPage() {
     console.log("All required fields:", form.requiredFields);
   };
 
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await form.handleSubmit()();
-  };
+  // Handle form submission - use the new RHF-style API
+  // Note: form.handleSubmit returns a function that handles preventDefault internally
 
   // Open create form
   const handleCreate = () => {
@@ -457,8 +522,10 @@ function ProductManagementPage() {
               <button onClick={() => form.refreshSchema()}>Retry</button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit}>
-              <h2>{formMode === "create" ? "Create Product" : "Edit Product"}</h2>
+            <form onSubmit={form.handleSubmit(onFormSuccess, onFormError)}>
+              <h2>
+                {formMode === "create" ? "Create Product" : "Edit Product"}
+              </h2>
 
               {/* Schema Info */}
               {displaySchemaInfo()}
@@ -482,20 +549,14 @@ function ProductManagementPage() {
               {form.errors.root && (
                 <div className="cross-field-errors">
                   {Object.values(form.errors.root).map((err, i) => (
-                    <p key={i} className="error">{(err as any).message}</p>
+                    <p key={i} className="error">
+                      {(err as any).message}
+                    </p>
                   ))}
                 </div>
               )}
 
-              {/* Submit error */}
-              {form.submitError && (
-                <div className="submit-error">
-                  <p>{form.submitError.message}</p>
-                  <button type="button" onClick={form.clearErrors}>
-                    Dismiss
-                  </button>
-                </div>
-              )}
+              {/* Note: Submit errors are now handled via onError callback */}
 
               {/* Raw Schema Debug */}
               {displayRawSchema()}
@@ -518,8 +579,8 @@ function ProductManagementPage() {
                   {form.isSubmitting
                     ? "Saving..."
                     : formMode === "create"
-                    ? "Create"
-                    : "Update"}
+                      ? "Create"
+                      : "Update"}
                 </button>
               </div>
 
@@ -540,7 +601,12 @@ function ProductManagementPage() {
 ## Error Utilities
 
 ```typescript
-import { parseApiError, isNetworkError, isValidationError, clearFormCache } from "@anthropic/kf-ai-sdk";
+import {
+  parseApiError,
+  isNetworkError,
+  isValidationError,
+  clearFormCache,
+} from "@ram_28/kf-ai-sdk";
 
 // Parse API error to user-friendly message
 const message = parseApiError(error); // "Failed to save: Invalid data"

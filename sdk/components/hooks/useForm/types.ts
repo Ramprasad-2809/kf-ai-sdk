@@ -6,8 +6,6 @@ import type {
   UseFormRegister,
   Mode,
   FieldValues as RHFFieldValues,
-  SubmitHandler,
-  SubmitErrorHandler,
   FieldErrors,
   Path,
   PathValue,
@@ -21,15 +19,23 @@ import type {
 // ============================================================
 
 /**
- * Extended handleSubmit that allows optional callbacks
- * When no callback is provided, uses the SDK's built-in submit function
+ * HandleSubmit follows React Hook Form's signature pattern
+ *
+ * - onSuccess: Called with the API response data on successful submission
+ * - onError: Called with either FieldErrors (validation failed) or Error (API failed)
+ *
+ * Internal flow:
+ * 1. RHF validation + Cross-field validation → FAILS → onError(fieldErrors)
+ * 2. Clean data & call API → FAILS → onError(apiError)
+ * 3. SUCCESS → onSuccess(responseData)
  */
-export type ExtendedHandleSubmit<T extends RHFFieldValues> = {
-  (
-    onValid?: SubmitHandler<T>,
-    onInvalid?: SubmitErrorHandler<T>
-  ): (e?: React.BaseSyntheticEvent) => Promise<void>;
-};
+export type HandleSubmit<T extends RHFFieldValues> = (
+  onSuccess?: (data: T, e?: React.BaseSyntheticEvent) => void | Promise<void>,
+  onError?: (
+    error: FieldErrors<T> | Error,
+    e?: React.BaseSyntheticEvent
+  ) => void | Promise<void>
+) => (e?: React.BaseSyntheticEvent) => Promise<void>;
 
 // ============================================================
 // EXPRESSION TREE TYPES
@@ -276,17 +282,8 @@ export interface UseFormOptions<
   /** User role for permission enforcement */
   userRole?: string;
 
-  /** Success callback */
-  onSuccess?: (data: T) => void;
-
-  /** Error callback */
-  onError?: (error: Error) => void;
-
-  /** Schema load error callback */
+  /** Schema load error callback (separate concern from form submission) */
   onSchemaError?: (error: Error) => void;
-
-  /** Submit error callback */
-  onSubmitError?: (error: Error) => void;
 
   /** Skip schema fetching (use for testing) */
   skipSchemaFetch?: boolean;
@@ -448,8 +445,38 @@ export interface UseFormReturn<
     options?: RegisterOptions<T, K>
   ) => ReturnType<UseFormRegister<T>>;
 
-  /** Handle form submission - automatically uses SDK's submit logic */
-  handleSubmit: () => (e?: React.BaseSyntheticEvent) => Promise<void>;
+  /**
+   * Handle form submission with optional callbacks
+   *
+   * @example
+   * // Basic usage - no callbacks
+   * <form onSubmit={form.handleSubmit()}>
+   *
+   * @example
+   * // With success callback
+   * <form onSubmit={form.handleSubmit((data) => {
+   *   toast.success("Saved!");
+   *   navigate("/products/" + data._id);
+   * })}>
+   *
+   * @example
+   * // With both callbacks
+   * <form onSubmit={form.handleSubmit(
+   *   (data) => toast.success("Saved!"),
+   *   (error) => {
+   *     if (error instanceof Error) {
+   *       toast.error(error.message); // API error
+   *     } else {
+   *       toast.error("Please fix the form errors"); // Validation errors
+   *     }
+   *   }
+   * )}>
+   *
+   * @example
+   * // Programmatic submission
+   * await form.handleSubmit(onSuccess, onError)();
+   */
+  handleSubmit: HandleSubmit<T>;
 
   /** Watch field values with strict typing */
   watch: <K extends Path<T> | readonly Path<T>[]>(
@@ -516,9 +543,6 @@ export interface UseFormReturn<
   /** Schema fetch error */
   loadError: Error | null;
 
-  /** Form submission error */
-  submitError: Error | null;
-
   /** Any error active */
   hasError: boolean;
 
@@ -560,9 +584,6 @@ export interface UseFormReturn<
   // ============================================================
   // OPERATIONS
   // ============================================================
-
-  /** Submit form manually */
-  submit: () => Promise<void>;
 
   /** Refresh schema */
   refreshSchema: () => Promise<void>;
