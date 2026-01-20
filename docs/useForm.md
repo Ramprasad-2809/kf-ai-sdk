@@ -2,7 +2,7 @@
 
 ## Brief Description
 
-- Integrates react-hook-form with backend Business Object schemas for automatic validation and computed field handling
+- Integrates react-hook-form with backend Business Data Object (BDO) schemas for automatic validation and computed field handling
 - Fetches schema metadata from the API and generates validation rules, default values, and field permissions automatically
 - Supports both create and update operations with automatic draft API calls for server-side computed fields
 - Provides flattened state accessors (`errors`, `isValid`, `isDirty`) alongside react-hook-form's standard methods
@@ -12,14 +12,35 @@
 ```typescript
 import { useForm } from "@ram_28/kf-ai-sdk";
 import type {
+  // Core types
   UseFormOptions,
   UseFormReturn,
   FormOperation,
-  ProcessedField,
-  ProcessedSchema,
-  BackendFieldDefinition,
-  BackendSchema,
-  RuleExecutionContext,
+  FormMode,
+
+  // Form field configuration
+  FormFieldConfig,
+  FormSchemaConfig,
+  FormFieldType,
+  SelectOption,
+  FieldPermission,
+
+  // Result types
+  FieldValidationResult,
+  SubmissionResult,
+
+  // BDO Schema types (advanced)
+  BDOSchema,
+  BDOFieldDefinition,
+  SchemaValidationRule,
+} from "@ram_28/kf-ai-sdk";
+
+// Error utilities
+import {
+  parseApiError,
+  isNetworkError,
+  isValidationError,
+  clearFormCache,
 } from "@ram_28/kf-ai-sdk";
 
 // Re-exported from react-hook-form
@@ -31,64 +52,155 @@ import type {
   PathValue,
 } from "react-hook-form";
 
+// FieldErrors type from react-hook-form
+// Maps field names to their error objects (message, type, etc.)
+// Used in handleSubmit's onError callback for validation errors
+type FieldErrors<T> = {
+  [K in keyof T]?: {
+    type: string;
+    message?: string;
+    ref?: React.RefObject<any>;
+  };
+} & {
+  root?: Record<string, { type: string; message?: string }>; // Cross-field errors
+};
+
+// FormState type from react-hook-form
+// Contains all form state information
+interface FormState<T> {
+  isDirty: boolean; // Form has been modified
+  isValid: boolean; // All validations pass
+  isSubmitting: boolean; // Form is being submitted
+  isSubmitted: boolean; // Form has been submitted at least once
+  isSubmitSuccessful: boolean; // Last submission was successful
+  isLoading: boolean; // Form is loading async default values
+  isValidating: boolean; // Form is validating
+  submitCount: number; // Number of times form was submitted
+  errors: FieldErrors<T>; // Current validation errors
+  touchedFields: Partial<Record<keyof T, boolean>>; // Fields that have been touched
+  dirtyFields: Partial<Record<keyof T, boolean>>; // Fields that have been modified
+}
+
 // Form operation type
 type FormOperation = "create" | "update";
 
-// Processed field with validation rules and metadata
-interface ProcessedField {
-  id: string;
+// Form field input types
+type FormFieldType =
+  | "text"
+  | "number"
+  | "email"
+  | "password"
+  | "date"
+  | "datetime-local"
+  | "checkbox"
+  | "select"
+  | "textarea"
+  | "reference";
+
+// Select option for dropdown fields
+interface SelectOption {
+  value: any;
   label: string;
-  type: "string" | "number" | "boolean" | "date" | "datetime" | "currency" | "email" | "select";
+}
+
+// Field permission for current user
+interface FieldPermission {
+  editable: boolean;
+  readable: boolean;
+  hidden: boolean;
+}
+
+// Field rule IDs by category
+interface FieldRuleIds {
+  validation: string[];
+  computation: string[];
+  businessLogic: string[];
+}
+
+// Form field configuration for rendering
+interface FormFieldConfig {
+  name: string;
+  type: FormFieldType;
+  label: string;
   required: boolean;
   computed: boolean;
-  readOnly: boolean;
-  hidden: boolean;
   defaultValue?: any;
-  min?: number;
-  max?: number;
-  minLength?: number;
-  maxLength?: number;
-  pattern?: string;
-  options?: Array<{ label: string; value: any }>;
-  computationExpression?: string;
-  dependsOn?: string[];
+  options?: SelectOption[];
+  validation: any;
+  description?: string;
+  _bdoField: BDOFieldDefinition;
+  permission: FieldPermission;
+  rules: FieldRuleIds;
 }
 
-// Processed schema with field lists
-interface ProcessedSchema {
-  fields: Record<string, ProcessedField>;
-  requiredFields: string[];
-  computedFields: string[];
+// Form schema configuration after processing
+interface FormSchemaConfig {
+  fields: Record<string, FormFieldConfig>;
   fieldOrder: string[];
+  computedFields: string[];
+  requiredFields: string[];
+  crossFieldValidation: SchemaValidationRule[];
+  rules: {
+    validation: Record<string, SchemaValidationRule>;
+    computation: Record<string, SchemaValidationRule>;
+    businessLogic: Record<string, SchemaValidationRule>;
+  };
+  fieldRules: Record<string, FieldRuleIds>;
+  rolePermissions?: Record<string, RolePermission>;
 }
 
-// Raw field definition from backend
-interface BackendFieldDefinition {
-  name: string;
-  dataType: string;
-  displayName?: string;
-  isMandatory?: boolean;
-  isComputed?: boolean;
-  defaultValue?: any;
-  validations?: BackendValidation[];
-  computations?: BackendComputation[];
-  options?: Array<{ label: string; value: any }>;
+// BDO field definition structure
+interface BDOFieldDefinition {
+  Id: string;
+  Name: string;
+  Type:
+    | "String"
+    | "Number"
+    | "Boolean"
+    | "Date"
+    | "DateTime"
+    | "Reference"
+    | "Array"
+    | "Object";
+  Required?: boolean;
+  Unique?: boolean;
+  DefaultValue?: DefaultValueExpression;
+  Formula?: ComputedFieldFormula;
+  Computed?: boolean;
+  Validation?: string[] | SchemaValidationRule[];
+  Values?: FieldOptionsConfig;
+  Description?: string;
 }
 
-// Raw schema from backend
-interface BackendSchema {
-  name: string;
-  fields: BackendFieldDefinition[];
+// BDO schema structure
+interface BDOSchema {
+  Id: string;
+  Name: string;
+  Kind: "BusinessObject";
+  Description: string;
+  Rules: {
+    Computation?: Record<string, SchemaValidationRule>;
+    Validation?: Record<string, SchemaValidationRule>;
+    BusinessLogic?: Record<string, SchemaValidationRule>;
+  };
+  Fields: Record<string, BDOFieldDefinition>;
+  RolePermission: Record<string, RolePermission>;
+  Roles: Record<string, { Name: string; Description: string }>;
 }
 
-// Context for computation rule callbacks
-interface RuleExecutionContext<T> {
-  values: T;
-  triggerField: keyof T;
-  previousValues: T;
-  schema: ProcessedSchema;
-  getValue: <K extends keyof T>(field: K) => T[K];
-  setValue: <K extends keyof T>(field: K, value: T[K]) => void;
+// Field validation result
+interface FieldValidationResult<T = Record<string, any>> {
+  isValid: boolean;
+  message?: string;
+  fieldName?: keyof T;
+}
+
+// Form submission result
+interface SubmissionResult {
+  success: boolean;
+  data?: any;
+  error?: Error;
+  recordId?: string;
 }
 
 // Hook options
@@ -97,26 +209,41 @@ interface UseFormOptions<T> {
   operation: FormOperation;
   recordId?: string;
   defaultValues?: Partial<T>;
-  mode?: "onBlur" | "onChange" | "onSubmit";
+  mode?: "onBlur" | "onChange" | "onSubmit" | "onTouched" | "all";
   enabled?: boolean;
-  schema?: BackendSchema;
-  onComputationRule?: (context: RuleExecutionContext<T>) => Promise<Partial<T>>;
-  onSuccess?: (data: T) => void;
-  onError?: (error: Error) => void;
-  onSchemaError?: (error: Error) => void;
-  onSubmitError?: (error: Error) => void;
+  userRole?: string;
+  schema?: BDOSchema;
+  draftOnEveryChange?: boolean;
+  onSchemaError?: (error: Error) => void; // Schema loading errors only
 }
 
 // Hook return type
 interface UseFormReturn<T> {
   // React Hook Form methods
   register: UseFormRegister<T>;
-  handleSubmit: () => (e?: React.FormEvent) => Promise<void>;
-  watch: <K extends Path<T>>(name?: K) => K extends Path<T> ? PathValue<T, K> : T;
+  /**
+   * handleSubmit follows RHF pattern with optional callbacks:
+   * - onSuccess: Called with API response data on successful submission
+   * - onError: Called with FieldErrors (validation) or Error (API failure)
+   *
+   * Usage:
+   *   form.handleSubmit()                    // No callbacks
+   *   form.handleSubmit(onSuccess)           // Success only
+   *   form.handleSubmit(onSuccess, onError)  // Both callbacks
+   *   form.handleSubmit(undefined, onError)  // Error only
+   */
+  handleSubmit: (
+    onSuccess?: (data: T, e?: React.FormEvent) => void | Promise<void>,
+    onError?: (
+      error: FieldErrors<T> | Error,
+      e?: React.FormEvent,
+    ) => void | Promise<void>,
+  ) => (e?: React.FormEvent) => Promise<void>;
+  watch: <K extends Path<T>>(
+    name?: K,
+  ) => K extends Path<T> ? PathValue<T, K> : T;
   setValue: <K extends Path<T>>(name: K, value: PathValue<T, K>) => void;
   reset: (values?: T) => void;
-  getValues: () => T;
-  trigger: (name?: keyof T | (keyof T)[]) => Promise<boolean>;
 
   // Flattened state (recommended)
   errors: FieldErrors<T>;
@@ -135,24 +262,22 @@ interface UseFormReturn<T> {
 
   // Error handling
   loadError: Error | null;
-  submitError: Error | null;
   hasError: boolean;
 
   // Schema info
-  schema: BackendSchema | null;
-  processedSchema: ProcessedSchema | null;
+  schema: BDOSchema | null;
+  schemaConfig: FormSchemaConfig | null;
   computedFields: Array<keyof T>;
   requiredFields: Array<keyof T>;
 
   // Field helpers
-  getField: <K extends keyof T>(fieldName: K) => ProcessedField | null;
-  getFields: () => Record<keyof T, ProcessedField>;
+  getField: <K extends keyof T>(fieldName: K) => FormFieldConfig | null;
+  getFields: () => Record<keyof T, FormFieldConfig>;
   hasField: <K extends keyof T>(fieldName: K) => boolean;
   isFieldRequired: <K extends keyof T>(fieldName: K) => boolean;
   isFieldComputed: <K extends keyof T>(fieldName: K) => boolean;
 
   // Operations
-  submit: () => Promise<void>;
   refreshSchema: () => Promise<void>;
   validateForm: () => Promise<boolean>;
   clearErrors: () => void;
@@ -171,12 +296,12 @@ import type {
   UseTableReturn,
   ColumnDefinition,
   FormOperation,
-  ProcessedField,
-  ProcessedSchema,
-  BackendFieldDefinition,
-  BackendSchema,
-  RuleExecutionContext,
+  FormFieldConfig,
+  FormSchemaConfig,
+  BDOFieldDefinition,
+  BDOSchema,
 } from "@ram_28/kf-ai-sdk";
+import type { FieldErrors } from "react-hook-form";
 import { Product, ProductType } from "../sources";
 import { Roles } from "../sources/roles";
 
@@ -188,12 +313,14 @@ function ProductManagementPage() {
   const product = new Product(Roles.Seller);
 
   const [showForm, setShowForm] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<SellerProduct | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<SellerProduct | null>(
+    null,
+  );
   const [formMode, setFormMode] = useState<FormOperation>("create");
 
   // Table for listing products
   const table = useTable<SellerProduct>({
-    source: product._id, // Use the Business Object ID from the Product class
+    source: product._id,
     columns: [
       { fieldId: "Title", label: "Name" },
       { fieldId: "Price", label: "Price" },
@@ -204,7 +331,7 @@ function ProductManagementPage() {
 
   // Form configuration with all options
   const formOptions: UseFormOptions<SellerProduct> = {
-    source: product._id, // Use the Business Object ID from the Product class
+    source: product._id,
     operation: formMode,
     recordId: selectedProduct?._id,
     enabled: showForm,
@@ -217,36 +344,33 @@ function ProductManagementPage() {
       Category: "Electronics",
       Stock: 0,
     },
-    // Custom computation rule callback
-    onComputationRule: async (context: RuleExecutionContext<SellerProduct>) => {
-      const price = context.getValue("Price");
-      const mrp = context.getValue("MRP");
-
-      // Calculate discount when Price or MRP changes
-      if (context.triggerField === "Price" || context.triggerField === "MRP") {
-        if (mrp > 0) {
-          return {
-            Discount: Math.round(((mrp - price) / mrp) * 100),
-          };
-        }
-      }
-      return {};
-    },
-    onSuccess: (data: SellerProduct) => {
-      console.log("Product saved:", data);
-      setShowForm(false);
-      table.refetch();
-    },
-    onError: (error: Error) => console.error("Form error:", error.message),
-    onSchemaError: (error: Error) => console.error("Schema error:", error.message),
-    onSubmitError: (error: Error) => console.error("Submit error:", error.message),
+    onSchemaError: (error: Error) =>
+      console.error("Schema error:", error.message),
   };
 
-  const form: UseFormReturn<SellerProduct> = useForm<SellerProduct>(formOptions);
+  const form: UseFormReturn<SellerProduct> =
+    useForm<SellerProduct>(formOptions);
+
+  // Handle form submission with new RHF-style callbacks
+  const onFormSuccess = (data: SellerProduct) => {
+    console.log("Product saved:", data);
+    setShowForm(false);
+    table.refetch();
+  };
+
+  const onFormError = (error: FieldErrors<SellerProduct> | Error) => {
+    if (error instanceof Error) {
+      // API error
+      console.error("Submit error:", error.message);
+    } else {
+      // Validation errors (FieldErrors)
+      console.error("Validation errors:", error);
+    }
+  };
 
   // Access processed schema
   const displaySchemaInfo = () => {
-    const schema: ProcessedSchema | null = form.processedSchema;
+    const schema: FormSchemaConfig | null = form.schemaConfig;
     if (!schema) return null;
 
     return (
@@ -258,17 +382,17 @@ function ProductManagementPage() {
     );
   };
 
-  // Render a field using ProcessedField metadata
+  // Render a field using FormFieldConfig metadata
   const renderField = (fieldName: keyof SellerProduct) => {
-    const field: ProcessedField | null = form.getField(fieldName);
-    if (!field || field.hidden) return null;
+    const field: FormFieldConfig | null = form.getField(fieldName);
+    if (!field || field.permission.hidden) return null;
 
-    const isDisabled = field.readOnly || field.computed;
+    const isDisabled = !field.permission.editable || field.computed;
     const error = form.errors[fieldName];
 
     return (
-      <div key={field.id} className="form-field">
-        <label htmlFor={field.id}>
+      <div key={field.name} className="form-field">
+        <label htmlFor={field.name}>
           {field.label}
           {field.required && <span className="required">*</span>}
           {field.computed && <span className="computed">(auto)</span>}
@@ -276,7 +400,7 @@ function ProductManagementPage() {
 
         {field.type === "select" && field.options ? (
           <select
-            id={field.id}
+            id={field.name}
             disabled={isDisabled}
             {...form.register(fieldName as any)}
           >
@@ -289,7 +413,7 @@ function ProductManagementPage() {
           </select>
         ) : field.computed ? (
           <input
-            id={field.id}
+            id={field.name}
             type={field.type === "number" ? "number" : "text"}
             value={form.watch(fieldName as any) ?? field.defaultValue ?? ""}
             readOnly
@@ -297,13 +421,8 @@ function ProductManagementPage() {
           />
         ) : (
           <input
-            id={field.id}
+            id={field.name}
             type={field.type === "number" ? "number" : "text"}
-            min={field.min}
-            max={field.max}
-            minLength={field.minLength}
-            maxLength={field.maxLength}
-            pattern={field.pattern}
             disabled={isDisabled}
             {...form.register(fieldName as any)}
           />
@@ -314,22 +433,24 @@ function ProductManagementPage() {
     );
   };
 
-  // Access raw backend schema
+  // Access raw BDO schema
   const displayRawSchema = () => {
-    const schema: BackendSchema | null = form.schema;
+    const schema: BDOSchema | null = form.schema;
     if (!schema) return null;
 
     return (
       <details>
-        <summary>Raw Schema: {schema.name}</summary>
+        <summary>Raw Schema: {schema.Name}</summary>
         <ul>
-          {schema.fields.map((field: BackendFieldDefinition) => (
-            <li key={field.name}>
-              {field.displayName || field.name} ({field.dataType})
-              {field.isMandatory && " - Required"}
-              {field.isComputed && " - Computed"}
-            </li>
-          ))}
+          {Object.entries(schema.Fields).map(
+            ([fieldName, field]: [string, BDOFieldDefinition]) => (
+              <li key={fieldName}>
+                {field.Name || fieldName} ({field.Type})
+                {field.Required && " - Required"}
+                {field.Computed && " - Computed"}
+              </li>
+            ),
+          )}
         </ul>
       </details>
     );
@@ -344,11 +465,8 @@ function ProductManagementPage() {
     console.log("All required fields:", form.requiredFields);
   };
 
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await form.handleSubmit()();
-  };
+  // Handle form submission - use the new RHF-style API
+  // Note: form.handleSubmit returns a function that handles preventDefault internally
 
   // Open create form
   const handleCreate = () => {
@@ -404,8 +522,10 @@ function ProductManagementPage() {
               <button onClick={() => form.refreshSchema()}>Retry</button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit}>
-              <h2>{formMode === "create" ? "Create Product" : "Edit Product"}</h2>
+            <form onSubmit={form.handleSubmit(onFormSuccess, onFormError)}>
+              <h2>
+                {formMode === "create" ? "Create Product" : "Edit Product"}
+              </h2>
 
               {/* Schema Info */}
               {displaySchemaInfo()}
@@ -429,20 +549,14 @@ function ProductManagementPage() {
               {form.errors.root && (
                 <div className="cross-field-errors">
                   {Object.values(form.errors.root).map((err, i) => (
-                    <p key={i} className="error">{(err as any).message}</p>
+                    <p key={i} className="error">
+                      {(err as any).message}
+                    </p>
                   ))}
                 </div>
               )}
 
-              {/* Submit error */}
-              {form.submitError && (
-                <div className="submit-error">
-                  <p>{form.submitError.message}</p>
-                  <button type="button" onClick={form.clearErrors}>
-                    Dismiss
-                  </button>
-                </div>
-              )}
+              {/* Note: Submit errors are now handled via onError callback */}
 
               {/* Raw Schema Debug */}
               {displayRawSchema()}
@@ -465,8 +579,8 @@ function ProductManagementPage() {
                   {form.isSubmitting
                     ? "Saving..."
                     : formMode === "create"
-                    ? "Create"
-                    : "Update"}
+                      ? "Create"
+                      : "Update"}
                 </button>
               </div>
 
@@ -482,4 +596,28 @@ function ProductManagementPage() {
     </div>
   );
 }
+```
+
+## Error Utilities
+
+```typescript
+import {
+  parseApiError,
+  isNetworkError,
+  isValidationError,
+  clearFormCache,
+} from "@ram_28/kf-ai-sdk";
+
+// Parse API error to user-friendly message
+const message = parseApiError(error); // "Failed to save: Invalid data"
+
+// Check error type for specific handling
+if (isNetworkError(error)) {
+  showOfflineMessage();
+} else if (isValidationError(error)) {
+  showValidationErrors();
+}
+
+// Clear form schema cache (useful after schema changes)
+clearFormCache();
 ```

@@ -11,9 +11,9 @@ import type { Path } from "react-hook-form";
 import type {
   UseFormOptions,
   UseFormReturn,
-  BackendSchema,
-  ProcessedSchema,
-  ProcessedField,
+  BDOSchema,
+  FormSchemaConfig,
+  FormFieldConfig,
 } from "./types";
 
 import { processSchema, extractReferenceFields } from "./schemaParser.utils";
@@ -49,10 +49,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     mode = "onBlur", // Validation mode - controls when errors are shown (see types.ts for details)
     enabled = true,
     userRole,
-    onSuccess,
-    onError,
     onSchemaError,
-    onSubmitError,
     skipSchemaFetch = false,
     schema: manualSchema,
     draftOnEveryChange = false,
@@ -62,10 +59,9 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
   // STATE MANAGEMENT
   // ============================================================
 
-  const [processedSchema, setProcessedSchema] =
-    useState<ProcessedSchema | null>(null);
+  const [schemaConfig, setSchemaConfig] =
+    useState<FormSchemaConfig | null>(null);
   const [referenceData, setReferenceData] = useState<Record<string, any[]>>({});
-  const [submitError, setSubmitError] = useState<Error | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastFormValues] = useState<Partial<T>>({});
 
@@ -77,25 +73,10 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
   // This allows us to detect changes since the last draft, not since form init
   const lastSyncedValuesRef = useRef<Partial<T> | null>(null);
 
-  // Stable callback refs to prevent dependency loops
-  const onSuccessRef = useRef(onSuccess);
-  const onErrorRef = useRef(onError);
-  const onSubmitErrorRef = useRef(onSubmitError);
+  // Stable callback ref to prevent dependency loops
   const onSchemaErrorRef = useRef(onSchemaError);
 
-  // Update refs when callbacks change
-  useEffect(() => {
-    onSuccessRef.current = onSuccess;
-  }, [onSuccess]);
-
-  useEffect(() => {
-    onErrorRef.current = onError;
-  }, [onError]);
-
-  useEffect(() => {
-    onSubmitErrorRef.current = onSubmitError;
-  }, [onSubmitError]);
-
+  // Update ref when callback changes
   useEffect(() => {
     onSchemaErrorRef.current = onSchemaError;
   }, [onSchemaError]);
@@ -153,8 +134,8 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     }
 
     // Apply default values from schema
-    if (processedSchema) {
-      for (const [fieldName, field] of Object.entries(processedSchema.fields)) {
+    if (schemaConfig) {
+      for (const [fieldName, field] of Object.entries(schemaConfig.fields)) {
         if (field.defaultValue !== undefined && !(fieldName in values)) {
           (values as any)[fieldName] = field.defaultValue;
         }
@@ -162,7 +143,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     }
 
     return values;
-  }, [defaultValues, recordData, operation, processedSchema]);
+  }, [defaultValues, recordData, operation, schemaConfig]);
 
   const rhfForm = useReactHookForm<T>({
     mode,
@@ -185,7 +166,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
           {}, // Pass empty object - validation functions get live values from react-hook-form
           userRole
         );
-        setProcessedSchema(processed);
+        setSchemaConfig(processed);
 
         // Fetch reference data for reference fields
         const refFields = extractReferenceFields(processed);
@@ -201,18 +182,12 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     }
   }, [schema, userRole]); // Removed onSchemaError - using ref instead
 
-  // Handle schema and record errors
+  // Handle schema error
   useEffect(() => {
     if (schemaError) {
       onSchemaErrorRef.current?.(schemaError);
     }
   }, [schemaError]);
-
-  useEffect(() => {
-    if (recordError) {
-      onErrorRef.current?.(recordError);
-    }
-  }, [recordError]);
 
   // ============================================================
   // COMPUTED FIELD DEPENDENCY TRACKING AND OPTIMIZATION
@@ -220,21 +195,21 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
 
   // Extract computed field dependencies using optimized analyzer
   const computedFieldDependencies = useMemo(() => {
-    if (!processedSchema) return [];
+    if (!schemaConfig) return [];
 
     const dependencies = new Set<string>();
-    const computedFieldNames = new Set(processedSchema.computedFields);
+    const computedFieldNames = new Set(schemaConfig.computedFields);
 
     // Analyze dependencies from computation rules
-    Object.entries(processedSchema.fieldRules).forEach(([fieldName, rules]) => {
+    Object.entries(schemaConfig.fieldRules).forEach(([fieldName, rules]) => {
       rules.computation.forEach((ruleId) => {
-        const rule = processedSchema.rules.computation[ruleId];
+        const rule = schemaConfig.rules.computation[ruleId];
         if (rule?.ExpressionTree) {
           const ruleDeps = getFieldDependencies(rule.ExpressionTree);
           ruleDeps.forEach((dep) => {
             // Only add non-computed fields as dependencies
             if (
-              processedSchema.fields[dep] &&
+              schemaConfig.fields[dep] &&
               dep !== fieldName &&
               !computedFieldNames.has(dep)
             ) {
@@ -246,16 +221,16 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     });
 
     // Also check formulas (legacy support)
-    processedSchema.computedFields.forEach((fieldName: string) => {
-      const field = processedSchema.fields[fieldName];
-      if (field.backendField.Formula) {
+    schemaConfig.computedFields.forEach((fieldName: string) => {
+      const field = schemaConfig.fields[fieldName];
+      if (field._bdoField.Formula) {
         const fieldDeps = getFieldDependencies(
-          field.backendField.Formula.ExpressionTree
+          field._bdoField.Formula.ExpressionTree
         );
         fieldDeps.forEach((dep) => {
           // Only add non-computed fields as dependencies
           if (
-            processedSchema.fields[dep] &&
+            schemaConfig.fields[dep] &&
             dep !== fieldName &&
             !computedFieldNames.has(dep)
           ) {
@@ -266,7 +241,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     });
 
     return Array.from(dependencies) as Array<Path<T>>;
-  }, [processedSchema]);
+  }, [schemaConfig]);
 
   // Watch dependencies are tracked but not used for automatic computation
   // Computation is triggered manually on blur after validation passes
@@ -278,7 +253,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
   // Manual computation trigger - called on blur after validation passes
   const triggerComputationAfterValidation = useCallback(
     async (fieldName: string) => {
-      if (!processedSchema || computedFieldDependencies.length === 0) {
+      if (!schemaConfig || computedFieldDependencies.length === 0) {
         return;
       }
 
@@ -305,7 +280,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
 
       computeTimeoutRef.current = setTimeout(() => {
         // Additional safety check
-        if (!processedSchema) return;
+        if (!schemaConfig) return;
 
         // Prevent concurrent API calls
         if (isComputingRef.current) {
@@ -338,7 +313,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
 
             // Get computed field names to exclude from payload
             const computedFieldNames = new Set(
-              processedSchema.computedFields || []
+              schemaConfig.computedFields || []
             );
 
             // Find fields that changed from baseline (excluding computed fields)
@@ -430,7 +405,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
       }, 300); // 300ms debounce
     },
     [
-      processedSchema,
+      schemaConfig,
       operation,
       recordId,
       recordData,
@@ -446,7 +421,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
   // ============================================================
 
   const validateForm = useCallback(async (): Promise<boolean> => {
-    if (!processedSchema) {
+    if (!schemaConfig) {
       return false;
     }
 
@@ -460,7 +435,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
 
     // Cross-field validation
     // Transform ValidationRule[] to the format expected by validateCrossField
-    const transformedRules = processedSchema.crossFieldValidation.map(
+    const transformedRules = schemaConfig.crossFieldValidation.map(
       (rule) => ({
         Id: rule.Id,
         Condition: { ExpressionTree: rule.ExpressionTree },
@@ -487,7 +462,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
 
     return true;
   }, [
-    processedSchema,
+    schemaConfig,
     rhfForm.getValues,
     rhfForm.trigger,
     rhfForm.setError,
@@ -495,122 +470,163 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
   ]);
 
   // ============================================================
-  // FORM SUBMISSION
+  // HANDLE SUBMIT - RHF-style API with internal submission
   // ============================================================
 
-  const submit = useCallback(async (): Promise<void> => {
-    if (!processedSchema) {
-      throw new Error("Schema not loaded");
-    }
+  /**
+   * handleSubmit follows React Hook Form's signature pattern:
+   *
+   * handleSubmit(onSuccess?, onError?) => (e?) => Promise<void>
+   *
+   * Internal flow:
+   * 1. RHF validation + Cross-field validation → FAILS → onError(fieldErrors)
+   * 2. Clean data & call API → FAILS → onError(apiError)
+   * 3. SUCCESS → onSuccess(responseData)
+   */
+  const handleSubmit = useCallback(
+    (
+      onSuccess?: (data: T, e?: React.BaseSyntheticEvent) => void | Promise<void>,
+      onError?: (
+        error: import("react-hook-form").FieldErrors<T> | Error,
+        e?: React.BaseSyntheticEvent
+      ) => void | Promise<void>
+    ) => {
+      return rhfForm.handleSubmit(
+        // RHF onValid handler - validation passed, now do cross-field + API
+        async (data, event) => {
+          if (!schemaConfig) {
+            const error = new Error("Schema not loaded");
+            onError?.(error, event);
+            return;
+          }
 
-    setIsSubmitting(true);
-    setSubmitError(null);
+          setIsSubmitting(true);
 
-    try {
-      // Validate form including cross-field validation
-      const isValid = await validateForm();
-      if (!isValid) {
-        throw new Error("Form validation failed");
-      }
+          try {
+            // Cross-field validation
+            const transformedRules = schemaConfig.crossFieldValidation.map(
+              (rule) => ({
+                Id: rule.Id,
+                Condition: { ExpressionTree: rule.ExpressionTree },
+                Message: rule.Message || `Validation failed for ${rule.Name}`,
+              })
+            );
 
-      const formValues = rhfForm.getValues();
+            const crossFieldErrors = validateCrossField(
+              transformedRules,
+              data as any,
+              referenceData
+            );
 
-      // Clean data for submission
-      // - For create: includes all non-computed fields
-      // - For update: includes only fields that changed from recordData
-      const cleanedData = cleanFormData(
-        formValues as any,
-        processedSchema.computedFields,
-        operation,
-        recordData as Partial<T> | undefined
+            if (crossFieldErrors.length > 0) {
+              // Set cross-field errors in form state
+              crossFieldErrors.forEach((error, index) => {
+                rhfForm.setError(`root.crossField${index}` as any, {
+                  type: "validate",
+                  message: error.message,
+                });
+              });
+              // Call onError with current form errors
+              onError?.(rhfForm.formState.errors, event);
+              return;
+            }
+
+            // Clean data for submission
+            const cleanedData = cleanFormData(
+              data as any,
+              schemaConfig.computedFields,
+              operation,
+              recordData as Partial<T> | undefined
+            );
+
+            // Submit data to API
+            const result = await submitFormData<T>(
+              source,
+              operation,
+              cleanedData,
+              recordId
+            );
+
+            if (!result.success) {
+              throw result.error || new Error("Submission failed");
+            }
+
+            // Reset form for create operations
+            if (operation === "create") {
+              rhfForm.reset();
+            }
+
+            // Success callback with response data
+            await onSuccess?.(result.data || data, event);
+          } catch (error) {
+            // API error - call onError with Error object
+            onError?.(error as Error, event);
+          } finally {
+            setIsSubmitting(false);
+          }
+        },
+        // RHF onInvalid handler - validation failed
+        (errors, event) => {
+          onError?.(errors, event);
+        }
       );
-
-      // Submit data
-      const result = await submitFormData<T>(
-        source,
-        operation,
-        cleanedData,
-        recordId
-      );
-
-      if (!result.success) {
-        throw result.error || new Error("Submission failed");
-      }
-
-      // Success callback
-      onSuccessRef.current?.(result.data || formValues);
-
-      // Reset form for create operations
-      if (operation === "create") {
-        rhfForm.reset();
-      }
-    } catch (error) {
-      const submitError = error as Error;
-      setSubmitError(submitError);
-      onSubmitErrorRef.current?.(submitError);
-      onErrorRef.current?.(submitError);
-      throw error;
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [processedSchema, validateForm, rhfForm, source, operation, recordId, recordData]);
-
-  // ============================================================
-  // HANDLE SUBMIT - Simplified API
-  // ============================================================
-
-  // Simplified handleSubmit that always uses SDK's submit function
-  const handleSubmit = useCallback(() => {
-    return rhfForm.handleSubmit(async () => {
-      await submit();
-    });
-  }, [rhfForm, submit]);
+    },
+    [
+      rhfForm,
+      schemaConfig,
+      referenceData,
+      source,
+      operation,
+      recordId,
+      recordData,
+    ]
+  );
 
   // ============================================================
   // FIELD HELPERS
   // ============================================================
 
   const getField = useCallback(
-    <K extends keyof T>(fieldName: K): ProcessedField | null => {
-      return processedSchema?.fields[fieldName as string] || null;
+    <K extends keyof T>(fieldName: K): FormFieldConfig | null => {
+      return schemaConfig?.fields[fieldName as string] || null;
     },
-    [processedSchema]
+    [schemaConfig]
   );
 
-  const getFields = useCallback((): Record<keyof T, ProcessedField> => {
-    if (!processedSchema) return {} as Record<keyof T, ProcessedField>;
+  const getFields = useCallback((): Record<keyof T, FormFieldConfig> => {
+    if (!schemaConfig) return {} as Record<keyof T, FormFieldConfig>;
 
-    const typedFields: Record<keyof T, ProcessedField> = {} as any;
-    Object.entries(processedSchema.fields).forEach(([key, field]) => {
+    const typedFields: Record<keyof T, FormFieldConfig> = {} as any;
+    Object.entries(schemaConfig.fields).forEach(([key, field]) => {
       (typedFields as any)[key] = field;
     });
 
     return typedFields;
-  }, [processedSchema]);
+  }, [schemaConfig]);
 
   const hasField = useCallback(
     <K extends keyof T>(fieldName: K): boolean => {
-      return !!processedSchema?.fields[fieldName as string];
+      return !!schemaConfig?.fields[fieldName as string];
     },
-    [processedSchema]
+    [schemaConfig]
   );
 
   const isFieldRequired = useCallback(
     <K extends keyof T>(fieldName: K): boolean => {
       return (
-        processedSchema?.requiredFields.includes(fieldName as string) || false
+        schemaConfig?.requiredFields.includes(fieldName as string) || false
       );
     },
-    [processedSchema]
+    [schemaConfig]
   );
 
   const isFieldComputed = useCallback(
     <K extends keyof T>(fieldName: K): boolean => {
       return (
-        processedSchema?.computedFields.includes(fieldName as string) || false
+        schemaConfig?.computedFields.includes(fieldName as string) || false
       );
     },
-    [processedSchema]
+    [schemaConfig]
   );
 
   // ============================================================
@@ -623,7 +639,6 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
 
   const clearErrors = useCallback((): void => {
     rhfForm.clearErrors();
-    setSubmitError(null);
   }, [rhfForm]);
 
   // ============================================================
@@ -634,16 +649,16 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     isLoadingSchema || (operation === "update" && isLoadingRecord);
   const isLoading = isLoadingInitialData || isSubmitting;
   const loadError = schemaError || recordError;
-  const hasError = !!(loadError || submitError);
+  const hasError = !!loadError;
 
   const computedFields = useMemo<Array<keyof T>>(
-    () => (processedSchema?.computedFields as Array<keyof T>) || [],
-    [processedSchema]
+    () => (schemaConfig?.computedFields as Array<keyof T>) || [],
+    [schemaConfig]
   );
 
   const requiredFields = useMemo<Array<keyof T>>(
-    () => (processedSchema?.requiredFields as Array<keyof T>) || [],
-    [processedSchema]
+    () => (schemaConfig?.requiredFields as Array<keyof T>) || [],
+    [schemaConfig]
   );
 
   // ============================================================
@@ -652,11 +667,11 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
 
   // Create validation rules from processed schema (client-side only)
   const validationRules = useMemo(() => {
-    if (!processedSchema) return {};
+    if (!schemaConfig) return {};
 
     const rules: Record<string, any> = {};
 
-    Object.entries(processedSchema.fields).forEach(([fieldName, field]) => {
+    Object.entries(schemaConfig.fields).forEach(([fieldName, field]) => {
       const fieldRules: any = {};
 
       // Required validation
@@ -689,7 +704,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
 
             // Execute client-side validation rules with optimization
             for (const ruleId of validationRuleIds) {
-              const rule = processedSchema.rules.validation[ruleId];
+              const rule = schemaConfig.rules.validation[ruleId];
               if (rule) {
                 const result = validateFieldOptimized<T>(
                   fieldName,
@@ -712,7 +727,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     });
 
     return rules;
-  }, [processedSchema, rhfForm, referenceData]);
+  }, [schemaConfig, rhfForm, referenceData]);
 
   /**
    * Enhanced register function that wraps react-hook-form's register
@@ -796,12 +811,11 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
 
     // Error handling
     loadError: loadError as Error | null,
-    submitError,
     hasError,
 
     // Schema information
-    schema: schema as BackendSchema | null,
-    processedSchema,
+    schema: schema as BDOSchema | null,
+    schemaConfig,
     computedFields,
     requiredFields,
 
@@ -813,7 +827,6 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     isFieldComputed,
 
     // Operations
-    submit,
     refreshSchema,
     validateForm,
     clearErrors,

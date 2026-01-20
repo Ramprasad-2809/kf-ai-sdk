@@ -5,9 +5,9 @@
 
 import type {
   ExpressionTree,
-  EvaluationContext,
-  ValidationResult,
-  ValidationRule,
+  ExpressionContext,
+  FieldValidationResult,
+  SchemaValidationRule,
 } from "./types";
 
 // ============================================================
@@ -137,7 +137,7 @@ const FUNCTIONS = {
 /**
  * Evaluate an expression tree node
  */
-function evaluateNode(node: ExpressionTree, context: EvaluationContext): any {
+function evaluateNode(node: ExpressionTree, context: ExpressionContext): any {
   switch (node.Type) {
     case "Literal":
       return node.Value;
@@ -218,7 +218,7 @@ function evaluateNode(node: ExpressionTree, context: EvaluationContext): any {
  */
 function getIdentifierValue(
   node: ExpressionTree,
-  context: EvaluationContext
+  context: ExpressionContext
 ): any {
   const { Name, Source } = node;
 
@@ -293,7 +293,7 @@ function evaluateBinaryOperation(operator: string, left: any, right: any): any {
 function evaluateLogicalOperation(
   operator: string,
   args: ExpressionTree[],
-  context: EvaluationContext
+  context: ExpressionContext
 ): boolean {
   switch (operator) {
     case "AND":
@@ -317,7 +317,7 @@ export function evaluateExpression(
   formValues: Record<string, any>,
   referenceData: Record<string, any> = {}
 ): any {
-  const context: EvaluationContext = {
+  const context: ExpressionContext = {
     formValues,
     systemValues: getSystemValues(),
     referenceData,
@@ -337,10 +337,10 @@ export function evaluateExpression(
 export function validateField<T = Record<string, any>>(
   fieldName: string,
   fieldValue: any,
-  validationRules: ValidationRule[],
+  validationRules: SchemaValidationRule[],
   formValues: T,
   referenceData: Record<string, any> = {}
-): ValidationResult<T> {
+): FieldValidationResult<T> {
   // If no validation rules, field is valid
   if (!validationRules || validationRules.length === 0) {
     return { isValid: true };
@@ -385,8 +385,8 @@ export function validateCrossField<T = Record<string, any>>(
   }>,
   formValues: T,
   referenceData: Record<string, any> = {}
-): ValidationResult<T>[] {
-  const results: ValidationResult<T>[] = [];
+): FieldValidationResult<T>[] {
+  const results: FieldValidationResult<T>[] = [];
 
   for (const rule of validationRules) {
     try {

@@ -4,12 +4,11 @@
 // Converts backend field schemas to react-hook-form validation rules
 
 import type {
-  BackendSchema,
   BDOSchema,
-  BackendFieldDefinition,
-  ProcessedField,
-  ProcessedSchema,
-  ValidationRule,
+  BDOFieldDefinition,
+  FormFieldConfig,
+  FormSchemaConfig,
+  SchemaValidationRule,
   FieldPermission,
 } from "./types";
 import {
@@ -20,7 +19,6 @@ import {
   classifyRules,
   createFieldRuleMapping,
   calculateFieldPermissions,
-  convertLegacySchema,
   normalizeBDOSchema,
 } from "./ruleClassifier.utils";
 
@@ -85,10 +83,10 @@ function generateLabel(fieldName: string): string {
 /**
  * Convert backend validation rules to react-hook-form validation
  */
-function convertValidationRules(
+function convertSchemaValidationRules(
   fieldName: string,
-  fieldDef: BackendFieldDefinition,
-  _allFields: Record<string, BackendFieldDefinition>
+  fieldDef: BDOFieldDefinition,
+  _allFields: Record<string, BDOFieldDefinition>
 ): any {
   const validation: any = {};
 
@@ -113,7 +111,7 @@ function convertValidationRules(
   }
 
   // Custom validation using expression trees
-  // Note: fieldDef.Validation contains rule IDs (string[]), not ValidationRule[]
+  // Note: fieldDef.Validation contains rule IDs (string[]), not SchemaValidationRule[]
   // Validation is handled by the form hook which has access to the full schema rules
   if (fieldDef.Validation && fieldDef.Validation.length > 0) {
     // Validation rules will be applied by the form hook
@@ -132,7 +130,7 @@ function convertValidationRules(
  * Process field options for select/reference fields
  */
 function processFieldOptions(
-  fieldDef: BackendFieldDefinition
+  fieldDef: BDOFieldDefinition
 ): Array<{ value: any; label: string }> {
   if (!fieldDef.Values) {
     return [];
@@ -163,7 +161,7 @@ function processFieldOptions(
  * Calculate default value for a field
  */
 function processDefaultValue(
-  fieldDef: BackendFieldDefinition,
+  fieldDef: BDOFieldDefinition,
   formValues: Record<string, any> = {}
 ): any {
   if (!fieldDef.DefaultValue) {
@@ -199,8 +197,8 @@ function processDefaultValue(
  */
 function processField(
   fieldName: string,
-  fieldDef: BackendFieldDefinition,
-  allFields: Record<string, BackendFieldDefinition>,
+  fieldDef: BDOFieldDefinition,
+  allFields: Record<string, BDOFieldDefinition>,
   formValues: Record<string, any> = {},
   permission?: FieldPermission,
   rules?: {
@@ -208,7 +206,7 @@ function processField(
     computation: string[];
     businessLogic: string[];
   }
-): ProcessedField {
+): FormFieldConfig {
   const defaultPermission: FieldPermission = {
     editable: true,
     readable: true,
@@ -227,7 +225,7 @@ function processField(
     !!fieldDef.Formula ||
     fieldRules.computation.length > 0;
 
-  const validation = convertValidationRules(fieldName, fieldDef, allFields);
+  const validation = convertSchemaValidationRules(fieldName, fieldDef, allFields);
 
   // Mark computed fields as disabled so they cannot be manually edited
   if (isComputed) {
@@ -244,7 +242,7 @@ function processField(
     options: processFieldOptions(fieldDef),
     validation,
     description: fieldDef.Description,
-    backendField: fieldDef,
+    _bdoField: fieldDef,
     permission: permission || defaultPermission,
     rules: fieldRules,
   };
@@ -255,27 +253,24 @@ function processField(
 // ============================================================
 
 /**
- * Process complete backend schema
+ * Process complete BDO schema
  */
 export function processSchema(
-  schema: BackendSchema | BDOSchema,
+  schema: BDOSchema,
   formValues: Record<string, any> = {},
   userRole?: string
-): ProcessedSchema {
-  // Convert legacy schema to BDO format if needed
-  let bdoSchema =
-    "Kind" in schema && schema.Kind === "BusinessObject"
-      ? (schema as BDOSchema)
-      : convertLegacySchema(schema as BackendSchema);
+): FormSchemaConfig {
+  // Ensure schema is in BDO format
+  let bdoSchema = schema;
 
   // Normalize BDO schema to ensure inline validation rules are centralized
   bdoSchema = normalizeBDOSchema(bdoSchema);
 
-  const fields: Record<string, ProcessedField> = {};
+  const fields: Record<string, FormFieldConfig> = {};
   const fieldOrder: string[] = [];
   const computedFields: string[] = [];
   const requiredFields: string[] = [];
-  const crossFieldValidation: ValidationRule[] = [];
+  const crossFieldValidation: SchemaValidationRule[] = [];
 
   // Classify rules by type
   const classifiedRules = classifyRules(bdoSchema);
@@ -344,14 +339,14 @@ export function processSchema(
  * Update computed field values based on current form values
  */
 export function updateComputedFields(
-  processedSchema: ProcessedSchema,
+  processedSchema: FormSchemaConfig,
   currentValues: Record<string, any>
 ): Record<string, any> {
   const computedValues: Record<string, any> = {};
 
   for (const fieldName of processedSchema.computedFields) {
     const field = processedSchema.fields[fieldName];
-    const backendField = field.backendField;
+    const backendField = field._bdoField;
 
     if (backendField.Formula) {
       try {
@@ -406,7 +401,7 @@ function extractFieldDependencies(expressionTree: any): string[] {
  * Build field dependency map
  */
 export function buildDependencyMap(
-  processedSchema: ProcessedSchema
+  processedSchema: FormSchemaConfig
 ): Record<string, string[]> {
   const dependencyMap: Record<string, string[]> = {};
 
@@ -414,25 +409,25 @@ export function buildDependencyMap(
     const dependencies: Set<string> = new Set();
 
     // Check formula dependencies
-    if (field.backendField.Formula) {
+    if (field._bdoField.Formula) {
       const formulaDeps = extractFieldDependencies(
-        field.backendField.Formula.ExpressionTree
+        field._bdoField.Formula.ExpressionTree
       );
       formulaDeps.forEach((dep) => dependencies.add(dep));
     }
 
     // Check validation dependencies
-    // Note: field.backendField.Validation contains rule IDs (string[])
+    // Note: field._bdoField.Validation contains rule IDs (string[])
     // To extract validation dependencies, we would need access to the full schema rules
     // This is skipped for now as validation dependencies are tracked separately
-    if (field.backendField.Validation) {
+    if (field._bdoField.Validation) {
       // Validation rule dependencies would be extracted here if we had access to the rules
     }
 
     // Check default value dependencies
-    if (field.backendField.DefaultValue) {
+    if (field._bdoField.DefaultValue) {
       const defaultDeps = extractFieldDependencies(
-        field.backendField.DefaultValue.ExpressionTree
+        field._bdoField.DefaultValue.ExpressionTree
       );
       defaultDeps.forEach((dep) => dependencies.add(dep));
     }
@@ -450,7 +445,7 @@ export function buildDependencyMap(
 /**
  * Validate processed schema
  */
-export function validateSchema(processedSchema: ProcessedSchema): {
+export function validateSchema(processedSchema: FormSchemaConfig): {
   isValid: boolean;
   errors: string[];
 } {
@@ -483,12 +478,12 @@ export function validateSchema(processedSchema: ProcessedSchema): {
 /**
  * Build reference field configuration for API calls
  */
-export function buildReferenceFieldConfig(field: ProcessedField): any {
-  if (field.type !== "reference" || !field.backendField.Values?.Reference) {
+export function buildReferenceFieldConfig(field: FormFieldConfig): any {
+  if (field.type !== "reference" || !field._bdoField.Values?.Reference) {
     return null;
   }
 
-  const ref = field.backendField.Values.Reference;
+  const ref = field._bdoField.Values.Reference;
 
   return {
     businessObject: ref.BusinessObject,
@@ -502,7 +497,7 @@ export function buildReferenceFieldConfig(field: ProcessedField): any {
  * Extract all reference field configurations from schema
  */
 export function extractReferenceFields(
-  processedSchema: ProcessedSchema
+  processedSchema: FormSchemaConfig
 ): Record<string, any> {
   const referenceFields: Record<string, any> = {};
 
