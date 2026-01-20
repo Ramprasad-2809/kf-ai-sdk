@@ -32,11 +32,12 @@ export type ExtendedHandleSubmit<T extends RHFFieldValues> = {
 };
 
 // ============================================================
-// BACKEND SCHEMA TYPES
+// EXPRESSION TREE TYPES
 // ============================================================
 
 /**
  * Expression tree node types from backend validation system
+ * Used for evaluating validation rules, computed fields, and default values
  */
 export interface ExpressionTree {
   Type:
@@ -62,10 +63,15 @@ export interface ExpressionTree {
   Value?: any;
 }
 
+// ============================================================
+// SCHEMA DEFINITION TYPES (BDO - Business Data Object)
+// ============================================================
+
 /**
- * Backend validation rule structure
+ * Validation rule from BDO schema
+ * Defines a validation, computation, or business logic rule
  */
-export interface ValidationRule {
+export interface SchemaValidationRule {
   Id: string;
   Name: string;
   Description: string;
@@ -76,9 +82,9 @@ export interface ValidationRule {
 }
 
 /**
- * Backend formula structure for computed fields
+ * Formula definition for computed fields
  */
-export interface Formula {
+export interface ComputedFieldFormula {
   Id?: string;
   Name?: string;
   Description?: string;
@@ -88,17 +94,17 @@ export interface Formula {
 }
 
 /**
- * Backend default value structure
+ * Default value expression for a field
  */
-export interface DefaultValue {
+export interface DefaultValueExpression {
   Expression: string;
   ExpressionTree: ExpressionTree;
 }
 
 /**
- * Backend reference field configuration
+ * Reference field configuration for dynamic lookups
  */
-export interface ReferenceField {
+export interface ReferenceFieldConfig {
   Mode: "Dynamic" | "Static";
   Reference?: {
     BusinessObject: string;
@@ -108,7 +114,7 @@ export interface ReferenceField {
         LhsField: string;
         Operator: string;
         RhsType: string;
-        RhsValue?: DefaultValue;
+        RhsValue?: DefaultValueExpression;
       }>;
     };
     Sort?: Array<{
@@ -119,21 +125,21 @@ export interface ReferenceField {
 }
 
 /**
- * Backend values configuration for select fields
+ * Field options configuration for select/dropdown fields
  */
-export interface FieldValues {
+export interface FieldOptionsConfig {
   Mode: "Static" | "Dynamic";
   Items?: Array<{
     Value: string | number | boolean;
     Label: string;
   }>;
-  Reference?: ReferenceField["Reference"];
+  Reference?: ReferenceFieldConfig["Reference"];
 }
 
 /**
- * Backend field definition structure
+ * BDO field definition structure
  */
-export interface BackendFieldDefinition {
+export interface BDOFieldDefinition {
   Id: string;
   Name: string;
   Type:
@@ -148,16 +154,16 @@ export interface BackendFieldDefinition {
     | "ActivityFlow";
   Required?: boolean;
   Unique?: boolean;
-  DefaultValue?: DefaultValue;
-  Formula?: Formula;
+  DefaultValue?: DefaultValueExpression;
+  Formula?: ComputedFieldFormula;
   Computed?: boolean;
-  Validation?: string[] | ValidationRule[]; // Array of rule IDs OR inline validation rule objects
-  Values?: FieldValues;
+  Validation?: string[] | SchemaValidationRule[]; // Array of rule IDs OR inline validation rule objects
+  Values?: FieldOptionsConfig;
   Items?: {
     Type: string;
-    Property?: Record<string, BackendFieldDefinition>;
+    Property?: Record<string, BDOFieldDefinition>;
   };
-  Property?: Record<string, BackendFieldDefinition>;
+  Property?: Record<string, BDOFieldDefinition>;
   Description?: string;
 }
 
@@ -165,9 +171,9 @@ export interface BackendFieldDefinition {
  * Business Object Rule definitions from BDO schema
  */
 export interface BusinessObjectRules {
-  Computation?: Record<string, ValidationRule>;
-  Validation?: Record<string, ValidationRule>;
-  BusinessLogic?: Record<string, ValidationRule>;
+  Computation?: Record<string, SchemaValidationRule>;
+  Validation?: Record<string, SchemaValidationRule>;
+  BusinessLogic?: Record<string, SchemaValidationRule>;
 }
 
 /**
@@ -189,7 +195,7 @@ export interface RolePermission {
 }
 
 /**
- * Complete BDO schema structure matching your JSON
+ * Complete BDO (Business Data Object) schema structure
  */
 export interface BDOSchema {
   Id: string;
@@ -197,7 +203,7 @@ export interface BDOSchema {
   Kind: "BusinessObject";
   Description: string;
   Rules: BusinessObjectRules;
-  Fields: Record<string, BackendFieldDefinition>;
+  Fields: Record<string, BDOFieldDefinition>;
   RolePermission: Record<string, RolePermission>;
   Roles: Record<
     string,
@@ -206,13 +212,6 @@ export interface BDOSchema {
       Description: string;
     }
   >;
-}
-
-/**
- * Complete backend schema response structure (legacy support)
- */
-export interface BackendSchema {
-  [fieldName: string]: BackendFieldDefinition;
 }
 
 // ============================================================
@@ -233,18 +232,6 @@ export type FormMode = Mode;
  * Rule classification types
  */
 export type RuleType = "Validation" | "Computation" | "BusinessLogic";
-
-/**
- * Rule execution context
- */
-export interface RuleExecutionContext<T> {
-  ruleType: RuleType;
-  ruleId: string;
-  fieldName: keyof T;
-  fieldValue: any;
-  formValues: Partial<T>;
-  rule: ValidationRule;
-}
 
 /**
  * useForm hook options with strict typing
@@ -301,14 +288,11 @@ export interface UseFormOptions<
   /** Submit error callback */
   onSubmitError?: (error: Error) => void;
 
-  /** Computation rule callback (called when computation rules are triggered) */
-  onComputationRule?: (context: RuleExecutionContext<T>) => Promise<Partial<T>>;
-
   /** Skip schema fetching (use for testing) */
   skipSchemaFetch?: boolean;
 
   /** Manual schema (use instead of fetching) */
-  schema?: BackendSchema | BDOSchema;
+  schema?: BDOSchema;
 
   /**
    * Trigger draft API call on every field change (after validation passes)
@@ -319,7 +303,7 @@ export interface UseFormOptions<
 }
 
 // ============================================================
-// PROCESSED FORM TYPES
+// FORM FIELD CONFIGURATION TYPES
 // ============================================================
 
 /**
@@ -337,98 +321,108 @@ export interface FieldPermission {
 }
 
 /**
- * Processed field metadata for form rendering
+ * Field input types for form rendering
  */
-export interface ProcessedField {
-  /** Field name */
+export type FormFieldType =
+  | "text"
+  | "number"
+  | "email"
+  | "password"
+  | "date"
+  | "datetime-local"
+  | "checkbox"
+  | "select"
+  | "textarea"
+  | "reference";
+
+/**
+ * Select option for dropdown fields
+ */
+export interface SelectOption {
+  value: any;
+  label: string;
+}
+
+/**
+ * Field rule IDs by category
+ */
+export interface FieldRuleIds {
+  validation: string[];
+  computation: string[];
+  businessLogic: string[];
+}
+
+/**
+ * Form field configuration for rendering
+ * Contains all metadata needed to render and validate a form field
+ */
+export interface FormFieldConfig {
+  /** Field name/identifier */
   name: string;
 
-  /** Field type */
-  type:
-    | "text"
-    | "number"
-    | "email"
-    | "password"
-    | "date"
-    | "datetime-local"
-    | "checkbox"
-    | "select"
-    | "textarea"
-    | "reference";
+  /** Field input type */
+  type: FormFieldType;
 
-  /** Field label (derived from name or schema) */
+  /** Display label */
   label: string;
 
   /** Whether field is required */
   required: boolean;
 
-  /** Whether field is computed (read-only) */
+  /** Whether field is computed (read-only, auto-calculated) */
   computed: boolean;
 
   /** Default value */
   defaultValue?: any;
 
   /** Select options (for select/reference fields) */
-  options?: Array<{
-    value: any;
-    label: string;
-  }>;
+  options?: SelectOption[];
 
-  /** Validation rules */
+  /** Validation configuration */
   validation: any;
 
   /** Field description/help text */
   description?: string;
 
-  /** Backend field definition */
-  backendField: BackendFieldDefinition;
+  /** Original BDO field definition (for advanced use) */
+  _bdoField: BDOFieldDefinition;
 
   /** Field permissions for current user */
   permission: FieldPermission;
 
-  /** Rule classifications for this field */
-  rules: {
-    validation: string[];
-    computation: string[];
-    businessLogic: string[];
-  };
+  /** Associated rule IDs by category */
+  rules: FieldRuleIds;
 }
 
 /**
- * Form schema after processing
+ * Form schema configuration after processing
+ * Contains all fields and rules ready for form rendering
  */
-export interface ProcessedSchema {
-  /** All fields */
-  fields: Record<string, ProcessedField>;
+export interface FormSchemaConfig {
+  /** All fields by name */
+  fields: Record<string, FormFieldConfig>;
 
-  /** Field names in order */
+  /** Field names in display order */
   fieldOrder: string[];
 
-  /** Computed field names */
+  /** Names of computed fields */
   computedFields: string[];
 
-  /** Required field names */
+  /** Names of required fields */
   requiredFields: string[];
 
   /** Cross-field validation rules */
-  crossFieldValidation: ValidationRule[];
+  crossFieldValidation: SchemaValidationRule[];
 
   /** Classified rules by type */
   rules: {
-    validation: Record<string, ValidationRule>;
-    computation: Record<string, ValidationRule>;
-    businessLogic: Record<string, ValidationRule>;
+    validation: Record<string, SchemaValidationRule>;
+    computation: Record<string, SchemaValidationRule>;
+    businessLogic: Record<string, SchemaValidationRule>;
   };
 
   /** Field-to-rule mapping for quick lookup */
-  fieldRules: Record<
-    string,
-    {
-      validation: string[];
-      computation: string[];
-      businessLogic: string[];
-    }
-  >;
+  fieldRules: Record<string, FieldRuleIds>;
 
   /** Role permissions */
   rolePermissions?: Record<string, RolePermission>;
@@ -532,11 +526,11 @@ export interface UseFormReturn<
   // SCHEMA INFORMATION WITH STRICT TYPING
   // ============================================================
 
-  /** Raw backend schema */
-  schema: BackendSchema | null;
+  /** Raw BDO schema */
+  schema: BDOSchema | null;
 
-  /** Processed schema for rendering */
-  processedSchema: ProcessedSchema | null;
+  /** Processed schema configuration for rendering */
+  schemaConfig: FormSchemaConfig | null;
 
   /** Computed field names as typed array */
   computedFields: Array<keyof T>;
@@ -548,11 +542,11 @@ export interface UseFormReturn<
   // FIELD HELPERS WITH STRICT TYPING
   // ============================================================
 
-  /** Get field metadata with strict typing */
-  getField: <K extends keyof T>(fieldName: K) => ProcessedField | null;
+  /** Get field configuration with strict typing */
+  getField: <K extends keyof T>(fieldName: K) => FormFieldConfig | null;
 
-  /** Get all fields with strict typing */
-  getFields: () => Record<keyof T, ProcessedField>;
+  /** Get all field configurations with strict typing */
+  getFields: () => Record<keyof T, FormFieldConfig>;
 
   /** Check if field exists with strict typing */
   hasField: <K extends keyof T>(fieldName: K) => boolean;
@@ -581,13 +575,13 @@ export interface UseFormReturn<
 }
 
 // ============================================================
-// UTILITY TYPES
+// RESULT TYPES
 // ============================================================
 
 /**
- * Expression evaluation context with strict typing
+ * Expression evaluation context
  */
-export interface EvaluationContext<T = Record<string, any>> {
+export interface ExpressionContext<T = Record<string, any>> {
   /** Current form values */
   formValues: Partial<T>;
 
@@ -599,9 +593,9 @@ export interface EvaluationContext<T = Record<string, any>> {
 }
 
 /**
- * Validation result with strict typing
+ * Field validation result
  */
-export interface ValidationResult<T = Record<string, any>> {
+export interface FieldValidationResult<T = Record<string, any>> {
   /** Is validation passing */
   isValid: boolean;
 

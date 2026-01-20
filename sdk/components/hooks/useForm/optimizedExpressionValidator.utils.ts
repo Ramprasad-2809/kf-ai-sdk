@@ -5,8 +5,8 @@
 
 import type {
   ExpressionTree,
-  ValidationResult,
-  ValidationRule,
+  FieldValidationResult,
+  SchemaValidationRule,
 } from "./types";
 
 // ============================================================
@@ -94,7 +94,7 @@ export function analyzeExpressionDependencies(
  * Build dependency graph for multiple expressions
  */
 export function buildDependencyGraph(
-  rules: Record<string, ValidationRule>
+  rules: Record<string, SchemaValidationRule>
 ): Map<string, Set<string>> {
   const graph = new Map<string, Set<string>>();
 
@@ -398,10 +398,10 @@ const globalEvaluator = new OptimizedExpressionEvaluator();
 export function validateFieldOptimized<T = Record<string, any>>(
   fieldName: string,
   fieldValue: any,
-  validationRules: ValidationRule[],
+  validationRules: SchemaValidationRule[],
   formValues: T,
   lastFormValues?: T
-): ValidationResult<T> {
+): FieldValidationResult<T> {
   if (!validationRules || validationRules.length === 0) {
     return { isValid: true };
   }
@@ -461,11 +461,11 @@ export function batchValidateFields<T = Record<string, any>>(
   validations: Array<{
     fieldName: string;
     fieldValue: any;
-    rules: ValidationRule[];
+    rules: SchemaValidationRule[];
   }>,
   formValues: T,
   lastFormValues?: T
-): Array<ValidationResult<T>> {
+): Array<FieldValidationResult<T>> {
   return validations.map(({ fieldName, fieldValue, rules }) =>
     validateFieldOptimized(fieldName, fieldValue, rules, formValues, lastFormValues)
   );

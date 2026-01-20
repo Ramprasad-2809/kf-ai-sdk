@@ -9,15 +9,35 @@ export type {
 // Form hook
 export { useForm } from "./useForm";
 export type {
+  // Core types
   UseFormOptions,
   UseFormReturn,
-  BackendFieldDefinition,
-  ProcessedField,
-  ProcessedSchema,
   FormOperation,
   FormMode,
-  ValidationResult,
+
+  // Form field configuration
+  FormFieldConfig,
+  FormSchemaConfig,
+  FormFieldType,
+  SelectOption,
+  FieldPermission,
+
+  // Result types
+  FieldValidationResult,
   SubmissionResult,
+
+  // BDO Schema types (advanced)
+  BDOSchema,
+  BDOFieldDefinition,
+  SchemaValidationRule,
+} from "./useForm";
+
+// Error utilities
+export {
+  parseApiError,
+  isNetworkError,
+  isValidationError,
+  clearFormCache,
 } from "./useForm";
 
 // Kanban hook

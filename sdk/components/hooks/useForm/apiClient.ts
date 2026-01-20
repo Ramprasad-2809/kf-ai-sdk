@@ -4,7 +4,7 @@
 // Handles schema fetching and form submissions
 
 import { api, getBdoSchema } from "../../../api";
-import type { BackendSchema, FormOperation, SubmissionResult } from "./types";
+import type { BDOSchema, FormOperation, SubmissionResult } from "./types";
 
 // ============================================================
 // SCHEMA FETCHING
@@ -13,7 +13,7 @@ import type { BackendSchema, FormOperation, SubmissionResult } from "./types";
 /**
  * Fetch BDO schema from backend metadata endpoint
  */
-export async function fetchFormSchema(source: string): Promise<BackendSchema> {
+export async function fetchFormSchema(source: string): Promise<BDOSchema> {
   try {
     // Use the new metadata API client to fetch BDO schema
     const bdoResp = await getBdoSchema(source);
@@ -25,7 +25,7 @@ export async function fetchFormSchema(source: string): Promise<BackendSchema> {
     }
 
     // Return the full BDO schema - the form processor will extract what it needs
-    return bdoSchema as BackendSchema;
+    return bdoSchema as BDOSchema;
   } catch (error) {
     console.error(`Schema fetch error for ${source}:`, error);
     throw new Error(
@@ -40,7 +40,7 @@ export async function fetchFormSchema(source: string): Promise<BackendSchema> {
 export async function fetchFormSchemaWithRetry(
   source: string,
   maxRetries: number = 3
-): Promise<BackendSchema> {
+): Promise<BDOSchema> {
   let lastError: Error;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -404,7 +404,7 @@ export function clearCache(keyPrefix?: string): void {
  */
 export async function fetchFormSchemaWithCache(
   source: string
-): Promise<BackendSchema> {
+): Promise<BDOSchema> {
   const cacheKey = `schema:${source}`;
   const cached = getCacheData(cacheKey);
 

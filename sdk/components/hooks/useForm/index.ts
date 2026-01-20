@@ -1,64 +1,60 @@
 // ============================================================
-// USE FORM HOOK - MAIN EXPORT
+// useForm Hook - Public API
 // ============================================================
 
-// Main hook
+// === MAIN HOOK ===
 export { useForm } from './useForm';
 
-// Types
+// === TYPES: Core (Always needed) ===
 export type {
   UseFormOptions,
   UseFormReturn,
-  BackendSchema,
-  BackendFieldDefinition,
-  ProcessedField,
-  ProcessedSchema,
   FormOperation,
   FormMode,
-  ValidationResult,
-  SubmissionResult,
-  ExpressionTree,
-  ValidationRule,
-  Formula,
-  DefaultValue,
-  ReferenceField,
-  FieldValues,
-  EvaluationContext
 } from './types';
 
-// Utilities
-export {
-  processSchema,
-  updateComputedFields,
-  buildDependencyMap,
-  extractReferenceFields,
-  validateSchema,
-  buildReferenceFieldConfig
-} from './schemaParser.utils';
+// === TYPES: Form Field Configuration (For dynamic form rendering) ===
+export type {
+  FormFieldConfig,
+  FormSchemaConfig,
+  FormFieldType,
+  SelectOption,
+  FieldPermission,
+  FieldRuleIds,
+} from './types';
 
-export {
-  evaluateExpression,
-  validateField,
-  validateCrossField,
-  calculateComputedValue,
-  calculateDefaultValue
-} from './expressionValidator.utils';
+// === TYPES: Result Types ===
+export type {
+  FieldValidationResult,
+  SubmissionResult,
+} from './types';
 
+// === TYPES: BDO Schema (For advanced schema manipulation) ===
+export type {
+  BDOSchema,
+  BDOFieldDefinition,
+  SchemaValidationRule,
+  ComputedFieldFormula,
+  DefaultValueExpression,
+  ReferenceFieldConfig,
+  FieldOptionsConfig,
+  ExpressionTree,
+  BusinessObjectRules,
+  RolePermission,
+  RuleType,
+} from './types';
+
+// === TYPES: Expression Evaluation (For custom expression handling) ===
+export type {
+  ExpressionContext,
+} from './types';
+
+// === UTILITIES: Error Handling ===
 export {
-  fetchFormSchema,
-  fetchFormSchemaWithRetry,
-  fetchRecord,
-  submitFormData,
-  fetchReferenceData,
-  fetchAllReferenceData,
-  validateFormData,
-  cleanFormData,
   parseApiError,
   isNetworkError,
   isValidationError,
-  setCacheData,
-  getCacheData,
-  clearCache,
-  fetchFormSchemaWithCache,
-  fetchReferenceDataWithCache
 } from './apiClient';
+
+// === UTILITIES: Cache Control ===
+export { clearCache as clearFormCache } from './apiClient';

@@ -5,9 +5,9 @@
 
 import type {
   BDOSchema,
-  BackendSchema,
-  ProcessedSchema,
-  ValidationRule,
+  BDOFieldDefinition,
+  FormSchemaConfig,
+  SchemaValidationRule,
   RuleType,
   FieldPermission,
 } from "./types";
@@ -20,7 +20,7 @@ import type {
  * Check if a validation rule represents a "required" validation
  * Detects patterns like: field != null, TRIM(field) != '', etc.
  */
-function isRequiredValidationRule(rule: ValidationRule, fieldName: string): boolean {
+function isRequiredSchemaValidationRule(rule: SchemaValidationRule, fieldName: string): boolean {
   const expression = rule.Expression?.toLowerCase() || '';
   const ruleName = rule.Name?.toLowerCase() || '';
   const ruleId = rule.Id?.toLowerCase() || '';
@@ -84,13 +84,13 @@ export function normalizeBDOSchema(schema: BDOSchema): BDOSchema {
         // Extract inline validation rules
         const ruleIds: string[] = [];
 
-        (field.Validation as ValidationRule[]).forEach((rule) => {
+        (field.Validation as SchemaValidationRule[]).forEach((rule) => {
           // Add rule to centralized Rules.Validation
           normalizedSchema.Rules.Validation![rule.Id] = rule;
           ruleIds.push(rule.Id);
 
           // Check if this is a required validation rule
-          if (isRequiredValidationRule(rule, fieldName)) {
+          if (isRequiredSchemaValidationRule(rule, fieldName)) {
             isRequired = true;
           }
         });
@@ -106,7 +106,7 @@ export function normalizeBDOSchema(schema: BDOSchema): BDOSchema {
         const validationRuleIds = field.Validation as string[];
         validationRuleIds.forEach((ruleId) => {
           const rule = normalizedSchema.Rules.Validation?.[ruleId];
-          if (rule && isRequiredValidationRule(rule, fieldName)) {
+          if (rule && isRequiredSchemaValidationRule(rule, fieldName)) {
             isRequired = true;
           }
         });
@@ -146,11 +146,11 @@ export function normalizeBDOSchema(schema: BDOSchema): BDOSchema {
 /**
  * Classify rules by type from BDO schema
  */
-export function classifyRules(schema: BDOSchema): ProcessedSchema["rules"] {
+export function classifyRules(schema: BDOSchema): FormSchemaConfig["rules"] {
   const rules = {
-    validation: {} as Record<string, ValidationRule>,
-    computation: {} as Record<string, ValidationRule>,
-    businessLogic: {} as Record<string, ValidationRule>,
+    validation: {} as Record<string, SchemaValidationRule>,
+    computation: {} as Record<string, SchemaValidationRule>,
+    businessLogic: {} as Record<string, SchemaValidationRule>,
   };
 
   // Extract rules from BDO Rules section
@@ -223,9 +223,9 @@ function inferComputationRuleTargets(
 
 export function createFieldRuleMapping(
   schema: BDOSchema,
-  classifiedRules: ProcessedSchema["rules"]
-): ProcessedSchema["fieldRules"] {
-  const fieldRules: ProcessedSchema["fieldRules"] = {};
+  classifiedRules: FormSchemaConfig["rules"]
+): FormSchemaConfig["fieldRules"] {
+  const fieldRules: FormSchemaConfig["fieldRules"] = {};
 
   // Initialize all fields
   Object.keys(schema.Fields).forEach((fieldName) => {
@@ -356,11 +356,11 @@ export function getRuleExecutionStrategy(
  */
 export function getRulesForField(
   fieldName: string,
-  fieldRules: ProcessedSchema["fieldRules"],
-  classifiedRules: ProcessedSchema["rules"],
+  fieldRules: FormSchemaConfig["fieldRules"],
+  classifiedRules: FormSchemaConfig["rules"],
   executionType: "client" | "server"
-): ValidationRule[] {
-  const rules: ValidationRule[] = [];
+): SchemaValidationRule[] {
+  const rules: SchemaValidationRule[] = [];
   const fieldRuleMap = fieldRules[fieldName];
 
   if (!fieldRuleMap) return rules;
@@ -394,9 +394,10 @@ export function getRulesForField(
 // ============================================================
 
 /**
- * Convert legacy BackendSchema to BDO format
+ * Convert legacy schema format to BDO format
+ * @deprecated Legacy schema format is no longer supported
  */
-export function convertLegacySchema(legacySchema: BackendSchema): BDOSchema {
+export function convertLegacySchema(legacySchema: Record<string, BDOFieldDefinition>): BDOSchema {
   return {
     Id: "legacy_schema",
     Name: "Legacy Schema",
