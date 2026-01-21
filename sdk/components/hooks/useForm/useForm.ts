@@ -81,6 +81,9 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
   // This allows us to detect changes since the last draft, not since form init
   const lastSyncedValuesRef = useRef<Partial<T> | null>(null);
 
+  // Track if draft creation has started (prevents duplicate calls in React strict mode)
+  const draftCreationStartedRef = useRef(false);
+
   // Stable callback ref to prevent dependency loops
   const onSchemaErrorRef = useRef(onSchemaError);
 
@@ -209,10 +212,14 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
       operation !== "create" ||
       !schemaConfig ||
       !enabled ||
-      draftId
+      draftId ||
+      draftCreationStartedRef.current  // Prevent duplicate calls in React strict mode
     ) {
       return;
     }
+
+    // Mark as started immediately to prevent duplicate calls
+    draftCreationStartedRef.current = true;
 
     const createInitialDraft = async () => {
       setIsCreatingDraft(true);
@@ -244,13 +251,16 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
       } catch (error) {
         console.error("Failed to create initial draft:", error);
         setDraftError(error as Error);
+        // Reset the ref on error so it can be retried
+        draftCreationStartedRef.current = false;
       } finally {
         setIsCreatingDraft(false);
       }
     };
 
     createInitialDraft();
-  }, [isInteractiveMode, operation, schemaConfig, enabled, draftId, source, rhfForm]);
+  }, [isInteractiveMode, operation, schemaConfig, enabled, draftId, source]);
+  // Note: rhfForm removed from deps - we use ref pattern to avoid dependency loops
 
   // ============================================================
   // COMPUTED FIELD DEPENDENCY TRACKING AND OPTIMIZATION
