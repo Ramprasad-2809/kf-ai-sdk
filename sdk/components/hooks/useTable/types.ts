@@ -1,46 +1,40 @@
-import type { ListResponseType, ConditionGroupOperatorType } from "../../../types/common";
-import type { ConditionType, ConditionGroupType, UseFilterReturnType } from "../useFilter";
+import type { ListResponseType, SortType, ColumnDefinitionType } from "../../../types/common";
+
+// Re-export ColumnDefinitionType for backwards compatibility
+export type { ColumnDefinitionType };
+import type { UseFilterReturnType, FilterStateType } from "../useFilter";
+
+// ============================================================
+// STATE TYPE DEFINITIONS
+// ============================================================
+
+/**
+ * Pagination state type
+ */
+export interface PaginationStateType {
+  /** Page number (1-indexed) */
+  pageNo: number;
+  /** Number of items per page */
+  pageSize: number;
+}
 
 // ============================================================
 // TYPE DEFINITIONS
 // ============================================================
-
-export interface ColumnDefinitionType<T> {
-  /** Field name from the data type */
-  fieldId: keyof T;
-  /** Display label (optional, defaults to fieldId) */
-  label?: string;
-  /** Enable sorting for this column */
-  enableSorting?: boolean;
-  /** Enable filtering for this column */
-  enableFiltering?: boolean;
-  /** Custom transform function (overrides auto-formatting) */
-  transform?: (value: any, row: T) => React.ReactNode;
-}
 
 export interface UseTableOptionsType<T> {
   /** Data source identifier */
   source: string;
   /** Column configurations */
   columns: ColumnDefinitionType<T>[];
-  /** Enable sorting functionality */
-  enableSorting?: boolean;
-  /** Enable filtering functionality */
-  enableFiltering?: boolean;
-  /** Enable pagination */
-  enablePagination?: boolean;
   /** Initial state */
   initialState?: {
-    pagination?: {
-      pageNo: number;
-      pageSize: number;
-    };
-    sorting?: {
-      field: keyof T;
-      direction: "asc" | "desc";
-    };
-    filters?: Array<ConditionType | ConditionGroupType>;
-    filterOperator?: ConditionGroupOperatorType;
+    /** Sort configuration: [{ "fieldName": "ASC" }] */
+    sort?: SortType;
+    /** Pagination state: { pageNo, pageSize } */
+    pagination?: PaginationStateType;
+    /** Filter state: { conditions, operator } */
+    filter?: FilterStateType<T>;
   };
   /** Error callback */
   onError?: (error: Error) => void;
@@ -77,11 +71,11 @@ export interface UseTableReturnType<T> {
   };
 
   // Filter (Simplified chainable API)
-  filter: UseFilterReturnType;
+  filter: UseFilterReturnType<T>;
 
   // Pagination (Flat Access)
   pagination: {
-    currentPage: number;
+    pageNo: number;
     pageSize: number;
     totalPages: number;
     totalItems: number;

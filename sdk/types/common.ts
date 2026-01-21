@@ -37,14 +37,15 @@ export type FilterRHSTypeType = "Constant" | "BOField" | "AppVariable";
 
 /**
  * Leaf condition (actual field comparison)
+ * @template T - Data type for type-safe field names (defaults to any)
  */
-export interface ConditionType {
+export interface ConditionType<T = any> {
   /** Optional ID for hook state management (omitted in API payload) */
   id?: string;
   /** Condition operator */
   Operator: ConditionOperatorType;
-  /** Left-hand side field name */
-  LHSField: string;
+  /** Left-hand side field name (keyof T when generic is provided) */
+  LHSField: T extends any ? keyof T | string : string;
   /** Right-hand side value */
   RHSValue: any;
   /** Right-hand side type (optional, defaults to Constant) */
@@ -53,20 +54,22 @@ export interface ConditionType {
 
 /**
  * Group combining conditions (recursive structure)
+ * @template T - Data type for type-safe field names (defaults to any)
  */
-export interface ConditionGroupType {
+export interface ConditionGroupType<T = any> {
   /** Optional ID for hook state management (omitted in API payload) */
   id?: string;
   /** Group operator (And, Or, Not) */
   Operator: ConditionGroupOperatorType;
   /** Nested conditions (can be Condition or ConditionGroup) */
-  Condition: Array<ConditionType | ConditionGroupType>;
+  Condition: Array<ConditionType<T> | ConditionGroupType<T>>;
 }
 
 /**
  * Root filter type (alias for ConditionGroup)
+ * @template T - Data type for type-safe field names (defaults to any)
  */
-export type FilterType = ConditionGroupType;
+export type FilterType<T = any> = ConditionGroupType<T>;
 
 /**
  * DateTime encoding format used by the API
@@ -295,4 +298,26 @@ export interface FetchFieldOptionType {
 export interface FetchFieldResponseType {
   /** Array of field options */
   Data: FetchFieldOptionType[];
+}
+
+// ============================================================
+// SHARED COMPONENT TYPES
+// ============================================================
+
+/**
+ * Column definition for data display and behavior
+ * Used by useTable and useKanban for defining field configurations
+ * @template T - Data type for type-safe field names
+ */
+export interface ColumnDefinitionType<T> {
+  /** Field name from the data type */
+  fieldId: keyof T;
+  /** Display label (optional, defaults to fieldId) */
+  label?: string;
+  /** Enable sorting for this field */
+  enableSorting?: boolean;
+  /** Enable filtering for this field */
+  enableFiltering?: boolean;
+  /** Custom transform function (overrides auto-formatting) */
+  transform?: (value: any, item: T) => React.ReactNode;
 }

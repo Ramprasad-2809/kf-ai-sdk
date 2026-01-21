@@ -5,7 +5,10 @@
 // Following patterns from useTable and useForm
 
 import type { ConditionType, ConditionGroupType, UseFilterReturnType } from "../useFilter";
-import type { ConditionGroupOperatorType } from "../../../types/common";
+import type { ConditionGroupOperatorType, ColumnDefinitionType } from "../../../types/common";
+
+// Re-export ColumnDefinitionType for backwards compatibility
+export type { ColumnDefinitionType };
 
 // ============================================================
 // CORE DATA STRUCTURES
@@ -93,23 +96,6 @@ export interface KanbanColumnType<T = Record<string, any>> {
   _created_at?: Date;
   /** When the column was last modified */
   _modified_at?: Date;
-}
-
-/**
- * Column definition for display and behavior
- * Similar to ColumnDefinition in useTable
- */
-export interface ColumnDefinitionType<T> {
-  /** Field name from the card type */
-  fieldId: keyof T;
-  /** Display label (optional, defaults to fieldId) */
-  label?: string;
-  /** Enable sorting for this field */
-  enableSorting?: boolean;
-  /** Enable filtering for this field */
-  enableFiltering?: boolean;
-  /** Custom transform function (overrides auto-formatting) */
-  transform?: (value: any, card: T) => React.ReactNode;
 }
 
 // ============================================================

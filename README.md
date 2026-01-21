@@ -2,6 +2,31 @@
 
 A type-safe SDK for building modern web applications with React hooks for forms, tables, kanban boards, and filtering.
 
+## Table of Contents
+
+- [Installation](#installation)
+- [Features](#features)
+- [Quick Start](#quick-start)
+- [Authentication](#authentication)
+  - [Setup](#setup)
+  - [useAuth Hook](#useauth-hook)
+  - [useAuth Return Values](#useauth-return-values)
+  - [Multiple Auth Providers](#multiple-auth-providers)
+  - [Protected Routes](#protected-routes)
+- [Hooks](#hooks)
+  - [useTable](#usetable)
+  - [useForm](#useform)
+  - [useKanban](#usekanban)
+  - [useFilter](#usefilter)
+- [API Client](#api-client)
+- [Type System](#type-system)
+- [Utilities](#utilities)
+  - [Formatting](#formatting)
+  - [Class Names](#class-names)
+- [Documentation](#documentation)
+- [Requirements](#requirements)
+- [License](#license)
+
 ## Installation
 
 ```bash
@@ -186,17 +211,21 @@ import { useTable } from "@ram_28/kf-ai-sdk/table";
 function ProductTable() {
   const table = useTable({
     source: "products",
-    enableSorting: true,
-    enablePagination: true,
-    pageSize: 25,
+    columns: [
+      { fieldId: "name", enableSorting: true },
+      { fieldId: "price", enableSorting: true },
+    ],
+    initialState: {
+      pagination: { pageNo: 1, pageSize: 25 },
+    },
   });
 
   return (
     <table>
       <thead>
         <tr>
-          <th onClick={() => table.toggleSort("name")}>Name</th>
-          <th onClick={() => table.toggleSort("price")}>Price</th>
+          <th onClick={() => table.sort.toggle("name")}>Name</th>
+          <th onClick={() => table.sort.toggle("price")}>Price</th>
         </tr>
       </thead>
       <tbody>
@@ -208,13 +237,17 @@ function ProductTable() {
         ))}
       </tbody>
       <tfoot>
-        <button onClick={table.previousPage} disabled={!table.hasPreviousPage}>
-          Previous
-        </button>
-        <span>Page {table.currentPage}</span>
-        <button onClick={table.nextPage} disabled={!table.hasNextPage}>
-          Next
-        </button>
+        <tr>
+          <td colSpan={2}>
+            <button onClick={table.pagination.goToPrevious} disabled={!table.pagination.canGoPrevious}>
+              Previous
+            </button>
+            <span>Page {table.pagination.pageNo} of {table.pagination.totalPages}</span>
+            <button onClick={table.pagination.goToNext} disabled={!table.pagination.canGoNext}>
+              Next
+            </button>
+          </td>
+        </tr>
       </tfoot>
     </table>
   );

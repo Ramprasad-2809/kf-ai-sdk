@@ -7,6 +7,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient, useQueries, keepPreviousData } from "@tanstack/react-query";
 import { api } from "../../../api";
 import type { ListOptionsType, ListResponseType } from "../../../types/common";
+import { toError } from "../../../utils/error-handling";
 import { useFilter } from "../useFilter";
 
 import type {
@@ -41,7 +42,12 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
 
   const [search, setSearch] = useState({
     query: initialState?.search || "",
+    debouncedQuery: initialState?.search || "",
   });
+
+  // Debounce timeout ref for search
+  const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const SEARCH_DEBOUNCE_MS = 300;
 
   const [sorting] = useState({
     field: initialState?.sorting?.field || null,
@@ -139,13 +145,13 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
         ];
       }
 
-      // Add Search
-      if (search.query) {
-        opts.Search = search.query;
+      // Add Search (debounced)
+      if (search.debouncedQuery) {
+        opts.Search = search.debouncedQuery;
       }
 
       return opts;
-  }, [filter.payload, columnPagination, sorting, search.query]);
+  }, [filter.payload, columnPagination, sorting, search.debouncedQuery]);
 
   // ============================================================
   // COLUMN QUERY GENERATION
@@ -180,10 +186,10 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
   const cardApiOptions = useMemo((): ListOptionsType => {
       // This is for the GLOBAL count (ignoring column split)
       const opts: ListOptionsType = {};
-      if (search.query) opts.Search = search.query;
+      if (search.debouncedQuery) opts.Search = search.debouncedQuery;
       if (filter.payload) opts.Filter = filter.payload;
       return opts;
-  }, [search.query, filter.payload]);
+  }, [search.debouncedQuery, filter.payload]);
 
   const {
     data: countData,
@@ -196,7 +202,7 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
         return await api<KanbanCardType<T>>(source).count(cardApiOptions);
       } catch (err) {
         if (onErrorRef.current) {
-          onErrorRef.current(err as Error);
+          onErrorRef.current(toError(err));
         }
         throw err;
       }
@@ -258,7 +264,7 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
       if (context?.previousCards && context?.queryKey) {
         queryClient.setQueryData(context.queryKey, context.previousCards);
       }
-      onErrorRef.current?.(error as Error);
+      onErrorRef.current?.(toError(error));
     },
     onSettled: (_data, _error, variables) => {
        const columnId = variables.columnId;
@@ -280,7 +286,7 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
       onCardUpdateRef.current?.({ _id: result.id, ...result.updates } as any);
     },
     onError: (error, _variables, _context) => {
-      onErrorRef.current?.(error as Error);
+      onErrorRef.current?.(toError(error));
     },
     onSettled: () => {
        queryClient.invalidateQueries({ queryKey: ["kanban-cards", source] });
@@ -300,7 +306,7 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
       onCardDeleteRef.current?.(id);
     },
     onError: (error, _id, _context) => {
-      onErrorRef.current?.(error as Error);
+      onErrorRef.current?.(toError(error));
     },
     onSettled: () => {
        queryClient.invalidateQueries({ queryKey: ["kanban-cards", source] });
@@ -374,7 +380,7 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
       if (context?.previousToData && context?.toQueryKey) {
         queryClient.setQueryData(context.toQueryKey, context.previousToData);
       }
-      onErrorRef.current?.(error as Error);
+      onErrorRef.current?.(toError(error));
     },
     onSettled: (_data, _error, variables) => {
        const fromOpts = getColumnApiOptions(variables.fromColumnId);
@@ -401,7 +407,7 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
     },
     onSuccess: () => {},
     onError: (error, _variables, _context) => {
-      onErrorRef.current?.(error as Error);
+      onErrorRef.current?.(toError(error));
     },
     onSettled: (_data, _error, variables) => {
        const opts = getColumnApiOptions(variables.columnId);
@@ -513,11 +519,32 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
   // ============================================================
 
   const setSearchQuery = useCallback((value: string) => {
-    setSearch({ query: value });
+    // Validate search query length to prevent DoS
+    if (value.length > 255) {
+      console.warn("Search query exceeds maximum length of 255 characters");
+      return;
+    }
+
+    // Update immediate value for UI
+    setSearch((prev) => ({ ...prev, query: value }));
+
+    // Clear existing debounce timeout
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+
+    // Debounce the actual API query update
+    searchDebounceRef.current = setTimeout(() => {
+      setSearch((prev) => ({ ...prev, debouncedQuery: value }));
+    }, SEARCH_DEBOUNCE_MS);
   }, []);
 
   const clearSearch = useCallback(() => {
-    setSearch({ query: "" });
+    // Clear debounce timeout
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+    setSearch({ query: "", debouncedQuery: "" });
   }, []);
 
   const totalCards = countData?.Count || 0;
@@ -555,9 +582,18 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
 
   useEffect(() => {
     if (error && onErrorRef.current) {
-      onErrorRef.current(error as Error);
+      onErrorRef.current(toError(error));
     }
   }, [error]);
+
+  // Cleanup debounce timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+    };
+  }, []);
 
   // ============================================================
   // RETURN OBJECT
@@ -574,7 +610,7 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
     isUpdating,
 
     // Error Handling
-    error: error as Error | null,
+    error: error ? toError(error) : null,
 
     // Card Operations (Flat Access)
     createCard: createCardMutation.mutateAsync,
