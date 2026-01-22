@@ -10,4 +10,7 @@ export type {
 
   // Column definition
   ColumnDefinitionType,
+
+  // State types
+  PaginationStateType,
 } from './components/hooks/useTable/types';

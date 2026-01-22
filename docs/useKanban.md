@@ -1,17 +1,11 @@
 # useKanban
 
-## Brief Description
+Kanban board state management with drag-and-drop, card CRUD operations, and filtering.
 
-- Provides complete kanban board state management including column configuration, card CRUD operations, and drag-and-drop functionality
-- Integrates with `useFilter` for filtering cards across the board with support for nested condition groups
-- Includes built-in drag-and-drop handlers and prop getters (`getCardProps`, `getColumnProps`) for easy integration with any UI library
-- Handles optimistic updates for card operations with automatic rollback on failure
-
-## Type Reference
+## Imports
 
 ```typescript
 import { useKanban } from "@ram_28/kf-ai-sdk/kanban";
-import { isCondition, isConditionGroup } from "@ram_28/kf-ai-sdk/filter";
 import type {
   UseKanbanOptionsType,
   UseKanbanReturnType,
@@ -19,15 +13,12 @@ import type {
   KanbanColumnType,
   ColumnConfigType,
 } from "@ram_28/kf-ai-sdk/kanban/types";
-import type {
-  ConditionType,
-  ConditionGroupType,
-  ConditionGroupOperatorType,
-  FilterType,
-  UseFilterReturnType,
-} from "@ram_28/kf-ai-sdk/filter/types";
+```
 
-// Static column configuration
+## Type Definitions
+
+```typescript
+// Column configuration
 interface ColumnConfigType {
   id: string;
   title: string;
@@ -36,18 +27,16 @@ interface ColumnConfigType {
   limit?: number;
 }
 
-// Kanban card with custom fields
-type KanbanCardType<T = Record<string, any>> = {
+// Card type with custom fields
+type KanbanCardType<T> = {
   _id: string;
   title: string;
   columnId: string;
   position: number;
-  _created_at?: Date;
-  _modified_at?: Date;
 } & T;
 
-// Kanban column with cards
-interface KanbanColumnType<T = Record<string, any>> {
+// Column with cards
+interface KanbanColumnType<T> {
   _id: string;
   title: string;
   position: number;
@@ -64,177 +53,350 @@ interface UseKanbanOptionsType<T> {
   enableFiltering?: boolean;
   enableSearch?: boolean;
   initialState?: {
-    filters?: Array<ConditionType | ConditionGroupType>;
-    filterOperator?: ConditionGroupOperatorType;
+    filter?: UseFilterOptionsType;  // { conditions?, operator? }
     search?: string;
+    columnOrder?: string[];
+    sorting?: { field: keyof T; direction: "asc" | "desc" };
   };
-  onCardMove?: (card: KanbanCardType<T>, fromColumnId: string, toColumnId: string) => void;
-  onCardCreate?: (card: KanbanCardType<T>) => void;
-  onCardUpdate?: (card: KanbanCardType<T>) => void;
-  onCardDelete?: (cardId: string) => void;
-  onError?: (error: Error) => void;
+  onCardMove?: (card, fromColumnId, toColumnId) => void;
+  onCardCreate?: (card) => void;
+  onCardUpdate?: (card) => void;
+  onCardDelete?: (cardId) => void;
+  onError?: (error) => void;
 }
 
 // Hook return type
 interface UseKanbanReturnType<T> {
-  // Data
   columns: KanbanColumnType<T>[];
   totalCards: number;
-
-  // Loading states
   isLoading: boolean;
   isFetching: boolean;
   isUpdating: boolean;
   error: Error | null;
 
   // Card operations
-  createCard: (card: Partial<KanbanCardType<T>> & { columnId: string }) => Promise<string>;
-  updateCard: (id: string, updates: Partial<KanbanCardType<T>>) => Promise<void>;
-  deleteCard: (id: string) => Promise<void>;
-  moveCard: (cardId: string, toColumnId: string, position?: number) => Promise<void>;
-  reorderCards: (cardIds: string[], columnId: string) => Promise<void>;
+  createCard: (card) => Promise<string>;
+  updateCard: (id, updates) => Promise<void>;
+  deleteCard: (id) => Promise<void>;
+  moveCard: (cardId, toColumnId, position?) => Promise<void>;
 
-  // Search
+  // Search & Filter
   searchQuery: string;
-  setSearchQuery: (value: string) => void;
-  clearSearch: () => void;
-
-  // Filter (uses useFilter internally)
+  setSearchQuery: (value) => void;
   filter: UseFilterReturnType;
 
-  // Drag drop state
+  // Drag & Drop
   isDragging: boolean;
   draggedCard: KanbanCardType<T> | null;
-  dragOverColumn: string | null;
+  getCardProps: (card) => object;
+  getColumnProps: (columnId) => object;
 
-  // Prop getters
-  getCardProps: (card: KanbanCardType<T>) => {
-    draggable: boolean;
-    role: string;
-    "aria-selected": boolean;
-    "aria-grabbed": boolean;
-    onDragStart: (e: any) => void;
-    onDragEnd: () => void;
-    onKeyDown: (e: any) => void;
-  };
-  getColumnProps: (columnId: string) => {
-    "data-column-id": string;
-    role: string;
-    onDragOver: (e: any) => void;
-    onDrop: (e: any) => void;
-  };
-
-  // Utilities
   refetch: () => Promise<void>;
-  loadMore: (columnId: string) => void;
 }
 ```
 
-## Usage Example
+## Basic Example
+
+A minimal kanban board displaying columns and cards.
 
 ```tsx
 import { useKanban } from "@ram_28/kf-ai-sdk/kanban";
-import { isCondition, isConditionGroup } from "@ram_28/kf-ai-sdk/filter";
-import type {
-  UseKanbanOptionsType,
-  UseKanbanReturnType,
-  KanbanCardType,
-  KanbanColumnType,
-  ColumnConfigType,
-} from "@ram_28/kf-ai-sdk/kanban/types";
-import type {
-  ConditionType,
-  ConditionGroupType,
-  ConditionGroupOperatorType,
-  FilterType,
-  UseFilterReturnType,
-} from "@ram_28/kf-ai-sdk/filter/types";
-import { ProductRestocking, ProductRestockingType } from "../sources";
-import { Roles } from "../sources/roles";
+import type { ColumnConfigType, KanbanCardType } from "@ram_28/kf-ai-sdk/kanban/types";
 
-// Get the typed restocking record for the InventoryManager role
-type RestockingRecord = ProductRestockingType<typeof Roles.InventoryManager>;
-
-// Define custom card fields that extend the base KanbanCardType
-interface RestockingCardData {
-  productTitle: string;
-  productSKU: string;
-  currentStock: number;
-  quantityOrdered: number;
-  warehouse: "Warehouse_A" | "Warehouse_B" | "Warehouse_C";
-  priority: "Low" | "Medium" | "High" | "Critical";
+interface TaskData {
+  priority: "Low" | "Medium" | "High";
+  assignee: string;
 }
 
-// Full card type with base fields + custom data
-type RestockingCard = KanbanCardType<RestockingCardData>;
+type Task = KanbanCardType<TaskData>;
 
-function InventoryRestockingBoard() {
-  // Instantiate the ProductRestocking source with role
-  const restocking = new ProductRestocking(Roles.InventoryManager);
-
-  // Static column configurations
-  const columnConfigs: ColumnConfigType[] = [
-    { id: "LowStockAlert", title: "Low Stock Alert", position: 0, color: "red" },
-    { id: "OrderPlaced", title: "Order Placed", position: 1, color: "yellow" },
-    { id: "InTransit", title: "In Transit", position: 2, color: "blue" },
-    { id: "Received", title: "Received & Restocked", position: 3, color: "green", limit: 20 },
+function TaskBoard() {
+  const columns: ColumnConfigType[] = [
+    { id: "todo", title: "To Do", position: 0 },
+    { id: "in-progress", title: "In Progress", position: 1 },
+    { id: "done", title: "Done", position: 2 },
   ];
 
-  // Hook configuration with full options
-  const options: UseKanbanOptionsType<RestockingCardData> = {
-    source: restocking._id, // Use the Business Object ID from the source class
-    columns: columnConfigs,
-    enableDragDrop: true,
-    enableFiltering: true,
-    enableSearch: true,
-    initialState: {
-      filterOperator: "And",
-    },
-    onCardMove: (card: RestockingCard, fromColumnId: string, toColumnId: string) => {
-      console.log(`Moved "${card.productTitle}" from ${fromColumnId} to ${toColumnId}`);
-    },
-    onCardCreate: (card: RestockingCard) => console.log("Created:", card.productTitle),
-    onCardUpdate: (card: RestockingCard) => console.log("Updated:", card._id),
-    onCardDelete: (cardId: string) => console.log("Deleted:", cardId),
-    onError: (error: Error) => console.error("Kanban error:", error.message),
-  };
+  const kanban = useKanban<TaskData>({
+    source: "BDO_Tasks",
+    columns,
+  });
 
-  const kanban: UseKanbanReturnType<RestockingCardData> = useKanban<RestockingCardData>(options);
+  if (kanban.isLoading) return <div>Loading board...</div>;
+  if (kanban.error) return <div>Error: {kanban.error.message}</div>;
 
-  // Access filter state (UseFilterReturnType)
-  const filterState: UseFilterReturnType = kanban.filter;
+  return (
+    <div className="kanban-board">
+      {kanban.columns.map((column) => (
+        <div key={column._id} className="column">
+          <h3>{column.title} ({column.cards.length})</h3>
+          <div className="cards">
+            {column.cards.map((card) => (
+              <div key={card._id} className="card">
+                <h4>{card.title}</h4>
+                <span className="priority">{card.priority}</span>
+                <span className="assignee">{card.assignee}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
 
-  // Create a new card
+---
+
+## Card Operations
+
+### Create Card
+
+Add a new card to a column.
+
+```tsx
+function BoardWithCreate() {
+  const kanban = useKanban<TaskData>({
+    source: "BDO_Tasks",
+    columns,
+  });
+
   const handleCreateCard = async (columnId: string) => {
-    const cardId: string = await kanban.createCard({
+    const cardId = await kanban.createCard({
       columnId,
-      title: "New Restock Task",
-      productTitle: "Sample Product",
-      productSKU: "SKU-001",
-      currentStock: 5,
-      quantityOrdered: 50,
-      warehouse: "Warehouse_A",
-      priority: "High",
+      title: "New Task",
+      priority: "Medium",
+      assignee: "Unassigned",
     });
-    console.log("Created card with id:", cardId);
+    console.log("Created card:", cardId);
   };
 
-  // Update card priority
-  const handleUpdatePriority = async (card: RestockingCard, priority: RestockingCardData["priority"]) => {
+  return (
+    <div className="kanban-board">
+      {kanban.columns.map((column) => (
+        <div key={column._id} className="column">
+          <div className="column-header">
+            <h3>{column.title}</h3>
+            <button onClick={() => handleCreateCard(column._id)}>
+              + Add Card
+            </button>
+          </div>
+          {/* cards */}
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+### Update Card
+
+Modify an existing card's properties.
+
+```tsx
+function CardWithEdit({ card }: { card: Task }) {
+  const kanban = useKanban<TaskData>({
+    source: "BDO_Tasks",
+    columns,
+  });
+
+  const handleUpdateTitle = async (newTitle: string) => {
+    await kanban.updateCard(card._id, { title: newTitle });
+  };
+
+  const handleChangePriority = async (priority: TaskData["priority"]) => {
     await kanban.updateCard(card._id, { priority });
   };
 
-  // Delete a card
-  const handleDeleteCard = async (cardId: string) => {
-    await kanban.deleteCard(cardId);
+  return (
+    <div className="card">
+      <input
+        defaultValue={card.title}
+        onBlur={(e) => handleUpdateTitle(e.target.value)}
+      />
+      <select
+        value={card.priority}
+        onChange={(e) => handleChangePriority(e.target.value as TaskData["priority"])}
+      >
+        <option value="Low">Low</option>
+        <option value="Medium">Medium</option>
+        <option value="High">High</option>
+      </select>
+    </div>
+  );
+}
+```
+
+### Delete Card
+
+Remove a card from the board.
+
+```tsx
+function CardWithDelete({ card }: { card: Task }) {
+  const kanban = useKanban<TaskData>({
+    source: "BDO_Tasks",
+    columns,
+  });
+
+  const handleDelete = async () => {
+    if (confirm(`Delete "${card.title}"?`)) {
+      await kanban.deleteCard(card._id);
+    }
   };
 
-  // Move card between columns
-  const handleMoveCard = async (cardId: string, toColumnId: string) => {
-    await kanban.moveCard(cardId, toColumnId);
+  return (
+    <div className="card">
+      <h4>{card.title}</h4>
+      <button onClick={handleDelete} className="delete-btn">
+        Delete
+      </button>
+    </div>
+  );
+}
+```
+
+### Move Card Between Columns
+
+Programmatically move a card to a different column.
+
+```tsx
+function CardWithMoveActions({ card }: { card: Task }) {
+  const kanban = useKanban<TaskData>({
+    source: "BDO_Tasks",
+    columns,
+  });
+
+  const moveTo = async (columnId: string) => {
+    await kanban.moveCard(card._id, columnId);
   };
 
-  // Filter by priority
+  return (
+    <div className="card">
+      <h4>{card.title}</h4>
+      <div className="move-actions">
+        <button onClick={() => moveTo("todo")}>To Do</button>
+        <button onClick={() => moveTo("in-progress")}>In Progress</button>
+        <button onClick={() => moveTo("done")}>Done</button>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## Drag and Drop
+
+### Using Prop Getters
+
+Apply drag-and-drop handlers using built-in prop getters.
+
+```tsx
+function DraggableBoard() {
+  const kanban = useKanban<TaskData>({
+    source: "BDO_Tasks",
+    columns,
+    enableDragDrop: true,
+    onCardMove: (card, from, to) => {
+      console.log(`Moved "${card.title}" from ${from} to ${to}`);
+    },
+  });
+
+  return (
+    <div className="kanban-board">
+      {kanban.columns.map((column) => (
+        <div
+          key={column._id}
+          className={`column ${kanban.dragOverColumn === column._id ? "drag-over" : ""}`}
+          {...kanban.getColumnProps(column._id)}
+        >
+          <h3>{column.title}</h3>
+          <div className="cards">
+            {column.cards.map((card) => (
+              <div
+                key={card._id}
+                className={`card ${kanban.draggedCard?._id === card._id ? "dragging" : ""}`}
+                {...kanban.getCardProps(card)}
+              >
+                <h4>{card.title}</h4>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+### Drag State Indicators
+
+Show visual feedback during drag operations.
+
+```tsx
+function BoardWithDragIndicators() {
+  const kanban = useKanban<TaskData>({
+    source: "BDO_Tasks",
+    columns,
+    enableDragDrop: true,
+  });
+
+  return (
+    <div className="kanban-board">
+      {/* Drag indicator */}
+      {kanban.isDragging && (
+        <div className="drag-indicator">
+          Moving: {kanban.draggedCard?.title}
+        </div>
+      )}
+
+      {kanban.columns.map((column) => (
+        <div
+          key={column._id}
+          className="column"
+          style={{
+            backgroundColor: kanban.dragOverColumn === column._id ? "#e3f2fd" : "white",
+          }}
+          {...kanban.getColumnProps(column._id)}
+        >
+          <h3>{column.title}</h3>
+          <div className="cards">
+            {column.cards.map((card) => (
+              <div
+                key={card._id}
+                className="card"
+                style={{
+                  opacity: kanban.draggedCard?._id === card._id ? 0.5 : 1,
+                }}
+                {...kanban.getCardProps(card)}
+              >
+                {card.title}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+---
+
+## Filtering Cards
+
+### Filter by Priority
+
+Show only cards matching a priority level.
+
+```tsx
+function BoardWithPriorityFilter() {
+  const kanban = useKanban<TaskData>({
+    source: "BDO_Tasks",
+    columns,
+    enableFiltering: true,
+  });
+
   const filterByPriority = (priority: string) => {
     kanban.filter.clearAllConditions();
     if (priority !== "all") {
@@ -246,175 +408,268 @@ function InventoryRestockingBoard() {
     }
   };
 
-  // Add complex filter (Critical OR High priority)
-  const addUrgentFilter = () => {
-    const groupId = kanban.filter.addConditionGroup("Or");
+  return (
+    <div>
+      <div className="filter-bar">
+        <button onClick={() => filterByPriority("all")}>All</button>
+        <button onClick={() => filterByPriority("High")}>High Priority</button>
+        <button onClick={() => filterByPriority("Medium")}>Medium</button>
+        <button onClick={() => filterByPriority("Low")}>Low</button>
+      </div>
+
+      {/* board rendering */}
+    </div>
+  );
+}
+```
+
+### Filter by Assignee (My Tasks)
+
+Show only cards assigned to the current user.
+
+```tsx
+function BoardWithMyTasks({ currentUserId }: { currentUserId: string }) {
+  const kanban = useKanban<TaskData>({
+    source: "BDO_Tasks",
+    columns,
+    enableFiltering: true,
+  });
+
+  const showMyTasks = () => {
+    kanban.filter.clearAllConditions();
     kanban.filter.addCondition({
       Operator: "EQ",
-      LHSField: "priority",
-      RHSValue: "Critical",
-    }, groupId);
+      LHSField: "assignee",
+      RHSValue: currentUserId,
+    });
+  };
+
+  const showAllTasks = () => {
+    kanban.filter.clearAllConditions();
+  };
+
+  return (
+    <div>
+      <div className="filter-bar">
+        <button onClick={showMyTasks}>My Tasks</button>
+        <button onClick={showAllTasks}>All Tasks</button>
+        {kanban.filter.hasConditions && (
+          <span>Filtered: {kanban.totalCards} cards</span>
+        )}
+      </div>
+
+      {/* board rendering */}
+    </div>
+  );
+}
+```
+
+### Combined Filters
+
+Apply multiple filter conditions.
+
+```tsx
+function BoardWithCombinedFilters() {
+  const kanban = useKanban<TaskData>({
+    source: "BDO_Tasks",
+    columns,
+    enableFiltering: true,
+    initialState: {
+      filter: {
+        operator: "And",
+      },
+    },
+  });
+
+  const applyUrgentFilter = () => {
+    kanban.filter.clearAllConditions();
+
+    // High priority OR overdue
+    const groupId = kanban.filter.addConditionGroup("Or");
     kanban.filter.addCondition({
       Operator: "EQ",
       LHSField: "priority",
       RHSValue: "High",
     }, groupId);
+    kanban.filter.addCondition({
+      Operator: "LT",
+      LHSField: "dueDate",
+      RHSValue: new Date().toISOString(),
+    }, groupId);
   };
-
-  // Render active filters using type guards
-  const renderActiveFilters = () => (
-    <div className="active-filters">
-      {kanban.filter.items.map((item) => {
-        if (isCondition(item)) {
-          return (
-            <span key={item.id} className="filter-tag">
-              {item.LHSField} {item.Operator} {String(item.RHSValue)}
-              <button onClick={() => kanban.filter.removeCondition(item.id!)}>×</button>
-            </span>
-          );
-        }
-        if (isConditionGroup(item)) {
-          return (
-            <span key={item.id} className="filter-group-tag">
-              {item.Operator} Group ({item.Condition.length})
-              <button onClick={() => kanban.filter.removeCondition(item.id!)}>×</button>
-            </span>
-          );
-        }
-        return null;
-      })}
-    </div>
-  );
-
-  // Get filter payload for debugging
-  const getFilterPayload = (): FilterType | undefined => {
-    return kanban.filter.payload;
-  };
-
-  if (kanban.isLoading) {
-    return <div>Loading board...</div>;
-  }
-
-  if (kanban.error) {
-    return (
-      <div>
-        <p>Error: {kanban.error.message}</p>
-        <button onClick={() => kanban.refetch()}>Retry</button>
-      </div>
-    );
-  }
 
   return (
-    <div className="kanban-board">
-      {/* Search */}
+    <div>
+      <div className="filter-bar">
+        <button onClick={applyUrgentFilter}>Urgent Tasks</button>
+        <button onClick={() => kanban.filter.clearAllConditions()}>Clear</button>
+      </div>
+
+      {/* board rendering */}
+    </div>
+  );
+}
+```
+
+---
+
+## Search
+
+### Basic Search
+
+Filter cards by text search.
+
+```tsx
+function BoardWithSearch() {
+  const kanban = useKanban<TaskData>({
+    source: "BDO_Tasks",
+    columns,
+    enableSearch: true,
+  });
+
+  return (
+    <div>
       <div className="search-bar">
         <input
           type="text"
-          placeholder="Search products..."
+          placeholder="Search tasks..."
           value={kanban.searchQuery}
           onChange={(e) => kanban.setSearchQuery(e.target.value)}
         />
-        <button onClick={kanban.clearSearch}>Clear</button>
-      </div>
-
-      {/* Filter Controls */}
-      <div className="filter-controls">
-        <button onClick={() => filterByPriority("Critical")}>Critical</button>
-        <button onClick={() => filterByPriority("High")}>High</button>
-        <button onClick={addUrgentFilter}>Urgent (Critical OR High)</button>
-        <button onClick={() => filterByPriority("all")}>All</button>
-        {kanban.filter.hasConditions && (
-          <button onClick={() => kanban.filter.clearAllConditions()}>Clear Filters</button>
+        {kanban.searchQuery && (
+          <button onClick={kanban.clearSearch}>Clear</button>
         )}
-        <span>Logic: {kanban.filter.operator}</span>
       </div>
 
-      {/* Active Filters */}
-      {renderActiveFilters()}
+      {/* board rendering */}
+    </div>
+  );
+}
+```
 
-      {/* Board Stats */}
-      <div className="board-stats">
-        <span>Total cards: {kanban.totalCards}</span>
-        {kanban.isDragging && (
-          <span>Dragging: {kanban.draggedCard?.productTitle}</span>
-        )}
-        {kanban.isUpdating && <span>Updating...</span>}
-      </div>
+---
 
-      {/* Kanban Columns */}
-      <div className="columns-container">
-        {kanban.columns.map((column: KanbanColumnType<RestockingCardData>) => (
+## Column Configuration
+
+### Columns with Limits
+
+Set maximum card limits per column.
+
+```tsx
+function BoardWithLimits() {
+  const columns: ColumnConfigType[] = [
+    { id: "todo", title: "To Do", position: 0 },
+    { id: "in-progress", title: "In Progress", position: 1, limit: 5 },
+    { id: "review", title: "Review", position: 2, limit: 3 },
+    { id: "done", title: "Done", position: 3 },
+  ];
+
+  const kanban = useKanban<TaskData>({
+    source: "BDO_Tasks",
+    columns,
+  });
+
+  return (
+    <div className="kanban-board">
+      {kanban.columns.map((column) => {
+        const isOverLimit = column.limit && column.cards.length >= column.limit;
+
+        return (
           <div
             key={column._id}
-            className={`column ${kanban.dragOverColumn === column._id ? "drag-over" : ""}`}
-            style={{ backgroundColor: column.color }}
-            {...kanban.getColumnProps(column._id)}
+            className={`column ${isOverLimit ? "over-limit" : ""}`}
           >
-            {/* Column Header */}
-            <div className="column-header">
-              <h3>{column.title}</h3>
-              <span>
+            <h3>
+              {column.title}
+              <span className="count">
                 {column.cards.length}
                 {column.limit && ` / ${column.limit}`}
               </span>
-              <button onClick={() => handleCreateCard(column._id)}>+ Add</button>
-            </div>
-
-            {/* Cards */}
-            <div className="cards-container">
-              {column.cards.map((card: RestockingCard) => (
-                <div
-                  key={card._id}
-                  className={`card ${kanban.draggedCard?._id === card._id ? "dragging" : ""}`}
-                  {...kanban.getCardProps(card)}
-                >
-                  <div className="card-header">
-                    <span className={`priority-badge ${card.priority.toLowerCase()}`}>
-                      {card.priority}
-                    </span>
-                    <button onClick={() => handleDeleteCard(card._id)}>×</button>
-                  </div>
-                  <h4>{card.productTitle}</h4>
-                  <p>SKU: {card.productSKU}</p>
-                  <p>Stock: {card.currentStock} / Ordered: {card.quantityOrdered}</p>
-                  <p>Warehouse: {card.warehouse}</p>
-                  <div className="card-actions">
-                    <button onClick={() => handleUpdatePriority(card, "Critical")}>
-                      Set Critical
-                    </button>
-                    <button onClick={() => handleMoveCard(card._id, "Received")}>
-                      Mark Received
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Load More */}
-            {column.cards.length >= 10 && (
-              <button
-                className="load-more"
-                onClick={() => kanban.loadMore(column._id)}
-              >
-                Load More
-              </button>
-            )}
+            </h3>
+            {/* cards */}
           </div>
-        ))}
-      </div>
+        );
+      })}
+    </div>
+  );
+}
+```
 
-      {/* Board Actions */}
-      <div className="board-actions">
-        <button onClick={() => kanban.refetch()} disabled={kanban.isFetching}>
-          {kanban.isFetching ? "Refreshing..." : "Refresh Board"}
-        </button>
-      </div>
+### Colored Columns
 
-      {/* Debug: Filter payload */}
-      <details>
-        <summary>Filter Payload (Debug)</summary>
-        <pre>{JSON.stringify(getFilterPayload(), null, 2)}</pre>
-      </details>
+Apply colors to columns for visual distinction.
+
+```tsx
+function ColoredBoard() {
+  const columns: ColumnConfigType[] = [
+    { id: "backlog", title: "Backlog", position: 0, color: "#f5f5f5" },
+    { id: "todo", title: "To Do", position: 1, color: "#fff3e0" },
+    { id: "in-progress", title: "In Progress", position: 2, color: "#e3f2fd" },
+    { id: "done", title: "Done", position: 3, color: "#e8f5e9" },
+  ];
+
+  const kanban = useKanban<TaskData>({
+    source: "BDO_Tasks",
+    columns,
+  });
+
+  return (
+    <div className="kanban-board">
+      {kanban.columns.map((column) => (
+        <div
+          key={column._id}
+          className="column"
+          style={{ backgroundColor: column.color }}
+        >
+          <h3>{column.title}</h3>
+          {/* cards */}
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+---
+
+## Event Callbacks
+
+### Track Card Operations
+
+Handle card lifecycle events.
+
+```tsx
+function BoardWithCallbacks() {
+  const kanban = useKanban<TaskData>({
+    source: "BDO_Tasks",
+    columns,
+    onCardMove: (card, fromColumn, toColumn) => {
+      console.log(`Card "${card.title}" moved from ${fromColumn} to ${toColumn}`);
+
+      // Track analytics
+      analytics.track("card_moved", {
+        cardId: card._id,
+        from: fromColumn,
+        to: toColumn,
+      });
+    },
+    onCardCreate: (card) => {
+      console.log(`Card created: ${card.title}`);
+    },
+    onCardUpdate: (card) => {
+      console.log(`Card updated: ${card._id}`);
+    },
+    onCardDelete: (cardId) => {
+      console.log(`Card deleted: ${cardId}`);
+    },
+    onError: (error) => {
+      alert(`Error: ${error.message}`);
+    },
+  });
+
+  return (
+    <div className="kanban-board">
+      {/* board rendering */}
     </div>
   );
 }

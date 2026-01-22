@@ -379,7 +379,13 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
         );
       }
 
-      return response.json();
+      const json = await response.json();
+      // API returns {"Data":{"_id":"..."},"ValidationFailures":[]}
+      // Extract _id from Data wrapper and return flat structure
+      return {
+        ...json.Data,
+        _id: json.Data._id,
+      };
     },
 
     // ============================================================

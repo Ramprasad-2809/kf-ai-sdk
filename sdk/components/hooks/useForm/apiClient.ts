@@ -5,6 +5,7 @@
 
 import { api, getBdoSchema } from "../../../api";
 import type { BDOSchemaType, FormOperationType, SubmissionResultType } from "./types";
+import { toError } from "../../../utils/error-handling";
 
 // ============================================================
 // SCHEMA FETCHING
@@ -47,7 +48,7 @@ export async function fetchFormSchemaWithRetry(
     try {
       return await fetchFormSchema(source);
     } catch (error) {
-      lastError = error as Error;
+      lastError = toError(error);
 
       if (attempt < maxRetries) {
         // Wait before retrying (exponential backoff)

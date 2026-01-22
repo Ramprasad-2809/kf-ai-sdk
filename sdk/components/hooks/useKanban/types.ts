@@ -4,8 +4,11 @@
 // Core TypeScript interfaces for the kanban board functionality
 // Following patterns from useTable and useForm
 
-import type { ConditionType, ConditionGroupType, UseFilterReturnType } from "../useFilter";
-import type { ConditionGroupOperatorType } from "../../../types/common";
+import type { UseFilterReturnType, UseFilterOptionsType } from "../useFilter";
+import type { ColumnDefinitionType } from "../../../types/common";
+
+// Re-export ColumnDefinitionType for backwards compatibility
+export type { ColumnDefinitionType };
 
 // ============================================================
 // CORE DATA STRUCTURES
@@ -95,23 +98,6 @@ export interface KanbanColumnType<T = Record<string, any>> {
   _modified_at?: Date;
 }
 
-/**
- * Column definition for display and behavior
- * Similar to ColumnDefinition in useTable
- */
-export interface ColumnDefinitionType<T> {
-  /** Field name from the card type */
-  fieldId: keyof T;
-  /** Display label (optional, defaults to fieldId) */
-  label?: string;
-  /** Enable sorting for this field */
-  enableSorting?: boolean;
-  /** Enable filtering for this field */
-  enableFiltering?: boolean;
-  /** Custom transform function (overrides auto-formatting) */
-  transform?: (value: any, card: T) => React.ReactNode;
-}
-
 // ============================================================
 // DRAG & DROP TYPES
 // ============================================================
@@ -195,10 +181,8 @@ export interface UseKanbanOptionsType<T> {
 
   /** Initial state */
   initialState?: {
-    /** Initial filter conditions */
-    filters?: Array<ConditionType | ConditionGroupType>;
-    /** Initial filter operator for combining filter conditions */
-    filterOperator?: ConditionGroupOperatorType;
+    /** Initial filter configuration: { conditions, operator } */
+    filter?: UseFilterOptionsType;
     /** Initial search query */
     search?: string;
     /** Initial column order */

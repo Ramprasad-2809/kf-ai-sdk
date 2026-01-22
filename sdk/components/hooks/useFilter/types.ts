@@ -57,18 +57,21 @@ export interface ConditionGroupBuilder {
 
 /**
  * Hook options (minimal configuration)
+ * Used for initializing useFilter, and also for initialState in useTable/useKanban
+ * @template T - Data type for type-safe field names (defaults to any)
  */
-export interface UseFilterOptionsType {
-  /** Initial filter conditions */
-  initialConditions?: Array<ConditionType | ConditionGroupType>;
-  /** Initial operator for combining conditions (defaults to "And") */
-  initialOperator?: ConditionGroupOperatorType;
+export interface UseFilterOptionsType<T = any> {
+  /** Filter conditions */
+  conditions?: Array<ConditionType<T> | ConditionGroupType<T>>;
+  /** Operator for combining conditions (defaults to "And") */
+  operator?: ConditionGroupOperatorType;
 }
 
 /**
  * Hook return interface with nested filter support
+ * @template T - Data type for type-safe field names (defaults to any)
  */
-export interface UseFilterReturnType {
+export interface UseFilterReturnType<T = any> {
   // ============================================================
   // STATE (read-only)
   // ============================================================
@@ -77,10 +80,10 @@ export interface UseFilterReturnType {
   operator: ConditionGroupOperatorType;
 
   /** Current filter items (with id populated) */
-  items: Array<ConditionType | ConditionGroupType>;
+  items: Array<ConditionType<T> | ConditionGroupType<T>>;
 
   /** Ready-to-use API payload (id stripped, undefined if no conditions) */
-  payload: FilterType | undefined;
+  payload: FilterType<T> | undefined;
 
   /** Whether any conditions exist */
   hasConditions: boolean;
@@ -95,7 +98,7 @@ export interface UseFilterReturnType {
    * @param parentId - Optional id of the parent ConditionGroup. If omitted, adds at root level
    * @returns The id of the created condition
    */
-  addCondition: (condition: Omit<ConditionType, "id">, parentId?: string) => string;
+  addCondition: (condition: Omit<ConditionType<T>, "id">, parentId?: string) => string;
 
   /**
    * Add a condition group at root level or to a specific parent group
@@ -114,7 +117,7 @@ export interface UseFilterReturnType {
    * @param id - The id of the condition to update
    * @param updates - Partial updates to apply
    */
-  updateCondition: (id: string, updates: Partial<Omit<ConditionType, "id">>) => void;
+  updateCondition: (id: string, updates: Partial<Omit<ConditionType<T>, "id">>) => void;
 
   /**
    * Update a condition group's operator by id
@@ -138,7 +141,7 @@ export interface UseFilterReturnType {
    * @param id - The id to look up
    * @returns The item or undefined if not found
    */
-  getCondition: (id: string) => ConditionType | ConditionGroupType | undefined;
+  getCondition: (id: string) => ConditionType<T> | ConditionGroupType<T> | undefined;
 
   // ============================================================
   // UTILITY

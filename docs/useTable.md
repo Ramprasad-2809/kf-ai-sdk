@@ -1,44 +1,22 @@
 # useTable
 
-## Brief Description
+Complete table state management with data fetching, sorting, filtering, search, and pagination.
 
-- Provides complete table state management including data fetching, sorting, filtering, search, and pagination
-- Integrates with `useFilter` for advanced filtering capabilities with nested condition groups
-- Handles API interactions automatically using React Query for caching and background refetching
-- Returns flattened state accessors (`sort.field`, `pagination.currentPage`) for easy component integration
-
-## Type Reference
+## Imports
 
 ```typescript
 import { useTable } from "@ram_28/kf-ai-sdk/table";
-import { isCondition, isConditionGroup } from "@ram_28/kf-ai-sdk/filter";
 import type {
   UseTableOptionsType,
   UseTableReturnType,
   ColumnDefinitionType,
+  PaginationStateType,
 } from "@ram_28/kf-ai-sdk/table/types";
-import type {
-  ConditionType,
-  ConditionGroupType,
-  ConditionOperatorType,
-  ConditionGroupOperatorType,
-  FilterType,
-  UseFilterReturnType,
-} from "@ram_28/kf-ai-sdk/filter/types";
-import type { ListResponseType } from "@ram_28/kf-ai-sdk/api/types";
+```
 
-// Condition operators for comparing field values
-type ConditionOperatorType =
-  | "EQ" | "NE" | "GT" | "GTE" | "LT" | "LTE"
-  | "Between" | "NotBetween"
-  | "IN" | "NIN"
-  | "Empty" | "NotEmpty"
-  | "Contains" | "NotContains"
-  | "MinLength" | "MaxLength";
+## Type Definitions
 
-// Group operators for combining conditions
-type ConditionGroupOperatorType = "And" | "Or" | "Not";
-
+```typescript
 // Column configuration
 interface ColumnDefinitionType<T> {
   fieldId: keyof T;
@@ -48,18 +26,20 @@ interface ColumnDefinitionType<T> {
   transform?: (value: any, row: T) => React.ReactNode;
 }
 
+// Pagination state
+interface PaginationStateType {
+  pageNo: number;
+  pageSize: number;
+}
+
 // Hook options
 interface UseTableOptionsType<T> {
   source: string;
   columns: ColumnDefinitionType<T>[];
-  enableSorting?: boolean;
-  enableFiltering?: boolean;
-  enablePagination?: boolean;
   initialState?: {
-    pagination?: { pageNo: number; pageSize: number };
-    sorting?: { field: keyof T; direction: "asc" | "desc" };
-    filters?: Array<ConditionType | ConditionGroupType>;
-    filterOperator?: ConditionGroupOperatorType;
+    sort?: Array<Record<string, "ASC" | "DESC">>;
+    pagination?: PaginationStateType; // Defaults: { pageNo: 1, pageSize: 10 }
+    filter?: UseFilterOptionsType<T>; // { conditions?, operator? }
   };
   onError?: (error: Error) => void;
   onSuccess?: (data: T[]) => void;
@@ -67,23 +47,16 @@ interface UseTableOptionsType<T> {
 
 // Hook return type
 interface UseTableReturnType<T> {
-  // Data
   rows: T[];
   totalItems: number;
-
-  // Loading states
   isLoading: boolean;
   isFetching: boolean;
   error: Error | null;
-
-  // Search
   search: {
     query: string;
     setQuery: (value: string) => void;
     clear: () => void;
   };
-
-  // Sort
   sort: {
     field: keyof T | null;
     direction: "asc" | "desc" | null;
@@ -91,13 +64,9 @@ interface UseTableReturnType<T> {
     clear: () => void;
     set: (field: keyof T, direction: "asc" | "desc") => void;
   };
-
-  // Filter (uses useFilter internally)
-  filter: UseFilterReturnType;
-
-  // Pagination
+  filter: UseFilterReturnType<T>;
   pagination: {
-    currentPage: number;
+    pageNo: number;
     pageSize: number;
     totalPages: number;
     totalItems: number;
@@ -108,192 +77,133 @@ interface UseTableReturnType<T> {
     goToPage: (page: number) => void;
     setPageSize: (size: number) => void;
   };
-
-  // Operations
   refetch: () => Promise<ListResponseType<T>>;
-}
-
-// API response structure
-interface ListResponseType<T> {
-  Data: T[];
 }
 ```
 
-## Usage Example
+## Basic Example
+
+A minimal table displaying data with loading and error states.
 
 ```tsx
 import { useTable } from "@ram_28/kf-ai-sdk/table";
-import { isCondition, isConditionGroup } from "@ram_28/kf-ai-sdk/filter";
+import type { ColumnDefinitionType } from "@ram_28/kf-ai-sdk/table/types";
+import { Product, ProductType } from "../sources";
+import { Roles } from "../sources/roles";
+
+type BuyerProduct = ProductType<typeof Roles.Buyer>;
+
+function ProductsTable() {
+  const product = new Product(Roles.Buyer);
+
+  const columns: ColumnDefinitionType<BuyerProduct>[] = [
+    { fieldId: "Title", label: "Name" },
+    { fieldId: "Price", label: "Price" },
+    { fieldId: "Category", label: "Category" },
+  ];
+
+  const table = useTable<BuyerProduct>({
+    source: product._id,
+    columns,
+  });
+
+  if (table.isLoading) return <div>Loading...</div>;
+  if (table.error) return <div>Error: {table.error.message}</div>;
+
+  return (
+    <table>
+      <thead>
+        <tr>
+          {columns.map((col) => (
+            <th key={String(col.fieldId)}>{col.label}</th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {table.rows.map((row) => (
+          <tr key={row._id}>
+            <td>{row.Title}</td>
+            <td>${row.Price}</td>
+            <td>{row.Category}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+```
+
+---
+
+## Initial State
+
+### Table with Initial Configuration
+
+Set default pagination, sorting, and filters when the table loads.
+
+```tsx
+import { useTable } from "@ram_28/kf-ai-sdk/table";
+import { useAuth } from "@ram_28/kf-ai-sdk/auth";
 import type {
   UseTableOptionsType,
   UseTableReturnType,
   ColumnDefinitionType,
 } from "@ram_28/kf-ai-sdk/table/types";
-import type {
-  ConditionType,
-  ConditionGroupType,
-  ConditionOperatorType,
-  ConditionGroupOperatorType,
-  FilterType,
-  UseFilterReturnType,
-} from "@ram_28/kf-ai-sdk/filter/types";
-import type { ListResponseType } from "@ram_28/kf-ai-sdk/api/types";
 import { Product, ProductType } from "../sources";
 import { Roles } from "../sources/roles";
 
-// Get the typed product for the Buyer role
 type BuyerProduct = ProductType<typeof Roles.Buyer>;
 
-function ProductsPage() {
-  // Instantiate the Product source with role
+function MyItemsTable() {
   const product = new Product(Roles.Buyer);
+  const { user } = useAuth();
 
-  // Column definitions with type safety
   const columns: ColumnDefinitionType<BuyerProduct>[] = [
     { fieldId: "Title", label: "Name", enableSorting: true },
-    {
-      fieldId: "Price",
-      label: "Price",
-      enableSorting: true,
-      transform: (value) => `$${value.toFixed(2)}`,
-    },
-    { fieldId: "Category", label: "Category", enableSorting: true, enableFiltering: true },
+    { fieldId: "Price", label: "Price", enableSorting: true },
+    { fieldId: "Category", label: "Category", enableSorting: true },
     { fieldId: "Stock", label: "Stock", enableSorting: true },
   ];
 
-  // Hook configuration with full options
-  const options: UseTableOptionsType<BuyerProduct> = {
-    source: product._id, // Use the Business Object ID from the Product class
+  const tableOptions: UseTableOptionsType<BuyerProduct> = {
+    source: product._id,
     columns,
-    enableSorting: true,
-    enableFiltering: true,
-    enablePagination: true,
     initialState: {
+      sort: [{ Title: "ASC" }],
       pagination: { pageNo: 1, pageSize: 10 },
-      sorting: { field: "_created_at", direction: "desc" },
-      filterOperator: "And",
+      filter: {
+        conditions: [
+          {
+            Operator: "EQ",
+            LHSField: "_created_by",
+            RHSValue: { _id: user?._id, _name: user?._name },
+            RHSType: "Constant",
+          },
+        ],
+        operator: "And",
+      },
     },
-    onError: (error: Error) => console.error("Table error:", error.message),
-    onSuccess: (data: BuyerProduct[]) => console.log("Loaded", data.length, "products"),
   };
 
-  const table: UseTableReturnType<BuyerProduct> = useTable<BuyerProduct>(options);
+  const table: UseTableReturnType<BuyerProduct> =
+    useTable<BuyerProduct>(tableOptions);
 
-  // Access filter functionality (UseFilterReturnType)
-  const filterState: UseFilterReturnType = table.filter;
-
-  // Add a filter with dynamic operator selection
-  const addFilter = (field: keyof BuyerProduct, operator: ConditionOperatorType, value: any) => {
-    table.filter.addCondition({
-      Operator: operator,
-      LHSField: field as string,
-      RHSValue: value,
-    });
-  };
-
-  // Add a simple filter condition
-  const filterByCategory = (category: string) => {
-    table.filter.clearAllConditions();
-    addFilter("Category", "EQ", category);
-  };
-
-  // Add a complex nested filter (Price > 100 OR Stock < 10)
-  const addComplexFilter = () => {
-    const groupId = table.filter.addConditionGroup("Or");
-    table.filter.addCondition({ Operator: "GT", LHSField: "Price", RHSValue: 100 }, groupId);
-    table.filter.addCondition({ Operator: "LT", LHSField: "Stock", RHSValue: 10 }, groupId);
-  };
-
-  // Display active filters using type guards
-  const renderActiveFilters = () => (
-    <div className="active-filters">
-      {table.filter.items.map((item) => {
-        if (isCondition(item)) {
-          return (
-            <span key={item.id} className="filter-tag">
-              {item.LHSField} {item.Operator} {String(item.RHSValue)}
-              <button onClick={() => table.filter.removeCondition(item.id!)}>×</button>
-            </span>
-          );
-        }
-        if (isConditionGroup(item)) {
-          return (
-            <span key={item.id} className="filter-group-tag">
-              {item.Operator} Group ({item.Condition.length} conditions)
-              <button onClick={() => table.filter.removeCondition(item.id!)}>×</button>
-            </span>
-          );
-        }
-        return null;
-      })}
-    </div>
-  );
-
-  // Toggle filter logic operator
-  const toggleFilterLogic = () => {
-    const next: ConditionGroupOperatorType = table.filter.operator === "And" ? "Or" : "And";
-    table.filter.setRootOperator(next);
-  };
-
-  // Refetch data manually
-  const handleRefresh = async () => {
-    const response: ListResponseType<BuyerProduct> = await table.refetch();
-    console.log(`Refreshed: ${response.Data.length} items`);
-  };
-
-  // Access filter payload for debugging
-  const getFilterPayload = (): FilterType | undefined => {
-    return table.filter.payload;
-  };
-
-  if (table.isLoading) {
-    return <div>Loading products...</div>;
-  }
-
-  if (table.error) {
-    return <div>Error: {table.error.message}</div>;
-  }
+  if (table.isLoading) return <div>Loading...</div>;
 
   return (
-    <div className="products-page">
-      {/* Search */}
-      <div className="search-bar">
-        <input
-          type="text"
-          placeholder="Search products..."
-          value={table.search.query}
-          onChange={(e) => table.search.setQuery(e.target.value)}
-        />
-        <button onClick={table.search.clear}>Clear</button>
-      </div>
-
-      {/* Filter Controls */}
-      <div className="filter-controls">
-        <button onClick={() => filterByCategory("Electronics")}>Electronics</button>
-        <button onClick={() => filterByCategory("Books")}>Books</button>
-        <button onClick={addComplexFilter}>Add Complex Filter</button>
-        <button onClick={toggleFilterLogic}>
-          Logic: {table.filter.operator}
-        </button>
-        {table.filter.hasConditions && (
-          <button onClick={() => table.filter.clearAllConditions()}>Clear All Filters</button>
-        )}
-      </div>
-
-      {/* Active Filters */}
-      {renderActiveFilters()}
-
-      {/* Table */}
+    <div>
       <table>
         <thead>
           <tr>
             {columns.map((col) => (
               <th
                 key={String(col.fieldId)}
-                onClick={() => col.enableSorting && table.sort.toggle(col.fieldId)}
+                onClick={() =>
+                  col.enableSorting && table.sort.toggle(col.fieldId)
+                }
                 style={{ cursor: col.enableSorting ? "pointer" : "default" }}
               >
-                {col.label || String(col.fieldId)}
+                {col.label}
                 {table.sort.field === col.fieldId && (
                   <span>{table.sort.direction === "asc" ? " ↑" : " ↓"}</span>
                 )}
@@ -302,16 +212,652 @@ function ProductsPage() {
           </tr>
         </thead>
         <tbody>
-          {table.rows.map((row: BuyerProduct) => (
+          {table.rows.map((row) => (
             <tr key={row._id}>
               <td>{row.Title}</td>
-              <td>${row.Price.toFixed(2)}</td>
+              <td>${row.Price}</td>
               <td>{row.Category}</td>
               <td>{row.Stock}</td>
             </tr>
           ))}
         </tbody>
       </table>
+
+      <div className="pagination">
+        <button
+          onClick={table.pagination.goToPrevious}
+          disabled={!table.pagination.canGoPrevious}
+        >
+          Previous
+        </button>
+        <span>
+          Page {table.pagination.pageNo} of {table.pagination.totalPages}
+        </span>
+        <button
+          onClick={table.pagination.goToNext}
+          disabled={!table.pagination.canGoNext}
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## Filter
+
+### Status Filter
+
+Dropdown-based status filtering.
+
+```tsx
+function ProductsWithStatusFilter() {
+  const product = new Product(Roles.Buyer);
+
+  const table = useTable<BuyerProduct>({
+    source: product._id,
+    columns,
+  });
+
+  const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const status = e.target.value;
+    table.filter.clearAllConditions();
+
+    if (status !== "all") {
+      table.filter.addCondition({
+        Operator: "EQ",
+        LHSField: "IsActive",
+        RHSValue: status === "active",
+        RHSType: "Constant",
+      });
+    }
+  };
+
+  return (
+    <div>
+      <select onChange={handleStatusChange} defaultValue="all">
+        <option value="all">All Products</option>
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+      </select>
+      {/* table rendering */}
+    </div>
+  );
+}
+```
+
+### Multiple Filters Combined
+
+Apply category and price range filters together.
+
+```tsx
+const PRICE_RANGES = [
+  { label: "Under $25", min: 0, max: 25 },
+  { label: "$25 to $50", min: 25, max: 50 },
+  { label: "$50 to $100", min: 50, max: 100 },
+  { label: "$100 to $200", min: 100, max: 200 },
+  { label: "$200 & Above", min: 200, max: null },
+] as const;
+
+function ProductsWithMultipleFilters() {
+  const product = new Product(Roles.Buyer);
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedPriceRange, setSelectedPriceRange] = useState<string | null>(
+    null,
+  );
+
+  const table = useTable<BuyerProduct>({
+    source: product._id,
+    columns,
+  });
+
+  // Helper to apply all active filters
+  const applyFilters = (category: string, priceRange: string | null) => {
+    table.filter.clearAllConditions();
+
+    // Apply category filter
+    if (category !== "all") {
+      table.filter.addCondition({
+        LHSField: "Category",
+        Operator: "EQ",
+        RHSValue: category,
+        RHSType: "Constant",
+      });
+    }
+
+    // Apply price filter
+    if (priceRange) {
+      const range = PRICE_RANGES.find((r) => r.label === priceRange);
+      if (range) {
+        if (range.max === null) {
+          // "$200 & Above" - use GTE
+          table.filter.addCondition({
+            Operator: "GTE",
+            LHSField: "Price",
+            RHSValue: range.min,
+            RHSType: "Constant",
+          });
+        } else if (range.min === 0) {
+          // "Under $25" - use LT
+          table.filter.addCondition({
+            Operator: "LT",
+            LHSField: "Price",
+            RHSValue: range.max,
+            RHSType: "Constant",
+          });
+        } else {
+          // Range like "$25 to $50" - use Between
+          table.filter.addCondition({
+            LHSField: "Price",
+            Operator: "Between",
+            RHSValue: [range.min, range.max],
+            RHSType: "Constant",
+          });
+        }
+      }
+    }
+  };
+
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category);
+    applyFilters(category, selectedPriceRange);
+  };
+
+  const handlePriceChange = (priceRange: string | null) => {
+    setSelectedPriceRange(priceRange);
+    applyFilters(selectedCategory, priceRange);
+  };
+
+  return (
+    <div>
+      <select
+        value={selectedCategory}
+        onChange={(e) => handleCategoryChange(e.target.value)}
+      >
+        <option value="all">All Categories</option>
+        <option value="Electronics">Electronics</option>
+        <option value="Books">Books</option>
+      </select>
+
+      <select
+        value={selectedPriceRange || ""}
+        onChange={(e) => handlePriceChange(e.target.value || null)}
+      >
+        <option value="">Any Price</option>
+        {PRICE_RANGES.map((range) => (
+          <option key={range.label} value={range.label}>
+            {range.label}
+          </option>
+        ))}
+      </select>
+
+      {/* table rendering */}
+    </div>
+  );
+}
+```
+
+---
+
+## Sort
+
+### Column Sort Toggle
+
+Click column headers to toggle sort direction.
+
+```tsx
+function SortableTable() {
+  const product = new Product(Roles.Buyer);
+
+  const columns: ColumnDefinitionType<BuyerProduct>[] = [
+    { fieldId: "Title", label: "Name", enableSorting: true },
+    { fieldId: "Price", label: "Price", enableSorting: true },
+    { fieldId: "Category", label: "Category", enableSorting: true },
+  ];
+
+  const table = useTable<BuyerProduct>({
+    source: product._id,
+    columns,
+  });
+
+  return (
+    <table>
+      <thead>
+        <tr>
+          {columns.map((col) => (
+            <th
+              key={String(col.fieldId)}
+              onClick={() =>
+                col.enableSorting && table.sort.toggle(col.fieldId)
+              }
+              style={{ cursor: col.enableSorting ? "pointer" : "default" }}
+            >
+              {col.label}
+              {table.sort.field === col.fieldId && (
+                <span>{table.sort.direction === "asc" ? " ↑" : " ↓"}</span>
+              )}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {table.rows.map((row) => (
+          <tr key={row._id}>
+            <td>{row.Title}</td>
+            <td>${row.Price}</td>
+            <td>{row.Category}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+```
+
+### Sort Dropdown
+
+Allow users to select sort order from a dropdown.
+
+```tsx
+function TableWithSortDropdown() {
+  const product = new Product(Roles.Buyer);
+  const [selectedSort, setSelectedSort] = useState("featured");
+
+  const table = useTable<BuyerProduct>({
+    source: product._id,
+    columns,
+    initialState: {
+      sort: [{ Title: "ASC" }],
+    },
+  });
+
+  const handleSortChange = (value: string) => {
+    setSelectedSort(value);
+    switch (value) {
+      case "price-asc":
+        table.sort.set("Price", "asc");
+        break;
+      case "price-desc":
+        table.sort.set("Price", "desc");
+        break;
+      case "newest":
+        table.sort.set("_created_at", "desc");
+        break;
+      case "featured":
+      default:
+        table.sort.set("Title", "asc");
+        break;
+    }
+  };
+
+  return (
+    <div>
+      <select
+        value={selectedSort}
+        onChange={(e) => handleSortChange(e.target.value)}
+      >
+        <option value="featured">Featured</option>
+        <option value="price-asc">Price: Low to High</option>
+        <option value="price-desc">Price: High to Low</option>
+        <option value="newest">Newest Arrivals</option>
+      </select>
+      {/* table rendering */}
+    </div>
+  );
+}
+```
+
+---
+
+## Pagination
+
+### Basic Pagination Controls
+
+Navigate between pages with previous/next buttons.
+
+```tsx
+function PaginatedTable() {
+  const product = new Product(Roles.Buyer);
+
+  const table = useTable<BuyerProduct>({
+    source: product._id,
+    columns,
+    initialState: {
+      pagination: { pageNo: 1, pageSize: 10 },
+    },
+  });
+
+  return (
+    <div>
+      {/* table rendering */}
+
+      <div className="pagination">
+        <button
+          onClick={table.pagination.goToPrevious}
+          disabled={!table.pagination.canGoPrevious}
+        >
+          Previous
+        </button>
+
+        <span>
+          Page {table.pagination.pageNo} of {table.pagination.totalPages}
+        </span>
+
+        <button
+          onClick={table.pagination.goToNext}
+          disabled={!table.pagination.canGoNext}
+        >
+          Next
+        </button>
+      </div>
+
+      <p>{table.pagination.totalItems} total items</p>
+    </div>
+  );
+}
+```
+
+### Page Size Selector
+
+Allow users to change the number of items per page.
+
+```tsx
+function TableWithPageSize() {
+  const product = new Product(Roles.Buyer);
+
+  const table = useTable<BuyerProduct>({
+    source: product._id,
+    columns,
+  });
+
+  return (
+    <div>
+      {/* table rendering */}
+
+      <div className="pagination">
+        <button
+          onClick={table.pagination.goToPrevious}
+          disabled={!table.pagination.canGoPrevious}
+        >
+          Previous
+        </button>
+
+        <span>
+          Page {table.pagination.pageNo} of {table.pagination.totalPages}
+        </span>
+
+        <button
+          onClick={table.pagination.goToNext}
+          disabled={!table.pagination.canGoNext}
+        >
+          Next
+        </button>
+
+        <select
+          value={table.pagination.pageSize}
+          onChange={(e) => table.pagination.setPageSize(Number(e.target.value))}
+        >
+          <option value={10}>10 per page</option>
+          <option value={25}>25 per page</option>
+          <option value={50}>50 per page</option>
+          <option value={100}>100 per page</option>
+        </select>
+      </div>
+    </div>
+  );
+}
+```
+
+### Jump to Page
+
+Allow users to navigate directly to a specific page.
+
+```tsx
+function TableWithPageJump() {
+  const product = new Product(Roles.Buyer);
+  const [pageInput, setPageInput] = useState("");
+
+  const table = useTable<BuyerProduct>({
+    source: product._id,
+    columns,
+  });
+
+  const handlePageJump = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      const page = parseInt(pageInput, 10);
+      if (page >= 1 && page <= table.pagination.totalPages) {
+        table.pagination.goToPage(page);
+        setPageInput("");
+      }
+    }
+  };
+
+  return (
+    <div>
+      {/* table rendering */}
+
+      <div className="pagination">
+        <button
+          onClick={table.pagination.goToPrevious}
+          disabled={!table.pagination.canGoPrevious}
+        >
+          Previous
+        </button>
+
+        <span>
+          Page {table.pagination.pageNo} of {table.pagination.totalPages}
+        </span>
+
+        <button
+          onClick={table.pagination.goToNext}
+          disabled={!table.pagination.canGoNext}
+        >
+          Next
+        </button>
+
+        <input
+          type="number"
+          min={1}
+          max={table.pagination.totalPages}
+          placeholder="Go to page"
+          value={pageInput}
+          onChange={(e) => setPageInput(e.target.value)}
+          onKeyDown={handlePageJump}
+        />
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## Search
+
+### Basic Search
+
+Add search functionality to filter results by text. The search has built-in debouncing (300ms).
+
+```tsx
+function SearchableTable() {
+  const product = new Product(Roles.Buyer);
+
+  const table = useTable<BuyerProduct>({
+    source: product._id,
+    columns,
+  });
+
+  return (
+    <div>
+      <div className="search-bar">
+        <input
+          type="text"
+          placeholder="Search products..."
+          value={table.search.query}
+          onChange={(e) => table.search.setQuery(e.target.value)}
+        />
+        {table.search.query && (
+          <button onClick={table.search.clear}>Clear</button>
+        )}
+        {table.isFetching && <span>Searching...</span>}
+      </div>
+
+      {/* table rendering */}
+    </div>
+  );
+}
+```
+
+---
+
+## Complete Example
+
+A full-featured product listing page with filters, search, sort, and pagination.
+
+```tsx
+import { useState } from "react";
+import { useTable } from "@ram_28/kf-ai-sdk/table";
+import type {
+  UseTableOptionsType,
+  UseTableReturnType,
+  ColumnDefinitionType,
+} from "@ram_28/kf-ai-sdk/table/types";
+import { Product, ProductType } from "../sources";
+import { Roles } from "../sources/roles";
+
+type BuyerProduct = ProductType<typeof Roles.Buyer>;
+
+function ProductListPage() {
+  const product = new Product(Roles.Buyer);
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedSort, setSelectedSort] = useState("featured");
+
+  const columns: ColumnDefinitionType<BuyerProduct>[] = [
+    { fieldId: "Title", label: "Name", enableSorting: true },
+    { fieldId: "Price", label: "Price", enableSorting: true },
+    { fieldId: "Category", label: "Category", enableSorting: true },
+    { fieldId: "Stock", label: "Stock", enableSorting: true },
+  ];
+
+  const tableOptions: UseTableOptionsType<BuyerProduct> = {
+    source: product._id,
+    columns,
+    initialState: {
+      sort: [{ Title: "ASC" }],
+      pagination: { pageNo: 1, pageSize: 10 },
+    },
+  };
+
+  const table: UseTableReturnType<BuyerProduct> =
+    useTable<BuyerProduct>(tableOptions);
+
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category);
+    table.filter.clearAllConditions();
+    if (category !== "all") {
+      table.filter.addCondition({
+        LHSField: "Category",
+        Operator: "EQ",
+        RHSValue: category,
+        RHSType: "Constant",
+      });
+    }
+  };
+
+  const handleSortChange = (value: string) => {
+    setSelectedSort(value);
+    switch (value) {
+      case "price-asc":
+        table.sort.set("Price", "asc");
+        break;
+      case "price-desc":
+        table.sort.set("Price", "desc");
+        break;
+      case "newest":
+        table.sort.set("_created_at", "desc");
+        break;
+      default:
+        table.sort.set("Title", "asc");
+        break;
+    }
+  };
+
+  if (table.error) {
+    return (
+      <div>
+        <p>Error: {table.error.message}</p>
+        <button onClick={() => table.refetch()}>Try Again</button>
+      </div>
+    );
+  }
+
+  if (table.isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  return (
+    <div>
+      {/* Controls */}
+      <div className="controls">
+        <input
+          type="text"
+          placeholder="Search..."
+          value={table.search.query}
+          onChange={(e) => table.search.setQuery(e.target.value)}
+        />
+
+        <select
+          value={selectedCategory}
+          onChange={(e) => handleCategoryChange(e.target.value)}
+        >
+          <option value="all">All Categories</option>
+          <option value="Electronics">Electronics</option>
+          <option value="Books">Books</option>
+        </select>
+
+        <select
+          value={selectedSort}
+          onChange={(e) => handleSortChange(e.target.value)}
+        >
+          <option value="featured">Featured</option>
+          <option value="price-asc">Price: Low to High</option>
+          <option value="price-desc">Price: High to Low</option>
+          <option value="newest">Newest</option>
+        </select>
+      </div>
+
+      {/* Results count */}
+      <p>{table.totalItems} results found</p>
+
+      {/* Product grid */}
+      {table.rows.length === 0 ? (
+        <div>
+          <p>No products found</p>
+          <button
+            onClick={() => {
+              table.search.clear();
+              table.filter.clearAllConditions();
+              setSelectedCategory("all");
+            }}
+          >
+            Clear Filters
+          </button>
+        </div>
+      ) : (
+        <div className="product-grid">
+          {table.rows.map((row) => (
+            <div key={row._id} className="product-card">
+              <h3>{row.Title}</h3>
+              <p>${row.Price}</p>
+              <p>{row.Category}</p>
+              <p>{row.Stock > 0 ? "In Stock" : "Out of Stock"}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Pagination */}
       <div className="pagination">
@@ -322,8 +868,7 @@ function ProductsPage() {
           Previous
         </button>
         <span>
-          Page {table.pagination.currentPage} of {table.pagination.totalPages}
-          ({table.pagination.totalItems} total)
+          Page {table.pagination.pageNo} of {table.pagination.totalPages}
         </span>
         <button
           onClick={table.pagination.goToNext}
@@ -331,41 +876,7 @@ function ProductsPage() {
         >
           Next
         </button>
-        <select
-          value={table.pagination.pageSize}
-          onChange={(e) => table.pagination.setPageSize(Number(e.target.value))}
-        >
-          <option value={10}>10 per page</option>
-          <option value={25}>25 per page</option>
-          <option value={50}>50 per page</option>
-        </select>
-        <input
-          type="number"
-          min={1}
-          max={table.pagination.totalPages}
-          placeholder="Go to page"
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              table.pagination.goToPage(Number((e.target as HTMLInputElement).value));
-            }
-          }}
-        />
       </div>
-
-      {/* Actions */}
-      <div className="table-actions">
-        <button onClick={handleRefresh} disabled={table.isFetching}>
-          {table.isFetching ? "Refreshing..." : "Refresh"}
-        </button>
-        <button onClick={() => table.sort.clear()}>Clear Sort</button>
-        <button onClick={() => table.sort.set("Price", "desc")}>Sort by Price (desc)</button>
-      </div>
-
-      {/* Debug: Filter payload */}
-      <details>
-        <summary>Filter Payload (Debug)</summary>
-        <pre>{JSON.stringify(getFilterPayload(), null, 2)}</pre>
-      </details>
     </div>
   );
 }

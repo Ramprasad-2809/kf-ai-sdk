@@ -29,6 +29,7 @@ import {
 import { api } from "../../../api";
 
 import { validateCrossField } from "./expressionValidator.utils";
+import { toError } from "../../../utils/error-handling";
 import {
   validateFieldOptimized,
   getFieldDependencies,
@@ -80,6 +81,9 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
   // Track values that have been synced with server (sent in draft calls)
   // This allows us to detect changes since the last draft, not since form init
   const lastSyncedValuesRef = useRef<Partial<T> | null>(null);
+
+  // Track if draft creation has started (prevents duplicate calls in React strict mode)
+  const draftCreationStartedRef = useRef(false);
 
   // Stable callback ref to prevent dependency loops
   const onSchemaErrorRef = useRef(onSchemaError);
@@ -181,11 +185,16 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
         if (Object.keys(refFields).length > 0) {
           fetchAllReferenceData(refFields)
             .then(setReferenceData)
-            .catch(console.warn);
+            .catch((err) => {
+              const error = toError(err);
+              console.warn("Failed to fetch reference data:", error);
+              // Notify via callback but don't block form - reference data is non-critical
+              onSchemaErrorRef.current?.(error);
+            });
         }
       } catch (error) {
         console.error("Schema processing failed:", error);
-        onSchemaErrorRef.current?.(error as Error);
+        onSchemaErrorRef.current?.(toError(error));
       }
     }
   }, [schema, userRole]); // Removed onSchemaError - using ref instead
@@ -209,10 +218,17 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
       operation !== "create" ||
       !schemaConfig ||
       !enabled ||
-      draftId
+      draftId ||
+      draftCreationStartedRef.current  // Prevent duplicate calls in React strict mode
     ) {
       return;
     }
+
+    // Mark as started immediately to prevent duplicate calls
+    draftCreationStartedRef.current = true;
+
+    // Track if effect is still active (for cleanup/race condition handling)
+    let isActive = true;
 
     const createInitialDraft = async () => {
       setIsCreatingDraft(true);
@@ -222,6 +238,9 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
         const client = api<T>(source);
         // Call PATCH /{bdo_id}/draft with empty payload to get draft ID
         const response = await client.draftInteraction({});
+
+        // Check if effect is still active before setting state
+        if (!isActive) return;
 
         // Store the draft ID
         setDraftId(response._id);
@@ -242,15 +261,29 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
           });
         }
       } catch (error) {
+        // Check if effect is still active before setting state
+        if (!isActive) return;
+
         console.error("Failed to create initial draft:", error);
-        setDraftError(error as Error);
+        setDraftError(toError(error));
+        // Reset the ref on error so it can be retried
+        draftCreationStartedRef.current = false;
       } finally {
-        setIsCreatingDraft(false);
+        // Check if effect is still active before setting state
+        if (isActive) {
+          setIsCreatingDraft(false);
+        }
       }
     };
 
     createInitialDraft();
-  }, [isInteractiveMode, operation, schemaConfig, enabled, draftId, source, rhfForm]);
+
+    // Cleanup function to handle unmount during async operation
+    return () => {
+      isActive = false;
+    };
+  }, [isInteractiveMode, operation, schemaConfig, enabled, draftId, source]);
+  // Note: rhfForm removed from deps - we use ref pattern to avoid dependency loops
 
   // ============================================================
   // COMPUTED FIELD DEPENDENCY TRACKING AND OPTIMIZATION
@@ -321,10 +354,11 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
       }
 
       // Determine if draft should be triggered based on interaction mode
-      // Interactive mode: Always trigger draft API on blur
+      // For update mode, always behave as non-interactive (only trigger for computed deps)
+      // Interactive mode (create only): Always trigger draft API on blur
       // Non-interactive mode: Only trigger for computed field dependencies
-      const shouldTrigger = isInteractiveMode
-        ? true // Interactive mode: always trigger
+      const shouldTrigger = (isInteractiveMode && operation !== "update")
+        ? true // Interactive mode (create only): always trigger
         : (computedFieldDependencies.length > 0 &&
               computedFieldDependencies.includes(fieldName as Path<T>));
 
@@ -643,8 +677,8 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
                 } as any);
                 result = { success: true, data: response };
               } else {
-                // Interactive update: POST /{bdo_id}/{id}/draft
-                const response = await client.draftUpdate(recordId!, cleanedData);
+                // Update operation - always use direct update API (non-interactive)
+                const response = await client.update(recordId!, cleanedData);
                 result = { success: true, data: response };
               }
             } else {
@@ -674,7 +708,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
             await onSuccess?.(result.data || data, event);
           } catch (error) {
             // API error - call onError with Error object
-            onError?.(error as Error, event);
+            onError?.(toError(error), event);
           } finally {
             setIsSubmitting(false);
           }
@@ -930,7 +964,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     isCreatingDraft,
 
     // Error handling
-    loadError: loadError as Error | null,
+    loadError: loadError ? toError(loadError) : null,
     hasError,
 
     // Schema information

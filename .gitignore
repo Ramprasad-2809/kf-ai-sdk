@@ -83,3 +83,6 @@ Thumbs.db
 !.yarn/sdks
 !.yarn/versions
 package-lock.json
+
+# Package tarballs
+*.tgz

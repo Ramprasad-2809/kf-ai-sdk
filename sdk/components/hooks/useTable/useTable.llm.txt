@@ -28,12 +28,9 @@ const table = useTable<ProductType>({
     { fieldId: "Category", label: "Category", enableSorting: true },
     { fieldId: "Stock", label: "Stock", enableSorting: true },
   ],
-  enableSorting: true,
-  enableFiltering: true,
-  enablePagination: true,
   initialState: {
     pagination: { pageNo: 1, pageSize: 10 },
-    sorting: { field: "Title", direction: "asc" },
+    sort: [{ Title: "ASC" }],
   },
 });
 ```
@@ -46,14 +43,9 @@ const table = useTable<ProductType>({
 |----------|------|----------|-------------|
 | `source` | `string` | Yes | Data source identifier (Business Data Object name) |
 | `columns` | `ColumnDefinition<T>[]` | Yes | Column configurations |
-| `enableSorting` | `boolean` | No | Enable sorting functionality |
-| `enableFiltering` | `boolean` | No | Enable filtering functionality |
-| `enablePagination` | `boolean` | No | Enable pagination |
-| `fieldDefinitions` | `Record<keyof T, FieldDefinition>` | No | Field definitions for filter validation |
-| `initialState` | `object` | No | Initial state for pagination, sorting, filters |
+| `initialState` | `object` | No | Initial state for pagination, sorting, filters. Pagination defaults to `{ pageNo: 1, pageSize: 10 }` |
 | `onError` | `(error: Error) => void` | No | Error callback |
 | `onSuccess` | `(data: T[]) => void` | No | Success callback |
-| `onFilterError` | `(errors: ValidationError[]) => void` | No | Filter error callback |
 
 ### ColumnDefinition<T>
 
@@ -113,14 +105,14 @@ const table = useTable<ProductType>({
 | `filter.addCondition` | `(condition) => string` | Add a filter condition, returns ID |
 | `filter.updateCondition` | `(id, updates) => boolean` | Update a condition |
 | `filter.removeCondition` | `(id) => boolean` | Remove a condition |
-| `filter.clearConditions` | `() => void` | Clear all conditions |
+| `filter.clearAllConditions` | `() => void` | Clear all conditions |
 | `filter.getCondition` | `(id) => FilterConditionWithId` | Get a specific condition |
 | `filter.setLogicalOperator` | `(operator) => void` | Set logical operator |
 
 #### Pagination
 | Property | Type | Description |
 |----------|------|-------------|
-| `pagination.currentPage` | `number` | Current page (1-indexed) |
+| `pagination.pageNo` | `number` | Current page (1-indexed) |
 | `pagination.pageSize` | `number` | Items per page |
 | `pagination.totalPages` | `number` | Total number of pages |
 | `pagination.totalItems` | `number` | Total item count |
@@ -179,12 +171,9 @@ const table = useTable<SellerProduct>({
     { fieldId: "Category", label: "Category", enableSorting: true },
     { fieldId: "Stock", label: "Stock", enableSorting: true },
   ],
-  enableSorting: true,
-  enableFiltering: true,
-  enablePagination: true,
   initialState: {
     pagination: { pageNo: 1, pageSize: 10 },
-    sorting: { field: "Title", direction: "asc" },
+    sort: [{ Title: "ASC" }],
   },
 });
 
@@ -220,18 +209,15 @@ const table = useTable<SellerProduct>({
 const table = useTable<BuyerProduct>({
   source: "BDO_AmazonProductMaster",
   columns: [...],
-  enableSorting: true,
-  enableFiltering: true,
-  enablePagination: true,
   initialState: {
     pagination: { pageNo: 1, pageSize: 10 },
-    sorting: { field: "Title", direction: "asc" },
+    sort: [{ Title: "ASC" }],
   },
 });
 
 // Category filter
 const handleCategoryChange = (category: string) => {
-  table.filter.clearConditions();
+  table.filter.clearAllConditions();
   if (category !== "all") {
     table.filter.addCondition({
       lhsField: "Category",
@@ -296,7 +282,7 @@ const handleSortChange = (value: string) => {
 <Button
   onClick={() => {
     table.search.clear();
-    table.filter.clearConditions();
+    table.filter.clearAllConditions();
   }}
 >
   Clear All Filters

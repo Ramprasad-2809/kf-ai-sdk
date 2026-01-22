@@ -1,7 +1,8 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../../api";
 import type { ListResponseType, ListOptionsType } from "../../../types/common";
+import { toError } from "../../../utils/error-handling";
 import { useFilter } from "../useFilter";
 import type { UseTableOptionsType, UseTableReturnType } from "./types";
 
@@ -10,7 +11,8 @@ import type { UseTableOptionsType, UseTableReturnType } from "./types";
 // ============================================================
 
 interface SearchState {
-  query: string;
+  query: string; // Immediate UI value
+  debouncedQuery: string; // Debounced value for API queries
 }
 
 interface SortingState<T> {
@@ -36,12 +38,26 @@ export function useTable<T = any>(
 
   const [search, setSearch] = useState<SearchState>({
     query: "",
+    debouncedQuery: "",
   });
 
-  const [sorting, setSorting] = useState<SortingState<T>>({
-    field: options.initialState?.sorting?.field || null,
-    direction: options.initialState?.sorting?.direction || null,
-  });
+  // Debounce timeout ref for search
+  const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const SEARCH_DEBOUNCE_MS = 300;
+
+  // Parse initial sort from API format [{ "fieldName": "ASC" }] to internal state
+  const getInitialSortState = (): SortingState<T> => {
+    const sortConfig = options.initialState?.sort;
+    if (sortConfig && sortConfig.length > 0) {
+      const firstSort = sortConfig[0];
+      const field = Object.keys(firstSort)[0] as keyof T;
+      const direction = firstSort[field as string]?.toLowerCase() as "asc" | "desc";
+      return { field, direction };
+    }
+    return { field: null, direction: null };
+  };
+
+  const [sorting, setSorting] = useState<SortingState<T>>(getInitialSortState);
 
   const [pagination, setPagination] = useState<PaginationState>({
     pageNo: options.initialState?.pagination?.pageNo || 1,
@@ -52,9 +68,9 @@ export function useTable<T = any>(
   // FILTER HOOK INTEGRATION
   // ============================================================
 
-  const filter = useFilter({
-    initialConditions: options.initialState?.filters,
-    initialOperator: options.initialState?.filterOperator || "And",
+  const filter = useFilter<T>({
+    conditions: options.initialState?.filter?.conditions,
+    operator: options.initialState?.filter?.operator || "And",
   });
 
   // ============================================================
@@ -65,9 +81,9 @@ export function useTable<T = any>(
   const countApiOptions = useMemo((): ListOptionsType => {
     const opts: ListOptionsType = {};
 
-    // Add search query (affects count)
-    if (search.query) {
-      opts.Search = search.query;
+    // Add debounced search query (affects count)
+    if (search.debouncedQuery) {
+      opts.Search = search.debouncedQuery;
     }
 
     // Add filter conditions (affects count)
@@ -76,7 +92,7 @@ export function useTable<T = any>(
     }
 
     return opts;
-  }, [search.query, filter.payload]);
+  }, [search.debouncedQuery, filter.payload]);
 
   // Options for list query - includes all options
   const apiOptions = useMemo((): ListOptionsType => {
@@ -92,13 +108,11 @@ export function useTable<T = any>(
     }
 
     // Add pagination
-    if (options.enablePagination) {
-      opts.Page = pagination.pageNo;
-      opts.PageSize = pagination.pageSize;
-    }
+    opts.Page = pagination.pageNo;
+    opts.PageSize = pagination.pageSize;
 
     return opts;
-  }, [countApiOptions, sorting, pagination, options.enablePagination]);
+  }, [countApiOptions, sorting, pagination]);
 
   // ============================================================
   // DATA FETCHING
@@ -121,7 +135,7 @@ export function useTable<T = any>(
         return response;
       } catch (err) {
         if (options.onError) {
-          options.onError(err as Error);
+          options.onError(toError(err));
         }
         throw err;
       }
@@ -144,7 +158,7 @@ export function useTable<T = any>(
         return await api<T>(options.source).count(countApiOptions);
       } catch (err) {
         if (options.onError) {
-          options.onError(err as Error);
+          options.onError(toError(err));
         }
         throw err;
       }
@@ -197,12 +211,43 @@ export function useTable<T = any>(
   // ============================================================
 
   const setSearchQuery = useCallback((value: string) => {
-    setSearch({ query: value });
-    setPagination((prev) => ({ ...prev, pageNo: 1 }));
+    // Validate search query length to prevent DoS
+    if (value.length > 255) {
+      console.warn("Search query exceeds maximum length of 255 characters");
+      return;
+    }
+
+    // Update immediate value for UI
+    setSearch((prev) => ({ ...prev, query: value }));
+
+    // Clear existing debounce timeout
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+
+    // Debounce the actual API query update
+    searchDebounceRef.current = setTimeout(() => {
+      setSearch((prev) => ({ ...prev, debouncedQuery: value }));
+      setPagination((prev) => ({ ...prev, pageNo: 1 }));
+    }, SEARCH_DEBOUNCE_MS);
   }, []);
 
   const clearSearch = useCallback(() => {
-    setSearch({ query: "" });
+    // Clear debounce timeout
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+    setSearch({ query: "", debouncedQuery: "" });
+    setPagination((prev) => ({ ...prev, pageNo: 1 }));
+  }, []);
+
+  // Cleanup debounce timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+    };
   }, []);
 
   // ============================================================
@@ -263,7 +308,7 @@ export function useTable<T = any>(
     isFetching: isFetching || isCountFetching,
 
     // Error Handling
-    error: (error || countError) as Error | null,
+    error: error ? toError(error) : countError ? toError(countError) : null,
 
     // Search (Flat Access)
     search: {
@@ -286,7 +331,7 @@ export function useTable<T = any>(
 
     // Pagination (Flat Access)
     pagination: {
-      currentPage: pagination.pageNo,
+      pageNo: pagination.pageNo,
       pageSize: pagination.pageSize,
       totalPages,
       totalItems,
