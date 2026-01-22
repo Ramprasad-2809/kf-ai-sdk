@@ -5,14 +5,38 @@ Form state management with automatic schema validation, computed fields, and rea
 ## Imports
 
 ```typescript
-import { useForm } from "@ram_28/kf-ai-sdk/form";
+import {
+  useForm,
+  parseApiError,
+  isNetworkError,
+  isValidationError,
+  clearFormCache,
+} from "@ram_28/kf-ai-sdk/form";
 import type {
+  FieldErrors,
   UseFormOptionsType,
   UseFormReturnType,
-  FormFieldConfigType,
-  FormOperationType,
 } from "@ram_28/kf-ai-sdk/form/types";
 ```
+
+## Product Class Pattern
+
+The recommended pattern uses a role-based BDO wrapper class (like `Product`) instead of hardcoded source strings:
+
+```tsx
+// sources/Product.ts - Role-based BDO wrapper
+import { Role, Roles } from "./roles";
+
+export type ProductType<TRole extends Role> = /* role-mapped types */;
+
+export class Product<TRole extends Role = typeof Roles.Admin> {
+  constructor(_role: TRole) {}
+  get _id(): string { return "BDO_AmazonProductMaster"; }
+  // API methods: list, get, create, update, delete, draft, etc.
+}
+```
+
+This pattern provides type-safe role-based field access, consistent with `useTable` and other hooks.
 
 ## Type Definitions
 
@@ -69,7 +93,14 @@ interface UseFormReturnType<T> {
 // Field configuration
 interface FormFieldConfigType {
   name: string;
-  type: "text" | "number" | "email" | "date" | "checkbox" | "select" | "textarea";
+  type:
+    | "text"
+    | "number"
+    | "email"
+    | "date"
+    | "checkbox"
+    | "select"
+    | "textarea";
   label: string;
   required: boolean;
   computed: boolean;
@@ -85,26 +116,31 @@ A minimal create form with field registration and submission.
 
 ```tsx
 import { useForm } from "@ram_28/kf-ai-sdk/form";
+import type {
+  UseFormOptionsType,
+  UseFormReturnType,
+} from "@ram_28/kf-ai-sdk/form/types";
+import { Product, ProductType } from "../sources";
+import { Roles } from "../sources/roles";
 
-interface Product {
-  _id: string;
-  Title: string;
-  Price: number;
-  Category: string;
-}
+type SellerProduct = ProductType<typeof Roles.Seller>;
 
 function CreateProductForm() {
-  const form = useForm<Product>({
-    source: "BDO_Products",
+  const product = new Product(Roles.Seller);
+
+  const options: UseFormOptionsType<SellerProduct> = {
+    source: product._id,
     operation: "create",
     defaultValues: {
       Title: "",
       Price: 0,
       Category: "",
     },
-  });
+  };
 
-  const onSuccess = (data: Product) => {
+  const form: UseFormReturnType<SellerProduct> = useForm<SellerProduct>(options);
+
+  const onSuccess = (data: SellerProduct) => {
     console.log("Product created:", data);
   };
 
@@ -150,9 +186,16 @@ function CreateProductForm() {
 Initialize a form for creating new records.
 
 ```tsx
+import { Product, ProductType } from "../sources";
+import { Roles } from "../sources/roles";
+
+type SellerProduct = ProductType<typeof Roles.Seller>;
+
 function CreateForm() {
-  const form = useForm<Product>({
-    source: "BDO_Products",
+  const product = new Product(Roles.Seller);
+
+  const form = useForm<SellerProduct>({
+    source: product._id,
     operation: "create",
     defaultValues: {
       Title: "",
@@ -177,8 +220,10 @@ Load existing record data for editing.
 
 ```tsx
 function EditForm({ productId }: { productId: string }) {
-  const form = useForm<Product>({
-    source: "BDO_Products",
+  const product = new Product(Roles.Seller);
+
+  const form = useForm<SellerProduct>({
+    source: product._id,
     operation: "update",
     recordId: productId,
   });
@@ -202,14 +247,15 @@ function EditForm({ productId }: { productId: string }) {
 Switch form mode based on selection.
 
 ```tsx
-function ProductForm({ product }: { product?: Product }) {
-  const isEditing = !!product;
+function ProductForm({ existingProduct }: { existingProduct?: SellerProduct }) {
+  const product = new Product(Roles.Seller);
+  const isEditing = !!existingProduct;
 
-  const form = useForm<Product>({
-    source: "BDO_Products",
+  const form = useForm<SellerProduct>({
+    source: product._id,
     operation: isEditing ? "update" : "create",
-    recordId: product?._id,
-    defaultValues: product ?? { Title: "", Price: 0 },
+    recordId: existingProduct?._id,
+    defaultValues: existingProduct ?? { Title: "", Price: 0 },
   });
 
   return (
@@ -217,9 +263,7 @@ function ProductForm({ product }: { product?: Product }) {
       <h2>{isEditing ? "Edit Product" : "New Product"}</h2>
       <input {...form.register("Title")} />
       <input type="number" {...form.register("Price")} />
-      <button type="submit">
-        {isEditing ? "Update" : "Create"}
-      </button>
+      <button type="submit">{isEditing ? "Update" : "Create"}</button>
     </form>
   );
 }
@@ -234,7 +278,13 @@ function ProductForm({ product }: { product?: Product }) {
 Access field configuration from the schema.
 
 ```tsx
-function DynamicField({ form, fieldName }: { form: UseFormReturnType<Product>; fieldName: keyof Product }) {
+function DynamicField({
+  form,
+  fieldName,
+}: {
+  form: UseFormReturnType<SellerProduct>;
+  fieldName: keyof SellerProduct;
+}) {
   const field = form.getField(fieldName);
 
   if (!field || field.permission.hidden) return null;
@@ -253,7 +303,9 @@ function DynamicField({ form, fieldName }: { form: UseFormReturnType<Product>; f
         <select {...form.register(fieldName)} disabled={isDisabled}>
           <option value="">Select {field.label}</option>
           {field.options.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
           ))}
         </select>
       ) : (
@@ -278,8 +330,10 @@ Display auto-calculated fields as read-only.
 
 ```tsx
 function FormWithComputedFields() {
-  const form = useForm<Product>({
-    source: "BDO_Products",
+  const product = new Product(Roles.Seller);
+
+  const form = useForm<SellerProduct>({
+    source: product._id,
     operation: "create",
   });
 
@@ -320,8 +374,10 @@ Generate form fields from schema configuration.
 
 ```tsx
 function DynamicForm() {
-  const form = useForm<Product>({
-    source: "BDO_Products",
+  const product = new Product(Roles.Seller);
+
+  const form = useForm<SellerProduct>({
+    source: product._id,
     operation: "create",
   });
 
@@ -338,7 +394,7 @@ function DynamicForm() {
           <div key={fieldName}>
             <label>{field.label}</label>
             <input
-              {...form.register(fieldName as keyof Product)}
+              {...form.register(fieldName as keyof SellerProduct)}
               type={field.type === "number" ? "number" : "text"}
               disabled={!field.permission.editable || field.computed}
             />
@@ -362,8 +418,10 @@ Show validation errors inline with fields.
 
 ```tsx
 function FormWithValidation() {
-  const form = useForm<Product>({
-    source: "BDO_Products",
+  const product = new Product(Roles.Seller);
+
+  const form = useForm<SellerProduct>({
+    source: product._id,
     operation: "create",
     mode: "onBlur", // Validate on blur
   });
@@ -400,8 +458,10 @@ Show form status to users.
 
 ```tsx
 function FormWithStateIndicators() {
-  const form = useForm<Product>({
-    source: "BDO_Products",
+  const product = new Product(Roles.Seller);
+
+  const form = useForm<SellerProduct>({
+    source: product._id,
     operation: "update",
     recordId: "PROD-001",
   });
@@ -424,7 +484,11 @@ function FormWithStateIndicators() {
         Save Changes
       </button>
 
-      <button type="button" onClick={() => form.reset()} disabled={!form.isDirty}>
+      <button
+        type="button"
+        onClick={() => form.reset()}
+        disabled={!form.isDirty}
+      >
         Discard Changes
       </button>
     </form>
@@ -442,17 +506,19 @@ Process successful submissions and errors.
 
 ```tsx
 function FormWithCallbacks() {
-  const form = useForm<Product>({
-    source: "BDO_Products",
+  const product = new Product(Roles.Seller);
+
+  const form = useForm<SellerProduct>({
+    source: product._id,
     operation: "create",
   });
 
-  const onSuccess = (data: Product) => {
+  const onSuccess = (data: SellerProduct) => {
     alert(`Product "${data.Title}" created successfully!`);
     form.reset();
   };
 
-  const onError = (error: FieldErrors<Product> | Error) => {
+  const onError = (error: FieldErrors<SellerProduct> | Error) => {
     if (error instanceof Error) {
       // API error
       alert(`Server error: ${error.message}`);
@@ -479,8 +545,10 @@ Submit form without a submit button.
 
 ```tsx
 function FormWithProgrammaticSubmit() {
-  const form = useForm<Product>({
-    source: "BDO_Products",
+  const product = new Product(Roles.Seller);
+
+  const form = useForm<SellerProduct>({
+    source: product._id,
     operation: "create",
   });
 
@@ -492,7 +560,7 @@ function FormWithProgrammaticSubmit() {
       },
       (error) => {
         console.error("Validation failed:", error);
-      }
+      },
     );
 
     await submitHandler();
@@ -526,14 +594,16 @@ React to field value changes in real-time.
 
 ```tsx
 function FormWithWatcher() {
-  const form = useForm<Product>({
-    source: "BDO_Products",
+  const product = new Product(Roles.Seller);
+
+  const form = useForm<SellerProduct>({
+    source: product._id,
     operation: "create",
   });
 
   const mrp = form.watch("MRP");
   const price = form.watch("Price");
-  const discount = mrp > 0 ? ((mrp - price) / mrp * 100).toFixed(1) : 0;
+  const discount = mrp > 0 ? (((mrp - price) / mrp) * 100).toFixed(1) : 0;
 
   return (
     <form onSubmit={form.handleSubmit()}>
@@ -564,8 +634,10 @@ Update field values from external actions.
 
 ```tsx
 function FormWithSetValue() {
-  const form = useForm<Product>({
-    source: "BDO_Products",
+  const product = new Product(Roles.Seller);
+
+  const form = useForm<SellerProduct>({
+    source: product._id,
     operation: "create",
   });
 
@@ -620,12 +692,12 @@ import {
 } from "@ram_28/kf-ai-sdk/form";
 ```
 
-| Utility | Description |
-|---------|-------------|
-| `parseApiError(error)` | Extracts a user-friendly message from any error type |
-| `isNetworkError(error)` | Returns `true` if error is network-related (connection, timeout) |
-| `isValidationError(error)` | Returns `true` if error is a validation/schema error |
-| `clearFormCache()` | Clears the schema cache (30-minute TTL by default) |
+| Utility                    | Description                                                      |
+| -------------------------- | ---------------------------------------------------------------- |
+| `parseApiError(error)`     | Extracts a user-friendly message from any error type             |
+| `isNetworkError(error)`    | Returns `true` if error is network-related (connection, timeout) |
+| `isValidationError(error)` | Returns `true` if error is a validation/schema error             |
+| `clearFormCache()`         | Clears the schema cache (30-minute TTL by default)               |
 
 ### Parse and Handle API Errors
 
@@ -640,8 +712,10 @@ import {
 } from "@ram_28/kf-ai-sdk/form";
 
 function FormWithErrorHandling() {
-  const form = useForm<Product>({
-    source: "BDO_Products",
+  const product = new Product(Roles.Seller);
+
+  const form = useForm<SellerProduct>({
+    source: product._id,
     operation: "create",
   });
 
@@ -680,19 +754,24 @@ The `handleSubmit` callback receives different error types depending on the fail
 
 ```tsx
 function FormWithDetailedErrorHandling() {
-  const form = useForm<Product>({
-    source: "BDO_Products",
+  const product = new Product(Roles.Seller);
+
+  const form = useForm<SellerProduct>({
+    source: product._id,
     operation: "create",
   });
 
-  const onSubmit = (data: Product) => {
+  const onSubmit = (data: SellerProduct) => {
     console.log("Success:", data);
   };
 
-  const onError = (error: FieldErrors<Product> | Error, event?: React.BaseSyntheticEvent) => {
+  const onError = (
+    error: FieldErrors<SellerProduct> | Error,
+    event?: React.BaseSyntheticEvent,
+  ) => {
     // Check if it's a validation error (from react-hook-form)
     if (!(error instanceof Error)) {
-      // Field validation errors - error is FieldErrors<Product>
+      // Field validation errors - error is FieldErrors<SellerProduct>
       const invalidFields = Object.keys(error);
       console.log("Validation failed for fields:", invalidFields);
 
@@ -730,8 +809,10 @@ Handle errors when the form schema fails to load.
 
 ```tsx
 function FormWithSchemaErrorHandling() {
-  const form = useForm<Product>({
-    source: "BDO_Products",
+  const product = new Product(Roles.Seller);
+
+  const form = useForm<SellerProduct>({
+    source: product._id,
     operation: "create",
     onSchemaError: (error) => {
       console.error("Failed to load form schema:", error.message);
@@ -745,9 +826,7 @@ function FormWithSchemaErrorHandling() {
     return (
       <div className="error-state">
         <p>Failed to load form: {form.loadError.message}</p>
-        <button onClick={() => window.location.reload()}>
-          Retry
-        </button>
+        <button onClick={() => window.location.reload()}>Retry</button>
       </div>
     );
   }
@@ -756,10 +835,6 @@ function FormWithSchemaErrorHandling() {
     return <div>Loading form...</div>;
   }
 
-  return (
-    <form onSubmit={form.handleSubmit()}>
-      {/* form fields */}
-    </form>
-  );
+  return <form onSubmit={form.handleSubmit()}>{/* form fields */}</form>;
 }
 ```
