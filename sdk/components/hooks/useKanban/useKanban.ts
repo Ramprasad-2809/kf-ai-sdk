@@ -87,8 +87,8 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
   // ============================================================
 
   const filter = useFilter({
-    initialConditions: initialState?.filters,
-    initialOperator: initialState?.filterOperator || "And",
+    conditions: initialState?.filter?.conditions,
+    operator: initialState?.filter?.operator || "And",
   });
 
   // Helper to generate API options for a specific column

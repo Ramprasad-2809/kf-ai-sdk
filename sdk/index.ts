@@ -39,7 +39,6 @@ export { useFilter, isCondition, isConditionGroup } from './components/hooks/use
 export type {
   UseFilterOptionsType,
   UseFilterReturnType,
-  FilterStateType,
 } from './components/hooks/useFilter';
 
 // ============================================================

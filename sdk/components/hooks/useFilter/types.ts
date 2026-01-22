@@ -56,25 +56,15 @@ export interface ConditionGroupBuilder {
 }
 
 /**
- * Filter state type (data only, for initialState)
- * @template T - Data type for type-safe field names (defaults to any)
- */
-export interface FilterStateType<T = any> {
-  /** Filter conditions */
-  conditions?: Array<ConditionType<T> | ConditionGroupType<T>>;
-  /** Operator for combining conditions */
-  operator?: ConditionGroupOperatorType;
-}
-
-/**
  * Hook options (minimal configuration)
+ * Used for initializing useFilter, and also for initialState in useTable/useKanban
  * @template T - Data type for type-safe field names (defaults to any)
  */
 export interface UseFilterOptionsType<T = any> {
-  /** Initial filter conditions */
-  initialConditions?: Array<ConditionType<T> | ConditionGroupType<T>>;
-  /** Initial operator for combining conditions (defaults to "And") */
-  initialOperator?: ConditionGroupOperatorType;
+  /** Filter conditions */
+  conditions?: Array<ConditionType<T> | ConditionGroupType<T>>;
+  /** Operator for combining conditions (defaults to "And") */
+  operator?: ConditionGroupOperatorType;
 }
 
 /**

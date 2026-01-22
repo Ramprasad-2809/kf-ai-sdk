@@ -2,7 +2,7 @@ import type { ListResponseType, SortType, ColumnDefinitionType } from "../../../
 
 // Re-export ColumnDefinitionType for backwards compatibility
 export type { ColumnDefinitionType };
-import type { UseFilterReturnType, FilterStateType } from "../useFilter";
+import type { UseFilterReturnType, UseFilterOptionsType } from "../useFilter";
 
 // ============================================================
 // STATE TYPE DEFINITIONS
@@ -34,7 +34,7 @@ export interface UseTableOptionsType<T> {
     /** Pagination state: { pageNo, pageSize } */
     pagination?: PaginationStateType;
     /** Filter state: { conditions, operator } */
-    filter?: FilterStateType<T>;
+    filter?: UseFilterOptionsType<T>;
   };
   /** Error callback */
   onError?: (error: Error) => void;

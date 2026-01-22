@@ -9,7 +9,6 @@ import { useFilter, isCondition, isConditionGroup } from "@ram_28/kf-ai-sdk/filt
 import type {
   UseFilterOptionsType,
   UseFilterReturnType,
-  FilterStateType,
   ConditionType,
   ConditionGroupType,
   ConditionOperatorType,
@@ -51,8 +50,8 @@ interface ConditionGroupType<T = any> {
   Condition: Array<ConditionType<T> | ConditionGroupType<T>>;
 }
 
-// Filter state type (for initialState in useTable)
-interface FilterStateType<T = any> {
+// Hook options (also used for initialState in useTable/useKanban)
+interface UseFilterOptionsType<T = any> {
   conditions?: Array<ConditionType<T> | ConditionGroupType<T>>;
   operator?: ConditionGroupOperatorType;
 }
@@ -74,6 +73,18 @@ interface UseFilterReturnType<T = any> {
   setRootOperator: (operator: ConditionGroupOperatorType) => void;
 }
 ```
+
+## Operator Applicability
+
+| Operator | Applicable Field Types |
+|----------|----------------------|
+| EQ, NE | All types |
+| GT, GTE, LT, LTE | number, date, currency |
+| Between, NotBetween | number, date, currency |
+| IN, NIN | All types |
+| Empty, NotEmpty | All types |
+| Contains, NotContains | string only |
+| MinLength, MaxLength | string only |
 
 ## Basic Example
 
@@ -131,7 +142,7 @@ function TypeSafeFilter() {
   const addCategoryFilter = () => {
     filter.addCondition({
       Operator: "EQ",
-      LHSField: "Category",  // ✅ TypeScript validates this field exists
+      LHSField: "Category",  // TypeScript validates this field exists
       RHSValue: "Electronics",
     });
   };
@@ -139,7 +150,7 @@ function TypeSafeFilter() {
   const addInvalidFilter = () => {
     filter.addCondition({
       Operator: "EQ",
-      LHSField: "InvalidField",  // ❌ TypeScript error: not a key of Product
+      LHSField: "InvalidField",  // TypeScript error: not a key of Product
       RHSValue: "test",
     });
   };
@@ -152,12 +163,16 @@ function TypeSafeFilter() {
 }
 ```
 
-### FilterStateType for Initial State
+### UseFilterOptionsType for Initial State
 
-Use `FilterStateType<T>` to define typed initial conditions (commonly used with `useTable`).
+`UseFilterOptionsType<T>` is used for:
+- Initializing `useFilter` directly
+- Setting `initialState.filter` in `useTable`
+- Setting `initialState.filter` in `useKanban`
 
 ```tsx
-import type { FilterStateType } from "@ram_28/kf-ai-sdk/filter/types";
+import { useFilter } from "@ram_28/kf-ai-sdk/filter";
+import type { UseFilterOptionsType } from "@ram_28/kf-ai-sdk/filter/types";
 
 interface Product {
   _id: string;
@@ -166,20 +181,17 @@ interface Product {
   Category: string;
 }
 
-// Type-safe filter state
-const initialFilter: FilterStateType<Product> = {
+// Type-safe filter options
+const initialFilter: UseFilterOptionsType<Product> = {
   conditions: [
-    { Operator: "EQ", LHSField: "Category", RHSValue: "Electronics" },  // ✅ Valid
-    { Operator: "GT", LHSField: "Price", RHSValue: 100 },               // ✅ Valid
+    { Operator: "EQ", LHSField: "Category", RHSValue: "Electronics" },
+    { Operator: "GT", LHSField: "Price", RHSValue: 100 },
   ],
   operator: "And",
 };
 
 // Use with useFilter
-const filter = useFilter<Product>({
-  initialConditions: initialFilter.conditions,
-  initialOperator: initialFilter.operator,
-});
+const filter = useFilter<Product>(initialFilter);
 ```
 
 ---
@@ -437,7 +449,7 @@ All conditions must match.
 ```tsx
 function AndFilter() {
   const filter = useFilter({
-    initialOperator: "And",
+    operator: "And",
   });
 
   const applyFilters = () => {
@@ -479,7 +491,7 @@ Any condition can match.
 ```tsx
 function OrFilter() {
   const filter = useFilter({
-    initialOperator: "Or",
+    operator: "Or",
   });
 
   const applyFilters = () => {
@@ -511,7 +523,7 @@ Combine AND and OR logic.
 ```tsx
 function NestedFilter() {
   const filter = useFilter({
-    initialOperator: "And",
+    operator: "And",
   });
 
   // Build: Category = "Electronics" AND (Price < 100 OR OnSale = true)
@@ -597,7 +609,7 @@ function ActiveFilters() {
       return (
         <span key={item.id} className="filter-tag">
           {item.LHSField} {item.Operator} {String(item.RHSValue)}
-          <button onClick={() => filter.removeCondition(item.id!)}>×</button>
+          <button onClick={() => filter.removeCondition(item.id!)}>x</button>
         </span>
       );
     }
@@ -606,7 +618,7 @@ function ActiveFilters() {
       return (
         <span key={item.id} className="filter-group">
           {item.Operator} ({item.Condition.length} conditions)
-          <button onClick={() => filter.removeCondition(item.id!)}>×</button>
+          <button onClick={() => filter.removeCondition(item.id!)}>x</button>
         </span>
       );
     }
@@ -817,8 +829,8 @@ function FilterWithInitialState() {
   ];
 
   const filter = useFilter({
-    initialConditions: savedFilters,
-    initialOperator: "And",
+    conditions: savedFilters,
+    operator: "And",
   });
 
   return (

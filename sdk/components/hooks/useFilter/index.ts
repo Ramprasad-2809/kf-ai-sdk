@@ -8,7 +8,6 @@ export type {
   ConditionGroupOperatorType,
   FilterType,
   FilterRHSTypeType,
-  FilterStateType,
   UseFilterOptionsType,
   UseFilterReturnType,
 } from "./types";

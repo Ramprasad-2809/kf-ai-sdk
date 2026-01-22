@@ -183,11 +183,11 @@ const addToParent = (
 export function useFilter<T = any>(options: UseFilterOptionsType<T> = {}): UseFilterReturnType<T> {
   // Initialize items with ids
   const [items, setItems] = useState<Array<ConditionType<T> | ConditionGroupType<T>>>(() =>
-    cloneWithIds(options.initialConditions || []) as Array<ConditionType<T> | ConditionGroupType<T>>
+    cloneWithIds(options.conditions || []) as Array<ConditionType<T> | ConditionGroupType<T>>
   );
 
   const [operator, setOperatorState] = useState<ConditionGroupOperatorType>(
-    options.initialOperator || "And"
+    options.operator || "And"
   );
 
   // Build payload for API (strip ids)

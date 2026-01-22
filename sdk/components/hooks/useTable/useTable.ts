@@ -69,8 +69,8 @@ export function useTable<T = any>(
   // ============================================================
 
   const filter = useFilter<T>({
-    initialConditions: options.initialState?.filter?.conditions,
-    initialOperator: options.initialState?.filter?.operator || "And",
+    conditions: options.initialState?.filter?.conditions,
+    operator: options.initialState?.filter?.operator || "And",
   });
 
   // ============================================================

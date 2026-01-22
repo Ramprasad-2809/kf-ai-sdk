@@ -52,6 +52,12 @@ interface UseKanbanOptionsType<T> {
   enableDragDrop?: boolean;
   enableFiltering?: boolean;
   enableSearch?: boolean;
+  initialState?: {
+    filter?: UseFilterOptionsType;  // { conditions?, operator? }
+    search?: string;
+    columnOrder?: string[];
+    sorting?: { field: keyof T; direction: "asc" | "desc" };
+  };
   onCardMove?: (card, fromColumnId, toColumnId) => void;
   onCardCreate?: (card) => void;
   onCardUpdate?: (card) => void;
@@ -469,7 +475,9 @@ function BoardWithCombinedFilters() {
     columns,
     enableFiltering: true,
     initialState: {
-      filterOperator: "And",
+      filter: {
+        operator: "And",
+      },
     },
   });
 

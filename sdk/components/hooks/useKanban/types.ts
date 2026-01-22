@@ -4,8 +4,8 @@
 // Core TypeScript interfaces for the kanban board functionality
 // Following patterns from useTable and useForm
 
-import type { ConditionType, ConditionGroupType, UseFilterReturnType } from "../useFilter";
-import type { ConditionGroupOperatorType, ColumnDefinitionType } from "../../../types/common";
+import type { UseFilterReturnType, UseFilterOptionsType } from "../useFilter";
+import type { ColumnDefinitionType } from "../../../types/common";
 
 // Re-export ColumnDefinitionType for backwards compatibility
 export type { ColumnDefinitionType };
@@ -181,10 +181,8 @@ export interface UseKanbanOptionsType<T> {
 
   /** Initial state */
   initialState?: {
-    /** Initial filter conditions */
-    filters?: Array<ConditionType | ConditionGroupType>;
-    /** Initial filter operator for combining filter conditions */
-    filterOperator?: ConditionGroupOperatorType;
+    /** Initial filter configuration: { conditions, operator } */
+    filter?: UseFilterOptionsType;
     /** Initial search query */
     search?: string;
     /** Initial column order */
