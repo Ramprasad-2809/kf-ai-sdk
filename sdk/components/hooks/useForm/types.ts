@@ -304,6 +304,15 @@ export interface UseFormOptionsType<
    * @default "interactive"
    */
   interactionMode?: InteractionModeType;
+
+  /**
+   * Enable draft API calls in update mode
+   * When false (default), no draft API calls (e.g., /instance_id/draft) are made during
+   * field blur in update mode. The update API is only called on form submission.
+   * When true, draft API calls are made on blur for computed field dependencies.
+   * @default false
+   */
+  enableDraftInUpdateMode?: boolean;
 }
 
 // ============================================================
