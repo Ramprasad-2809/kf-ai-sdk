@@ -135,7 +135,62 @@ export async function submitFormData<T = any>(
 // ============================================================
 
 /**
- * Fetch reference field data
+ * Fetch reference field data using the fetchField API
+ * This correctly uses instance context for filter evaluation
+ */
+export async function fetchReferenceFieldData(
+  boId: string,
+  instanceId: string,
+  fieldId: string
+): Promise<Array<{ Value: string; Label: string }>> {
+  try {
+    // Calls GET /{boId}/{instanceId}/field/{fieldId}/fetch
+    return await api(boId).fetchField(instanceId, fieldId);
+  } catch (error) {
+    console.error(`Reference data fetch error for ${fieldId}:`, error);
+    return [];
+  }
+}
+
+/**
+ * Fetch all reference data for a form
+ * @param boId - The Business Object ID
+ * @param instanceId - The instance ID (draftId for create, recordId for update)
+ * @param referenceFieldIds - Array of reference field IDs to fetch
+ */
+export async function fetchAllReferenceFieldData(
+  boId: string,
+  instanceId: string,
+  referenceFieldIds: string[]
+): Promise<Record<string, Array<{ Value: string; Label: string }>>> {
+  const referenceData: Record<string, Array<{ Value: string; Label: string }>> = {};
+
+  // Fetch all reference data in parallel
+  const fetchPromises = referenceFieldIds.map(async (fieldId) => {
+    try {
+      const data = await fetchReferenceFieldData(boId, instanceId, fieldId);
+      return [fieldId, data] as const;
+    } catch (error) {
+      console.warn(`Failed to fetch reference data for ${fieldId}:`, error);
+      return [fieldId, []] as const;
+    }
+  });
+
+  const results = await Promise.allSettled(fetchPromises);
+
+  results.forEach((result) => {
+    if (result.status === "fulfilled") {
+      const [fieldId, data] = result.value;
+      referenceData[fieldId] = [...data];
+    }
+  });
+
+  return referenceData;
+}
+
+/**
+ * @deprecated Use fetchReferenceFieldData instead
+ * Legacy function that fetches reference data using list() API
  */
 export async function fetchReferenceData(
   businessObject: string,
@@ -171,7 +226,8 @@ export async function fetchReferenceData(
 }
 
 /**
- * Fetch all reference data for a schema
+ * @deprecated Use fetchAllReferenceFieldData instead
+ * Legacy function that fetches all reference data using list() API
  */
 export async function fetchAllReferenceData(
   referenceFields: Record<string, any>
@@ -239,18 +295,26 @@ export function validateFormData<T>(
  * Clean form data before submission
  * - For create: returns all non-computed, non-undefined fields
  * - For update: returns only fields that changed from originalData
+ * - Transforms Reference fields to JSON format expected by backend
+ *
+ * @param data - Form data to clean
+ * @param computedFields - Array of computed field names to exclude
+ * @param operation - "create" or "update"
+ * @param originalData - Original data for comparison (update only)
+ * @param fieldTypes - Map of field names to their BDO types (e.g., { "SupplierInfo": "Reference" })
  */
 export function cleanFormData<T>(
   data: Partial<T>,
   computedFields: string[],
   operation: FormOperationType = "create",
-  originalData?: Partial<T>
+  originalData?: Partial<T>,
+  fieldTypes?: Record<string, string>
 ): Partial<T> {
   const cleanedData: Partial<T> = {};
 
   Object.keys(data).forEach((key) => {
     const fieldKey = key as keyof T;
-    const value = data[fieldKey];
+    let value = data[fieldKey];
 
     // Skip computed fields
     if (computedFields.includes(key)) {
@@ -260,6 +324,12 @@ export function cleanFormData<T>(
     // Skip undefined values
     if (value === undefined) {
       return;
+    }
+
+    // Transform Reference fields to JSON format expected by backend
+    // Backend expects: {"_id": "...", "_name": "..."} or a JSON string that parses to this
+    if (fieldTypes?.[key] === "Reference" && value !== null) {
+      value = transformReferenceValue(value) as any;
     }
 
     // For create: include all non-computed, non-undefined fields
@@ -287,6 +357,50 @@ export function cleanFormData<T>(
   });
 
   return cleanedData;
+}
+
+/**
+ * Transform a Reference/Lookup field value to the format expected by backend
+ *
+ * Backend expects Reference fields as either:
+ * - A dict with at minimum {"_id": "..."}
+ * - For Lookup fields, the full referenced record can be passed
+ * - A JSON string that parses to this format
+ *
+ * This function handles various input formats:
+ * - Plain string ID: "SUPP-001" → {"_id": "SUPP-001"}
+ * - Object with _id: preserves ALL properties (for lookup fields with full data)
+ * - JSON string: '{"_id": "..."}' → parsed and validated
+ */
+export function transformReferenceValue(value: any): Record<string, any> | null {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  // Already an object with _id - preserve ALL properties (for lookup fields with full data)
+  if (typeof value === "object" && value._id) {
+    return { ...value };
+  }
+
+  // String value - could be plain ID or JSON string
+  if (typeof value === "string") {
+    // Try to parse as JSON first
+    try {
+      const parsed = JSON.parse(value);
+      if (typeof parsed === "object" && parsed._id) {
+        return { ...parsed };
+      }
+      // Parsed but not a valid reference object - treat original as ID
+    } catch {
+      // Not valid JSON - treat as plain ID string
+    }
+
+    // Plain string ID
+    return { _id: value };
+  }
+
+  // Unknown format - return as-is (let backend handle/reject it)
+  return value;
 }
 
 // ============================================================

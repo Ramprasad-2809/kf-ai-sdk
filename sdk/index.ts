@@ -92,6 +92,9 @@ export type {
   LookupFieldType,
   ArrayFieldType,
   JSONFieldType,
+  ReferenceFieldType,
+  ExtractReferenceType,
+  ExtractFetchFieldType,
 } from './types/base-fields';
 
 // ============================================================

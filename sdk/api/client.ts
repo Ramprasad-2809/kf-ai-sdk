@@ -9,8 +9,6 @@ import type {
   CreateUpdateResponseType,
   DeleteResponseType,
   CountResponseType,
-  DateTimeEncodedType,
-  DateEncodedType,
   MetricOptionsType,
   MetricResponseType,
   PivotOptionsType,
@@ -158,40 +156,6 @@ export function getApiBaseUrl(): string {
 }
 
 /**
- * Recursively process an object to decode datetime fields
- */
-function decodeResponseData<T>(data: any): T {
-  if (data === null || data === undefined) {
-    return data;
-  }
-
-  if (Array.isArray(data)) {
-    return data.map((item) => decodeResponseData(item)) as T;
-  }
-
-  if (typeof data === "object") {
-    // Check for datetime encoding
-    if ("$__dt__" in data) {
-      return new Date((data as DateTimeEncodedType).$__dt__ * 1000) as T;
-    }
-
-    // Check for date encoding
-    if ("$__d__" in data) {
-      return new Date((data as DateEncodedType).$__d__) as T;
-    }
-
-    // Recursively process object properties
-    const result: any = {};
-    for (const [key, value] of Object.entries(data)) {
-      result[key] = decodeResponseData(value);
-    }
-    return result as T;
-  }
-
-  return data as T;
-}
-
-/**
  * Create a resource client for the specified Business Object
  * @param bo_id - Business Object identifier (e.g., "user", "leave", "vendor")
  * @returns Resource client with CRUD operations matching API spec
@@ -212,7 +176,7 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
       }
 
       const responseData: ReadResponseType<T> = await response.json();
-      return decodeResponseData<T>(responseData.Data);
+      return responseData.Data;
     },
 
     async create(
@@ -278,10 +242,8 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
         throw new Error(`Failed to list ${bo_id}: ${response.statusText}`);
       }
 
-      const responseData: ListResponseType<any> = await response.json();
-      return {
-        Data: responseData.Data.map((item) => decodeResponseData<T>(item)),
-      };
+      const responseData: ListResponseType<T> = await response.json();
+      return responseData;
     },
 
     async count(options?: ListOptionsType): Promise<CountResponseType> {

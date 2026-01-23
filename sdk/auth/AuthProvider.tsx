@@ -102,7 +102,8 @@ export function AuthProvider({
 
   const status: AuthStatusType = useMemo(() => {
     if (isLoading || isFetching) return "loading";
-    if (sessionData?.userDetails) return "authenticated";
+    if (Object.keys(sessionData?.userDetails || {}).length > 0)
+      return "authenticated";
     return "unauthenticated";
   }, [isLoading, isFetching, sessionData]);
 
@@ -139,11 +140,7 @@ export function AuthProvider({
   }, [queryError]);
 
   useEffect(() => {
-    if (
-      status === "unauthenticated" &&
-      authConfig.autoRedirect &&
-      !isLoading
-    ) {
+    if (status === "unauthenticated" && authConfig.autoRedirect && !isLoading) {
       initiateLogin();
     }
   }, [status, isLoading, authConfig.autoRedirect]);
@@ -156,7 +153,7 @@ export function AuthProvider({
     (provider?: AuthProviderNameType, options?: LoginOptionsType) => {
       initiateLogin(provider, options);
     },
-    []
+    [],
   );
 
   const logout = useCallback(
@@ -164,36 +161,37 @@ export function AuthProvider({
       queryClient.removeQueries({ queryKey: SESSION_QUERY_KEY });
       await performLogout(options);
     },
-    [queryClient]
+    [queryClient],
   );
 
-  const refreshSession = useCallback(async (): Promise<SessionResponseType | null> => {
-    // Prevent concurrent refreshes - return existing data if already fetching
-    if (isFetching) {
-      return sessionData || null;
-    }
+  const refreshSession =
+    useCallback(async (): Promise<SessionResponseType | null> => {
+      // Prevent concurrent refreshes - return existing data if already fetching
+      if (isFetching) {
+        return sessionData || null;
+      }
 
-    try {
-      const result = await refetch();
-      return result.data || null;
-    } catch (err) {
-      setError(err as Error);
-      return null;
-    }
-  }, [refetch, isFetching, sessionData]);
+      try {
+        const result = await refetch();
+        return result.data || null;
+      } catch (err) {
+        setError(err as Error);
+        return null;
+      }
+    }, [refetch, isFetching, sessionData]);
 
   const hasRole = useCallback(
     (role: string): boolean => {
       return user?.Role === role;
     },
-    [user]
+    [user],
   );
 
   const hasAnyRole = useCallback(
     (roles: string[]): boolean => {
       return roles.includes(user?.Role || "");
     },
-    [user]
+    [user],
   );
 
   const clearError = useCallback(() => {
@@ -240,7 +238,7 @@ export function AuthProvider({
       error,
       clearError,
       _forceCheck,
-    ]
+    ],
   );
 
   // ============================================================

@@ -16,14 +16,14 @@ import type {
   FormFieldConfigType,
 } from "./types";
 
-import { processSchema, extractReferenceFields } from "./schemaParser.utils";
+import { processSchema } from "./schemaParser.utils";
 
 import {
   fetchFormSchemaWithCache,
   fetchRecord,
   submitFormData,
-  fetchAllReferenceData,
   cleanFormData,
+  transformReferenceValue,
 } from "./apiClient";
 
 import { api } from "../../../api";
@@ -40,7 +40,7 @@ import {
 // ============================================================
 
 export function useForm<T extends Record<string, any> = Record<string, any>>(
-  options: UseFormOptionsType<T>
+  options: UseFormOptionsType<T>,
 ): UseFormReturnType<T> {
   const {
     source,
@@ -63,9 +63,13 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
   // STATE MANAGEMENT
   // ============================================================
 
-  const [schemaConfig, setSchemaConfig] =
-    useState<FormSchemaConfigType | null>(null);
-  const [referenceData, setReferenceData] = useState<Record<string, any[]>>({});
+  const [schemaConfig, setSchemaConfig] = useState<FormSchemaConfigType | null>(
+    null,
+  );
+  // Reference data for cross-field validation - populated lazily by UI components if needed
+  const [referenceData, _setReferenceData] = useState<Record<string, any[]>>(
+    {},
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastFormValues] = useState<Partial<T>>({});
 
@@ -176,22 +180,11 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
         const processed = processSchema(
           schema as any,
           {}, // Pass empty object - validation functions get live values from react-hook-form
-          userRole
+          userRole,
         );
         setSchemaConfig(processed);
-
-        // Fetch reference data for reference fields
-        const refFields = extractReferenceFields(processed);
-        if (Object.keys(refFields).length > 0) {
-          fetchAllReferenceData(refFields)
-            .then(setReferenceData)
-            .catch((err) => {
-              const error = toError(err);
-              console.warn("Failed to fetch reference data:", error);
-              // Notify via callback but don't block form - reference data is non-critical
-              onSchemaErrorRef.current?.(error);
-            });
-        }
+        // Reference data is fetched lazily by UI components when dropdowns are opened
+        // using the fetchField API with proper instance context (draftId/recordId)
       } catch (error) {
         console.error("Schema processing failed:", error);
         onSchemaErrorRef.current?.(toError(error));
@@ -219,7 +212,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
       !schemaConfig ||
       !enabled ||
       draftId ||
-      draftCreationStartedRef.current  // Prevent duplicate calls in React strict mode
+      draftCreationStartedRef.current // Prevent duplicate calls in React strict mode
     ) {
       return;
     }
@@ -321,7 +314,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
       const field = schemaConfig.fields[fieldName];
       if (field._bdoField.Formula) {
         const fieldDeps = getFieldDependencies(
-          field._bdoField.Formula.ExpressionTree
+          field._bdoField.Formula.ExpressionTree,
         );
         fieldDeps.forEach((dep) => {
           // Only add non-computed fields as dependencies
@@ -357,10 +350,11 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
       // For update mode, always behave as non-interactive (only trigger for computed deps)
       // Interactive mode (create only): Always trigger draft API on blur
       // Non-interactive mode: Only trigger for computed field dependencies
-      const shouldTrigger = (isInteractiveMode && operation !== "update")
-        ? true // Interactive mode (create only): always trigger
-        : (computedFieldDependencies.length > 0 &&
-              computedFieldDependencies.includes(fieldName as Path<T>));
+      const shouldTrigger =
+        isInteractiveMode && operation !== "update"
+          ? true // Interactive mode (create only): always trigger
+          : computedFieldDependencies.length > 0 &&
+            computedFieldDependencies.includes(fieldName as Path<T>);
 
       if (!shouldTrigger) {
         return;
@@ -422,7 +416,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
 
             // Get computed field names to exclude from payload
             const computedFieldNames = new Set(
-              schemaConfig.computedFields || []
+              schemaConfig.computedFields || [],
             );
 
             // Find fields that changed from baseline (excluding computed fields)
@@ -430,7 +424,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
               // Skip _id and computed fields
               if (key === "_id" || computedFieldNames.has(key)) return;
 
-              const currentValue = (currentValues as any)[key];
+              let currentValue = (currentValues as any)[key];
               const baselineValue = (baseline as any)[key];
 
               // Include if value has changed (using JSON.stringify for deep comparison)
@@ -443,6 +437,11 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
                 currentValue !== undefined;
 
               if (hasChanged && isNonEmpty) {
+                // Transform Reference fields to format expected by backend
+                const fieldConfig = schemaConfig.fields[key];
+                if (fieldConfig?._bdoField?.Type === "Reference") {
+                  currentValue = transformReferenceValue(currentValue);
+                }
                 (changedFields as any)[key] = currentValue;
               }
             });
@@ -470,7 +469,10 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
             let computedFieldsResponse;
             if (operation === "update" && recordId) {
               // Update mode: use draftPatch (both interactive and non-interactive)
-              computedFieldsResponse = await client.draftPatch(recordId, payload);
+              computedFieldsResponse = await client.draftPatch(
+                recordId,
+                payload,
+              );
             } else if (isInteractiveMode && draftId) {
               // Interactive create: use draftInteraction with _id
               computedFieldsResponse = await client.draftInteraction(payload);
@@ -493,7 +495,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
                       shouldValidate: false,
                     });
                   }
-                }
+                },
               );
 
               // Update baseline with computed fields from successful API response
@@ -502,7 +504,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
                   if (computedFieldNames.has(fieldName)) {
                     (lastSyncedValuesRef.current as any)[fieldName] = value;
                   }
-                }
+                },
               );
             }
           } catch (error) {
@@ -531,7 +533,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
       computedFieldDependencies,
       isInteractiveMode,
       draftId,
-    ]
+    ],
   );
 
   // ============================================================
@@ -553,18 +555,16 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
 
     // Cross-field validation
     // Transform ValidationRule[] to the format expected by validateCrossField
-    const transformedRules = schemaConfig.crossFieldValidation.map(
-      (rule) => ({
-        Id: rule.Id,
-        Condition: { ExpressionTree: rule.ExpressionTree },
-        Message: rule.Message || `Validation failed for ${rule.Name}`,
-      })
-    );
+    const transformedRules = schemaConfig.crossFieldValidation.map((rule) => ({
+      Id: rule.Id,
+      Condition: { ExpressionTree: rule.ExpressionTree },
+      Message: rule.Message || `Validation failed for ${rule.Name}`,
+    }));
 
     const crossFieldErrors = validateCrossField(
       transformedRules,
       values as any,
-      referenceData
+      referenceData,
     );
 
     if (crossFieldErrors.length > 0) {
@@ -603,11 +603,14 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
    */
   const handleSubmit = useCallback(
     (
-      onSuccess?: (data: T, e?: React.BaseSyntheticEvent) => void | Promise<void>,
+      onSuccess?: (
+        data: T,
+        e?: React.BaseSyntheticEvent,
+      ) => void | Promise<void>,
       onError?: (
         error: import("react-hook-form").FieldErrors<T> | Error,
-        e?: React.BaseSyntheticEvent
-      ) => void | Promise<void>
+        e?: React.BaseSyntheticEvent,
+      ) => void | Promise<void>,
     ) => {
       return rhfForm.handleSubmit(
         // RHF onValid handler - validation passed, now do cross-field + API
@@ -627,13 +630,13 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
                 Id: rule.Id,
                 Condition: { ExpressionTree: rule.ExpressionTree },
                 Message: rule.Message || `Validation failed for ${rule.Name}`,
-              })
+              }),
             );
 
             const crossFieldErrors = validateCrossField(
               transformedRules,
               data as any,
-              referenceData
+              referenceData,
             );
 
             if (crossFieldErrors.length > 0) {
@@ -649,12 +652,21 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
               return;
             }
 
+            // Extract field types from schema for Reference field transformation
+            const fieldTypes: Record<string, string> = {};
+            Object.entries(schemaConfig.fields).forEach(
+              ([fieldName, field]) => {
+                fieldTypes[fieldName] = field._bdoField.Type;
+              },
+            );
+
             // Clean data for submission
             const cleanedData = cleanFormData(
               data as any,
               schemaConfig.computedFields,
               operation,
-              recordData as Partial<T> | undefined
+              recordData as Partial<T> | undefined,
+              fieldTypes,
             );
 
             let result;
@@ -667,7 +679,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
                 // Interactive create: must have draftId
                 if (!draftId) {
                   throw new Error(
-                    "Interactive create mode requires a draft ID. Draft creation may have failed."
+                    "Interactive create mode requires a draft ID. Draft creation may have failed.",
                   );
                 }
                 // POST /{bdo_id}/draft with _id in payload
@@ -687,7 +699,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
                 source,
                 operation,
                 cleanedData,
-                recordId
+                recordId,
               );
 
               if (!result.success) {
@@ -716,7 +728,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
         // RHF onInvalid handler - validation failed
         (errors, event) => {
           onError?.(errors, event);
-        }
+        },
       );
     },
     [
@@ -729,7 +741,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
       recordData,
       isInteractiveMode,
       draftId,
-    ]
+    ],
   );
 
   // ============================================================
@@ -740,7 +752,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     <K extends keyof T>(fieldName: K): FormFieldConfigType | null => {
       return schemaConfig?.fields[fieldName as string] || null;
     },
-    [schemaConfig]
+    [schemaConfig],
   );
 
   const getFields = useCallback((): Record<keyof T, FormFieldConfigType> => {
@@ -758,7 +770,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     <K extends keyof T>(fieldName: K): boolean => {
       return !!schemaConfig?.fields[fieldName as string];
     },
-    [schemaConfig]
+    [schemaConfig],
   );
 
   const isFieldRequired = useCallback(
@@ -767,7 +779,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
         schemaConfig?.requiredFields.includes(fieldName as string) || false
       );
     },
-    [schemaConfig]
+    [schemaConfig],
   );
 
   const isFieldComputed = useCallback(
@@ -776,7 +788,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
         schemaConfig?.computedFields.includes(fieldName as string) || false
       );
     },
-    [schemaConfig]
+    [schemaConfig],
   );
 
   // ============================================================
@@ -806,12 +818,12 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
 
   const computedFields = useMemo<Array<keyof T>>(
     () => (schemaConfig?.computedFields as Array<keyof T>) || [],
-    [schemaConfig]
+    [schemaConfig],
   );
 
   const requiredFields = useMemo<Array<keyof T>>(
     () => (schemaConfig?.requiredFields as Array<keyof T>) || [],
-    [schemaConfig]
+    [schemaConfig],
   );
 
   // ============================================================
@@ -864,7 +876,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
                   value,
                   [rule],
                   currentValues,
-                  lastFormValues as T | undefined
+                  lastFormValues as T | undefined,
                 );
                 if (!result.isValid) {
                   return result.message || rule.Message || "Invalid value";
@@ -936,7 +948,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
         onBlur: enhancedOnBlur,
       });
     },
-    [rhfForm, validationRules, triggerComputationAfterValidation, mode]
+    [rhfForm, validationRules, triggerComputationAfterValidation, mode],
   );
 
   return {

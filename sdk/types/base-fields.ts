@@ -68,26 +68,46 @@ export type LongFieldType = number;
 export type BooleanFieldType = boolean;
 
 /**
+ * Encoded date format from API response
+ * API returns: { "$__d__": "YYYY-MM-DD" }
+ */
+export interface DateEncodedType {
+  $__d__: string;
+}
+
+/**
+ * Encoded datetime format from API response
+ * API returns: { "$__dt__": unix_timestamp_seconds }
+ */
+export interface DateTimeEncodedType {
+  $__dt__: number;
+}
+
+/**
  * Date field (date only, no time)
- * Resolves to: Date
+ * API Response Format: { "$__d__": "YYYY-MM-DD" }
+ * API Request Format: "YYYY-MM-DD"
  * Storage: DATE in database
  * Use this for birth dates, due dates, calendar events
  *
  * @example
- * DateFieldType // => Date (date only)
+ * // Response from API:
+ * { "$__d__": "2025-03-15" }
  */
-export type DateFieldType = Date;
+export type DateFieldType = DateEncodedType;
 
 /**
  * DateTime field (date and time)
- * Resolves to: Date
+ * API Response Format: { "$__dt__": unix_timestamp_seconds }
+ * API Request Format: "YYYY-MM-DD HH:MM:SS"
  * Storage: DATETIME/TIMESTAMP in database
  * Use this for created_at, updated_at, event timestamps
  *
  * @example
- * DateTimeFieldType // => Date (with time)
+ * // Response from API:
+ * { "$__dt__": 1769110463 }
  */
-export type DateTimeFieldType = Date;
+export type DateTimeFieldType = DateTimeEncodedType;
 
 // ============================================================
 // COMPLEX FIELD TYPES
@@ -124,7 +144,47 @@ export type CurrencyValueType =
  */
 export type JSONFieldType<T = JSONValueType> = T;
 
-export type ReferenceFieldType = string;
+/**
+ * Reference/Lookup field for relationships to other Business Data Objects
+ *
+ * @template TReferencedType - The full type of the referenced BDO record
+ *
+ * Runtime behavior:
+ * - The field stores the full referenced record (e.g., full supplier object)
+ * - API returns the complete record from the referenced BDO
+ * - On save, the full object is sent in the payload
+ *
+ * @example
+ * SupplierInfo: ReferenceFieldType<BaseSupplierType>;
+ * // At runtime: { _id: "...", SupplierId: "...", SupplierName: "...", ... }
+ */
+export type ReferenceFieldType<TReferencedType = unknown> = TReferencedType;
+
+/**
+ * Extract the referenced type from a ReferenceFieldType
+ * Note: Since ReferenceFieldType<T> = T, this just returns T if it has _id
+ */
+export type ExtractReferenceType<T> = T extends { _id: string } ? T : never;
+
+/**
+ * Extract the type that fetchField should return for a given field type
+ * - For Reference fields (objects with _id) → the full referenced record type
+ * - For other field types → { Value: string; Label: string } (static dropdown)
+ *
+ * Detection: All BDO types have _id: string, so we check for that property
+ * to distinguish reference fields from primitive fields like StringFieldType.
+ *
+ * @example
+ * type SupplierOptions = ExtractFetchFieldType<BaseProductType["SupplierInfo"]>;
+ * // Result: BaseSupplierType (has _id)
+ *
+ * type CategoryOptions = ExtractFetchFieldType<BaseProductType["Category"]>;
+ * // Result: { Value: string; Label: string } (string has no _id)
+ */
+export type ExtractFetchFieldType<T> =
+  T extends { _id: string }
+    ? T
+    : { Value: string; Label: string };
 
 /**
  * Valid JSON value types
@@ -156,17 +216,11 @@ export interface JSONArrayType extends Array<JSONValueType> {}
 export type SelectFieldType<T extends string> = T;
 
 /**
- * Lookup field for references to other records
- * @template T - Type of the referenced record ID (defaults to string)
- * Resolves to: T
- * Storage: VARCHAR in database (stores the ID)
- * Use this for foreign keys, relationships, references
- *
- * @example
- * LookupFieldType // => string (referenced record ID)
- * LookupFieldType<IdFieldType> // => string (typed as IdFieldType)
+ * Alias for ReferenceFieldType (Lookup = Reference in the backend)
+ * @template TReferencedType - The full type of the referenced BDO record
+ * @deprecated Use ReferenceFieldType instead
  */
-export type LookupFieldType<T extends string = string> = T;
+export type LookupFieldType<TReferencedType = unknown> = ReferenceFieldType<TReferencedType>;
 
 // ============================================================
 // CONTAINER AND UTILITY TYPES

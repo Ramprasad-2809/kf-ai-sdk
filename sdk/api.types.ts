@@ -9,6 +9,9 @@ export type { ResourceClient } from './api/client';
 // Metadata types
 export type { BackendSchema, MetadataItem, FieldMetadata } from './api/metadata';
 
+// DateTime types from base-fields
+export type { DateTimeEncodedType, DateEncodedType } from './types/base-fields';
+
 // Common API types
 export type {
   // Sort types
@@ -31,10 +34,6 @@ export type {
   CreateUpdateResponseType,
   DeleteResponseType,
   CountResponseType,
-
-  // DateTime types
-  DateTimeEncodedType,
-  DateEncodedType,
 
   // Metric types
   MetricTypeType,
