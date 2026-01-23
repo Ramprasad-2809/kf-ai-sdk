@@ -14,10 +14,13 @@ export {
 
 // DateTime utilities
 export {
-  encodeDatetime,
-  decodeDatetime,
-  encodeDate,
+  formatDateTime,
+  decodeDateTime,
+  formatDate,
   decodeDate,
+  parseDate,
+  parseDateTime,
+  DatetimeFormat,
 } from './api/datetime';
 
 // Metadata API client

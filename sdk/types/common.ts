@@ -71,19 +71,8 @@ export interface ConditionGroupType<T = any> {
  */
 export type FilterType<T = any> = ConditionGroupType<T>;
 
-/**
- * DateTime encoding format used by the API
- */
-export interface DateTimeEncodedType {
-  $__dt__: number;
-}
-
-/**
- * Date encoding format used by the API
- */
-export interface DateEncodedType {
-  $__d__: string;
-}
+// Note: DateTimeEncodedType and DateEncodedType are now defined in base-fields.ts
+// They are re-exported from api/index.ts for convenience
 
 /**
  * Standard paginated list response

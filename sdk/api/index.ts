@@ -10,10 +10,13 @@ export type { ResourceClient } from "./client";
 
 // DateTime utilities
 export {
-  encodeDatetime,
-  decodeDatetime,
-  encodeDate,
+  DatetimeFormat,
   decodeDate,
+  decodeDateTime,
+  formatDate,
+  formatDateTime,
+  parseDate,
+  parseDateTime,
 } from "./datetime";
 
 // Metadata API client
@@ -40,9 +43,6 @@ export type {
   CreateUpdateResponseType,
   DeleteResponseType,
   CountResponseType,
-  // DateTime types
-  DateTimeEncodedType,
-  DateEncodedType,
   // Metric types
   MetricTypeType,
   MetricFieldType,
@@ -58,3 +58,9 @@ export type {
   // Fields types
   FieldsResponseType,
 } from "../types/common";
+
+// Re-export date types from base-fields
+export type {
+  DateEncodedType,
+  DateTimeEncodedType,
+} from "../types/base-fields";

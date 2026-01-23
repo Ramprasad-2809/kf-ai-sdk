@@ -25,6 +25,8 @@ export type {
   CurrencyValueType,
   JSONFieldType,
   ReferenceFieldType,
+  ExtractReferenceType,
+  ExtractFetchFieldType,
 
   // JSON types
   JSONValueType,
