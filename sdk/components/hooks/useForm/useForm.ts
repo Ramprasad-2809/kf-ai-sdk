@@ -863,10 +863,10 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
         case "number":
           fieldRules.valueAsNumber = true;
           break;
-        case "date":
-        case "datetime-local":
-          fieldRules.valueAsDate = true;
-          break;
+        // case "date":
+        // case "datetime-local":
+        //   fieldRules.valueAsDate = true;
+        //   break;
       }
 
       // Client-side validation rules only
