@@ -72,7 +72,7 @@ function App() {
 
 // 2. Use useAuth in components
 function AppContent() {
-  const auth = useAuth();
+  const auth: UseAuthReturnType = useAuth();
 
   if (auth.isLoading) return <div>Loading...</div>;
 
