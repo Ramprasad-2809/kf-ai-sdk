@@ -173,10 +173,10 @@ Use the generic type parameter to get TypeScript validation on field names.
 
 ```tsx
 import { useFilter } from "@ram_28/kf-ai-sdk/filter";
-import { Product, ProductType } from "../sources";
+import { Product, type ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
-type BuyerProduct = ProductType<typeof Roles.Buyer>;
+type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
 
 function TypeSafeFilter() {
   // Pass the type parameter for type-safe LHSField
@@ -216,10 +216,10 @@ function TypeSafeFilter() {
 ```tsx
 import { useFilter } from "@ram_28/kf-ai-sdk/filter";
 import type { UseFilterOptionsType } from "@ram_28/kf-ai-sdk/filter/types";
-import { Product, ProductType } from "../sources";
+import { Product, type ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
-type BuyerProduct = ProductType<typeof Roles.Buyer>;
+type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
 
 // Type-safe filter options
 const initialFilter: UseFilterOptionsType<BuyerProduct> = {

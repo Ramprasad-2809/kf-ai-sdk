@@ -227,10 +227,10 @@ interface FormFieldConfigType {
 
 ```tsx
 import { useForm } from "@ram_28/kf-ai-sdk/form";
-import { Product, ProductType } from "../sources";
+import { Product, type ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
-type BuyerProduct = ProductType<typeof Roles.Buyer>;
+type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
 
 function CreateProductForm() {
   const product = new Product(Roles.Buyer);
@@ -283,10 +283,10 @@ Create form with validation and success handling.
 import { useForm } from "@ram_28/kf-ai-sdk/form";
 import type { FieldErrors } from "@ram_28/kf-ai-sdk/form/types";
 import { useNavigate } from "react-router-dom";
-import { Product, ProductType } from "../sources";
+import { Product, type ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
-type BuyerProduct = ProductType<typeof Roles.Buyer>;
+type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
 
 function ProductListingForm() {
   const product = new Product(Roles.Buyer);
@@ -362,10 +362,10 @@ Update mode with record loading state.
 
 ```tsx
 import { useForm } from "@ram_28/kf-ai-sdk/form";
-import { Product, ProductType } from "../sources";
+import { Product, type ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
-type BuyerProduct = ProductType<typeof Roles.Buyer>;
+type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
 
 function EditProductForm({ productId }: { productId: string }) {
   const product = new Product(Roles.Buyer);
@@ -428,10 +428,10 @@ Working with computed fields and the watch function.
 
 ```tsx
 import { useForm } from "@ram_28/kf-ai-sdk/form";
-import { Product, ProductType } from "../sources";
+import { Product, type ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
-type BuyerProduct = ProductType<typeof Roles.Buyer>;
+type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
 
 function PricingForm() {
   const product = new Product(Roles.Buyer);
@@ -483,10 +483,10 @@ Static fields return options with `Value` and `Label`.
 ```tsx
 import { useState } from "react";
 import { useForm } from "@ram_28/kf-ai-sdk/form";
-import { Product, ProductType } from "../sources";
+import { Product, type ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
-type BuyerProduct = ProductType<typeof Roles.Buyer>;
+type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
 
 function ProductCategoryForm({ recordId }: { recordId: string }) {
   const product = new Product(Roles.Buyer);
@@ -558,10 +558,10 @@ Reference fields return the full object structure. Use a custom dropdown to disp
 ```tsx
 import { useState } from "react";
 import { useForm } from "@ram_28/kf-ai-sdk/form";
-import { Product, ProductType } from "../sources";
+import { Product, type ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
-type BuyerProduct = ProductType<typeof Roles.Buyer>;
+type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
 
 type SupplierOption = {
   _id: string;

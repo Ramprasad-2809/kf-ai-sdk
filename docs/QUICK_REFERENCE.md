@@ -230,6 +230,30 @@ function ProtectedRoute({ children }) {
 
 ---
 
+## Date Handling
+
+### Display Encoded Date
+```typescript
+import { decodeDate } from "@ram_28/kf-ai-sdk/api";
+import { formatDate } from "@ram_28/kf-ai-sdk/utils";
+
+const readable = formatDate(decodeDate(record.OrderDate), 'medium');
+// => "Mar 15, 2025"
+```
+
+### Display Timestamp
+```typescript
+import { decodeDateTime } from "@ram_28/kf-ai-sdk/api";
+import { formatDateTime } from "@ram_28/kf-ai-sdk/utils";
+
+const readable = formatDateTime(decodeDateTime(record._created_at), 'medium');
+// => "Mar 15, 2025, 10:30:45 AM"
+```
+
+[Full Documentation](./datetime.md)
+
+---
+
 ## Type Imports
 
 ```typescript

@@ -221,10 +221,10 @@ A minimal table displaying data with loading and error states.
 ```tsx
 import { useTable } from "@ram_28/kf-ai-sdk/table";
 import type { ColumnDefinitionType } from "@ram_28/kf-ai-sdk/table/types";
-import { Product, ProductType } from "../sources";
+import { Product, type ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
-type BuyerProduct = ProductType<typeof Roles.Buyer>;
+type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
 
 function ProductsTable() {
   const product = new Product(Roles.Buyer);
@@ -282,10 +282,10 @@ import type {
   UseTableReturnType,
   ColumnDefinitionType,
 } from "@ram_28/kf-ai-sdk/table/types";
-import { Product, ProductType } from "../sources";
+import { Product, type ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
-type BuyerProduct = ProductType<typeof Roles.Buyer>;
+type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
 
 function MyItemsTable() {
   const product = new Product(Roles.Buyer);
@@ -858,10 +858,10 @@ import type {
   UseTableReturnType,
   ColumnDefinitionType,
 } from "@ram_28/kf-ai-sdk/table/types";
-import { Product, ProductType } from "../sources";
+import { Product, type ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
-type BuyerProduct = ProductType<typeof Roles.Buyer>;
+type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
 
 function ProductListPage() {
   const product = new Product(Roles.Buyer);
