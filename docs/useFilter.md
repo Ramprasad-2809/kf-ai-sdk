@@ -36,40 +36,87 @@ type ConditionGroupOperatorType = "And" | "Or" | "Not";
 
 // Single condition (generic for type-safe LHSField)
 interface ConditionType<T = any> {
+  // Auto-generated unique identifier
   id?: string;
+
+  // Comparison operator (EQ, GT, Contains, etc.)
   Operator: ConditionOperatorType;
-  LHSField: keyof T | string;  // Type-safe when T is provided
+
+  // Field name to compare
+  LHSField: keyof T | string;
+
+  // Value to compare against
   RHSValue: any;
+
+  // Value type (default: "Constant")
   RHSType?: "Constant" | "BOField" | "AppVariable";
 }
 
 // Condition group (can contain conditions or nested groups)
 interface ConditionGroupType<T = any> {
+  // Auto-generated unique identifier
   id?: string;
+
+  // Group operator (And, Or, Not)
   Operator: ConditionGroupOperatorType;
+
+  // Nested conditions or groups
   Condition: Array<ConditionType<T> | ConditionGroupType<T>>;
 }
 
 // Hook options (also used for initialState in useTable/useKanban)
 interface UseFilterOptionsType<T = any> {
+  // Initial conditions to populate the filter
   conditions?: Array<ConditionType<T> | ConditionGroupType<T>>;
+
+  // Root operator for combining conditions (default: "And")
   operator?: ConditionGroupOperatorType;
 }
 
 // Hook return type (generic for type-safe field names)
 interface UseFilterReturnType<T = any> {
+  // ============================================================
+  // STATE
+  // ============================================================
+
+  // Current root operator (And, Or, Not)
   operator: ConditionGroupOperatorType;
+
+  // All conditions and groups at root level
   items: Array<ConditionType<T> | ConditionGroupType<T>>;
+
+  // API-ready filter payload (undefined if no conditions)
   payload: FilterType<T> | undefined;
+
+  // True when at least one condition exists
   hasConditions: boolean;
 
+  // ============================================================
+  // METHODS
+  // ============================================================
+
+  // Add a condition, optionally to a parent group. Returns the new condition's ID
   addCondition: (condition: Omit<ConditionType<T>, "id">, parentId?: string) => string;
+
+  // Add a condition group, optionally to a parent group. Returns the new group's ID
   addConditionGroup: (operator: ConditionGroupOperatorType, parentId?: string) => string;
+
+  // Update a condition's properties (Operator, LHSField, RHSValue)
   updateCondition: (id: string, updates: Partial<Omit<ConditionType<T>, "id">>) => void;
+
+  // Change a group's operator (And, Or, Not)
   updateGroupOperator: (id: string, operator: ConditionGroupOperatorType) => void;
+
+  // Remove a condition or group by ID
   removeCondition: (id: string) => void;
+
+  // Get a condition or group by ID
   getCondition: (id: string) => ConditionType<T> | ConditionGroupType<T> | undefined;
+
+  // Remove all conditions and groups
   clearAllConditions: () => void;
+
+  // Change the root operator
   setRootOperator: (operator: ConditionGroupOperatorType) => void;
 }
 ```
@@ -126,18 +173,14 @@ Use the generic type parameter to get TypeScript validation on field names.
 
 ```tsx
 import { useFilter } from "@ram_28/kf-ai-sdk/filter";
+import { Product, ProductType } from "../sources";
+import { Roles } from "../sources/roles";
 
-interface Product {
-  _id: string;
-  Title: string;
-  Price: number;
-  Category: string;
-  Stock: number;
-}
+type BuyerProduct = ProductType<typeof Roles.Buyer>;
 
 function TypeSafeFilter() {
   // Pass the type parameter for type-safe LHSField
-  const filter = useFilter<Product>();
+  const filter = useFilter<BuyerProduct>();
 
   const addCategoryFilter = () => {
     filter.addCondition({
@@ -150,7 +193,7 @@ function TypeSafeFilter() {
   const addInvalidFilter = () => {
     filter.addCondition({
       Operator: "EQ",
-      LHSField: "InvalidField",  // TypeScript error: not a key of Product
+      LHSField: "InvalidField",  // TypeScript error: not a key of BuyerProduct
       RHSValue: "test",
     });
   };
@@ -173,16 +216,13 @@ function TypeSafeFilter() {
 ```tsx
 import { useFilter } from "@ram_28/kf-ai-sdk/filter";
 import type { UseFilterOptionsType } from "@ram_28/kf-ai-sdk/filter/types";
+import { Product, ProductType } from "../sources";
+import { Roles } from "../sources/roles";
 
-interface Product {
-  _id: string;
-  Title: string;
-  Price: number;
-  Category: string;
-}
+type BuyerProduct = ProductType<typeof Roles.Buyer>;
 
 // Type-safe filter options
-const initialFilter: UseFilterOptionsType<Product> = {
+const initialFilter: UseFilterOptionsType<BuyerProduct> = {
   conditions: [
     { Operator: "EQ", LHSField: "Category", RHSValue: "Electronics" },
     { Operator: "GT", LHSField: "Price", RHSValue: 100 },
@@ -191,7 +231,7 @@ const initialFilter: UseFilterOptionsType<Product> = {
 };
 
 // Use with useFilter
-const filter = useFilter<Product>(initialFilter);
+const filter = useFilter<BuyerProduct>(initialFilter);
 ```
 
 ---

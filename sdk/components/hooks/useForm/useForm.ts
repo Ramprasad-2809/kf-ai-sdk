@@ -54,6 +54,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     skipSchemaFetch = false,
     schema: manualSchema,
     interactionMode = "interactive",
+    enableDraftInUpdateMode = false,
   } = options;
 
   // Derived interaction mode flags
@@ -346,10 +347,15 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
         return;
       }
 
-      // Determine if draft should be triggered based on interaction mode
-      // For update mode, always behave as non-interactive (only trigger for computed deps)
+      // Determine if draft should be triggered based on interaction mode and configuration
+      // For update mode: skip draft API calls unless explicitly enabled via enableDraftInUpdateMode
       // Interactive mode (create only): Always trigger draft API on blur
       // Non-interactive mode: Only trigger for computed field dependencies
+      if (operation === "update" && !enableDraftInUpdateMode) {
+        // Skip draft API calls in update mode when enableDraftInUpdateMode is false (default)
+        return;
+      }
+
       const shouldTrigger =
         isInteractiveMode && operation !== "update"
           ? true // Interactive mode (create only): always trigger
@@ -533,6 +539,7 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
       computedFieldDependencies,
       isInteractiveMode,
       draftId,
+      enableDraftInUpdateMode,
     ],
   );
 
@@ -808,11 +815,13 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
   // ============================================================
 
   // Loading state includes interactive mode draft creation
-  const isLoadingInitialData =
+  const isLoading =
     isLoadingSchema ||
     (operation === "update" && isLoadingRecord) ||
     (isInteractiveMode && operation === "create" && isCreatingDraft);
-  const isLoading = isLoadingInitialData || isSubmitting;
+
+  // Background operations (submission)
+  const isFetching = isSubmitting;
   const loadError = schemaError || recordError || draftError;
   const hasError = !!loadError;
 
@@ -967,9 +976,8 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     isSubmitSuccessful: rhfForm.formState.isSubmitSuccessful,
 
     // Loading states
-    isLoadingInitialData,
-    isLoadingRecord,
     isLoading,
+    isFetching,
 
     // Interactive mode state
     draftId,

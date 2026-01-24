@@ -138,8 +138,8 @@ export function initiateLogin(
       });
     }
 
-    window.location.href = loginUrl.toString();
-    // Promise never resolves - browser navigates away
+    window.open(loginUrl.toString(), '_blank');
+    // Promise never resolves - login opens in new tab
   });
 }
 

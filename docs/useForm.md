@@ -1,6 +1,6 @@
 # useForm
 
-Form state management with automatic schema validation, computed fields, and react-hook-form integration.
+Form state management with schema validation, computed fields, and react-hook-form integration.
 
 ## Imports
 
@@ -13,122 +13,229 @@ import {
   clearFormCache,
 } from "@ram_28/kf-ai-sdk/form";
 import type {
-  FieldErrors,
   UseFormOptionsType,
   UseFormReturnType,
+  FormFieldConfigType,
+  FieldErrors,
 } from "@ram_28/kf-ai-sdk/form/types";
 ```
 
-## Product Class Pattern
+## Type Definitions
 
-The recommended pattern uses a role-based BDO wrapper class (like `Product`) instead of hardcoded source strings:
+### UseFormOptionsType
 
-```tsx
-// sources/Product.ts - Role-based BDO wrapper
-import { Role, Roles } from "./roles";
+```typescript
+// Hook options for initializing the form
+interface UseFormOptionsType<T> {
+  // Business Object ID (required)
+  // Example: product._id
+  source: string;
 
-export type ProductType<TRole extends Role> = /* role-mapped types */;
+  // Form operation mode (required)
+  // - "create": Creates new record
+  // - "update": Edit existing record, loads record data
+  operation: "create" | "update";
 
-export class Product<TRole extends Role = typeof Roles.Admin> {
-  constructor(_role: TRole) {}
-  get _id(): string { return "BDO_AmazonProductMaster"; }
-  // API methods: list, get, create, update, delete, draft, etc.
+  // Record ID - required for update operations (required for operation: update)
+  // The form will fetch this record's data on mount
+  recordId?: string;
+
+  // Initial form values
+  // Merged with schema defaults and (for update) fetched record data
+  defaultValues?: Partial<T>;
+
+  // Validation trigger mode (from react-hook-form)
+  // - "onBlur" (default): Validate when field loses focus
+  // - "onChange": Validate on every keystroke
+  // - "onSubmit": Validate only on form submission
+  // - "onTouched": Validate on first blur, then on every change
+  // - "all": Validate on both blur and change
+  // Note: Computation (draft API) always fires on blur regardless of this setting
+  mode?: "onBlur" | "onChange" | "onSubmit" | "onTouched" | "all";
+
+  // Enable form initialization (default: true)
+  // Set to false to defer schema fetching
+  enabled?: boolean;
+
+  // Callback when schema loading fails
+  // Use for error reporting or retry logic
+  onSchemaError?: (error: Error) => void;
 }
 ```
 
-This pattern provides type-safe role-based field access, consistent with `useTable` and other hooks.
-
-## Type Definitions
+### UseFormReturnType
 
 ```typescript
-// Form operation type
-type FormOperationType = "create" | "update";
-
-// Hook options
-interface UseFormOptionsType<T> {
-  source: string;
-  operation: FormOperationType;
-  recordId?: string;
-  defaultValues?: Partial<T>;
-  mode?: "onBlur" | "onChange" | "onSubmit" | "onTouched" | "all";
-  enabled?: boolean;
-  userRole?: string;
-  onSchemaError?: (error: Error) => void;
-}
-
-// Hook return type
+// Hook return type with all form state and methods
 interface UseFormReturnType<T> {
-  // React Hook Form methods
-  register: UseFormRegister<T>;
-  handleSubmit: (onSuccess?, onError?) => (e?) => Promise<void>;
-  watch: (name?) => any;
-  setValue: (name, value) => void;
-  reset: (values?) => void;
+  // ============================================================
+  // FORM METHODS (from react-hook-form)
+  // ============================================================
 
-  // Form state
+  // Register a field for validation and form handling
+  // Returns props to spread on input elements
+  register: (name: keyof T, options?: RegisterOptions) => InputProps;
+
+  // Handle form submission
+  // - onSuccess: Called with response data on successful save
+  // - onError: Called with FieldErrors (validation) or Error (API)
+  handleSubmit: (
+    onSuccess?: (data: T) => void,
+    onError?: (error: FieldErrors<T> | Error) => void,
+  ) => (e?: React.BaseSyntheticEvent) => Promise<void>;
+
+  // Watch field values reactively
+  // watch("Price") returns current value, re-renders on change
+  watch: (name?: keyof T) => any;
+
+  // Set field value programmatically
+  // Useful for computed previews, templates, external data
+  setValue: (name: keyof T, value: any, options?: SetValueConfig) => void;
+
+  // Reset form to initial/provided values
+  reset: (values?: T) => void;
+
+  // ============================================================
+  // FORM STATE (flattened - no nested formState object)
+  // ============================================================
+
+  // Current validation errors by field name
   errors: FieldErrors<T>;
+
+  // True when all fields pass validation
   isValid: boolean;
+
+  // True when any field has been modified
   isDirty: boolean;
+
+  // True during form submission
   isSubmitting: boolean;
+
+  // True after successful submission
   isSubmitSuccessful: boolean;
 
-  // Loading states
-  isLoadingInitialData: boolean;
-  isLoadingRecord: boolean;
+  // ============================================================
+  // LOADING STATES
+  // ============================================================
+
+  // True during initial load
   isLoading: boolean;
 
-  // Schema info
+  // True during background operations
+  isFetching: boolean;
+
+  // ============================================================
+  // ERROR HANDLING
+  // ============================================================
+
+  // Error from schema/record loading (not submission errors)
+  loadError: Error | null;
+
+  // True when loadError is present
+  hasError: boolean;
+
+  // ============================================================
+  // SCHEMA INFORMATION
+  // ============================================================
+
+  // Raw BDO schema (for advanced use cases)
   schema: BDOSchemaType | null;
+
+  // Processed schema with field configs ready for rendering
   schemaConfig: FormSchemaConfigType | null;
+
+  // List of computed field names
   computedFields: Array<keyof T>;
+
+  // List of required field names
   requiredFields: Array<keyof T>;
 
-  // Field helpers
-  getField: (fieldName) => FormFieldConfigType | null;
-  getFields: () => Record<keyof T, FormFieldConfigType>;
-  isFieldRequired: (fieldName) => boolean;
-  isFieldComputed: (fieldName) => boolean;
-}
+  // ============================================================
+  // FIELD HELPERS
+  // ============================================================
 
-// Field configuration
+  // Get configuration for a specific field
+  // Returns null if field doesn't exist
+  getField: (fieldName: keyof T) => FormFieldConfigType | null;
+
+  // Get all field configurations as a record
+  getFields: () => Record<keyof T, FormFieldConfigType>;
+
+  // Check if a field exists in the schema
+  hasField: (fieldName: keyof T) => boolean;
+
+  // Check if a field is required
+  isFieldRequired: (fieldName: keyof T) => boolean;
+
+  // Check if a field is computed (read-only, server-calculated)
+  isFieldComputed: (fieldName: keyof T) => boolean;
+
+  // ============================================================
+  // OPERATIONS
+  // ============================================================
+
+  // Refresh schema from server (clears cache)
+  refreshSchema: () => Promise<void>;
+
+  // Clear all validation errors
+  clearErrors: () => void;
+}
+```
+
+### FormFieldConfigType
+
+```typescript
+// Field configuration from processed schema
 interface FormFieldConfigType {
+  // Field identifier (matches BDO field name)
   name: string;
-  type:
-    | "text"
-    | "number"
-    | "email"
-    | "date"
-    | "checkbox"
-    | "select"
-    | "textarea";
+
+  // Input type for rendering
+  // "text" | "number" | "email" | "date" | "datetime-local"
+  // "checkbox" | "select" | "textarea" | "reference"
+  type: FormFieldTypeType;
+
+  // Display label (from schema or derived from name)
   label: string;
+
+  // Whether field is required for submission
   required: boolean;
+
+  // Whether field is computed (read-only, server-calculated)
   computed: boolean;
+
+  // Default value from schema
   defaultValue?: any;
-  options?: { value: any; label: string }[];
-  permission: { editable: boolean; readable: boolean; hidden: boolean };
+
+  // Options for select/reference fields
+  // { value: any, label: string }[]
+  options?: SelectOptionType[];
+
+  // Field description for help text
+  description?: string;
+
+  // User permissions for this field
+  permission: {
+    editable: boolean; // Can user edit this field
+    readable: boolean; // Can user see this field
+    hidden: boolean; // Should field be completely hidden
+  };
 }
 ```
 
 ## Basic Example
 
-A minimal create form with field registration and submission.
-
 ```tsx
 import { useForm } from "@ram_28/kf-ai-sdk/form";
-import type {
-  UseFormOptionsType,
-  UseFormReturnType,
-} from "@ram_28/kf-ai-sdk/form/types";
 import { Product, ProductType } from "../sources";
 import { Roles } from "../sources/roles";
 
-type SellerProduct = ProductType<typeof Roles.Seller>;
+type BuyerProduct = ProductType<typeof Roles.Buyer>;
 
 function CreateProductForm() {
-  const product = new Product(Roles.Seller);
+  const product = new Product(Roles.Buyer);
 
-  const options: UseFormOptionsType<SellerProduct> = {
+  const form = useForm<BuyerProduct>({
     source: product._id,
     operation: "create",
     defaultValues: {
@@ -136,22 +243,12 @@ function CreateProductForm() {
       Price: 0,
       Category: "",
     },
-  };
+  });
 
-  const form: UseFormReturnType<SellerProduct> = useForm<SellerProduct>(options);
-
-  const onSuccess = (data: SellerProduct) => {
-    console.log("Product created:", data);
-  };
-
-  const onError = (error: Error) => {
-    console.error("Failed to create:", error.message);
-  };
-
-  if (form.isLoading) return <div>Loading form...</div>;
+  if (form.isLoading) return <div>Loading...</div>;
 
   return (
-    <form onSubmit={form.handleSubmit(onSuccess, onError)}>
+    <form onSubmit={form.handleSubmit((data) => console.log("Created:", data))}>
       <div>
         <label>Title</label>
         <input {...form.register("Title")} />
@@ -161,7 +258,6 @@ function CreateProductForm() {
       <div>
         <label>Price</label>
         <input type="number" {...form.register("Price")} />
-        {form.errors.Price && <span>{form.errors.Price.message}</span>}
       </div>
 
       <div>
@@ -177,171 +273,127 @@ function CreateProductForm() {
 }
 ```
 
----
+## Examples
 
-## Create vs Update
+### Product Listing Form
 
-### Create Form
-
-Initialize a form for creating new records.
+Create form with validation and success handling.
 
 ```tsx
+import { useForm } from "@ram_28/kf-ai-sdk/form";
+import type { FieldErrors } from "@ram_28/kf-ai-sdk/form/types";
+import { useNavigate } from "react-router-dom";
 import { Product, ProductType } from "../sources";
 import { Roles } from "../sources/roles";
 
-type SellerProduct = ProductType<typeof Roles.Seller>;
+type BuyerProduct = ProductType<typeof Roles.Buyer>;
 
-function CreateForm() {
-  const product = new Product(Roles.Seller);
+function ProductListingForm() {
+  const product = new Product(Roles.Buyer);
+  const navigate = useNavigate();
 
-  const form = useForm<SellerProduct>({
+  const form = useForm<BuyerProduct>({
     source: product._id,
     operation: "create",
     defaultValues: {
       Title: "",
+      Description: "",
       Price: 0,
+      Category: "Electronics",
       Stock: 0,
     },
+    mode: "onBlur",
   });
 
-  return (
-    <form onSubmit={form.handleSubmit()}>
-      <input {...form.register("Title")} placeholder="Product title" />
-      <input type="number" {...form.register("Price")} placeholder="Price" />
-      <button type="submit">Create</button>
-    </form>
-  );
-}
-```
+  const onSuccess = (data: BuyerProduct) => {
+    toast.success(`Product "${data.Title}" created!`);
+    navigate(`/products/${data._id}`);
+  };
 
-### Edit Form
+  const onError = (error: FieldErrors<BuyerProduct> | Error) => {
+    if (error instanceof Error) {
+      toast.error(`Failed: ${error.message}`);
+    } else {
+      toast.error("Please fix the validation errors");
+    }
+  };
 
-Load existing record data for editing.
-
-```tsx
-function EditForm({ productId }: { productId: string }) {
-  const product = new Product(Roles.Seller);
-
-  const form = useForm<SellerProduct>({
-    source: product._id,
-    operation: "update",
-    recordId: productId,
-  });
-
-  if (form.isLoadingRecord) return <div>Loading product...</div>;
+  if (form.isLoading) return <div>Loading form...</div>;
 
   return (
-    <form onSubmit={form.handleSubmit()}>
-      <input {...form.register("Title")} />
-      <input type="number" {...form.register("Price")} />
-      <button type="submit" disabled={!form.isDirty}>
-        Save Changes
+    <form onSubmit={form.handleSubmit(onSuccess, onError)}>
+      <div>
+        <label>Title {form.isFieldRequired("Title") && "*"}</label>
+        <input {...form.register("Title")} />
+        {form.errors.Title && (
+          <span className="error">{form.errors.Title.message}</span>
+        )}
+      </div>
+
+      <div>
+        <label>Description</label>
+        <textarea {...form.register("Description")} rows={4} />
+      </div>
+
+      <div>
+        <label>Price *</label>
+        <input type="number" step="0.01" {...form.register("Price")} />
+        {form.errors.Price && (
+          <span className="error">{form.errors.Price.message}</span>
+        )}
+      </div>
+
+      <div>
+        <label>Stock</label>
+        <input type="number" {...form.register("Stock")} />
+      </div>
+
+      <button type="submit" disabled={form.isSubmitting || !form.isValid}>
+        {form.isSubmitting ? "Creating..." : "Create Product"}
       </button>
     </form>
   );
 }
 ```
 
-### Toggle Between Create and Edit
+### Edit Product
 
-Switch form mode based on selection.
+Update mode with record loading state.
 
 ```tsx
-function ProductForm({ existingProduct }: { existingProduct?: SellerProduct }) {
-  const product = new Product(Roles.Seller);
-  const isEditing = !!existingProduct;
+import { useForm } from "@ram_28/kf-ai-sdk/form";
+import { Product, ProductType } from "../sources";
+import { Roles } from "../sources/roles";
 
-  const form = useForm<SellerProduct>({
+type BuyerProduct = ProductType<typeof Roles.Buyer>;
+
+function EditProductForm({ productId }: { productId: string }) {
+  const product = new Product(Roles.Buyer);
+
+  const form = useForm<BuyerProduct>({
     source: product._id,
-    operation: isEditing ? "update" : "create",
-    recordId: existingProduct?._id,
-    defaultValues: existingProduct ?? { Title: "", Price: 0 },
+    operation: "update",
+    recordId: productId,
   });
 
-  return (
-    <form onSubmit={form.handleSubmit()}>
-      <h2>{isEditing ? "Edit Product" : "New Product"}</h2>
-      <input {...form.register("Title")} />
-      <input type="number" {...form.register("Price")} />
-      <button type="submit">{isEditing ? "Update" : "Create"}</button>
-    </form>
-  );
-}
-```
+  if (form.isLoading) {
+    return <div>Loading product...</div>;
+  }
 
----
-
-## Field Rendering
-
-### Using getField for Metadata
-
-Access field configuration from the schema.
-
-```tsx
-function DynamicField({
-  form,
-  fieldName,
-}: {
-  form: UseFormReturnType<SellerProduct>;
-  fieldName: keyof SellerProduct;
-}) {
-  const field = form.getField(fieldName);
-
-  if (!field || field.permission.hidden) return null;
-
-  const isDisabled = !field.permission.editable || field.computed;
-
-  return (
-    <div className="field">
-      <label>
-        {field.label}
-        {field.required && <span className="required">*</span>}
-        {field.computed && <span className="computed">(auto)</span>}
-      </label>
-
-      {field.type === "select" && field.options ? (
-        <select {...form.register(fieldName)} disabled={isDisabled}>
-          <option value="">Select {field.label}</option>
-          {field.options.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      ) : (
-        <input
-          type={field.type === "number" ? "number" : "text"}
-          {...form.register(fieldName)}
-          disabled={isDisabled}
-        />
-      )}
-
-      {form.errors[fieldName] && (
-        <span className="error">{form.errors[fieldName]?.message}</span>
-      )}
-    </div>
-  );
-}
-```
-
-### Handling Computed Fields
-
-Display auto-calculated fields as read-only.
-
-```tsx
-function FormWithComputedFields() {
-  const product = new Product(Roles.Seller);
-
-  const form = useForm<SellerProduct>({
-    source: product._id,
-    operation: "create",
-  });
-
-  return (
-    <form onSubmit={form.handleSubmit()}>
+  if (form.hasError) {
+    return (
       <div>
-        <label>MRP</label>
-        <input type="number" {...form.register("MRP")} />
+        <p>Failed to load product: {form.loadError?.message}</p>
+        <button onClick={() => form.refreshSchema()}>Retry</button>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={form.handleSubmit(() => toast.success("Product updated!"))}>
+      <div>
+        <label>Title</label>
+        <input {...form.register("Title")} />
       </div>
 
       <div>
@@ -349,139 +401,13 @@ function FormWithComputedFields() {
         <input type="number" {...form.register("Price")} />
       </div>
 
-      {/* Discount is computed from MRP and Price */}
-      {form.isFieldComputed("Discount") && (
-        <div>
-          <label>Discount % (auto-calculated)</label>
-          <input
-            type="number"
-            value={form.watch("Discount") ?? 0}
-            readOnly
-            disabled
-          />
-        </div>
-      )}
-
-      <button type="submit">Save</button>
-    </form>
-  );
-}
-```
-
-### Render All Fields Dynamically
-
-Generate form fields from schema configuration.
-
-```tsx
-function DynamicForm() {
-  const product = new Product(Roles.Seller);
-
-  const form = useForm<SellerProduct>({
-    source: product._id,
-    operation: "create",
-  });
-
-  if (form.isLoading) return <div>Loading...</div>;
-
-  const fields = form.getFields();
-
-  return (
-    <form onSubmit={form.handleSubmit()}>
-      {Object.entries(fields).map(([fieldName, field]) => {
-        if (field.permission.hidden) return null;
-
-        return (
-          <div key={fieldName}>
-            <label>{field.label}</label>
-            <input
-              {...form.register(fieldName as keyof SellerProduct)}
-              type={field.type === "number" ? "number" : "text"}
-              disabled={!field.permission.editable || field.computed}
-            />
-          </div>
-        );
-      })}
-
-      <button type="submit">Submit</button>
-    </form>
-  );
-}
-```
-
----
-
-## Validation
-
-### Displaying Field Errors
-
-Show validation errors inline with fields.
-
-```tsx
-function FormWithValidation() {
-  const product = new Product(Roles.Seller);
-
-  const form = useForm<SellerProduct>({
-    source: product._id,
-    operation: "create",
-    mode: "onBlur", // Validate on blur
-  });
-
-  return (
-    <form onSubmit={form.handleSubmit()}>
-      <div className={form.errors.Title ? "field-error" : ""}>
-        <label>Title *</label>
-        <input {...form.register("Title")} />
-        {form.errors.Title && (
-          <span className="error-message">{form.errors.Title.message}</span>
-        )}
+      <div>
+        <label>Stock</label>
+        <input type="number" {...form.register("Stock")} />
       </div>
 
-      <div className={form.errors.Price ? "field-error" : ""}>
-        <label>Price *</label>
-        <input type="number" {...form.register("Price")} />
-        {form.errors.Price && (
-          <span className="error-message">{form.errors.Price.message}</span>
-        )}
-      </div>
-
-      <button type="submit" disabled={!form.isValid}>
-        Submit
-      </button>
-    </form>
-  );
-}
-```
-
-### Form State Indicators
-
-Show form status to users.
-
-```tsx
-function FormWithStateIndicators() {
-  const product = new Product(Roles.Seller);
-
-  const form = useForm<SellerProduct>({
-    source: product._id,
-    operation: "update",
-    recordId: "PROD-001",
-  });
-
-  return (
-    <form onSubmit={form.handleSubmit()}>
-      {/* Form fields */}
-      <input {...form.register("Title")} />
-      <input type="number" {...form.register("Price")} />
-
-      {/* Status bar */}
-      <div className="form-status">
-        {form.isDirty && <span className="unsaved">Unsaved changes</span>}
-        {!form.isValid && <span className="invalid">Please fix errors</span>}
-        {form.isSubmitting && <span className="saving">Saving...</span>}
-        {form.isSubmitSuccessful && <span className="success">Saved!</span>}
-      </div>
-
-      <button type="submit" disabled={form.isSubmitting || !form.isDirty}>
-        Save Changes
+      <button type="submit" disabled={!form.isDirty || form.isSubmitting}>
+        {form.isSubmitting ? "Saving..." : "Save Changes"}
       </button>
 
       <button
@@ -496,130 +422,127 @@ function FormWithStateIndicators() {
 }
 ```
 
----
+### Auto-Calculate Discount
 
-## Submission
-
-### Handle Submit with Callbacks
-
-Process successful submissions and errors.
+Working with computed fields and the watch function.
 
 ```tsx
-function FormWithCallbacks() {
-  const product = new Product(Roles.Seller);
+import { useForm } from "@ram_28/kf-ai-sdk/form";
+import { Product, ProductType } from "../sources";
+import { Roles } from "../sources/roles";
 
-  const form = useForm<SellerProduct>({
+type BuyerProduct = ProductType<typeof Roles.Buyer>;
+
+function PricingForm() {
+  const product = new Product(Roles.Buyer);
+
+  const form = useForm<BuyerProduct>({
     source: product._id,
     operation: "create",
+    defaultValues: {
+      MRP: 0,
+      Price: 0,
+    },
   });
 
-  const onSuccess = (data: SellerProduct) => {
-    alert(`Product "${data.Title}" created successfully!`);
-    form.reset();
-  };
+  // Watch computed field value from server
+  const discount = form.watch("Discount");
 
-  const onError = (error: FieldErrors<SellerProduct> | Error) => {
-    if (error instanceof Error) {
-      // API error
-      alert(`Server error: ${error.message}`);
-    } else {
-      // Validation errors
-      const fieldNames = Object.keys(error).join(", ");
-      alert(`Please fix errors in: ${fieldNames}`);
-    }
-  };
+  if (form.isLoading) return <div>Loading...</div>;
 
   return (
-    <form onSubmit={form.handleSubmit(onSuccess, onError)}>
-      <input {...form.register("Title")} placeholder="Title" />
-      <input type="number" {...form.register("Price")} placeholder="Price" />
-      <button type="submit">Create</button>
+    <form onSubmit={form.handleSubmit()}>
+      <div>
+        <label>MRP (Maximum Retail Price)</label>
+        <input type="number" {...form.register("MRP")} />
+      </div>
+
+      <div>
+        <label>Selling Price</label>
+        <input type="number" {...form.register("Price")} />
+      </div>
+
+      {/* Computed field - read-only, server-calculated */}
+      {form.isFieldComputed("Discount") && (
+        <div>
+          <label>Discount % (auto-calculated)</label>
+          <input type="number" value={discount ?? 0} readOnly disabled />
+        </div>
+      )}
+
+      <button type="submit">Save Product</button>
     </form>
   );
 }
 ```
 
-### Programmatic Submission
+### Static Dropdown
 
-Submit form without a submit button.
+Static fields return options with `Value` and `Label`.
 
 ```tsx
-function FormWithProgrammaticSubmit() {
-  const product = new Product(Roles.Seller);
+import { useState } from "react";
+import { useForm } from "@ram_28/kf-ai-sdk/form";
+import { Product, ProductType } from "../sources";
+import { Roles } from "../sources/roles";
 
-  const form = useForm<SellerProduct>({
+type BuyerProduct = ProductType<typeof Roles.Buyer>;
+
+function ProductCategoryForm({ recordId }: { recordId: string }) {
+  const product = new Product(Roles.Buyer);
+  const [categoryOptions, setCategoryOptions] = useState<
+    { Value: string; Label: string }[]
+  >([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [loadingOptions, setLoadingOptions] = useState(false);
+
+  const form = useForm<BuyerProduct>({
     source: product._id,
-    operation: "create",
+    operation: "update",
+    recordId,
   });
 
-  const handleSaveAndClose = async () => {
-    const submitHandler = form.handleSubmit(
-      (data) => {
-        console.log("Saved:", data);
-        // Close modal or navigate away
-      },
-      (error) => {
-        console.error("Validation failed:", error);
-      },
-    );
+  // Fetch options only when dropdown is opened
+  const handleDropdownOpen = async () => {
+    if (categoryOptions.length > 0) {
+      setIsOpen(true);
+      return; // Already loaded
+    }
 
-    await submitHandler();
+    setLoadingOptions(true);
+    setIsOpen(true);
+
+    try {
+      const options = await product.fetchField(recordId, "Category");
+      setCategoryOptions(options);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoadingOptions(false);
+    }
   };
 
-  return (
-    <div>
-      <input {...form.register("Title")} />
-      <input type="number" {...form.register("Price")} />
-
-      <div className="actions">
-        <button type="button" onClick={() => form.reset()}>
-          Cancel
-        </button>
-        <button type="button" onClick={handleSaveAndClose}>
-          Save & Close
-        </button>
-      </div>
-    </div>
-  );
-}
-```
-
----
-
-## Watch and setValue
-
-### Watch Field Values
-
-React to field value changes in real-time.
-
-```tsx
-function FormWithWatcher() {
-  const product = new Product(Roles.Seller);
-
-  const form = useForm<SellerProduct>({
-    source: product._id,
-    operation: "create",
-  });
-
-  const mrp = form.watch("MRP");
-  const price = form.watch("Price");
-  const discount = mrp > 0 ? (((mrp - price) / mrp) * 100).toFixed(1) : 0;
+  if (form.isLoading) return <div>Loading...</div>;
 
   return (
     <form onSubmit={form.handleSubmit()}>
       <div>
-        <label>MRP</label>
-        <input type="number" {...form.register("MRP")} />
-      </div>
-
-      <div>
-        <label>Price</label>
-        <input type="number" {...form.register("Price")} />
-      </div>
-
-      <div className="preview">
-        <p>Discount: {discount}%</p>
-        <p>You save: ${(mrp - price).toFixed(2)}</p>
+        <label>Category</label>
+        <select
+          {...form.register("Category")}
+          onFocus={handleDropdownOpen}
+        >
+          <option value="">Select category</option>
+          {loadingOptions ? (
+            <option disabled>Loading...</option>
+          ) : (
+            categoryOptions.map((opt) => (
+              <option key={opt.Value} value={opt.Value}>
+                {opt.Label}
+              </option>
+            ))
+          )}
+        </select>
       </div>
 
       <button type="submit">Save</button>
@@ -628,60 +551,102 @@ function FormWithWatcher() {
 }
 ```
 
-### Set Field Values Programmatically
+### Dynamic Reference Dropdown
 
-Update field values from external actions.
+Reference fields return the full object structure. Use a custom dropdown to display rich cards.
 
 ```tsx
-function FormWithSetValue() {
-  const product = new Product(Roles.Seller);
+import { useState } from "react";
+import { useForm } from "@ram_28/kf-ai-sdk/form";
+import { Product, ProductType } from "../sources";
+import { Roles } from "../sources/roles";
 
-  const form = useForm<SellerProduct>({
+type BuyerProduct = ProductType<typeof Roles.Buyer>;
+
+type SupplierOption = {
+  _id: string;
+  SupplierName: string;
+  Rating: number;
+};
+
+function ProductSupplierForm({ recordId }: { recordId: string }) {
+  const product = new Product(Roles.Buyer);
+  const [supplierOptions, setSupplierOptions] = useState<SupplierOption[]>([]);
+  const [selectedSupplier, setSelectedSupplier] = useState<SupplierOption | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const [loadingOptions, setLoadingOptions] = useState(false);
+
+  const form = useForm<BuyerProduct>({
     source: product._id,
-    operation: "create",
+    operation: "update",
+    recordId,
   });
 
-  const applyTemplate = (template: string) => {
-    switch (template) {
-      case "electronics":
-        form.setValue("Category", "Electronics");
-        form.setValue("Price", 99.99);
-        break;
-      case "books":
-        form.setValue("Category", "Books");
-        form.setValue("Price", 19.99);
-        break;
+  // Fetch options only when dropdown is clicked
+  const handleDropdownClick = async () => {
+    setIsOpen(!isOpen);
+
+    if (supplierOptions.length > 0 || loadingOptions) return;
+
+    setLoadingOptions(true);
+    try {
+      const options = await product.fetchField(recordId, "SupplierInfo");
+      setSupplierOptions(options);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoadingOptions(false);
     }
   };
 
+  const handleSelect = (supplier: SupplierOption) => {
+    setSelectedSupplier(supplier);
+    form.setValue("SupplierInfo", { _id: supplier._id, SupplierName: supplier.SupplierName });
+    setIsOpen(false);
+  };
+
+  if (form.isLoading) return <div>Loading...</div>;
+
   return (
     <form onSubmit={form.handleSubmit()}>
-      <div className="templates">
-        <button type="button" onClick={() => applyTemplate("electronics")}>
-          Electronics Template
+      <div className="dropdown">
+        <label>Supplier</label>
+
+        {/* Selected value display */}
+        <button type="button" onClick={handleDropdownClick}>
+          {selectedSupplier ? selectedSupplier.SupplierName : "Select supplier"}
         </button>
-        <button type="button" onClick={() => applyTemplate("books")}>
-          Books Template
-        </button>
+
+        {/* Dropdown options with cards */}
+        {isOpen && (
+          <div className="dropdown-menu">
+            {loadingOptions ? (
+              <div className="dropdown-item">Loading...</div>
+            ) : (
+              supplierOptions.map((supplier) => (
+                <div
+                  key={supplier._id}
+                  className="dropdown-card"
+                  onClick={() => handleSelect(supplier)}
+                >
+                  <span className="supplier-name">{supplier.SupplierName}</span>
+                  <span className="supplier-rating">
+                    {"★".repeat(supplier.Rating)}{"☆".repeat(5 - supplier.Rating)}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        )}
       </div>
 
-      <input {...form.register("Title")} placeholder="Title" />
-      <input {...form.register("Category")} placeholder="Category" />
-      <input type="number" {...form.register("Price")} placeholder="Price" />
-
-      <button type="submit">Create</button>
+      <button type="submit">Save</button>
     </form>
   );
 }
 ```
 
----
-
 ## Error Utilities
-
-The SDK provides utilities to help handle and categorize errors from form operations.
-
-### Available Utilities
 
 ```typescript
 import {
@@ -692,149 +657,43 @@ import {
 } from "@ram_28/kf-ai-sdk/form";
 ```
 
-| Utility                    | Description                                                      |
-| -------------------------- | ---------------------------------------------------------------- |
-| `parseApiError(error)`     | Extracts a user-friendly message from any error type             |
-| `isNetworkError(error)`    | Returns `true` if error is network-related (connection, timeout) |
-| `isValidationError(error)` | Returns `true` if error is a validation/schema error             |
-| `clearFormCache()`         | Clears the schema cache (30-minute TTL by default)               |
+### parseApiError
 
-### Parse and Handle API Errors
+Extract user-friendly message from any error type.
 
-Use built-in utilities for comprehensive error handling.
+```typescript
+const onError = (error: Error) => {
+  const message = parseApiError(error);
+  toast.error(message);
+};
+```
 
-```tsx
-import {
-  parseApiError,
-  isNetworkError,
-  isValidationError,
-  clearFormCache,
-} from "@ram_28/kf-ai-sdk/form";
+### isNetworkError
 
-function FormWithErrorHandling() {
-  const product = new Product(Roles.Seller);
+Check if error is network-related (connection, timeout).
 
-  const form = useForm<SellerProduct>({
-    source: product._id,
-    operation: "create",
-  });
-
-  const onError = (error: Error) => {
-    const message = parseApiError(error);
-
-    if (isNetworkError(error)) {
-      alert("Network error. Please check your connection.");
-    } else if (isValidationError(error)) {
-      alert("Validation failed. Please check your input.");
-    } else {
-      alert(message);
-    }
-  };
-
-  const handleClearCache = () => {
-    clearFormCache();
-    window.location.reload();
-  };
-
-  return (
-    <form onSubmit={form.handleSubmit(undefined, onError)}>
-      {/* form fields */}
-      <button type="submit">Save</button>
-      <button type="button" onClick={handleClearCache}>
-        Clear Cache & Reload
-      </button>
-    </form>
-  );
+```typescript
+if (isNetworkError(error)) {
+  toast.error("Network error. Please check your connection.");
 }
 ```
 
-### Handling Different Error Types
+### isValidationError
 
-The `handleSubmit` callback receives different error types depending on the failure stage:
+Check if error is a server-side validation error.
 
-```tsx
-function FormWithDetailedErrorHandling() {
-  const product = new Product(Roles.Seller);
-
-  const form = useForm<SellerProduct>({
-    source: product._id,
-    operation: "create",
-  });
-
-  const onSubmit = (data: SellerProduct) => {
-    console.log("Success:", data);
-  };
-
-  const onError = (
-    error: FieldErrors<SellerProduct> | Error,
-    event?: React.BaseSyntheticEvent,
-  ) => {
-    // Check if it's a validation error (from react-hook-form)
-    if (!(error instanceof Error)) {
-      // Field validation errors - error is FieldErrors<SellerProduct>
-      const invalidFields = Object.keys(error);
-      console.log("Validation failed for fields:", invalidFields);
-
-      // Access specific field errors
-      if (error.Title) {
-        console.log("Title error:", error.Title.message);
-      }
-      return;
-    }
-
-    // API/Network error - error is Error
-    if (isNetworkError(error)) {
-      // Handle offline, timeout, connection refused
-      console.error("Network issue:", error.message);
-    } else if (isValidationError(error)) {
-      // Server-side validation error
-      console.error("Server validation:", parseApiError(error));
-    } else {
-      // Other server errors (500, etc.)
-      console.error("Server error:", parseApiError(error));
-    }
-  };
-
-  return (
-    <form onSubmit={form.handleSubmit(onSubmit, onError)}>
-      {/* form fields */}
-    </form>
-  );
+```typescript
+if (isValidationError(error)) {
+  toast.error("Validation failed. Please check your input.");
 }
 ```
 
-### Schema Loading Errors
+### clearFormCache
 
-Handle errors when the form schema fails to load.
+Clear the schema cache (30-minute TTL by default).
 
-```tsx
-function FormWithSchemaErrorHandling() {
-  const product = new Product(Roles.Seller);
-
-  const form = useForm<SellerProduct>({
-    source: product._id,
-    operation: "create",
-    onSchemaError: (error) => {
-      console.error("Failed to load form schema:", error.message);
-      // Optionally clear cache and retry
-      clearFormCache();
-    },
-  });
-
-  // Check for load errors
-  if (form.loadError) {
-    return (
-      <div className="error-state">
-        <p>Failed to load form: {form.loadError.message}</p>
-        <button onClick={() => window.location.reload()}>Retry</button>
-      </div>
-    );
-  }
-
-  if (form.isLoading) {
-    return <div>Loading form...</div>;
-  }
-
-  return <form onSubmit={form.handleSubmit()}>{/* form fields */}</form>;
-}
+```typescript
+// Clear cache and reload to get fresh schema
+clearFormCache();
+window.location.reload();
 ```
