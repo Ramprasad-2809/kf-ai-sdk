@@ -5,10 +5,10 @@ Direct API methods for CRUD operations, drafts, metrics, and metadata.
 ## Setup
 
 ```typescript
-import { Product, ProductType } from "../sources";
+import { Product, type ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
-type BuyerProduct = ProductType<typeof Roles.Buyer>;
+type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
 
 const product = new Product(Roles.Buyer);
 ```
@@ -200,10 +200,10 @@ const response = await product.list(options?: ListOptionsType): Promise<ListResp
 **Example:** Fetch paginated products with filter
 
 ```typescript
-import { Product, ProductType } from "../sources";
+import { Product, type ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
-type BuyerProduct = ProductType<typeof Roles.Buyer>;
+type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
 
 const product = new Product(Roles.Buyer);
 
@@ -244,10 +244,10 @@ const record = await product.get(id: string): Promise<T>
 **Example:** Fetch single product
 
 ```typescript
-import { Product, ProductType } from "../sources";
+import { Product, type ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
-type BuyerProduct = ProductType<typeof Roles.Buyer>;
+type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
 
 const product = new Product(Roles.Buyer);
 
@@ -271,10 +271,10 @@ const response = await product.create(data: Partial<T>): Promise<CreateUpdateRes
 **Example:** Create new product
 
 ```typescript
-import { Product, ProductType } from "../sources";
+import { Product, type ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
-type BuyerProduct = ProductType<typeof Roles.Buyer>;
+type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
 
 const product = new Product(Roles.Buyer);
 
@@ -302,10 +302,10 @@ const response = await product.update(id: string, data: Partial<T>): Promise<Cre
 **Example:** Update product price
 
 ```typescript
-import { Product, ProductType } from "../sources";
+import { Product, type ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
-type BuyerProduct = ProductType<typeof Roles.Buyer>;
+type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
 
 const product = new Product(Roles.Buyer);
 
@@ -330,10 +330,10 @@ const response = await product.delete(id: string): Promise<DeleteResponseType>
 **Example:** Delete product
 
 ```typescript
-import { Product, ProductType } from "../sources";
+import { Product, type ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
-type BuyerProduct = ProductType<typeof Roles.Buyer>;
+type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
 
 const product = new Product(Roles.Buyer);
 
@@ -357,10 +357,10 @@ const response = await product.draft(data: Partial<T>): Promise<DraftResponseTyp
 **Example:** Preview computed discount
 
 ```typescript
-import { Product, ProductType } from "../sources";
+import { Product, type ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
-type BuyerProduct = ProductType<typeof Roles.Buyer>;
+type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
 
 const product = new Product(Roles.Buyer);
 
@@ -387,10 +387,10 @@ const response = await product.draftPatch(id: string, data: Partial<T>): Promise
 **Example:** Update draft during editing
 
 ```typescript
-import { Product, ProductType } from "../sources";
+import { Product, type ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
-type BuyerProduct = ProductType<typeof Roles.Buyer>;
+type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
 
 const product = new Product(Roles.Buyer);
 
@@ -417,10 +417,10 @@ const response = await product.metric(options: MetricOptionsType): Promise<Metri
 **Example 1:** Total count
 
 ```typescript
-import { Product, ProductType } from "../sources";
+import { Product, type ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
-type BuyerProduct = ProductType<typeof Roles.Buyer>;
+type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
 
 const product = new Product(Roles.Buyer);
 
@@ -436,10 +436,10 @@ console.log("Total products:", response.Data[0]["count__id"]);
 **Example 2:** Sum with filter (low stock count)
 
 ```typescript
-import { Product, ProductType } from "../sources";
+import { Product, type ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
-type BuyerProduct = ProductType<typeof Roles.Buyer>;
+type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
 
 const product = new Product(Roles.Buyer);
 
@@ -466,10 +466,10 @@ console.log("Low stock products:", response.Data[0]["count__id"]);
 **Example 3:** Group by field (products by category)
 
 ```typescript
-import { Product, ProductType } from "../sources";
+import { Product, type ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
-type BuyerProduct = ProductType<typeof Roles.Buyer>;
+type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
 
 const product = new Product(Roles.Buyer);
 
@@ -491,10 +491,10 @@ response.Data.forEach((row) => {
 **Example 4:** Multiple metrics (stock sum and average by category)
 
 ```typescript
-import { Product, ProductType } from "../sources";
+import { Product, type ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
-type BuyerProduct = ProductType<typeof Roles.Buyer>;
+type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
 
 const product = new Product(Roles.Buyer);
 
@@ -528,10 +528,10 @@ const response = await product.pivot(options: PivotOptionsType): Promise<PivotRe
 **Example:** Sales pivot by region and quarter
 
 ```typescript
-import { Order, OrderType } from "../sources";
+import { Order, type OrderForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
-type AdminOrder = OrderType<typeof Roles.Admin>;
+type AdminOrder = OrderForRole<typeof Roles.Admin>;
 
 const order = new Order(Roles.Admin);
 
@@ -587,10 +587,10 @@ const response = await product.fields(): Promise<FieldsResponseType>
 **Example:** Get field metadata
 
 ```typescript
-import { Product, ProductType } from "../sources";
+import { Product, type ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
-type BuyerProduct = ProductType<typeof Roles.Buyer>;
+type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
 
 const product = new Product(Roles.Buyer);
 
@@ -625,10 +625,10 @@ const options = await product.fetchField(instanceId: string, fieldId: keyof T): 
 **Example:** Fetch supplier options for dropdown
 
 ```typescript
-import { Product, ProductType } from "../sources";
+import { Product, type ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
-type BuyerProduct = ProductType<typeof Roles.Buyer>;
+type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
 
 const product = new Product(Roles.Buyer);
 
