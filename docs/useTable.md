@@ -16,68 +16,201 @@ import type {
 
 ## Type Definitions
 
+### UseTableOptionsType
+
 ```typescript
-// Column configuration
-interface ColumnDefinitionType<T> {
-  fieldId: keyof T;
-  label?: string;
-  enableSorting?: boolean;
-  enableFiltering?: boolean;
-  transform?: (value: any, row: T) => React.ReactNode;
-}
-
-// Pagination state
-interface PaginationStateType {
-  pageNo: number;
-  pageSize: number;
-}
-
-// Hook options
+// Hook options for initializing the table
 interface UseTableOptionsType<T> {
+  // Business Object ID (required)
+  // Example: "BDO_Product", "BDO_Order"
   source: string;
+
+  // Column configurations (required)
+  // Defines which fields to display and their behavior
   columns: ColumnDefinitionType<T>[];
+
+  // Initial state for the table (optional)
   initialState?: {
-    sort?: Array<Record<string, "ASC" | "DESC">>;
-    pagination?: PaginationStateType; // Defaults: { pageNo: 1, pageSize: 10 }
-    filter?: UseFilterOptionsType<T>; // { conditions?, operator? }
+    // Initial sort configuration
+    // Format: [{ "fieldName": "ASC" }] or [{ "fieldName": "DESC" }]
+    sort?: SortType;
+
+    // Initial pagination
+    // Defaults: { pageNo: 1, pageSize: 10 }
+    pagination?: PaginationStateType;
+
+    // Initial filter conditions
+    // See useFilter docs for full options
+    filter?: UseFilterOptionsType<T>;
   };
+
+  // Called when data fetch fails
   onError?: (error: Error) => void;
+
+  // Called with fetched data after successful load
   onSuccess?: (data: T[]) => void;
 }
+```
 
-// Hook return type
+### ColumnDefinitionType
+
+```typescript
+// Column configuration for table display
+interface ColumnDefinitionType<T> {
+  // Field name from the data type (required)
+  fieldId: keyof T;
+
+  // Display label for column header
+  // Defaults to fieldId if not provided
+  label?: string;
+
+  // Enable sorting for this column
+  // When true, column header is clickable to toggle sort
+  enableSorting?: boolean;
+
+  // Enable filtering for this column
+  // When true, column can be used in filter conditions
+  enableFiltering?: boolean;
+
+  // Custom value transformer for display
+  // Receives raw value and full row, returns rendered content
+  transform?: (value: any, row: T) => React.ReactNode;
+}
+```
+
+### UseTableReturnType
+
+```typescript
+// Hook return type with all table state and methods
 interface UseTableReturnType<T> {
+  // ============================================================
+  // DATA
+  // ============================================================
+
+  // Current page data (array of records)
   rows: T[];
+
+  // Total matching records across all pages
   totalItems: number;
+
+  // ============================================================
+  // LOADING STATES
+  // ============================================================
+
+  // True during initial load
   isLoading: boolean;
+
+  // True during background refetch
   isFetching: boolean;
+
+  // ============================================================
+  // ERROR HANDLING
+  // ============================================================
+
+  // Current error state, null when no error
   error: Error | null;
+
+  // ============================================================
+  // SEARCH (full-text search across all fields)
+  // ============================================================
+
   search: {
+    // Current search query string
     query: string;
+
+    // Update search query (300ms debounced internally)
     setQuery: (value: string) => void;
+
+    // Clear search and reset to empty string
     clear: () => void;
   };
+
+  // ============================================================
+  // SORT (single column sorting)
+  // ============================================================
+
   sort: {
+    // Currently sorted field, null if no sort active
     field: keyof T | null;
+
+    // Current sort direction, null if no sort active
     direction: "asc" | "desc" | null;
+
+    // Toggle sort on a field
+    // Cycles: none → asc → desc → none
     toggle: (field: keyof T) => void;
+
+    // Clear sorting (return to default order)
     clear: () => void;
+
+    // Set explicit sort field and direction
     set: (field: keyof T, direction: "asc" | "desc") => void;
   };
+
+  // ============================================================
+  // FILTER (see useFilter docs for full API)
+  // ============================================================
+
+  // Full useFilter return type
+  // Includes addCondition, removeCondition, clearAllConditions, etc.
   filter: UseFilterReturnType<T>;
+
+  // ============================================================
+  // PAGINATION (1-indexed pages)
+  // ============================================================
+
   pagination: {
+    // Current page number (1-indexed, starts at 1)
     pageNo: number;
+
+    // Number of items per page
     pageSize: number;
+
+    // Total number of pages
     totalPages: number;
+
+    // Total matching records (same as top-level totalItems)
     totalItems: number;
+
+    // True if there's a next page available
     canGoNext: boolean;
+
+    // True if there's a previous page available
     canGoPrevious: boolean;
+
+    // Navigate to next page
     goToNext: () => void;
+
+    // Navigate to previous page
     goToPrevious: () => void;
+
+    // Navigate to specific page number (1-indexed)
     goToPage: (page: number) => void;
+
+    // Change items per page (resets to page 1)
     setPageSize: (size: number) => void;
   };
+
+  // ============================================================
+  // OPERATIONS
+  // ============================================================
+
+  // Manually trigger data refetch
+  // Returns promise with the list response
   refetch: () => Promise<ListResponseType<T>>;
+}
+```
+
+### PaginationStateType
+
+```typescript
+// Pagination state for initial configuration
+interface PaginationStateType {
+  // Page number (1-indexed)
+  pageNo: number;
+
+  // Number of items per page
+  pageSize: number;
 }
 ```
 
@@ -881,3 +1014,4 @@ function ProductListPage() {
   );
 }
 ```
+

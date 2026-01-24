@@ -536,14 +536,11 @@ export interface UseFormReturnType<
   // LOADING STATES
   // ============================================================
 
-  /** Loading initial schema/data */
-  isLoadingInitialData: boolean;
-
-  /** Loading record data for update */
-  isLoadingRecord: boolean;
-
-  /** Any loading state active */
+  /** True during initial load */
   isLoading: boolean;
+
+  /** True during background operations */
+  isFetching: boolean;
 
   // ============================================================
   // INTERACTIVE MODE STATE

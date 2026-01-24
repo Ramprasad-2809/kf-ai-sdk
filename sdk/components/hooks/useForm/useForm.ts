@@ -815,11 +815,13 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
   // ============================================================
 
   // Loading state includes interactive mode draft creation
-  const isLoadingInitialData =
+  const isLoading =
     isLoadingSchema ||
     (operation === "update" && isLoadingRecord) ||
     (isInteractiveMode && operation === "create" && isCreatingDraft);
-  const isLoading = isLoadingInitialData || isSubmitting;
+
+  // Background operations (submission)
+  const isFetching = isSubmitting;
   const loadError = schemaError || recordError || draftError;
   const hasError = !!loadError;
 
@@ -974,9 +976,8 @@ export function useForm<T extends Record<string, any> = Record<string, any>>(
     isSubmitSuccessful: rhfForm.formState.isSubmitSuccessful,
 
     // Loading states
-    isLoadingInitialData,
-    isLoadingRecord,
     isLoading,
+    isFetching,
 
     // Interactive mode state
     draftId,
