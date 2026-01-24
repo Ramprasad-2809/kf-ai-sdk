@@ -83,31 +83,43 @@ export interface DateTimeEncodedType {
   $__dt__: number;
 }
 
+type Year = `${number}${number}${number}${number}`;
+type Month = `0${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9}` | `1${0 | 1 | 2}`;
+type Day =
+  | `${0}${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9}`
+  | `${1 | 2}${number}`
+  | `3${0 | 1}`;
+
 /**
  * Date field (date only, no time)
- * API Response Format: { "$__d__": "YYYY-MM-DD" }
  * API Request Format: "YYYY-MM-DD"
  * Storage: DATE in database
- * Use this for birth dates, due dates, calendar events
  *
  * @example
  * // Response from API:
- * { "$__d__": "2025-03-15" }
+ * "2025-05-01"
  */
-export type DateFieldType = DateEncodedType;
+
+export type DateFieldType = `${Year}-${Month}-${Day}`;
+
+type Hour = number;
+type Minute = number;
+type Second = number;
 
 /**
  * DateTime field (date and time)
- * API Response Format: { "$__dt__": unix_timestamp_seconds }
  * API Request Format: "YYYY-MM-DD HH:MM:SS"
- * Storage: DATETIME/TIMESTAMP in database
  * Use this for created_at, updated_at, event timestamps
  *
  * @example
  * // Response from API:
- * { "$__dt__": 1769110463 }
+ * "2026-01-23T01:21:33"
  */
-export type DateTimeFieldType = DateTimeEncodedType;
+
+export type DateTimeFieldType =
+  `${Year}-${Month}-${Day}T${Hour}:${Minute}:${Second}`;
+
+// export type DateTimeFieldType = string;
 
 // ============================================================
 // COMPLEX FIELD TYPES
@@ -181,10 +193,9 @@ export type ExtractReferenceType<T> = T extends { _id: string } ? T : never;
  * type CategoryOptions = ExtractFetchFieldType<BaseProductType["Category"]>;
  * // Result: { Value: string; Label: string } (string has no _id)
  */
-export type ExtractFetchFieldType<T> =
-  T extends { _id: string }
-    ? T
-    : { Value: string; Label: string };
+export type ExtractFetchFieldType<T> = T extends { _id: string }
+  ? T
+  : { Value: string; Label: string };
 
 /**
  * Valid JSON value types
@@ -220,7 +231,8 @@ export type SelectFieldType<T extends string> = T;
  * @template TReferencedType - The full type of the referenced BDO record
  * @deprecated Use ReferenceFieldType instead
  */
-export type LookupFieldType<TReferencedType = unknown> = ReferenceFieldType<TReferencedType>;
+export type LookupFieldType<TReferencedType = unknown> =
+  ReferenceFieldType<TReferencedType>;
 
 // ============================================================
 // CONTAINER AND UTILITY TYPES
@@ -272,4 +284,5 @@ export type OptionalFieldType<T> = T | undefined;
  * Utility type to extract the base type from a field type
  * Useful for runtime validation and type guards
  */
-export type ExtractFieldTypeType<T> = T extends OptionalFieldType<infer U> ? U : T;
+export type ExtractFieldTypeType<T> =
+  T extends OptionalFieldType<infer U> ? U : T;
