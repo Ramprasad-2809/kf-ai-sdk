@@ -213,7 +213,7 @@ const response = await product.list({
   Field: ["Title", "Price", "Category"],
   Filter: {
     Operator: "And",
-    Conditions: [
+    Condition: [
       {
         LHSField: "Category",
         Operator: "EQ",
@@ -458,7 +458,7 @@ const response = await product.metric({
   Metric: [{ Field: "_id", Type: "Count" }],
   Filter: {
     Operator: "And",
-    Conditions: [
+    Condition: [
       {
         LHSField: "Stock",
         Operator: "LT",
@@ -523,7 +523,9 @@ const response = await product.metric({
 //   { "Category": "Books", "sum_Stock": 1200, "avg_Price": 24.99 }
 // ] }
 response.Data.forEach((row) => {
-  console.log(`${row.Category}: ${row["sum_Stock"]} total stock, $${row["avg_Price"]} avg price`);
+  console.log(
+    `${row.Category}: ${row["sum_Stock"]} total stock, $${row["avg_Price"]} avg price`,
+  );
 });
 ```
 
