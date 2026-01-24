@@ -221,7 +221,8 @@ A minimal table displaying data with loading and error states.
 ```tsx
 import { useTable } from "@ram_28/kf-ai-sdk/table";
 import type { ColumnDefinitionType } from "@ram_28/kf-ai-sdk/table/types";
-import { Product, type ProductForRole } from "../sources";
+import { Product } from "../sources";
+import type { ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
 type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
@@ -282,7 +283,8 @@ import type {
   UseTableReturnType,
   ColumnDefinitionType,
 } from "@ram_28/kf-ai-sdk/table/types";
-import { Product, type ProductForRole } from "../sources";
+import { Product } from "../sources";
+import type { ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
 type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
@@ -858,7 +860,8 @@ import type {
   UseTableReturnType,
   ColumnDefinitionType,
 } from "@ram_28/kf-ai-sdk/table/types";
-import { Product, type ProductForRole } from "../sources";
+import { Product } from "../sources";
+import type { ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
 type BuyerProduct = ProductForRole<typeof Roles.Buyer>;

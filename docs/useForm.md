@@ -227,7 +227,8 @@ interface FormFieldConfigType {
 
 ```tsx
 import { useForm } from "@ram_28/kf-ai-sdk/form";
-import { Product, type ProductForRole } from "../sources";
+import { Product } from "../sources";
+import type { ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
 type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
@@ -283,7 +284,8 @@ Create form with validation and success handling.
 import { useForm } from "@ram_28/kf-ai-sdk/form";
 import type { FieldErrors } from "@ram_28/kf-ai-sdk/form/types";
 import { useNavigate } from "react-router-dom";
-import { Product, type ProductForRole } from "../sources";
+import { Product } from "../sources";
+import type { ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
 type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
@@ -362,7 +364,8 @@ Update mode with record loading state.
 
 ```tsx
 import { useForm } from "@ram_28/kf-ai-sdk/form";
-import { Product, type ProductForRole } from "../sources";
+import { Product } from "../sources";
+import type { ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
 type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
@@ -428,7 +431,8 @@ Working with computed fields and the watch function.
 
 ```tsx
 import { useForm } from "@ram_28/kf-ai-sdk/form";
-import { Product, type ProductForRole } from "../sources";
+import { Product } from "../sources";
+import type { ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
 type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
@@ -483,7 +487,8 @@ Static fields return options with `Value` and `Label`.
 ```tsx
 import { useState } from "react";
 import { useForm } from "@ram_28/kf-ai-sdk/form";
-import { Product, type ProductForRole } from "../sources";
+import { Product } from "../sources";
+import type { ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
 type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
@@ -558,7 +563,8 @@ Reference fields return the full object structure. Use a custom dropdown to disp
 ```tsx
 import { useState } from "react";
 import { useForm } from "@ram_28/kf-ai-sdk/form";
-import { Product, type ProductForRole } from "../sources";
+import { Product } from "../sources";
+import type { ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
 type BuyerProduct = ProductForRole<typeof Roles.Buyer>;

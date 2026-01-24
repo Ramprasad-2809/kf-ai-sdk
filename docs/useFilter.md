@@ -173,7 +173,8 @@ Use the generic type parameter to get TypeScript validation on field names.
 
 ```tsx
 import { useFilter } from "@ram_28/kf-ai-sdk/filter";
-import { Product, type ProductForRole } from "../sources";
+import { Product } from "../sources";
+import type { ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
 type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
@@ -216,7 +217,8 @@ function TypeSafeFilter() {
 ```tsx
 import { useFilter } from "@ram_28/kf-ai-sdk/filter";
 import type { UseFilterOptionsType } from "@ram_28/kf-ai-sdk/filter/types";
-import { Product, type ProductForRole } from "../sources";
+import { Product } from "../sources";
+import type { ProductForRole } from "../sources";
 import { Roles } from "../sources/roles";
 
 type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
