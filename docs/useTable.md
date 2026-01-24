@@ -311,7 +311,7 @@ function MyItemsTable() {
           {
             Operator: "EQ",
             LHSField: "_created_by",
-            RHSValue: { _id: user?._id, _name: user?._name },
+            RHSValue: user._id, // Pass user ID as a string
             RHSType: "Constant",
           },
         ],

@@ -428,7 +428,10 @@ function BoardWithPriorityFilter() {
 Show only cards assigned to the current user.
 
 ```tsx
-function BoardWithMyTasks({ currentUserId }: { currentUserId: string }) {
+import { useAuth } from "@ram_28/kf-ai-sdk/auth";
+
+function BoardWithMyTasks() {
+  const { user } = useAuth();
   const kanban = useKanban<TaskData>({
     source: "BDO_Tasks",
     columns,
@@ -440,7 +443,7 @@ function BoardWithMyTasks({ currentUserId }: { currentUserId: string }) {
     kanban.filter.addCondition({
       Operator: "EQ",
       LHSField: "assignee",
-      RHSValue: currentUserId,
+      RHSValue: user._id, // Pass user ID as a string
     });
   };
 
