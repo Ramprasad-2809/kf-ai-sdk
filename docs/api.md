@@ -27,14 +27,12 @@ interface ListOptionsType {
   Field?: string[];
 
   // Filter criteria (see useFilter docs)
+  // For search, use a Contains filter condition on the desired field
   Filter?: FilterType;
 
   // Sort configuration
   // Format: [{ "fieldName": "ASC" }] or [{ "fieldName": "DESC" }]
   Sort?: SortType;
-
-  // Full-text search query
-  Search?: string;
 
   // Page number (1-indexed, default: 1)
   Page?: number;
@@ -43,6 +41,8 @@ interface ListOptionsType {
   PageSize?: number;
 }
 ```
+
+> **Note:** For search functionality, use a `Filter` with the `Contains` operator on the desired field rather than a separate search parameter. See the search examples in the [list method](#list) section.
 
 ### ListResponseType
 
@@ -230,6 +230,72 @@ const response = await product.list({
 // response.Data contains array of products
 response.Data.forEach((item) => {
   console.log(item.Title, item.Price);
+});
+```
+
+**Example:** Search products by field
+
+To search records, use a filter with the `Contains` operator on the desired field:
+
+```typescript
+import { Product } from "../sources";
+import type { ProductForRole } from "../sources";
+import { Roles } from "../sources/roles";
+
+type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
+
+const product = new Product(Roles.Buyer);
+
+// Search for products where Title contains "laptop"
+const response = await product.list({
+  Filter: {
+    Operator: "And",
+    Condition: [
+      {
+        LHSField: "Title",
+        Operator: "Contains",
+        RHSValue: "laptop",
+        RHSType: "Constant",
+      },
+    ],
+  },
+  Sort: [{ Title: "ASC" }],
+  Page: 1,
+  PageSize: 20,
+});
+
+// response.Data contains matching products
+response.Data.forEach((item) => {
+  console.log(item.Title, item.Price);
+});
+```
+
+**Example:** Search with additional filters
+
+Combine search with other filter conditions:
+
+```typescript
+// Search for "wireless" products in Electronics category
+const response = await product.list({
+  Filter: {
+    Operator: "And",
+    Condition: [
+      {
+        LHSField: "Title",
+        Operator: "Contains",
+        RHSValue: "wireless",
+        RHSType: "Constant",
+      },
+      {
+        LHSField: "Category",
+        Operator: "EQ",
+        RHSValue: "Electronics",
+        RHSType: "Constant",
+      },
+    ],
+  },
+  Page: 1,
+  PageSize: 20,
 });
 ```
 

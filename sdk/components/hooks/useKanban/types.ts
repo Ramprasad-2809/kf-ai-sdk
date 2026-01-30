@@ -240,8 +240,10 @@ export interface CardOperationsType<T> {
 export interface SearchOperationsType {
   /** Current search query */
   query: string;
-  /** Set search query */
-  setQuery: (value: string) => void;
+  /** Field being searched */
+  field: string | null;
+  /** Set search field and query */
+  set: (field: string, query: string) => void;
   /** Clear search query */
   clear: () => void;
 }
@@ -306,8 +308,10 @@ export interface UseKanbanReturnType<T> {
 
   /** Current search query */
   searchQuery: string;
-  /** Set search query */
-  setSearchQuery: (value: string) => void;
+  /** Field being searched */
+  searchField: string | null;
+  /** Set search field and query */
+  setSearch: (field: string, query: string) => void;
   /** Clear search query */
   clearSearch: () => void;
 

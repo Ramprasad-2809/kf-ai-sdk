@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../../api";
-import type { ListResponseType, ListOptionsType } from "../../../types/common";
+import type { ListResponseType, ListOptionsType, FilterType, ConditionType } from "../../../types/common";
 import { toError } from "../../../utils/error-handling";
 import { useFilter } from "../useFilter";
 import type { UseTableOptionsType, UseTableReturnType } from "./types";
@@ -13,6 +13,7 @@ import type { UseTableOptionsType, UseTableReturnType } from "./types";
 interface SearchState {
   query: string; // Immediate UI value
   debouncedQuery: string; // Debounced value for API queries
+  field: string | null; // Field being searched
 }
 
 interface SortingState<T> {
@@ -39,6 +40,7 @@ export function useTable<T = any>(
   const [search, setSearch] = useState<SearchState>({
     query: "",
     debouncedQuery: "",
+    field: null,
   });
 
   // Debounce timeout ref for search
@@ -81,18 +83,48 @@ export function useTable<T = any>(
   const countApiOptions = useMemo((): ListOptionsType => {
     const opts: ListOptionsType = {};
 
-    // Add debounced search query (affects count)
-    if (search.debouncedQuery) {
-      opts.Search = search.debouncedQuery;
+    // Build filter with search condition merged in
+    let combinedFilter: FilterType | undefined = filter.payload;
+
+    // Add search as a filter condition if both field and query are set
+    if (search.debouncedQuery && search.field) {
+      const searchCondition: ConditionType = {
+        LHSField: search.field,
+        Operator: "Contains",
+        RHSValue: search.debouncedQuery,
+        RHSType: "Constant",
+      };
+
+      if (combinedFilter) {
+        // Merge with existing filter
+        if (combinedFilter.Operator === "And") {
+          combinedFilter = {
+            ...combinedFilter,
+            Condition: [...(combinedFilter.Condition || []), searchCondition],
+          };
+        } else {
+          // Wrap existing filter in And with search condition
+          combinedFilter = {
+            Operator: "And",
+            Condition: [combinedFilter, searchCondition],
+          };
+        }
+      } else {
+        // Create new filter with just the search condition
+        combinedFilter = {
+          Operator: "And",
+          Condition: [searchCondition],
+        };
+      }
     }
 
-    // Add filter conditions (affects count)
-    if (filter.payload) {
-      opts.Filter = filter.payload;
+    // Add combined filter conditions (affects count)
+    if (combinedFilter) {
+      opts.Filter = combinedFilter;
     }
 
     return opts;
-  }, [search.debouncedQuery, filter.payload]);
+  }, [search.debouncedQuery, search.field, filter.payload]);
 
   // Options for list query - includes all options
   const apiOptions = useMemo((): ListOptionsType => {
@@ -210,15 +242,15 @@ export function useTable<T = any>(
   // SEARCH OPERATIONS
   // ============================================================
 
-  const setSearchQuery = useCallback((value: string) => {
+  const setSearchFieldAndQuery = useCallback((field: keyof T | string, query: string) => {
     // Validate search query length to prevent DoS
-    if (value.length > 255) {
+    if (query.length > 255) {
       console.warn("Search query exceeds maximum length of 255 characters");
       return;
     }
 
     // Update immediate value for UI
-    setSearch((prev) => ({ ...prev, query: value }));
+    setSearch((prev) => ({ ...prev, query, field: String(field) }));
 
     // Clear existing debounce timeout
     if (searchDebounceRef.current) {
@@ -227,7 +259,7 @@ export function useTable<T = any>(
 
     // Debounce the actual API query update
     searchDebounceRef.current = setTimeout(() => {
-      setSearch((prev) => ({ ...prev, debouncedQuery: value }));
+      setSearch((prev) => ({ ...prev, debouncedQuery: query }));
       setPagination((prev) => ({ ...prev, pageNo: 1 }));
     }, SEARCH_DEBOUNCE_MS);
   }, []);
@@ -237,7 +269,7 @@ export function useTable<T = any>(
     if (searchDebounceRef.current) {
       clearTimeout(searchDebounceRef.current);
     }
-    setSearch({ query: "", debouncedQuery: "" });
+    setSearch({ query: "", debouncedQuery: "", field: null });
     setPagination((prev) => ({ ...prev, pageNo: 1 }));
   }, []);
 
@@ -313,7 +345,8 @@ export function useTable<T = any>(
     // Search (Flat Access)
     search: {
       query: search.query,
-      setQuery: setSearchQuery,
+      field: search.field,
+      set: setSearchFieldAndQuery,
       clear: clearSearch,
     },
 

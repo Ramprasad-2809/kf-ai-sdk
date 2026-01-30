@@ -57,7 +57,8 @@ export interface UseTableReturnType<T> {
   // Search (Flat Access)
   search: {
     query: string;
-    setQuery: (value: string) => void;
+    field: string | null;
+    set: (field: keyof T | string, query: string) => void;
     clear: () => void;
   };
 
