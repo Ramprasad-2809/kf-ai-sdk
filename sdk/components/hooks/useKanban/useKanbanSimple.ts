@@ -68,7 +68,8 @@ export interface UseKanbanReturn<T> {
 
   // Search
   searchQuery: string;
-  setSearchQuery: (query: string) => void;
+  searchField: string | null;
+  setSearch: (field: string, query: string) => void;
   clearSearch: () => void;
 
   // Card Operations
@@ -107,7 +108,10 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
   // STATE MANAGEMENT
   // ============================================================
 
-  const [searchQuery, setSearchQuery] = useState(initialSearch);
+  const [searchState, setSearchState] = useState({
+    query: initialSearch,
+    field: null as string | null,
+  });
   const [dragState, setDragState] = useState({
     isDragging: false,
     draggedCard: null as KanbanCard<T> | null,
@@ -130,13 +134,23 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
       { position: "ASC" },
     ];
 
-    // Add search query
-    if (searchQuery) {
-      opts.Search = searchQuery;
+    // Add search as a filter condition if both field and query are set
+    if (searchState.query && searchState.field) {
+      opts.Filter = {
+        Operator: "And",
+        Condition: [
+          {
+            LHSField: searchState.field,
+            Operator: "Contains",
+            RHSValue: searchState.query,
+            RHSType: "Constant",
+          },
+        ],
+      };
     }
 
     return opts;
-  }, [searchQuery]);
+  }, [searchState.query, searchState.field]);
 
   // ============================================================
   // DATA FETCHING
@@ -236,7 +250,11 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
   // ============================================================
 
   const clearSearch = useCallback(() => {
-    setSearchQuery("");
+    setSearchState({ query: "", field: null });
+  }, []);
+
+  const setSearchFieldAndQuery = useCallback((field: string, query: string) => {
+    setSearchState({ field, query });
   }, []);
 
   const handleDragStart = useCallback((card: KanbanCard<T>) => {
@@ -346,8 +364,9 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
     error: (cardsError || countError) as Error | null,
 
     // Search
-    searchQuery,
-    setSearchQuery,
+    searchQuery: searchState.query,
+    searchField: searchState.field,
+    setSearch: setSearchFieldAndQuery,
     clearSearch,
 
     // Card Operations

@@ -111,17 +111,21 @@ interface UseTableReturnType<T> {
   error: Error | null;
 
   // ============================================================
-  // SEARCH (full-text search across all fields)
+  // SEARCH (field-based search using filter conditions)
   // ============================================================
 
   search: {
     // Current search query string
     query: string;
 
-    // Update search query (300ms debounced internally)
-    setQuery: (value: string) => void;
+    // Field being searched, null if no search active
+    field: keyof T | null;
 
-    // Clear search and reset to empty string
+    // Set search field and query (triggers API call, 300ms debounced)
+    // Internally creates a Contains filter condition
+    set: (field: keyof T, query: string) => void;
+
+    // Clear search and reset to empty string (triggers API call)
     clear: () => void;
   };
 
@@ -136,14 +140,14 @@ interface UseTableReturnType<T> {
     // Current sort direction, null if no sort active
     direction: "asc" | "desc" | null;
 
-    // Toggle sort on a field
+    // Toggle sort on a field (triggers API call)
     // Cycles: none → asc → desc → none
     toggle: (field: keyof T) => void;
 
-    // Clear sorting (return to default order)
+    // Clear sorting (triggers API call)
     clear: () => void;
 
-    // Set explicit sort field and direction
+    // Set explicit sort field and direction (triggers API call)
     set: (field: keyof T, direction: "asc" | "desc") => void;
   };
 
@@ -812,9 +816,18 @@ function TableWithPageJump() {
 
 ## Search
 
+Search by field with filter-based implementation. The search internally creates a `Contains` filter condition for the specified field.
+
+### API
+
+- `search.query: string` - Current search query string
+- `search.field: keyof T | null` - Field being searched
+- `search.set(field, query)` - Set search field and query (triggers API call, 300ms debounced)
+- `search.clear()` - Clear search (triggers API call)
+
 ### Basic Search
 
-Add search functionality to filter results by text. The search has built-in debouncing (300ms).
+Add search functionality to filter results by a specific field. The search has built-in debouncing (300ms).
 
 ```tsx
 function SearchableTable() {
@@ -830,14 +843,62 @@ function SearchableTable() {
       <div className="search-bar">
         <input
           type="text"
-          placeholder="Search products..."
+          placeholder="Search by name..."
           value={table.search.query}
-          onChange={(e) => table.search.setQuery(e.target.value)}
+          onChange={(e) => table.search.set("Title", e.target.value)}
         />
         {table.search.query && (
           <button onClick={table.search.clear}>Clear</button>
         )}
         {table.isFetching && <span>Searching...</span>}
+      </div>
+
+      {/* table rendering */}
+    </div>
+  );
+}
+```
+
+### Search with Field Selector
+
+Allow users to choose which field to search:
+
+```tsx
+function SearchableTableWithFieldSelector() {
+  const product = new Product(Roles.Buyer);
+  const [searchField, setSearchField] = useState<string>("Title");
+
+  const table = useTable<BuyerProduct>({
+    source: product._id,
+    columns,
+  });
+
+  return (
+    <div>
+      <div className="search-bar">
+        <select
+          value={searchField}
+          onChange={(e) => {
+            setSearchField(e.target.value);
+            // Re-apply search with new field if there's an existing query
+            if (table.search.query) {
+              table.search.set(e.target.value, table.search.query);
+            }
+          }}
+        >
+          <option value="Title">Name</option>
+          <option value="Category">Category</option>
+          <option value="Description">Description</option>
+        </select>
+        <input
+          type="text"
+          placeholder={`Search by ${searchField}...`}
+          value={table.search.query}
+          onChange={(e) => table.search.set(searchField, e.target.value)}
+        />
+        {table.search.query && (
+          <button onClick={table.search.clear}>Clear</button>
+        )}
       </div>
 
       {/* table rendering */}
@@ -940,9 +1001,9 @@ function ProductListPage() {
       <div className="controls">
         <input
           type="text"
-          placeholder="Search..."
+          placeholder="Search by name..."
           value={table.search.query}
-          onChange={(e) => table.search.setQuery(e.target.value)}
+          onChange={(e) => table.search.set("Title", e.target.value)}
         />
 
         <select

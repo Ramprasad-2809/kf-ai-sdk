@@ -82,17 +82,18 @@ const table = useTable<ProductType>({
 | Property | Type | Description |
 |----------|------|-------------|
 | `search.query` | `string` | Current search query |
-| `search.setQuery` | `(value: string) => void` | Set search query (auto-resets to page 1) |
-| `search.clear` | `() => void` | Clear search query |
+| `search.field` | `keyof T \| null` | Field being searched |
+| `search.set` | `(field: keyof T, query: string) => void` | Set search field and query (triggers API call, 300ms debounced) |
+| `search.clear` | `() => void` | Clear search (triggers API call) |
 
 #### Sorting
 | Property | Type | Description |
 |----------|------|-------------|
 | `sort.field` | `keyof T \| null` | Current sort field |
 | `sort.direction` | `"asc" \| "desc" \| null` | Current sort direction |
-| `sort.toggle` | `(field: keyof T) => void` | Toggle sort (cycles: asc -> desc -> none) |
-| `sort.clear` | `() => void` | Clear sorting |
-| `sort.set` | `(field: keyof T, direction: "asc" \| "desc") => void` | Set specific sort |
+| `sort.toggle` | `(field: keyof T) => void` | Toggle sort (triggers API call, cycles: asc -> desc -> none) |
+| `sort.clear` | `() => void` | Clear sorting (triggers API call) |
+| `sort.set` | `(field: keyof T, direction: "asc" \| "desc") => void` | Set specific sort (triggers API call) |
 
 #### Filtering (Advanced)
 | Property | Type | Description |
@@ -177,10 +178,10 @@ const table = useTable<SellerProduct>({
   },
 });
 
-// Search
+// Search by Title field
 <Input
   value={table.search.query}
-  onChange={(e) => table.search.setQuery(e.target.value)}
+  onChange={(e) => table.search.set("Title", e.target.value)}
 />
 
 // Display rows

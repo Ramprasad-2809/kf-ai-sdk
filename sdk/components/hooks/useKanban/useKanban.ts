@@ -43,6 +43,7 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
   const [search, setSearch] = useState({
     query: initialState?.search || "",
     debouncedQuery: initialState?.search || "",
+    field: null as string | null,
   });
 
   // Debounce timeout ref for search
@@ -125,6 +126,20 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
         }
       }
 
+      // Add search as a filter condition if both field and query are set
+      if (search.debouncedQuery && search.field) {
+        const searchCondition = {
+          LHSField: search.field,
+          Operator: "Contains",
+          RHSValue: search.debouncedQuery,
+          RHSType: "Constant"
+        };
+        combinedPayload = {
+          ...combinedPayload,
+          Condition: [...(combinedPayload.Condition || []), searchCondition]
+        };
+      }
+
       // 2. Construct API Options
       const opts: ListOptionsType = {
         Page: 1, // Always page 1 due to expanding PageSize strategy
@@ -145,13 +160,8 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
         ];
       }
 
-      // Add Search (debounced)
-      if (search.debouncedQuery) {
-        opts.Search = search.debouncedQuery;
-      }
-
       return opts;
-  }, [filter.payload, columnPagination, sorting, search.debouncedQuery]);
+  }, [filter.payload, columnPagination, sorting, search.debouncedQuery, search.field]);
 
   // ============================================================
   // COLUMN QUERY GENERATION
@@ -186,10 +196,45 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
   const cardApiOptions = useMemo((): ListOptionsType => {
       // This is for the GLOBAL count (ignoring column split)
       const opts: ListOptionsType = {};
-      if (search.debouncedQuery) opts.Search = search.debouncedQuery;
-      if (filter.payload) opts.Filter = filter.payload;
+
+      // Build filter with search condition merged in
+      let combinedFilter = filter.payload;
+
+      // Add search as a filter condition if both field and query are set
+      if (search.debouncedQuery && search.field) {
+        const searchCondition = {
+          LHSField: search.field,
+          Operator: "Contains" as const,
+          RHSValue: search.debouncedQuery,
+          RHSType: "Constant" as const,
+        };
+
+        if (combinedFilter) {
+          // Merge with existing filter
+          if (combinedFilter.Operator === "And") {
+            combinedFilter = {
+              ...combinedFilter,
+              Condition: [...(combinedFilter.Condition || []), searchCondition],
+            };
+          } else {
+            // Wrap existing filter in And with search condition
+            combinedFilter = {
+              Operator: "And" as const,
+              Condition: [combinedFilter, searchCondition],
+            };
+          }
+        } else {
+          // Create new filter with just the search condition
+          combinedFilter = {
+            Operator: "And" as const,
+            Condition: [searchCondition],
+          };
+        }
+      }
+
+      if (combinedFilter) opts.Filter = combinedFilter;
       return opts;
-  }, [search.debouncedQuery, filter.payload]);
+  }, [search.debouncedQuery, search.field, filter.payload]);
 
   const {
     data: countData,
@@ -518,15 +563,15 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
   // SEARCH OPERATIONS
   // ============================================================
 
-  const setSearchQuery = useCallback((value: string) => {
+  const setSearchFieldAndQuery = useCallback((field: string, query: string) => {
     // Validate search query length to prevent DoS
-    if (value.length > 255) {
+    if (query.length > 255) {
       console.warn("Search query exceeds maximum length of 255 characters");
       return;
     }
 
     // Update immediate value for UI
-    setSearch((prev) => ({ ...prev, query: value }));
+    setSearch((prev) => ({ ...prev, query, field }));
 
     // Clear existing debounce timeout
     if (searchDebounceRef.current) {
@@ -535,7 +580,7 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
 
     // Debounce the actual API query update
     searchDebounceRef.current = setTimeout(() => {
-      setSearch((prev) => ({ ...prev, debouncedQuery: value }));
+      setSearch((prev) => ({ ...prev, debouncedQuery: query }));
     }, SEARCH_DEBOUNCE_MS);
   }, []);
 
@@ -544,7 +589,7 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
     if (searchDebounceRef.current) {
       clearTimeout(searchDebounceRef.current);
     }
-    setSearch({ query: "", debouncedQuery: "" });
+    setSearch({ query: "", debouncedQuery: "", field: null });
   }, []);
 
   const totalCards = countData?.Count || 0;
@@ -653,7 +698,8 @@ export function useKanban<T extends Record<string, any> = Record<string, any>>(
 
     // Search (Flat Access)
     searchQuery: search.query,
-    setSearchQuery,
+    searchField: search.field,
+    setSearch: setSearchFieldAndQuery,
     clearSearch,
 
     // Filter (Simplified chainable API)
