@@ -119,11 +119,11 @@ interface UseTableReturnType<T> {
     query: string;
 
     // Field being searched, null if no search active
-    field: string | null;
+    field: keyof T | null;
 
     // Set search field and query (triggers API call, 300ms debounced)
     // Internally creates a Contains filter condition
-    set: (field: keyof T | string, query: string) => void;
+    set: (field: keyof T, query: string) => void;
 
     // Clear search and reset to empty string (triggers API call)
     clear: () => void;
@@ -821,7 +821,7 @@ Search by field with filter-based implementation. The search internally creates 
 ### API
 
 - `search.query: string` - Current search query string
-- `search.field: string | null` - Field being searched
+- `search.field: keyof T | null` - Field being searched
 - `search.set(field, query)` - Set search field and query (triggers API call, 300ms debounced)
 - `search.clear()` - Clear search (triggers API call)
 

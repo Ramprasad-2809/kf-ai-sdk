@@ -10,10 +10,10 @@ import type { UseTableOptionsType, UseTableReturnType } from "./types";
 // INTERNAL STATE TYPES
 // ============================================================
 
-interface SearchState {
+interface SearchState<T> {
   query: string; // Immediate UI value
   debouncedQuery: string; // Debounced value for API queries
-  field: string | null; // Field being searched
+  field: keyof T | null; // Field being searched
 }
 
 interface SortingState<T> {
@@ -37,7 +37,7 @@ export function useTable<T = any>(
   // STATE MANAGEMENT
   // ============================================================
 
-  const [search, setSearch] = useState<SearchState>({
+  const [search, setSearch] = useState<SearchState<T>>({
     query: "",
     debouncedQuery: "",
     field: null,
@@ -242,7 +242,7 @@ export function useTable<T = any>(
   // SEARCH OPERATIONS
   // ============================================================
 
-  const setSearchFieldAndQuery = useCallback((field: keyof T | string, query: string) => {
+  const setSearchFieldAndQuery = useCallback((field: keyof T, query: string) => {
     // Validate search query length to prevent DoS
     if (query.length > 255) {
       console.warn("Search query exceeds maximum length of 255 characters");
@@ -250,7 +250,7 @@ export function useTable<T = any>(
     }
 
     // Update immediate value for UI
-    setSearch((prev) => ({ ...prev, query, field: String(field) }));
+    setSearch((prev) => ({ ...prev, query, field }));
 
     // Clear existing debounce timeout
     if (searchDebounceRef.current) {
