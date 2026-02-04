@@ -13,13 +13,8 @@ export default defineConfig({
     lib: {
       entry: {
         // Main entry points
-        form: path.resolve(__dirname, '../sdk/form.ts'),
-        'form.types': path.resolve(__dirname, '../sdk/form.types.ts'),
         table: path.resolve(__dirname, '../sdk/table.ts'),
         'table.types': path.resolve(__dirname, '../sdk/table.types.ts'),
-        kanban: path.resolve(__dirname, '../sdk/kanban.ts'),
-        'kanban.types': path.resolve(__dirname, '../sdk/kanban.types.ts'),
-        'kanban.ui': path.resolve(__dirname, '../sdk/kanban.ui.ts'),
         filter: path.resolve(__dirname, '../sdk/filter.ts'),
         'filter.types': path.resolve(__dirname, '../sdk/filter.types.ts'),
         auth: path.resolve(__dirname, '../sdk/auth.ts'),

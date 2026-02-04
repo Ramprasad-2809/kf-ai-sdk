@@ -7,26 +7,6 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    "./form": {
-      "import": {
-        "types": "./dist/form.d.ts",
-        "default": "./dist/form.mjs"
-      },
-      "require": {
-        "types": "./dist/form.d.ts",
-        "default": "./dist/form.cjs"
-      }
-    },
-    "./form/types": {
-      "import": {
-        "types": "./dist/form.types.d.ts",
-        "default": "./dist/form.types.mjs"
-      },
-      "require": {
-        "types": "./dist/form.types.d.ts",
-        "default": "./dist/form.types.cjs"
-      }
-    },
     "./table": {
       "import": {
         "types": "./dist/table.d.ts",
@@ -45,36 +25,6 @@
       "require": {
         "types": "./dist/table.types.d.ts",
         "default": "./dist/table.types.cjs"
-      }
-    },
-    "./kanban": {
-      "import": {
-        "types": "./dist/kanban.d.ts",
-        "default": "./dist/kanban.mjs"
-      },
-      "require": {
-        "types": "./dist/kanban.d.ts",
-        "default": "./dist/kanban.cjs"
-      }
-    },
-    "./kanban/types": {
-      "import": {
-        "types": "./dist/kanban.types.d.ts",
-        "default": "./dist/kanban.types.mjs"
-      },
-      "require": {
-        "types": "./dist/kanban.types.d.ts",
-        "default": "./dist/kanban.types.cjs"
-      }
-    },
-    "./kanban/ui": {
-      "import": {
-        "types": "./dist/kanban.ui.d.ts",
-        "default": "./dist/kanban.ui.mjs"
-      },
-      "require": {
-        "types": "./dist/kanban.ui.d.ts",
-        "default": "./dist/kanban.ui.cjs"
       }
     },
     "./filter": {
@@ -199,13 +149,11 @@
     "react",
     "hooks",
     "typescript",
-    "useForm",
     "useTable",
-    "useKanban",
     "useFilter",
-    "form-validation",
+    "useBdoForm",
+    "bdo",
     "data-table",
-    "kanban-board",
     "api-client",
     "type-safe"
   ],
