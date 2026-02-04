@@ -28,6 +28,8 @@ export default defineConfig({
         'api.types': path.resolve(__dirname, '../sdk/api.types.ts'),
         utils: path.resolve(__dirname, '../sdk/utils.ts'),
         types: path.resolve(__dirname, '../sdk/base-types.ts'),
+        bdo: path.resolve(__dirname, '../sdk/bdo.ts'),
+        'bdo.types': path.resolve(__dirname, '../sdk/bdo.types.ts'),
       },
       name: 'KfAiSdk',
       formats: ['es', 'cjs'],

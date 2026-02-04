@@ -79,7 +79,6 @@ export type {
 
 // Base field types
 export type {
-  IdFieldType,
   StringFieldType,
   TextAreaFieldType,
   NumberFieldType,

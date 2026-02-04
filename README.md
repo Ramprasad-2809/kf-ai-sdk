@@ -47,7 +47,7 @@ npm install react @tanstack/react-query
 - **useKanban** - Kanban board state management with drag-drop support
 - **useFilter** - Advanced filtering with logical operators and payload builders
 - **API Client** - Type-safe CRUD operations with structured filtering and sorting
-- **Type System** - 11 semantic field types (IdField, StringField, CurrencyField, etc.)
+- **Type System** - 10 semantic field types (StringField, NumberField, CurrencyField, etc.)
 - **Utilities** - Formatting helpers for currency, dates, numbers, and more
 
 ## Quick Start
@@ -77,7 +77,7 @@ import type { ListResponseType, FilterType } from "@ram_28/kf-ai-sdk/api/types";
 import { formatCurrency, formatDate } from "@ram_28/kf-ai-sdk/utils";
 
 // Base Field Types
-import type { IdFieldType, StringFieldType, CurrencyFieldType } from "@ram_28/kf-ai-sdk/types";
+import type { StringFieldType, CurrencyFieldType } from "@ram_28/kf-ai-sdk/types";
 ```
 
 ## Authentication
@@ -419,7 +419,6 @@ The SDK provides semantic field types for type-safe data modeling:
 
 ```tsx
 import type {
-  IdFieldType,
   StringFieldType,
   TextAreaFieldType,
   NumberFieldType,
@@ -432,7 +431,7 @@ import type {
 
 // Define your data types
 interface Product {
-  _id: IdFieldType;
+  _id: StringFieldType;
   name: StringFieldType;
   description: TextAreaFieldType;
   price: CurrencyFieldType;

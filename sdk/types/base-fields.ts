@@ -1,11 +1,4 @@
 /**
- * Base field type for ID fields
- * Resolves to: string
- * Use this for all ID-type fields (user IDs, order IDs, etc.)
- */
-export type IdFieldType = string;
-
-/**
  * String field with optional literal type constraint and length limits
  * @template T - Literal string type (e.g., 'pending' | 'completed')
  * @template MinLength - Minimum string length (optional)
@@ -247,7 +240,7 @@ export type LookupFieldType<TReferencedType = unknown> =
  *
  * @example
  * ArrayFieldType<string> // => string[]
- * ArrayFieldType<IdFieldType> // => string[]
+ * ArrayFieldType<StringFieldType> // => string[]
  * ArrayFieldType<SelectFieldType<'tag1' | 'tag2'>> // => ('tag1' | 'tag2')[]
  */
 export type ArrayFieldType<T> = T[];
@@ -286,3 +279,41 @@ export type OptionalFieldType<T> = T | undefined;
  */
 export type ExtractFieldTypeType<T> =
   T extends OptionalFieldType<infer U> ? U : T;
+
+// ============================================================
+// SYSTEM FIELD TYPES
+// ============================================================
+
+/**
+ * User reference type for _created_by / _modified_by fields
+ */
+export type UserRefType = {
+  _id: StringFieldType;
+  username: StringFieldType;
+};
+
+/**
+ * System fields type - use with intersection (&) in entity types
+ * Contains all 7 system-managed fields that every BDO has.
+ *
+ * @example
+ * export type ProductType = {
+ *   ProductId: StringFieldType;
+ *   Title: StringFieldType;
+ *   // ... business fields only
+ * } & SystemFieldsType;
+ */
+export type SystemFieldsType = {
+  _id: StringFieldType;
+  _created_at: DateTimeFieldType;
+  _modified_at: DateTimeFieldType;
+  _created_by: UserRefType;
+  _modified_by: UserRefType;
+  _version: StringFieldType;
+  _m_version: StringFieldType;
+};
+
+/**
+ * Union of system field names - for Omit<> operations
+ */
+export type SystemFields = keyof SystemFieldsType;

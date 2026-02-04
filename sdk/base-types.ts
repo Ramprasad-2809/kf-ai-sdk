@@ -4,8 +4,7 @@
 // ============================================================
 
 export type {
-  // ID and String fields
-  IdFieldType,
+  // String fields
   StringFieldType,
   TextAreaFieldType,
 

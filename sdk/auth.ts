@@ -20,3 +20,9 @@ export {
   getAuthBaseUrl,
   resetAuthConfig,
 } from './auth/authConfig';
+
+// Constants
+export {
+  AuthStatus,
+  AuthProviderName,
+} from './types/constants';

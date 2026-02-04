@@ -149,12 +149,32 @@
     },
     "./types": {
       "import": {
-        "types": "./dist/base-types.d.ts",
+        "types": "./dist/types/index.d.ts",
         "default": "./dist/types.mjs"
       },
       "require": {
-        "types": "./dist/base-types.d.ts",
+        "types": "./dist/types/index.d.ts",
         "default": "./dist/types.cjs"
+      }
+    },
+    "./bdo": {
+      "import": {
+        "types": "./dist/bdo.d.ts",
+        "default": "./dist/bdo.mjs"
+      },
+      "require": {
+        "types": "./dist/bdo.d.ts",
+        "default": "./dist/bdo.cjs"
+      }
+    },
+    "./bdo/types": {
+      "import": {
+        "types": "./dist/bdo.types.d.ts",
+        "default": "./dist/bdo.types.mjs"
+      },
+      "require": {
+        "types": "./dist/bdo.types.d.ts",
+        "default": "./dist/bdo.types.cjs"
       }
     },
     "./docs/*": "./docs/*"
