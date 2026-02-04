@@ -37,7 +37,7 @@ export type HandleSubmitType<TRead> = (
 // OPTIONS TYPE
 // ============================================================
 
-export interface UseBdoFormOptions<TEntity extends FieldValues> {
+export interface UseFormOptions<TEntity extends FieldValues> {
   bdo: BaseBdo<TEntity, any, any, any>;
   recordId?: string;
   operation?: "create" | "update";
@@ -73,14 +73,14 @@ export type FormItem<T extends FieldValues> = {
 // RETURN TYPE
 // ============================================================
 
-export interface UseBdoFormReturn<
+export interface UseFormReturn<
   TEntity extends FieldValues,
   TRead = TEntity,
 > {
   // Item
   item: FormItem<TEntity>;
 
-  // BDO
+  // BDO reference
   bdo: BaseBdo<TEntity, any, any, any>;
   operation: "create" | "update";
   recordId?: string;

@@ -156,7 +156,7 @@ export abstract class BaseBdo<
   /**
    * Load backend metadata for expression-based validation
    *
-   * Called by useBdoForm after fetching schema from the backend.
+   * Called by useForm after fetching schema from the backend.
    * This enables expression-based validation rules to be used
    * in addition to type validation.
    *
@@ -179,7 +179,7 @@ export abstract class BaseBdo<
    * Validate a field using expression rules (internal use)
    *
    * Returns valid if no metadata loaded (graceful fallback).
-   * This method is used by Item and createBdoResolver to
+   * This method is used by Item and createResolver to
    * add expression validation on top of type validation.
    *
    * @param fieldId - The field identifier

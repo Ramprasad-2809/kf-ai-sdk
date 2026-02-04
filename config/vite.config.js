@@ -13,6 +13,8 @@ export default defineConfig({
     lib: {
       entry: {
         // Main entry points
+        form: path.resolve(__dirname, '../sdk/form.ts'),
+        'form.types': path.resolve(__dirname, '../sdk/form.types.ts'),
         table: path.resolve(__dirname, '../sdk/table.ts'),
         'table.types': path.resolve(__dirname, '../sdk/table.types.ts'),
         filter: path.resolve(__dirname, '../sdk/filter.ts'),

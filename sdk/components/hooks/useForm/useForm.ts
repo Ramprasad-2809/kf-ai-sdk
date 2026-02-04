@@ -1,26 +1,26 @@
 import { useMemo, useCallback, useEffect } from "react";
 import {
-  useForm,
+  useForm as useRHF,
   type FieldValues,
   type FieldErrors,
   type Control,
-  type UseFormReturn,
+  type UseFormReturn as RHFUseFormReturn,
 } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
-import { createBdoResolver } from "./createBdoResolver";
+import { createResolver } from "./createResolver";
 import { createItemProxy } from "./createItemProxy";
 import { getBdoSchema } from "../../../api/metadata";
 import type {
-  UseBdoFormOptions,
-  UseBdoFormReturn,
+  UseFormOptions,
+  UseFormReturn,
   HandleSubmitType,
 } from "./types";
 
 /**
- * A form hook that integrates BDO with React Hook Form.
+ * A form hook that integrates with React Hook Form.
  *
  * Features:
- * - Automatic validation via BDO resolver (no need to pass rules to register)
+ * - Automatic validation via resolver (no need to pass rules to register)
  * - Automatic API calls via handleSubmit (create for new records, update for edit)
  * - Item proxy always in sync with form state
  * - Simple create/edit mode switching via recordId
@@ -31,13 +31,13 @@ import type {
  * const product = new AdminProduct();
  *
  * // Create mode
- * const { register, handleSubmit, item, errors } = useBdoForm({
+ * const { register, handleSubmit, item, errors } = useForm({
  *   bdo: product,
  *   defaultValues: { Title: "", Price: 0 },
  * });
  *
  * // Edit mode
- * const { register, handleSubmit, item, isLoading } = useBdoForm({
+ * const { register, handleSubmit, item, isLoading } = useForm({
  *   bdo: product,
  *   recordId: "product_123",
  * });
@@ -52,9 +52,9 @@ import type {
  * </form>
  * ```
  */
-export function useBdoForm<TEntity extends FieldValues, TRead = TEntity>(
-  options: UseBdoFormOptions<TEntity>,
-): UseBdoFormReturn<TEntity, TRead> {
+export function useForm<TEntity extends FieldValues, TRead = TEntity>(
+  options: UseFormOptions<TEntity>,
+): UseFormReturn<TEntity, TRead> {
   const {
     bdo,
     recordId,
@@ -68,10 +68,10 @@ export function useBdoForm<TEntity extends FieldValues, TRead = TEntity>(
   const operation = explicitOperation ?? (recordId ? "update" : "create");
 
   // ============================================================
-  // BDO RESOLVER (memoized)
+  // RESOLVER (memoized)
   // ============================================================
 
-  const resolver = useMemo(() => createBdoResolver(bdo), [bdo]);
+  const resolver = useMemo(() => createResolver(bdo), [bdo]);
 
   // ============================================================
   // RECORD FETCHING (Edit Mode)
@@ -82,7 +82,7 @@ export function useBdoForm<TEntity extends FieldValues, TRead = TEntity>(
     isLoading: isLoadingRecord,
     error: recordError,
   } = useQuery({
-    queryKey: ["bdo-form-record", bdo.boId, recordId],
+    queryKey: ["form-record", bdo.boId, recordId],
     queryFn: async () => {
       // bdo.get returns ItemWithData - extract raw data via toJSON
       const item = await (bdo as any).get(recordId!);
@@ -93,17 +93,17 @@ export function useBdoForm<TEntity extends FieldValues, TRead = TEntity>(
   });
 
   // ============================================================
-  // BDO SCHEMA FETCHING (for expression validation)
+  // SCHEMA FETCHING (for expression validation)
   // ============================================================
 
   const { data: schema } = useQuery({
-    queryKey: ["bdo-schema", bdo.boId],
+    queryKey: ["form-schema", bdo.boId],
     queryFn: () => getBdoSchema(bdo.boId),
     staleTime: 30 * 60 * 1000, // Cache for 30 minutes
     gcTime: 60 * 60 * 1000, // Keep in cache for 1 hour
   });
 
-  // Load metadata into BDO when schema is fetched
+  // Load metadata into bdo when schema is fetched
   useEffect(() => {
     if (schema?.BOBlob) {
       bdo.loadMetadata(schema.BOBlob);
@@ -114,10 +114,10 @@ export function useBdoForm<TEntity extends FieldValues, TRead = TEntity>(
   // REACT HOOK FORM
   // ============================================================
 
-  const form = useForm<TEntity>({
+  const form = useRHF<TEntity>({
     mode,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resolver: resolver as any, // BDO validation integrated here!
+    resolver: resolver as any, // Validation integrated here!
     defaultValues: defaultValues as any,
     // `values` prop reactively updates form when record loads
     values: operation === "update" && record ? (record as TEntity) : undefined,
@@ -133,7 +133,7 @@ export function useBdoForm<TEntity extends FieldValues, TRead = TEntity>(
   const instanceId = recordId ?? "new";
 
   const item = useMemo(
-    () => createItemProxy(bdo, form as UseFormReturn<TEntity>, instanceId),
+    () => createItemProxy(bdo, form as RHFUseFormReturn<TEntity>, instanceId),
     [bdo, form, instanceId],
   );
 

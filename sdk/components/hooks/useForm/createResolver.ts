@@ -2,7 +2,7 @@ import type { FieldValues } from "react-hook-form";
 import type { BaseBdo, BaseField, ValidationResult } from "../../../bdo";
 
 /**
- * Creates a React Hook Form resolver that uses BDO field validation.
+ * Creates a React Hook Form resolver for field validation.
  *
  * This resolver is called automatically by RHF based on the `mode` option:
  * - "onBlur": Called when field loses focus (validates only that field via options.names)
@@ -16,7 +16,7 @@ import type { BaseBdo, BaseField, ValidationResult } from "../../../bdo";
  * @param bdo - The BDO instance with field definitions
  * @returns RHF Resolver function
  */
-export function createBdoResolver<TEntity extends FieldValues>(
+export function createResolver<TEntity extends FieldValues>(
   bdo: BaseBdo<TEntity, any, any, any>,
 ) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

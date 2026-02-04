@@ -7,6 +7,26 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
+    "./form": {
+      "import": {
+        "types": "./dist/form.d.ts",
+        "default": "./dist/form.mjs"
+      },
+      "require": {
+        "types": "./dist/form.d.ts",
+        "default": "./dist/form.cjs"
+      }
+    },
+    "./form/types": {
+      "import": {
+        "types": "./dist/form.types.d.ts",
+        "default": "./dist/form.types.mjs"
+      },
+      "require": {
+        "types": "./dist/form.types.d.ts",
+        "default": "./dist/form.types.cjs"
+      }
+    },
     "./table": {
       "import": {
         "types": "./dist/table.d.ts",
@@ -149,9 +169,9 @@
     "react",
     "hooks",
     "typescript",
+    "useForm",
     "useTable",
     "useFilter",
-    "useBdoForm",
     "bdo",
     "data-table",
     "api-client",
