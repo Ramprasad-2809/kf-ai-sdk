@@ -1,11 +1,20 @@
-# useFilter
+# Filter SDK API
 
-Build and manage filter conditions with support for nested groups and complex logic.
+This Filter SDK API provides necessary React-hooks and Components to build the
+Filter for using it when making api calls and building form component.
+
+Here is the example of Build and manage filter conditions with support for nested groups and complex logic.
+
+You SHOULD only use this API to building Table, Form, any other api call with that requires Filter.
 
 ## Imports
 
 ```typescript
-import { useFilter, isCondition, isConditionGroup } from "@ram_28/kf-ai-sdk/filter";
+import {
+  useFilter,
+  isCondition,
+  isConditionGroup,
+} from "@ram_28/kf-ai-sdk/filter";
 import type {
   UseFilterOptionsType,
   UseFilterReturnType,
@@ -22,14 +31,22 @@ import type {
 ```typescript
 // Condition operators
 type ConditionOperatorType =
-  | "EQ" | "NE"           // Equal, Not Equal
-  | "GT" | "GTE"          // Greater Than, Greater Than or Equal
-  | "LT" | "LTE"          // Less Than, Less Than or Equal
-  | "Between" | "NotBetween"
-  | "IN" | "NIN"          // In List, Not In List
-  | "Empty" | "NotEmpty"
-  | "Contains" | "NotContains"
-  | "MinLength" | "MaxLength";
+  | "EQ"
+  | "NE" // Equal, Not Equal
+  | "GT"
+  | "GTE" // Greater Than, Greater Than or Equal
+  | "LT"
+  | "LTE" // Less Than, Less Than or Equal
+  | "Between"
+  | "NotBetween"
+  | "IN"
+  | "NIN" // In List, Not In List
+  | "Empty"
+  | "NotEmpty"
+  | "Contains"
+  | "NotContains"
+  | "MinLength"
+  | "MaxLength";
 
 // Group operators
 type ConditionGroupOperatorType = "And" | "Or" | "Not";
@@ -96,22 +113,36 @@ interface UseFilterReturnType<T = any> {
   // ============================================================
 
   // Add a condition, optionally to a parent group. Returns the new condition's ID
-  addCondition: (condition: Omit<ConditionType<T>, "id">, parentId?: string) => string;
+  addCondition: (
+    condition: Omit<ConditionType<T>, "id">,
+    parentId?: string,
+  ) => string;
 
   // Add a condition group, optionally to a parent group. Returns the new group's ID
-  addConditionGroup: (operator: ConditionGroupOperatorType, parentId?: string) => string;
+  addConditionGroup: (
+    operator: ConditionGroupOperatorType,
+    parentId?: string,
+  ) => string;
 
   // Update a condition's properties (Operator, LHSField, RHSValue)
-  updateCondition: (id: string, updates: Partial<Omit<ConditionType<T>, "id">>) => void;
+  updateCondition: (
+    id: string,
+    updates: Partial<Omit<ConditionType<T>, "id">>,
+  ) => void;
 
   // Change a group's operator (And, Or, Not)
-  updateGroupOperator: (id: string, operator: ConditionGroupOperatorType) => void;
+  updateGroupOperator: (
+    id: string,
+    operator: ConditionGroupOperatorType,
+  ) => void;
 
   // Remove a condition or group by ID
   removeCondition: (id: string) => void;
 
   // Get a condition or group by ID
-  getCondition: (id: string) => ConditionType<T> | ConditionGroupType<T> | undefined;
+  getCondition: (
+    id: string,
+  ) => ConditionType<T> | ConditionGroupType<T> | undefined;
 
   // Remove all conditions and groups
   clearAllConditions: () => void;
@@ -123,15 +154,15 @@ interface UseFilterReturnType<T = any> {
 
 ## Operator Applicability
 
-| Operator | Applicable Field Types |
-|----------|----------------------|
-| EQ, NE | All types |
-| GT, GTE, LT, LTE | number, date, currency |
-| Between, NotBetween | number, date, currency |
-| IN, NIN | All types |
-| Empty, NotEmpty | All types |
-| Contains, NotContains | string only |
-| MinLength, MaxLength | string only |
+| Operator              | Applicable Field Types |
+| --------------------- | ---------------------- |
+| EQ, NE                | All types              |
+| GT, GTE, LT, LTE      | number, date, currency |
+| Between, NotBetween   | number, date, currency |
+| IN, NIN               | All types              |
+| Empty, NotEmpty       | All types              |
+| Contains, NotContains | string only            |
+| MinLength, MaxLength  | string only            |
 
 ## Basic Example
 
@@ -154,7 +185,10 @@ function SimpleFilter() {
   return (
     <div>
       <button onClick={addCategoryFilter}>Filter by Electronics</button>
-      <button onClick={filter.clearAllConditions} disabled={!filter.hasConditions}>
+      <button
+        onClick={filter.clearAllConditions}
+        disabled={!filter.hasConditions}
+      >
         Clear
       </button>
       <p>Active filters: {filter.items.length}</p>
@@ -186,7 +220,7 @@ function TypeSafeFilter() {
   const addCategoryFilter = () => {
     filter.addCondition({
       Operator: "EQ",
-      LHSField: "Category",  // TypeScript validates this field exists
+      LHSField: "Category", // TypeScript validates this field exists
       RHSValue: "Electronics",
     });
   };
@@ -194,7 +228,7 @@ function TypeSafeFilter() {
   const addInvalidFilter = () => {
     filter.addCondition({
       Operator: "EQ",
-      LHSField: "InvalidField",  // TypeScript error: not a key of BuyerProduct
+      LHSField: "InvalidField", // TypeScript error: not a key of BuyerProduct
       RHSValue: "test",
     });
   };
@@ -210,6 +244,7 @@ function TypeSafeFilter() {
 ### UseFilterOptionsType for Initial State
 
 `UseFilterOptionsType<T>` is used for:
+
 - Initializing `useFilter` directly
 - Setting `initialState.filter` in `useTable`
 - Setting `initialState.filter` in `useKanban`
@@ -269,7 +304,9 @@ function EqualityFilters() {
   return (
     <div>
       <button onClick={() => filterByStatus("Active")}>Active Only</button>
-      <button onClick={() => excludeStatus("Archived")}>Exclude Archived</button>
+      <button onClick={() => excludeStatus("Archived")}>
+        Exclude Archived
+      </button>
     </div>
   );
 }
@@ -359,7 +396,9 @@ function RangeFilters() {
   return (
     <div>
       <button onClick={() => filterPriceRange(50, 200)}>$50 - $200</button>
-      <button onClick={() => excludePriceRange(0, 10)}>Exclude Under $10</button>
+      <button onClick={() => excludePriceRange(0, 10)}>
+        Exclude Under $10
+      </button>
     </div>
   );
 }
@@ -517,9 +556,7 @@ function AndFilter() {
 
   return (
     <div>
-      <button onClick={applyFilters}>
-        Electronics under $500, In Stock
-      </button>
+      <button onClick={applyFilters}>Electronics under $500, In Stock</button>
       <p>Root operator: {filter.operator}</p>
     </div>
   );
@@ -552,9 +589,7 @@ function OrFilter() {
     });
   };
 
-  return (
-    <button onClick={applyFilters}>Urgent Tasks</button>
-  );
+  return <button onClick={applyFilters}>Urgent Tasks</button>;
 }
 ```
 
@@ -583,24 +618,26 @@ function NestedFilter() {
     const orGroupId = filter.addConditionGroup("Or");
 
     // Add conditions to the OR group
-    filter.addCondition({
-      Operator: "LT",
-      LHSField: "Price",
-      RHSValue: 100,
-    }, orGroupId);
+    filter.addCondition(
+      {
+        Operator: "LT",
+        LHSField: "Price",
+        RHSValue: 100,
+      },
+      orGroupId,
+    );
 
-    filter.addCondition({
-      Operator: "EQ",
-      LHSField: "OnSale",
-      RHSValue: true,
-    }, orGroupId);
+    filter.addCondition(
+      {
+        Operator: "EQ",
+        LHSField: "OnSale",
+        RHSValue: true,
+      },
+      orGroupId,
+    );
   };
 
-  return (
-    <button onClick={applyComplexFilter}>
-      Affordable Electronics
-    </button>
-  );
+  return <button onClick={applyComplexFilter}>Affordable Electronics</button>;
 }
 ```
 
@@ -619,13 +656,25 @@ function DeepNestedFilter() {
 
     // First AND group
     const group1 = filter.addConditionGroup("And");
-    filter.addCondition({ Operator: "EQ", LHSField: "Type", RHSValue: "A" }, group1);
-    filter.addCondition({ Operator: "GT", LHSField: "Value", RHSValue: 10 }, group1);
+    filter.addCondition(
+      { Operator: "EQ", LHSField: "Type", RHSValue: "A" },
+      group1,
+    );
+    filter.addCondition(
+      { Operator: "GT", LHSField: "Value", RHSValue: 10 },
+      group1,
+    );
 
     // Second AND group
     const group2 = filter.addConditionGroup("And");
-    filter.addCondition({ Operator: "EQ", LHSField: "Type", RHSValue: "B" }, group2);
-    filter.addCondition({ Operator: "LT", LHSField: "Value", RHSValue: 5 }, group2);
+    filter.addCondition(
+      { Operator: "EQ", LHSField: "Type", RHSValue: "B" },
+      group2,
+    );
+    filter.addCondition(
+      { Operator: "LT", LHSField: "Value", RHSValue: 5 },
+      group2,
+    );
   };
 
   return <button onClick={buildFilter}>Apply Complex Filter</button>;
@@ -760,7 +809,11 @@ function EditableFilter() {
       <button onClick={addFilter}>Add Price Filter</button>
       {conditionId && (
         <div>
-          <select onChange={(e) => updateOperator(e.target.value as ConditionOperatorType)}>
+          <select
+            onChange={(e) =>
+              updateOperator(e.target.value as ConditionOperatorType)
+            }
+          >
             <option value="GT">Greater Than</option>
             <option value="LT">Less Than</option>
             <option value="EQ">Equals</option>
@@ -804,9 +857,7 @@ function ToggleableGroupOperator() {
   return (
     <div>
       <button onClick={createGroup}>Create Group</button>
-      {groupId && (
-        <button onClick={toggleOperator}>Toggle AND/OR</button>
-      )}
+      {groupId && <button onClick={toggleOperator}>Toggle AND/OR</button>}
     </div>
   );
 }
@@ -844,11 +895,15 @@ function FilterWithApi() {
 
   return (
     <div>
-      <button onClick={() => filter.addCondition({
-        Operator: "EQ",
-        LHSField: "Status",
-        RHSValue: "Active",
-      })}>
+      <button
+        onClick={() =>
+          filter.addCondition({
+            Operator: "EQ",
+            LHSField: "Status",
+            RHSValue: "Active",
+          })
+        }
+      >
         Add Filter
       </button>
       <button onClick={fetchFiltered}>Fetch Data</button>
@@ -919,7 +974,11 @@ Produces:
 ### Multiple Conditions (AND)
 
 ```tsx
-filter.addCondition({ Operator: "EQ", LHSField: "Category", RHSValue: "Electronics" });
+filter.addCondition({
+  Operator: "EQ",
+  LHSField: "Category",
+  RHSValue: "Electronics",
+});
 filter.addCondition({ Operator: "GT", LHSField: "Price", RHSValue: 100 });
 filter.addCondition({ Operator: "LTE", LHSField: "Stock", RHSValue: 50 });
 ```
@@ -930,9 +989,24 @@ Produces:
 {
   "Operator": "And",
   "Condition": [
-    { "Operator": "EQ", "LHSField": "Category", "RHSValue": "Electronics", "RHSType": "Constant" },
-    { "Operator": "GT", "LHSField": "Price", "RHSValue": 100, "RHSType": "Constant" },
-    { "Operator": "LTE", "LHSField": "Stock", "RHSValue": 50, "RHSType": "Constant" }
+    {
+      "Operator": "EQ",
+      "LHSField": "Category",
+      "RHSValue": "Electronics",
+      "RHSType": "Constant"
+    },
+    {
+      "Operator": "GT",
+      "LHSField": "Price",
+      "RHSValue": 100,
+      "RHSType": "Constant"
+    },
+    {
+      "Operator": "LTE",
+      "LHSField": "Stock",
+      "RHSValue": 50,
+      "RHSType": "Constant"
+    }
   ]
 }
 ```
@@ -942,10 +1016,20 @@ Produces:
 ```tsx
 // Root: AND
 // Category = "Electronics" AND (Price < 100 OR OnSale = true)
-filter.addCondition({ Operator: "EQ", LHSField: "Category", RHSValue: "Electronics" });
+filter.addCondition({
+  Operator: "EQ",
+  LHSField: "Category",
+  RHSValue: "Electronics",
+});
 const orGroupId = filter.addConditionGroup("Or");
-filter.addCondition({ Operator: "LT", LHSField: "Price", RHSValue: 100 }, orGroupId);
-filter.addCondition({ Operator: "EQ", LHSField: "OnSale", RHSValue: true }, orGroupId);
+filter.addCondition(
+  { Operator: "LT", LHSField: "Price", RHSValue: 100 },
+  orGroupId,
+);
+filter.addCondition(
+  { Operator: "EQ", LHSField: "OnSale", RHSValue: true },
+  orGroupId,
+);
 ```
 
 Produces:
@@ -954,12 +1038,27 @@ Produces:
 {
   "Operator": "And",
   "Condition": [
-    { "Operator": "EQ", "LHSField": "Category", "RHSValue": "Electronics", "RHSType": "Constant" },
+    {
+      "Operator": "EQ",
+      "LHSField": "Category",
+      "RHSValue": "Electronics",
+      "RHSType": "Constant"
+    },
     {
       "Operator": "Or",
       "Condition": [
-        { "Operator": "LT", "LHSField": "Price", "RHSValue": 100, "RHSType": "Constant" },
-        { "Operator": "EQ", "LHSField": "OnSale", "RHSValue": true, "RHSType": "Constant" }
+        {
+          "Operator": "LT",
+          "LHSField": "Price",
+          "RHSValue": 100,
+          "RHSType": "Constant"
+        },
+        {
+          "Operator": "EQ",
+          "LHSField": "OnSale",
+          "RHSValue": true,
+          "RHSType": "Constant"
+        }
       ]
     }
   ]
@@ -982,7 +1081,12 @@ Produces:
 {
   "Operator": "And",
   "Condition": [
-    { "Operator": "Between", "LHSField": "Price", "RHSValue": [50, 200], "RHSType": "Constant" }
+    {
+      "Operator": "Between",
+      "LHSField": "Price",
+      "RHSValue": [50, 200],
+      "RHSType": "Constant"
+    }
   ]
 }
 ```
@@ -1003,7 +1107,12 @@ Produces:
 {
   "Operator": "And",
   "Condition": [
-    { "Operator": "IN", "LHSField": "Category", "RHSValue": ["Electronics", "Computers", "Accessories"], "RHSType": "Constant" }
+    {
+      "Operator": "IN",
+      "LHSField": "Category",
+      "RHSValue": ["Electronics", "Computers", "Accessories"],
+      "RHSType": "Constant"
+    }
   ]
 }
 ```

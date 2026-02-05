@@ -1,6 +1,10 @@
-# useTable
+# Table SDK API
 
-Complete table state management with data fetching, sorting, filtering, search, and pagination.
+This Table SDK API proivdes the React-hooks and apis to build Table and any List like component when building the Pages.
+
+Here is the complete exmaple of building table with state management with data fetching, sorting, filtering, search, and pagination.
+
+You SHOULD only use this API to build Table, List, Galllary, any other list like component.
 
 ## Imports
 
@@ -1078,4 +1082,3 @@ function ProductListPage() {
   );
 }
 ```
-

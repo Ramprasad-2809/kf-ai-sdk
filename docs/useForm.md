@@ -1,6 +1,9 @@
-# useForm
+# Form SDK API
 
-Form state management with schema validation, computed fields, and react-hook-form integration.
+This Form SDK API proivdes the React-hooks and apis to build Form component when building the Pages.
+Here is the example of building Form Component with Form state management with schema validation, computed fields.
+
+You SHOULD only use this API to build Form component
 
 ## Imports
 
@@ -533,10 +536,7 @@ function ProductCategoryForm({ recordId }: { recordId: string }) {
     <form onSubmit={form.handleSubmit()}>
       <div>
         <label>Category</label>
-        <select
-          {...form.register("Category")}
-          onFocus={handleDropdownOpen}
-        >
+        <select {...form.register("Category")} onFocus={handleDropdownOpen}>
           <option value="">Select category</option>
           {loadingOptions ? (
             <option disabled>Loading...</option>
@@ -578,7 +578,8 @@ type SupplierOption = {
 function ProductSupplierForm({ recordId }: { recordId: string }) {
   const product = new Product(Roles.Buyer);
   const [supplierOptions, setSupplierOptions] = useState<SupplierOption[]>([]);
-  const [selectedSupplier, setSelectedSupplier] = useState<SupplierOption | null>(null);
+  const [selectedSupplier, setSelectedSupplier] =
+    useState<SupplierOption | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [loadingOptions, setLoadingOptions] = useState(false);
 
@@ -607,7 +608,10 @@ function ProductSupplierForm({ recordId }: { recordId: string }) {
 
   const handleSelect = (supplier: SupplierOption) => {
     setSelectedSupplier(supplier);
-    form.setValue("SupplierInfo", { _id: supplier._id, SupplierName: supplier.SupplierName });
+    form.setValue("SupplierInfo", {
+      _id: supplier._id,
+      SupplierName: supplier.SupplierName,
+    });
     setIsOpen(false);
   };
 
@@ -637,7 +641,8 @@ function ProductSupplierForm({ recordId }: { recordId: string }) {
                 >
                   <span className="supplier-name">{supplier.SupplierName}</span>
                   <span className="supplier-rating">
-                    {"★".repeat(supplier.Rating)}{"☆".repeat(5 - supplier.Rating)}
+                    {"★".repeat(supplier.Rating)}
+                    {"☆".repeat(5 - supplier.Rating)}
                   </span>
                 </div>
               ))
