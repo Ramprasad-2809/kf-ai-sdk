@@ -1,6 +1,9 @@
-# useAuth
+# Auth SDK API
 
-Authentication state management with session handling.
+This Auth SDK API provides necessary React-hooks and Components to build the
+authentication and state management with session handling.
+
+Here is the example how to use this API:
 
 ## Imports
 

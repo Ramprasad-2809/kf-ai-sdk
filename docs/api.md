@@ -1,6 +1,10 @@
 # API
 
+This Api SDK provides the interface for making any api call to server.
+
 Direct API methods for CRUD operations, drafts, metrics, and metadata.
+
+You SHOULD only use this Api for making any api call to post and read data.
 
 ## Setup
 
