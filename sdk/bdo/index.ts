@@ -5,7 +5,13 @@
 
 // Core classes
 export { BaseBdo, type SystemFields } from "./core/BaseBdo";
-export { Item, type ItemWithData, type FieldAccessorLike } from "./core/Item";
+export {
+  Item,
+  type ItemWithData,
+  type FieldAccessorLike,
+  type EditableFieldAccessor,
+  type ReadonlyFieldAccessor,
+} from "./core/Item";
 
 // Types
 export type {
@@ -14,9 +20,6 @@ export type {
   FieldConfig,
   SelectFieldConfig,
   ReferenceFieldConfig,
-  FieldAccessorInterface,
-  SelectFieldAccessorInterface,
-  ReferenceFieldAccessorInterface,
   FieldMeta,
   SelectFieldMeta,
   ReferenceFieldMeta,
@@ -33,13 +36,6 @@ export {
   ReferenceField,
   ArrayField,
 } from "./fields";
-
-// Accessor classes
-export {
-  FieldAccessor,
-  SelectFieldAccessor,
-  ReferenceFieldAccessor,
-} from "./accessors";
 
 // Expression engine
 export { ExpressionEngine } from "./expressions";

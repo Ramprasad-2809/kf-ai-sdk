@@ -5,7 +5,12 @@
 
 // Core classes
 export { BaseBdo, type SystemFields } from "./bdo/core/BaseBdo";
-export { Item, type FieldAccessorLike } from "./bdo/core/Item";
+export {
+  Item,
+  type FieldAccessorLike,
+  type EditableFieldAccessor,
+  type ReadonlyFieldAccessor,
+} from "./bdo/core/Item";
 
 // Field classes
 export {
@@ -18,13 +23,6 @@ export {
   ReferenceField,
   ArrayField,
 } from "./bdo/fields";
-
-// Accessor classes
-export {
-  FieldAccessor,
-  SelectFieldAccessor,
-  ReferenceFieldAccessor,
-} from "./bdo/accessors";
 
 // Re-export types for consumer convenience
 export type {
@@ -62,9 +60,6 @@ export type {
   FieldConfig,
   SelectFieldConfig,
   ReferenceFieldConfig,
-  FieldAccessorInterface,
-  SelectFieldAccessorInterface,
-  ReferenceFieldAccessorInterface,
   FieldMeta,
 } from "./bdo/core/types";
 

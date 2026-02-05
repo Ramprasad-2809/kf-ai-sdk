@@ -36,9 +36,8 @@ const USER_BO_ID = "SYS_User";
  * methods as `public` to make them available on their BDO class.
  *
  * @template TEntity - The full entity type with all fields
- * @template TCreateType - Type for creating new records (defaults to TEntity without system fields)
- * @template TReadType - Type returned when reading records (defaults to TEntity)
- * @template TUpdateType - Type for updating records (defaults to partial TEntity without system fields)
+ * @template TEditable - Fields that this role can create/update (defaults to TEntity without system fields)
+ * @template TReadonly - Fields that this role can only read (defaults to empty)
  *
  * @example
  * ```typescript
@@ -54,11 +53,8 @@ const USER_BO_ID = "SYS_User";
  */
 export abstract class BaseBdo<
   TEntity extends Record<string, unknown>,
-  TCreateType extends Record<string, unknown> = Omit<TEntity, SystemFields>,
-  TReadType extends Record<string, unknown> = TEntity,
-  TUpdateType extends Record<string, unknown> = Partial<
-    Omit<TEntity, SystemFields>
-  >,
+  TEditable extends Record<string, unknown> = Omit<TEntity, SystemFields>,
+  TReadonly extends Record<string, unknown> = {},
 > {
   /**
    * Business Object identifier used for API calls
@@ -88,21 +84,8 @@ export abstract class BaseBdo<
   readonly _m_version = new StringField({ id: "_m_version", label: "Metadata Version" });
 
   // ============================================================
-  // FIELD DEFINITIONS
+  // FIELD DEFINITIONS (auto-discovered)
   // ============================================================
-
-  /**
-   * Override this to return the business field definitions for this BDO.
-   * System fields (_id, _created_at, etc.) are automatically included.
-   *
-   * @example
-   * ```typescript
-   * protected _getFieldDefinitions() {
-   *   return { Title: this.Title, Price: this.Price };
-   * }
-   * ```
-   */
-  protected abstract _getFieldDefinitions(): Record<string, BaseField<unknown>>;
 
   /**
    * Whether fields have been bound to this BDO
@@ -110,37 +93,39 @@ export abstract class BaseBdo<
   private _fieldsBound = false;
 
   /**
+   * Cached field map
+   */
+  private _fieldsCache: Record<string, BaseField<unknown>> | null = null;
+
+  /**
    * Get all field definitions (system + business) with automatic binding.
-   * Ensures fetchOptions works on SelectField and ReferenceField.
+   * Auto-discovers fields by scanning instance properties for BaseField instances.
+   * Binds _parentBoId so SelectField/ReferenceField fetchOptions can work.
    */
   getFields(): Record<string, BaseField<unknown>> {
-    // All 7 system fields from BaseBdo
-    const systemFields: Record<string, BaseField<unknown>> = {
-      _id: this._id,
-      _created_at: this._created_at,
-      _modified_at: this._modified_at,
-      _created_by: this._created_by,
-      _modified_by: this._modified_by,
-      _version: this._version,
-      _m_version: this._m_version,
-    };
+    if (this._fieldsCache) {
+      return this._fieldsCache;
+    }
 
-    // Business fields from subclass
-    const businessFields = this._getFieldDefinitions();
+    const allFields: Record<string, BaseField<unknown>> = {};
 
-    // Merge all fields (system fields first, then business fields)
-    const allFields = { ...systemFields, ...businessFields };
+    // Auto-discover all BaseField instances on this object (system + business)
+    for (const key of Object.keys(this)) {
+      const value = (this as Record<string, unknown>)[key];
+      if (value instanceof BaseField) {
+        allFields[key] = value;
+      }
+    }
 
-    // Bind parent BDO ID to all fields
+    // Bind parent BDO ID to all fields (direct protected property access)
     if (!this._fieldsBound) {
       for (const field of Object.values(allFields)) {
-        if ("setParentBoId" in field && typeof field.setParentBoId === "function") {
-          (field as BaseField<unknown>).setParentBoId(this.boId);
-        }
+        (field as unknown as { _parentBoId: string })._parentBoId = this.boId;
       }
       this._fieldsBound = true;
     }
 
+    this._fieldsCache = allFields;
     return allFields;
   }
 
@@ -205,18 +190,18 @@ export abstract class BaseBdo<
   /**
    * Get a single record by ID
    */
-  protected async get(id: StringFieldType): Promise<ItemWithData<TReadType>> {
-    const data = await api<TReadType>(this.boId).get(id);
-    return new Item<TReadType>(this, data as Partial<TReadType>) as ItemWithData<TReadType>;
+  protected async get(id: StringFieldType): Promise<ItemWithData<TEditable, TReadonly>> {
+    const data = await api<TEditable & TReadonly>(this.boId).get(id);
+    return new Item<TEditable & TReadonly>(this, data as Partial<TEditable & TReadonly>) as ItemWithData<TEditable, TReadonly>;
   }
 
   /**
    * List records with optional filtering, sorting, and pagination
    */
-  protected async list(options?: ListOptionsType): Promise<ItemWithData<TReadType>[]> {
-    const response = await api<TReadType>(this.boId).list(options);
+  protected async list(options?: ListOptionsType): Promise<ItemWithData<TEditable, TReadonly>[]> {
+    const response = await api<TEditable & TReadonly>(this.boId).list(options);
     return response.Data.map(
-      (data) => new Item<TReadType>(this, data as Partial<TReadType>) as ItemWithData<TReadType>
+      (data) => new Item<TEditable & TReadonly>(this, data as Partial<TEditable & TReadonly>) as ItemWithData<TEditable, TReadonly>
     );
   }
 
@@ -234,10 +219,14 @@ export abstract class BaseBdo<
 
   /**
    * Create a new record in the database
-   * Returns the response with the created record's _id
+   * Returns an Item with _id from API response + the input data as field accessors
    */
-  protected async create(data: Partial<TCreateType>): Promise<CreateUpdateResponseType> {
-    return api<TEntity>(this.boId).create(data as Partial<TEntity>);
+  protected async create(data: Partial<TEditable>): Promise<ItemWithData<TEditable, TReadonly>> {
+    const result = await api<TEntity>(this.boId).create(data as Partial<TEntity>);
+    return new Item<TEditable & TReadonly>(
+      this,
+      { ...data, _id: result._id } as Partial<TEditable & TReadonly>,
+    ) as ItemWithData<TEditable, TReadonly>;
   }
 
   // ============================================================
@@ -249,7 +238,7 @@ export abstract class BaseBdo<
    */
   protected async update(
     id: StringFieldType,
-    data: TUpdateType
+    data: Partial<TEditable>
   ): Promise<CreateUpdateResponseType> {
     return api<TEntity>(this.boId).update(id, data as Partial<TEntity>);
   }
@@ -272,7 +261,7 @@ export abstract class BaseBdo<
   /**
    * Create a draft - compute fields without persisting
    */
-  protected async draft(data: Partial<TCreateType>): Promise<DraftResponseType> {
+  protected async draft(data: Partial<TEditable>): Promise<DraftResponseType> {
     return api<TEntity>(this.boId).draft(data as Partial<TEntity>);
   }
 
@@ -281,7 +270,7 @@ export abstract class BaseBdo<
    * Returns computed fields along with a temporary _id
    */
   protected async draftInteraction(
-    data: Partial<TCreateType>
+    data: Partial<TEditable>
   ): Promise<DraftResponseType & { _id: string }> {
     return api<TEntity>(this.boId).draftInteraction(data as Partial<TEntity>);
   }
@@ -290,8 +279,8 @@ export abstract class BaseBdo<
    * Create an Item wrapper for manipulating data with field accessors
    * Use this when you need get/set/validate methods on fields
    */
-  protected createItem(data?: Partial<TCreateType>): ItemWithData<TCreateType> {
-    return new Item<TCreateType>(this, (data ?? {}) as Partial<TCreateType>) as ItemWithData<TCreateType>;
+  protected createItem(data?: Partial<TEditable>): ItemWithData<TEditable, TReadonly> {
+    return new Item<TEditable & TReadonly>(this, (data ?? {}) as Partial<TEditable & TReadonly>) as ItemWithData<TEditable, TReadonly>;
   }
 
   /**
@@ -299,7 +288,7 @@ export abstract class BaseBdo<
    */
   protected async draftPatch(
     id: StringFieldType,
-    data: Partial<TUpdateType>
+    data: Partial<TEditable>
   ): Promise<DraftResponseType> {
     return api<TEntity>(this.boId).draftPatch(id, data as Partial<TEntity>);
   }

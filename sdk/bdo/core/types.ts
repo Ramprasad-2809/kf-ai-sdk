@@ -11,31 +11,29 @@ export interface ValidationResult {
 }
 
 /**
- * Base field metadata containing id, label, and optional field-specific info
+ * Base field metadata — only id, label, and isEditable.
+ * Specialized fields (SelectField, ReferenceField) extend this with their own properties.
  */
 export interface FieldMeta {
   readonly id: string;
   readonly label: string;
-  readonly options?: readonly { value: unknown; label: string; disabled?: boolean }[];
-  readonly reference?: { bdo: string; fields: string[] };
-  readonly fetchOptions?: (instanceId?: string) => Promise<unknown[]>;
+  readonly isEditable: boolean;
 }
 
 /**
- * SelectField meta with static options and fetchOptions for dynamic refresh
+ * SelectField meta — extends FieldMeta with static options
  */
-export interface SelectFieldMeta<T = string> extends Omit<FieldMeta, 'options' | 'fetchOptions'> {
+export interface SelectFieldMeta<T = string> extends FieldMeta {
   readonly options: readonly SelectOption<T>[];
-  readonly fetchOptions: (instanceId?: string) => Promise<SelectOption<T>[]>;
 }
 
 /**
- * ReferenceField meta with reference info and fetchOptions for dynamic lookup
+ * ReferenceField meta — extends FieldMeta with reference info
  */
-export interface ReferenceFieldMeta<TRef = unknown> extends Omit<FieldMeta, 'reference' | 'fetchOptions'> {
+export interface ReferenceFieldMeta extends FieldMeta {
   readonly reference: { bdo: string; fields: string[] };
-  readonly fetchOptions: (instanceId?: string) => Promise<TRef[]>;
 }
+
 
 /**
  * Option for select fields
@@ -52,6 +50,7 @@ export interface SelectOption<T = string> {
 export interface FieldConfig {
   id: string;
   label: string;
+  editable?: boolean;
 }
 
 /**
@@ -72,34 +71,3 @@ export interface ReferenceFieldConfig<
   referenceFields?: readonly string[];
 }
 
-// ============================================================
-// FIELD ACCESSOR INTERFACES
-// ============================================================
-
-/**
- * Base interface for accessing and manipulating field values
- */
-export interface FieldAccessorInterface<T> {
-  get(): T | undefined;
-  set(value: T): void;
-  validate(): ValidationResult;
-}
-
-/**
- * Extended accessor for select fields with access to options
- */
-export interface SelectFieldAccessorInterface<T>
-  extends FieldAccessorInterface<T> {
-  options(): readonly SelectOption<T>[];
-}
-
-/**
- * Extended accessor for reference fields with reference metadata
- */
-export interface ReferenceFieldAccessorInterface<T>
-  extends FieldAccessorInterface<T> {
-  readonly reference: {
-    bdo: string;
-    fields: string[];
-  };
-}

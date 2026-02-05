@@ -4,7 +4,12 @@ export { createItemProxy } from "./createItemProxy";
 export type {
   UseFormOptions,
   UseFormReturn,
-  FormItem,
-  FormFieldAccessor,
+  SmartFormItem,
+  EditableFormFieldAccessor,
+  ReadonlyFormFieldAccessor,
+  SmartRegister,
   HandleSubmitType,
+  ExtractEditable,
+  ExtractReadonly,
+  AllFields,
 } from "./types";

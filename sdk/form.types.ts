@@ -6,7 +6,12 @@
 export type {
   UseFormOptions,
   UseFormReturn,
-  FormItem,
-  FormFieldAccessor,
+  SmartFormItem,
+  EditableFormFieldAccessor,
+  ReadonlyFormFieldAccessor,
+  SmartRegister,
   HandleSubmitType,
+  ExtractEditable,
+  ExtractReadonly,
+  AllFields,
 } from "./components/hooks/useForm";

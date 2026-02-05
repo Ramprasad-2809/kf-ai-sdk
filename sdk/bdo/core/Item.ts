@@ -20,31 +20,59 @@ interface BdoLike {
 }
 
 /**
- * Field accessor with get/set/validate methods + meta object
+ * Editable field accessor — has get(), set(), validate()
  */
-export interface FieldAccessorLike<T> {
+export interface EditableFieldAccessor<T> {
   readonly meta: FieldMeta;
   get(): T | undefined;
   set(value: T): void;
   validate(): ValidationResult;
 }
 
+/**
+ * Readonly field accessor — has get(), validate(), NO set()
+ */
+export interface ReadonlyFieldAccessor<T> {
+  readonly meta: FieldMeta;
+  get(): T | undefined;
+  validate(): ValidationResult;
+}
+
+/**
+ * Field accessor with get/set/validate methods + meta object (union type)
+ */
+export type FieldAccessorLike<T> = EditableFieldAccessor<T> | ReadonlyFieldAccessor<T>;
+
 // Re-export FieldMeta for convenience
 export type { FieldMeta };
 
 /**
- * Create accessor type for each field in T, except _id which is direct
+ * Create editable accessor type for each field in TEditable
  */
-type FieldAccessors<T> = {
-  [K in keyof T as K extends "_id" ? never : K]: FieldAccessorLike<T[K]>;
+type EditableAccessors<T> = {
+  [K in keyof T as K extends "_id" ? never : K]: EditableFieldAccessor<T[K]>;
 };
 
 /**
- * Item type with field accessors and direct _id access
+ * Create readonly accessor type for each field in TReadonly
  */
-export type ItemWithData<T extends Record<string, unknown>> = Item<T> &
-  FieldAccessors<T> &
-  (T extends { _id: infer ID } ? { readonly _id: ID } : object);
+type ReadonlyAccessors<T> = {
+  [K in keyof T as K extends "_id" ? never : K]: ReadonlyFieldAccessor<T[K]>;
+};
+
+/**
+ * Item type with typed field accessors and direct _id access
+ *
+ * @template TEditable - Fields that have set() available
+ * @template TReadonly - Fields that only have get() and validate()
+ */
+export type ItemWithData<
+  TEditable extends Record<string, unknown>,
+  TReadonly extends Record<string, unknown> = {},
+> = Item<TEditable & TReadonly> &
+  EditableAccessors<TEditable> &
+  ReadonlyAccessors<TReadonly> &
+  { readonly _id: string };
 
 /**
  * Item class that wraps a record with field accessors
@@ -65,9 +93,10 @@ export type ItemWithData<T extends Record<string, unknown>> = Item<T> &
  *
  * // Field accessor access
  * item.Title.get()  // get value
- * item.Title.set("New Title")  // set value
- * item.Title.id  // "Title"
- * item.Title.label  // "Product Title"
+ * item.Title.set("New Title")  // set value (editable fields only)
+ * item.Title.meta.id  // "Title"
+ * item.Title.meta.label  // "Product Title"
+ * item.Title.meta.isEditable  // true if field is editable
  * item.Title.validate()  // validate
  *
  * // Methods
@@ -160,7 +189,8 @@ export class Item<T extends Record<string, unknown>> {
   }
 
   /**
-   * Get or create a field accessor for the given field
+   * Get or create a field accessor for the given field.
+   * Editable fields get set(), readonly fields do not.
    */
   private _getAccessor(fieldId: string): FieldAccessorLike<unknown> {
     // Check cache first
@@ -171,50 +201,55 @@ export class Item<T extends Record<string, unknown>> {
     const fields = this._bdo.getFields();
     const fieldDef = fields[fieldId];
 
-    // Build meta object
-    const meta: FieldMeta = {
-      id: fieldDef?.id ?? fieldId,
-      label: fieldDef?.label ?? fieldId,
+    // Use field's meta directly (includes options for SelectField, reference for ReferenceField)
+    const meta: FieldMeta = fieldDef?.meta ?? {
+      id: fieldId,
+      label: fieldId,
+      isEditable: true,
+    };
+    const isEditable = meta.isEditable;
+
+    // Shared validate function
+    const validate = (): ValidationResult => {
+      // 1. Type validation (existing)
+      if (fieldDef) {
+        const typeResult = fieldDef.validate(this._data[fieldId as keyof T]);
+        if (!typeResult.valid) {
+          return typeResult;
+        }
+      }
+
+      // 2. Expression validation (if metadata loaded)
+      if (this._bdo.hasMetadata()) {
+        return this._bdo.validateFieldExpression(
+          fieldId,
+          this._data[fieldId as keyof T],
+          this.toJSON() as Record<string, unknown>
+        );
+      }
+
+      return { valid: true, errors: [] };
     };
 
-    // Add options for select fields
-    if (fieldDef && "getOptions" in fieldDef && typeof fieldDef.getOptions === "function") {
-      (meta as { options?: unknown }).options = fieldDef.getOptions();
+    // Create accessor — only add set() for editable fields
+    let accessor: FieldAccessorLike<unknown>;
+
+    if (isEditable) {
+      accessor = {
+        meta,
+        get: () => this._data[fieldId as keyof T],
+        set: (value: unknown) => {
+          this._data[fieldId as keyof T] = value as T[keyof T];
+        },
+        validate,
+      };
+    } else {
+      accessor = {
+        meta,
+        get: () => this._data[fieldId as keyof T],
+        validate,
+      };
     }
-
-    // Add reference for reference fields
-    if (fieldDef && "getReference" in fieldDef && typeof fieldDef.getReference === "function") {
-      (meta as { reference?: unknown }).reference = fieldDef.getReference();
-    }
-
-    // Create accessor
-    const accessor: FieldAccessorLike<unknown> = {
-      meta,
-      get: () => this._data[fieldId as keyof T],
-      set: (value: unknown) => {
-        this._data[fieldId as keyof T] = value as T[keyof T];
-      },
-      validate: () => {
-        // 1. Type validation (existing)
-        if (fieldDef) {
-          const typeResult = fieldDef.validate(this._data[fieldId as keyof T]);
-          if (!typeResult.valid) {
-            return typeResult;
-          }
-        }
-
-        // 2. Expression validation (if metadata loaded)
-        if (this._bdo.hasMetadata()) {
-          return this._bdo.validateFieldExpression(
-            fieldId,
-            this._data[fieldId as keyof T],
-            this.toJSON() as Record<string, unknown>
-          );
-        }
-
-        return { valid: true, errors: [] };
-      },
-    };
 
     // Cache and return
     this._accessorCache.set(fieldId, accessor);

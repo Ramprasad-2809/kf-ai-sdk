@@ -4,16 +4,19 @@ import {
   type FieldValues,
   type FieldErrors,
   type Control,
+  type RegisterOptions,
   type UseFormReturn as RHFUseFormReturn,
 } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { createResolver } from "./createResolver";
 import { createItemProxy } from "./createItemProxy";
 import { getBdoSchema } from "../../../api/metadata";
+import type { BaseBdo } from "../../../bdo";
 import type {
   UseFormOptions,
   UseFormReturn,
   HandleSubmitType,
+  AllFields,
 } from "./types";
 
 /**
@@ -25,10 +28,12 @@ import type {
  * - Item proxy always in sync with form state
  * - Simple create/edit mode switching via recordId
  * - Full access to all RHF methods and state
+ * - Smart register: auto-disables readonly fields
+ * - Payload filtering: handleSubmit auto-filters to editable fields only
  *
  * @example
  * ```tsx
- * const product = new AdminProduct();
+ * const product = new SellerProduct();
  *
  * // Create mode
  * const { register, handleSubmit, item, errors } = useForm({
@@ -42,19 +47,20 @@ import type {
  *   recordId: "product_123",
  * });
  *
- * // In JSX - validation AND API call are automatic!
+ * // In JSX - readonly fields auto-disabled!
  * <form onSubmit={handleSubmit(
  *   (result) => toast.success("Saved!"),
  *   (error) => toast.error(error.message)
  * )}>
  *   <input {...register("Title")} />
+ *   <input {...register("ASIN")} />  {// auto disabled: true for readonly }
  *   {errors.Title && <span>{errors.Title.message}</span>}
  * </form>
  * ```
  */
-export function useForm<TEntity extends FieldValues, TRead = TEntity>(
-  options: UseFormOptions<TEntity>,
-): UseFormReturn<TEntity, TRead> {
+export function useForm<B extends BaseBdo<any, any, any>>(
+  options: UseFormOptions<B>,
+): UseFormReturn<B> {
   const {
     bdo,
     recordId,
@@ -86,7 +92,7 @@ export function useForm<TEntity extends FieldValues, TRead = TEntity>(
     queryFn: async () => {
       // bdo.get returns ItemWithData - extract raw data via toJSON
       const item = await (bdo as any).get(recordId!);
-      return item.toJSON() as TRead;
+      return item.toJSON();
     },
     enabled: operation === "update" && !!recordId,
     staleTime: 0, // Always fetch fresh data for forms
@@ -114,51 +120,76 @@ export function useForm<TEntity extends FieldValues, TRead = TEntity>(
   // REACT HOOK FORM
   // ============================================================
 
-  const form = useRHF<TEntity>({
+  const form = useRHF<FieldValues>({
     mode,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: resolver as any, // Validation integrated here!
     defaultValues: defaultValues as any,
     // `values` prop reactively updates form when record loads
-    values: operation === "update" && record ? (record as TEntity) : undefined,
+    values:
+      operation === "update" && record ? (record as FieldValues) : undefined,
   });
 
   // ============================================================
   // ITEM PROXY
   // ============================================================
 
-  // Determine instanceId for API calls (fetchOptions)
-  // For edit mode: use recordId
-  // For create mode: use draftId if available, otherwise "new"
-  const instanceId = recordId ?? "new";
-
   const item = useMemo(
-    () => createItemProxy(bdo, form as RHFUseFormReturn<TEntity>, instanceId),
-    [bdo, form, instanceId],
+    () =>
+      createItemProxy(bdo, form as RHFUseFormReturn<FieldValues>),
+    [bdo, form],
   );
 
   // ============================================================
-  // CUSTOM HANDLE SUBMIT (with API call)
+  // SMART REGISTER (auto-disables readonly fields)
   // ============================================================
 
-  const handleSubmit: HandleSubmitType<TRead> = useCallback(
+  const fields = bdo.getFields();
+
+  const smartRegister = useCallback(
+    (name: string, registerOptions?: RegisterOptions) => {
+      const rhfResult = form.register(name as any, registerOptions);
+
+      // If field is readonly, add disabled: true
+      if (!fields[name]?.meta.isEditable) {
+        return { ...rhfResult, disabled: true };
+      }
+
+      return rhfResult;
+    },
+    [form, fields],
+  );
+
+  // ============================================================
+  // CUSTOM HANDLE SUBMIT (with API call + payload filtering)
+  // ============================================================
+
+  const handleSubmit: HandleSubmitType = useCallback(
     (onSuccess, onError) => {
       return form.handleSubmit(
         // onValid - validation passed, make API call
         async (data, e) => {
           try {
-            let result: TRead;
+            // Filter payload to only editable fields
+            const filteredData: Record<string, unknown> = {};
+            for (const [key, value] of Object.entries(data)) {
+              if (fields[key]?.meta.isEditable) {
+                filteredData[key] = value;
+              }
+            }
+
+            let result: unknown;
 
             if (operation === "create") {
-              // Create mode - call create
-              result = await (bdo as any).create(data);
+              // Create mode - call create with filtered data
+              result = await (bdo as any).create(filteredData);
             } else {
-              // Update mode - call update with recordId
-              result = await (bdo as any).update(recordId!, data);
+              // Update mode - call update with recordId and filtered data
+              result = await (bdo as any).update(recordId!, filteredData);
             }
 
             // Success callback
-            onSuccess?.(result, e);
+            onSuccess?.(result as any, e);
           } catch (error) {
             // API error
             onError?.(error as Error, e);
@@ -196,28 +227,28 @@ export function useForm<TEntity extends FieldValues, TRead = TEntity>(
     operation,
     recordId,
 
-    // Custom handleSubmit (handles API call)
+    // Smart register (auto-disables readonly fields)
+    register: smartRegister as any,
+
+    // Custom handleSubmit (handles API call + filters payload)
     handleSubmit,
 
     // RHF methods (spread, but handleSubmit is overridden above)
-    register: form.register,
-    watch: form.watch,
-    setValue: form.setValue,
-    getValues: form.getValues,
-    reset: form.reset,
-    trigger: form.trigger,
-    control: form.control as Control<TEntity>,
-    formState: form.formState,
+    watch: form.watch as any,
+    setValue: form.setValue as any,
+    getValues: form.getValues as any,
+    reset: form.reset as any,
+    trigger: form.trigger as any,
+    control: form.control as unknown as Control<AllFields<B>>,
+    formState: form.formState as any,
 
     // Flattened state for convenience
-    errors: form.formState.errors,
+    errors: form.formState.errors as any,
     isDirty: form.formState.isDirty,
     isValid: form.formState.isValid,
     isSubmitting: form.formState.isSubmitting,
     isSubmitSuccessful: form.formState.isSubmitSuccessful,
-    dirtyFields: form.formState.dirtyFields as Partial<
-      Record<keyof TEntity, boolean>
-    >,
+    dirtyFields: form.formState.dirtyFields as any,
 
     // Loading states
     isLoading: isLoadingRecord,

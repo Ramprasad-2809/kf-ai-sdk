@@ -20,28 +20,15 @@ import type { FieldConfig, ValidationResult, FieldMeta } from "../core/types";
  * ```
  */
 export abstract class BaseField<T> {
-  readonly id: string;
-  readonly label: string;
+  protected readonly id: string;
+  protected readonly label: string;
+  protected readonly editable: boolean;
   protected _parentBoId?: string;
 
   constructor(config: FieldConfig) {
     this.id = config.id;
     this.label = config.label;
-  }
-
-  /**
-   * Bind this field to a parent BDO
-   * Called by BaseBdo.initFields() to enable fetchOptions
-   */
-  setParentBoId(boId: string): void {
-    this._parentBoId = boId;
-  }
-
-  /**
-   * Get the parent BDO ID
-   */
-  get parentBoId(): string | undefined {
-    return this._parentBoId;
+    this.editable = config.editable ?? true;
   }
 
   /**
@@ -51,22 +38,13 @@ export abstract class BaseField<T> {
   abstract validate(value: T | undefined): ValidationResult;
 
   /**
-   * Get the field configuration
-   */
-  getConfig(): FieldConfig {
-    return {
-      id: this.id,
-      label: this.label,
-    };
-  }
-
-  /**
    * Get field metadata (id, label, and field-specific info)
    */
   get meta(): FieldMeta {
     return {
       id: this.id,
       label: this.label,
+      isEditable: this.editable,
     };
   }
 }

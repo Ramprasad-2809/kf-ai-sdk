@@ -26,8 +26,8 @@ import { BaseField } from "./BaseField";
 export class ReferenceField<TRef = unknown> extends BaseField<
   ReferenceFieldType<TRef>
 > {
-  readonly referenceBdo: string;
-  readonly referenceFields: readonly string[];
+  protected readonly referenceBdo: string;
+  protected readonly referenceFields: readonly string[];
 
   constructor(config: ReferenceFieldConfig<TRef>) {
     super(config);
@@ -59,37 +59,28 @@ export class ReferenceField<TRef = unknown> extends BaseField<
   }
 
   /**
-   * Get reference metadata
+   * Fetch referenced records from the backend, returned as typed TRef[]
    */
-  getReference(): { bdo: string; fields: readonly string[] } {
-    return {
-      bdo: this.referenceBdo,
-      fields: this.referenceFields,
-    };
+  async fetchOptions(instanceId?: string): Promise<TRef[]> {
+    if (!this._parentBoId) {
+      throw new Error(
+        `Field ${this.id} not bound to a BDO. Cannot fetch options.`
+      );
+    }
+    return api(this._parentBoId).fetchField<TRef>(instanceId ?? "new", this.id);
   }
 
   /**
-   * Get field metadata including reference info and fetchOptions
+   * Get field metadata including reference info
    */
-  override get meta(): ReferenceFieldMeta<TRef> {
-    const fieldId = this.id;
-    const parentBoId = this._parentBoId;
-
+  override get meta(): ReferenceFieldMeta {
     return {
       id: this.id,
       label: this.label,
+      isEditable: this.editable,
       reference: {
         bdo: this.referenceBdo,
         fields: [...this.referenceFields],
-      },
-      fetchOptions: async (instanceId?: string): Promise<TRef[]> => {
-        if (!parentBoId) {
-          throw new Error(
-            `Field ${fieldId} not bound to a BDO. Cannot fetch options.`
-          );
-        }
-        const effectiveInstanceId = instanceId ?? "new";
-        return api(parentBoId).fetchField<TRef>(effectiveInstanceId, fieldId);
       },
     };
   }

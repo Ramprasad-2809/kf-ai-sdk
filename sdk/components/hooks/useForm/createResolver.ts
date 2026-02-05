@@ -13,14 +13,16 @@ import type { BaseBdo, BaseField, ValidationResult } from "../../../bdo";
  * 1. Type validation (from field.validate())
  * 2. Expression validation (from backend rules via bdo.validateFieldExpression())
  *
+ * Note: Readonly fields are skipped during validation — only editable fields are validated.
+ *
  * @param bdo - The BDO instance with field definitions
  * @returns RHF Resolver function
  */
-export function createResolver<TEntity extends FieldValues>(
-  bdo: BaseBdo<TEntity, any, any, any>,
+export function createResolver<B extends BaseBdo<any, any, any>>(
+  bdo: B,
 ) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return async (values: TEntity, _context: any, options: any) => {
+  return async (values: FieldValues, _context: any, options: any) => {
     const errors: Record<string, { type: string; message: string }> = {};
     const fields = bdo.getFields();
 
@@ -32,10 +34,13 @@ export function createResolver<TEntity extends FieldValues>(
       // Skip _id field - not user-editable
       if (fieldName === "_id") continue;
 
+      // Skip validation for readonly and system fields
+      if (!fields[fieldName]?.meta.isEditable) continue;
+
       const field = fields[fieldName];
       if (!field) continue;
 
-      const value = values[fieldName as keyof TEntity];
+      const value = values[fieldName];
 
       // 1. Type validation (existing)
       const typeResult: ValidationResult = (

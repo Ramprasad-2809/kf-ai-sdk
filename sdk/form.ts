@@ -7,7 +7,12 @@ export { useForm, createResolver, createItemProxy } from "./components/hooks/use
 export type {
   UseFormOptions,
   UseFormReturn,
-  FormItem,
-  FormFieldAccessor,
+  SmartFormItem,
+  EditableFormFieldAccessor,
+  ReadonlyFormFieldAccessor,
+  SmartRegister,
   HandleSubmitType,
+  ExtractEditable,
+  ExtractReadonly,
+  AllFields,
 } from "./components/hooks/useForm";

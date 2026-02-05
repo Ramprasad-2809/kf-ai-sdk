@@ -11,9 +11,6 @@ export type {
   FieldConfig,
   SelectFieldConfig,
   ReferenceFieldConfig,
-  FieldAccessorInterface,
-  SelectFieldAccessorInterface,
-  ReferenceFieldAccessorInterface,
 } from "./bdo/core/types";
 
 // Re-export SDK field types
