@@ -3,7 +3,7 @@
 // Wraps a record with field accessors for type-safe manipulation
 // ============================================================
 
-import type { ValidationResult, FieldMeta } from "./types";
+import type { ValidationResultType, FieldMetaType } from "./types";
 import type { BaseField } from "../fields/BaseField";
 
 /**
@@ -16,48 +16,48 @@ interface BdoLike {
     fieldId: string,
     value: unknown,
     allValues: Record<string, unknown>
-  ): ValidationResult;
+  ): ValidationResultType;
 }
 
 /**
  * Editable field accessor — has get(), set(), validate()
  */
-export interface EditableFieldAccessor<T> {
-  readonly meta: FieldMeta;
+export interface EditableFieldAccessorType<T> {
+  readonly meta: FieldMetaType;
   get(): T | undefined;
   set(value: T): void;
-  validate(): ValidationResult;
+  validate(): ValidationResultType;
 }
 
 /**
  * Readonly field accessor — has get(), validate(), NO set()
  */
-export interface ReadonlyFieldAccessor<T> {
-  readonly meta: FieldMeta;
+export interface ReadonlyFieldAccessorType<T> {
+  readonly meta: FieldMetaType;
   get(): T | undefined;
-  validate(): ValidationResult;
+  validate(): ValidationResultType;
 }
 
 /**
  * Field accessor with get/set/validate methods + meta object (union type)
  */
-export type FieldAccessorLike<T> = EditableFieldAccessor<T> | ReadonlyFieldAccessor<T>;
+export type FieldAccessorType<T> = EditableFieldAccessorType<T> | ReadonlyFieldAccessorType<T>;
 
-// Re-export FieldMeta for convenience
-export type { FieldMeta };
+// Re-export FieldMetaType for convenience
+export type { FieldMetaType };
 
 /**
  * Create editable accessor type for each field in TEditable
  */
 type EditableAccessors<T> = {
-  [K in keyof T as K extends "_id" ? never : K]: EditableFieldAccessor<T[K]>;
+  [K in keyof T as K extends "_id" ? never : K]: EditableFieldAccessorType<T[K]>;
 };
 
 /**
  * Create readonly accessor type for each field in TReadonly
  */
 type ReadonlyAccessors<T> = {
-  [K in keyof T as K extends "_id" ? never : K]: ReadonlyFieldAccessor<T[K]>;
+  [K in keyof T as K extends "_id" ? never : K]: ReadonlyFieldAccessorType<T[K]>;
 };
 
 /**
@@ -66,7 +66,7 @@ type ReadonlyAccessors<T> = {
  * @template TEditable - Fields that have set() available
  * @template TReadonly - Fields that only have get() and validate()
  */
-export type ItemWithData<
+export type ItemType<
   TEditable extends Record<string, unknown>,
   TReadonly extends Record<string, unknown> = {},
 > = Item<TEditable & TReadonly> &
@@ -107,7 +107,7 @@ export type ItemWithData<
 export class Item<T extends Record<string, unknown>> {
   private _data: Partial<T>;
   private readonly _bdo: BdoLike;
-  private readonly _accessorCache: Map<string, FieldAccessorLike<unknown>> = new Map();
+  private readonly _accessorCache: Map<string, FieldAccessorType<unknown>> = new Map();
 
   constructor(bdo: BdoLike, data: Partial<T>) {
     this._bdo = bdo;
@@ -192,7 +192,7 @@ export class Item<T extends Record<string, unknown>> {
    * Get or create a field accessor for the given field.
    * Editable fields get set(), readonly fields do not.
    */
-  private _getAccessor(fieldId: string): FieldAccessorLike<unknown> {
+  private _getAccessor(fieldId: string): FieldAccessorType<unknown> {
     // Check cache first
     if (this._accessorCache.has(fieldId)) {
       return this._accessorCache.get(fieldId)!;
@@ -202,7 +202,7 @@ export class Item<T extends Record<string, unknown>> {
     const fieldDef = fields[fieldId];
 
     // Use field's meta directly (includes options for SelectField, reference for ReferenceField)
-    const meta: FieldMeta = fieldDef?.meta ?? {
+    const meta: FieldMetaType = fieldDef?.meta ?? {
       id: fieldId,
       label: fieldId,
       isEditable: true,
@@ -210,7 +210,7 @@ export class Item<T extends Record<string, unknown>> {
     const isEditable = meta.isEditable;
 
     // Shared validate function
-    const validate = (): ValidationResult => {
+    const validate = (): ValidationResultType => {
       // 1. Type validation (existing)
       if (fieldDef) {
         const typeResult = fieldDef.validate(this._data[fieldId as keyof T]);
@@ -232,7 +232,7 @@ export class Item<T extends Record<string, unknown>> {
     };
 
     // Create accessor — only add set() for editable fields
-    let accessor: FieldAccessorLike<unknown>;
+    let accessor: FieldAccessorType<unknown>;
 
     if (isEditable) {
       accessor = {
@@ -259,7 +259,7 @@ export class Item<T extends Record<string, unknown>> {
   /**
    * Validate all fields and return combined results
    */
-  validate(): ValidationResult {
+  validate(): ValidationResultType {
     const fields = this._bdo.getFields();
     const allErrors: string[] = [];
     const allValues = this.toJSON() as Record<string, unknown>;

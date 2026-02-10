@@ -4,7 +4,7 @@
 // ============================================================
 
 import type { ReferenceFieldType } from "../../types/base-fields";
-import type { ReferenceFieldConfig, ValidationResult, ReferenceFieldMeta } from "../core/types";
+import type { ReferenceFieldConfigType, ValidationResultType, ReferenceFieldMetaType } from "../core/types";
 import { api } from "../../api/client";
 import { BaseField } from "./BaseField";
 
@@ -29,13 +29,13 @@ export class ReferenceField<TRef = unknown> extends BaseField<
   protected readonly referenceBdo: string;
   protected readonly referenceFields: readonly string[];
 
-  constructor(config: ReferenceFieldConfig<TRef>) {
+  constructor(config: ReferenceFieldConfigType<TRef>) {
     super(config);
     this.referenceBdo = config.referenceBdo;
     this.referenceFields = config.referenceFields ?? ["_id"];
   }
 
-  validate(value: ReferenceFieldType<TRef> | undefined): ValidationResult {
+  validate(value: ReferenceFieldType<TRef> | undefined): ValidationResultType {
     if (value === undefined || value === null) {
       return { valid: true, errors: [] };
     }
@@ -73,7 +73,7 @@ export class ReferenceField<TRef = unknown> extends BaseField<
   /**
    * Get field metadata including reference info
    */
-  override get meta(): ReferenceFieldMeta {
+  override get meta(): ReferenceFieldMetaType {
     return {
       id: this.id,
       label: this.label,

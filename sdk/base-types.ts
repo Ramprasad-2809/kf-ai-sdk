@@ -32,9 +32,8 @@ export type {
   JSONObjectType,
   JSONArrayType,
 
-  // Select/Lookup fields
+  // Select fields
   SelectFieldType,
-  LookupFieldType,
 
   // Container types
   ArrayFieldType,
@@ -42,5 +41,5 @@ export type {
   OptionalFieldType,
 
   // Utility types
-  ExtractFieldTypeType,
+  ExtractFieldType,
 } from './types/base-fields';

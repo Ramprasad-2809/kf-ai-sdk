@@ -227,25 +227,23 @@ interface PaginationStateType {
 A minimal table displaying data with loading and error states.
 
 ```tsx
+import { useMemo } from "react";
 import { useTable } from "@ram_28/kf-ai-sdk/table";
 import type { ColumnDefinitionType } from "@ram_28/kf-ai-sdk/table/types";
-import { Product } from "../sources";
-import type { ProductForRole } from "../sources";
-import { Roles } from "../sources/roles";
-
-type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
+import { BuyerProduct } from "../bdo/buyer/Product";
+import type { BuyerProductFieldType } from "../bdo/buyer/Product";
 
 function ProductsTable() {
-  const product = new Product(Roles.Buyer);
+  const product = useMemo(() => new BuyerProduct(), []);
 
-  const columns: ColumnDefinitionType<BuyerProduct>[] = [
-    { fieldId: "Title", label: "Name" },
-    { fieldId: "Price", label: "Price" },
-    { fieldId: "Category", label: "Category" },
+  const columns: ColumnDefinitionType<BuyerProductFieldType>[] = [
+    { fieldId: product.Title.meta.id, label: product.Title.meta.label },
+    { fieldId: product.Price.meta.id, label: product.Price.meta.label },
+    { fieldId: product.Category.meta.id, label: product.Category.meta.label },
   ];
 
-  const table = useTable<BuyerProduct>({
-    source: product._id,
+  const table = useTable<BuyerProductFieldType>({
+    source: product.meta._id,
     columns,
   });
 
@@ -284,52 +282,51 @@ function ProductsTable() {
 Set default pagination, sorting, and filters when the table loads.
 
 ```tsx
+import { useMemo } from "react";
 import { useTable } from "@ram_28/kf-ai-sdk/table";
 import { useAuth } from "@ram_28/kf-ai-sdk/auth";
+import { ConditionOperator, RHSType, GroupOperator } from "@ram_28/kf-ai-sdk/filter";
 import type {
   UseTableOptionsType,
   UseTableReturnType,
   ColumnDefinitionType,
 } from "@ram_28/kf-ai-sdk/table/types";
-import { Product } from "../sources";
-import type { ProductForRole } from "../sources";
-import { Roles } from "../sources/roles";
-
-type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
+import { BuyerProduct } from "../bdo/buyer/Product";
+import type { BuyerProductFieldType } from "../bdo/buyer/Product";
 
 function MyItemsTable() {
-  const product = new Product(Roles.Buyer);
+  const product = useMemo(() => new BuyerProduct(), []);
   const { user } = useAuth();
 
-  const columns: ColumnDefinitionType<BuyerProduct>[] = [
-    { fieldId: "Title", label: "Name", enableSorting: true },
-    { fieldId: "Price", label: "Price", enableSorting: true },
-    { fieldId: "Category", label: "Category", enableSorting: true },
-    { fieldId: "Stock", label: "Stock", enableSorting: true },
+  const columns: ColumnDefinitionType<BuyerProductFieldType>[] = [
+    { fieldId: product.Title.meta.id, label: product.Title.meta.label, enableSorting: true },
+    { fieldId: product.Price.meta.id, label: product.Price.meta.label, enableSorting: true },
+    { fieldId: product.Category.meta.id, label: product.Category.meta.label, enableSorting: true },
+    { fieldId: product.Stock.meta.id, label: product.Stock.meta.label, enableSorting: true },
   ];
 
-  const tableOptions: UseTableOptionsType<BuyerProduct> = {
-    source: product._id,
+  const tableOptions: UseTableOptionsType<BuyerProductFieldType> = {
+    source: product.meta._id,
     columns,
     initialState: {
-      sort: [{ Title: "ASC" }],
+      sort: [{ [product.Title.meta.id]: "ASC" }],
       pagination: { pageNo: 1, pageSize: 10 },
       filter: {
         conditions: [
           {
-            Operator: "EQ",
-            LHSField: "_created_by",
-            RHSValue: user._id, // Pass user ID as a string
-            RHSType: "Constant",
+            Operator: ConditionOperator.EQ,
+            LHSField: "_created_by",  // System field
+            RHSValue: user._id,
+            RHSType: RHSType.Constant,
           },
         ],
-        operator: "And",
+        operator: GroupOperator.And,
       },
     },
   };
 
-  const table: UseTableReturnType<BuyerProduct> =
-    useTable<BuyerProduct>(tableOptions);
+  const table: UseTableReturnType<BuyerProductFieldType> =
+    useTable<BuyerProductFieldType>(tableOptions);
 
   if (table.isLoading) return <div>Loading...</div>;
 
@@ -397,11 +394,16 @@ function MyItemsTable() {
 Dropdown-based status filtering.
 
 ```tsx
-function ProductsWithStatusFilter() {
-  const product = new Product(Roles.Buyer);
+import { useMemo } from "react";
+import { ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
+import { BuyerProduct } from "../bdo/buyer/Product";
+import type { BuyerProductFieldType } from "../bdo/buyer/Product";
 
-  const table = useTable<BuyerProduct>({
-    source: product._id,
+function ProductsWithStatusFilter() {
+  const product = useMemo(() => new BuyerProduct(), []);
+
+  const table = useTable<BuyerProductFieldType>({
+    source: product.meta._id,
     columns,
   });
 
@@ -411,10 +413,10 @@ function ProductsWithStatusFilter() {
 
     if (status !== "all") {
       table.filter.addCondition({
-        Operator: "EQ",
-        LHSField: "IsActive",
+        Operator: ConditionOperator.EQ,
+        LHSField: product.IsActive.meta.id,
         RHSValue: status === "active",
-        RHSType: "Constant",
+        RHSType: RHSType.Constant,
       });
     }
   };
@@ -437,6 +439,11 @@ function ProductsWithStatusFilter() {
 Apply category and price range filters together.
 
 ```tsx
+import { useMemo, useState } from "react";
+import { ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
+import { BuyerProduct } from "../bdo/buyer/Product";
+import type { BuyerProductFieldType } from "../bdo/buyer/Product";
+
 const PRICE_RANGES = [
   { label: "Under $25", min: 0, max: 25 },
   { label: "$25 to $50", min: 25, max: 50 },
@@ -446,14 +453,14 @@ const PRICE_RANGES = [
 ] as const;
 
 function ProductsWithMultipleFilters() {
-  const product = new Product(Roles.Buyer);
+  const product = useMemo(() => new BuyerProduct(), []);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedPriceRange, setSelectedPriceRange] = useState<string | null>(
     null,
   );
 
-  const table = useTable<BuyerProduct>({
-    source: product._id,
+  const table = useTable<BuyerProductFieldType>({
+    source: product.meta._id,
     columns,
   });
 
@@ -464,10 +471,10 @@ function ProductsWithMultipleFilters() {
     // Apply category filter
     if (category !== "all") {
       table.filter.addCondition({
-        LHSField: "Category",
-        Operator: "EQ",
+        LHSField: product.Category.meta.id,
+        Operator: ConditionOperator.EQ,
         RHSValue: category,
-        RHSType: "Constant",
+        RHSType: RHSType.Constant,
       });
     }
 
@@ -478,26 +485,26 @@ function ProductsWithMultipleFilters() {
         if (range.max === null) {
           // "$200 & Above" - use GTE
           table.filter.addCondition({
-            Operator: "GTE",
-            LHSField: "Price",
+            Operator: ConditionOperator.GTE,
+            LHSField: product.Price.meta.id,
             RHSValue: range.min,
-            RHSType: "Constant",
+            RHSType: RHSType.Constant,
           });
         } else if (range.min === 0) {
           // "Under $25" - use LT
           table.filter.addCondition({
-            Operator: "LT",
-            LHSField: "Price",
+            Operator: ConditionOperator.LT,
+            LHSField: product.Price.meta.id,
             RHSValue: range.max,
-            RHSType: "Constant",
+            RHSType: RHSType.Constant,
           });
         } else {
           // Range like "$25 to $50" - use Between
           table.filter.addCondition({
-            LHSField: "Price",
-            Operator: "Between",
+            LHSField: product.Price.meta.id,
+            Operator: ConditionOperator.Between,
             RHSValue: [range.min, range.max],
-            RHSType: "Constant",
+            RHSType: RHSType.Constant,
           });
         }
       }
@@ -552,17 +559,21 @@ function ProductsWithMultipleFilters() {
 Click column headers to toggle sort direction.
 
 ```tsx
-function SortableTable() {
-  const product = new Product(Roles.Buyer);
+import { useMemo } from "react";
+import { BuyerProduct } from "../bdo/buyer/Product";
+import type { BuyerProductFieldType } from "../bdo/buyer/Product";
 
-  const columns: ColumnDefinitionType<BuyerProduct>[] = [
-    { fieldId: "Title", label: "Name", enableSorting: true },
-    { fieldId: "Price", label: "Price", enableSorting: true },
-    { fieldId: "Category", label: "Category", enableSorting: true },
+function SortableTable() {
+  const product = useMemo(() => new BuyerProduct(), []);
+
+  const columns: ColumnDefinitionType<BuyerProductFieldType>[] = [
+    { fieldId: product.Title.meta.id, label: product.Title.meta.label, enableSorting: true },
+    { fieldId: product.Price.meta.id, label: product.Price.meta.label, enableSorting: true },
+    { fieldId: product.Category.meta.id, label: product.Category.meta.label, enableSorting: true },
   ];
 
-  const table = useTable<BuyerProduct>({
-    source: product._id,
+  const table = useTable<BuyerProductFieldType>({
+    source: product.meta._id,
     columns,
   });
 
@@ -605,15 +616,19 @@ function SortableTable() {
 Allow users to select sort order from a dropdown.
 
 ```tsx
+import { useMemo, useState } from "react";
+import { BuyerProduct } from "../bdo/buyer/Product";
+import type { BuyerProductFieldType } from "../bdo/buyer/Product";
+
 function TableWithSortDropdown() {
-  const product = new Product(Roles.Buyer);
+  const product = useMemo(() => new BuyerProduct(), []);
   const [selectedSort, setSelectedSort] = useState("featured");
 
-  const table = useTable<BuyerProduct>({
-    source: product._id,
+  const table = useTable<BuyerProductFieldType>({
+    source: product.meta._id,
     columns,
     initialState: {
-      sort: [{ Title: "ASC" }],
+      sort: [{ [product.Title.meta.id]: "ASC" }],
     },
   });
 
@@ -621,17 +636,17 @@ function TableWithSortDropdown() {
     setSelectedSort(value);
     switch (value) {
       case "price-asc":
-        table.sort.set("Price", "asc");
+        table.sort.set(product.Price.meta.id, "asc");
         break;
       case "price-desc":
-        table.sort.set("Price", "desc");
+        table.sort.set(product.Price.meta.id, "desc");
         break;
       case "newest":
-        table.sort.set("_created_at", "desc");
+        table.sort.set("_created_at", "desc");  // System field
         break;
       case "featured":
       default:
-        table.sort.set("Title", "asc");
+        table.sort.set(product.Title.meta.id, "asc");
         break;
     }
   };
@@ -662,11 +677,15 @@ function TableWithSortDropdown() {
 Navigate between pages with previous/next buttons.
 
 ```tsx
-function PaginatedTable() {
-  const product = new Product(Roles.Buyer);
+import { useMemo } from "react";
+import { BuyerProduct } from "../bdo/buyer/Product";
+import type { BuyerProductFieldType } from "../bdo/buyer/Product";
 
-  const table = useTable<BuyerProduct>({
-    source: product._id,
+function PaginatedTable() {
+  const product = useMemo(() => new BuyerProduct(), []);
+
+  const table = useTable<BuyerProductFieldType>({
+    source: product.meta._id,
     columns,
     initialState: {
       pagination: { pageNo: 1, pageSize: 10 },
@@ -708,11 +727,15 @@ function PaginatedTable() {
 Allow users to change the number of items per page.
 
 ```tsx
-function TableWithPageSize() {
-  const product = new Product(Roles.Buyer);
+import { useMemo } from "react";
+import { BuyerProduct } from "../bdo/buyer/Product";
+import type { BuyerProductFieldType } from "../bdo/buyer/Product";
 
-  const table = useTable<BuyerProduct>({
-    source: product._id,
+function TableWithPageSize() {
+  const product = useMemo(() => new BuyerProduct(), []);
+
+  const table = useTable<BuyerProductFieldType>({
+    source: product.meta._id,
     columns,
   });
 
@@ -759,12 +782,16 @@ function TableWithPageSize() {
 Allow users to navigate directly to a specific page.
 
 ```tsx
+import { useMemo, useState } from "react";
+import { BuyerProduct } from "../bdo/buyer/Product";
+import type { BuyerProductFieldType } from "../bdo/buyer/Product";
+
 function TableWithPageJump() {
-  const product = new Product(Roles.Buyer);
+  const product = useMemo(() => new BuyerProduct(), []);
   const [pageInput, setPageInput] = useState("");
 
-  const table = useTable<BuyerProduct>({
-    source: product._id,
+  const table = useTable<BuyerProductFieldType>({
+    source: product.meta._id,
     columns,
   });
 
@@ -834,11 +861,15 @@ Search by field with filter-based implementation. The search internally creates 
 Add search functionality to filter results by a specific field. The search has built-in debouncing (300ms).
 
 ```tsx
-function SearchableTable() {
-  const product = new Product(Roles.Buyer);
+import { useMemo } from "react";
+import { BuyerProduct } from "../bdo/buyer/Product";
+import type { BuyerProductFieldType } from "../bdo/buyer/Product";
 
-  const table = useTable<BuyerProduct>({
-    source: product._id,
+function SearchableTable() {
+  const product = useMemo(() => new BuyerProduct(), []);
+
+  const table = useTable<BuyerProductFieldType>({
+    source: product.meta._id,
     columns,
   });
 
@@ -849,7 +880,7 @@ function SearchableTable() {
           type="text"
           placeholder="Search by name..."
           value={table.search.query}
-          onChange={(e) => table.search.set("Title", e.target.value)}
+          onChange={(e) => table.search.set(product.Title.meta.id, e.target.value)}
         />
         {table.search.query && (
           <button onClick={table.search.clear}>Clear</button>
@@ -868,12 +899,16 @@ function SearchableTable() {
 Allow users to choose which field to search:
 
 ```tsx
-function SearchableTableWithFieldSelector() {
-  const product = new Product(Roles.Buyer);
-  const [searchField, setSearchField] = useState<string>("Title");
+import { useMemo, useState } from "react";
+import { BuyerProduct } from "../bdo/buyer/Product";
+import type { BuyerProductFieldType } from "../bdo/buyer/Product";
 
-  const table = useTable<BuyerProduct>({
-    source: product._id,
+function SearchableTableWithFieldSelector() {
+  const product = useMemo(() => new BuyerProduct(), []);
+  const [searchField, setSearchField] = useState<string>(product.Title.meta.id);
+
+  const table = useTable<BuyerProductFieldType>({
+    source: product.meta._id,
     columns,
   });
 
@@ -890,9 +925,9 @@ function SearchableTableWithFieldSelector() {
             }
           }}
         >
-          <option value="Title">Name</option>
-          <option value="Category">Category</option>
-          <option value="Description">Description</option>
+          <option value={product.Title.meta.id}>{product.Title.meta.label}</option>
+          <option value={product.Category.meta.id}>{product.Category.meta.label}</option>
+          <option value={product.Description.meta.id}>{product.Description.meta.label}</option>
         </select>
         <input
           type="text"
@@ -918,52 +953,50 @@ function SearchableTableWithFieldSelector() {
 A full-featured product listing page with filters, search, sort, and pagination.
 
 ```tsx
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTable } from "@ram_28/kf-ai-sdk/table";
+import { ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
 import type {
   UseTableOptionsType,
   UseTableReturnType,
   ColumnDefinitionType,
 } from "@ram_28/kf-ai-sdk/table/types";
-import { Product } from "../sources";
-import type { ProductForRole } from "../sources";
-import { Roles } from "../sources/roles";
-
-type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
+import { BuyerProduct } from "../bdo/buyer/Product";
+import type { BuyerProductFieldType } from "../bdo/buyer/Product";
 
 function ProductListPage() {
-  const product = new Product(Roles.Buyer);
+  const product = useMemo(() => new BuyerProduct(), []);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedSort, setSelectedSort] = useState("featured");
 
-  const columns: ColumnDefinitionType<BuyerProduct>[] = [
-    { fieldId: "Title", label: "Name", enableSorting: true },
-    { fieldId: "Price", label: "Price", enableSorting: true },
-    { fieldId: "Category", label: "Category", enableSorting: true },
-    { fieldId: "Stock", label: "Stock", enableSorting: true },
+  const columns: ColumnDefinitionType<BuyerProductFieldType>[] = [
+    { fieldId: product.Title.meta.id, label: product.Title.meta.label, enableSorting: true },
+    { fieldId: product.Price.meta.id, label: product.Price.meta.label, enableSorting: true },
+    { fieldId: product.Category.meta.id, label: product.Category.meta.label, enableSorting: true },
+    { fieldId: product.Stock.meta.id, label: product.Stock.meta.label, enableSorting: true },
   ];
 
-  const tableOptions: UseTableOptionsType<BuyerProduct> = {
-    source: product._id,
+  const tableOptions: UseTableOptionsType<BuyerProductFieldType> = {
+    source: product.meta._id,
     columns,
     initialState: {
-      sort: [{ Title: "ASC" }],
+      sort: [{ [product.Title.meta.id]: "ASC" }],
       pagination: { pageNo: 1, pageSize: 10 },
     },
   };
 
-  const table: UseTableReturnType<BuyerProduct> =
-    useTable<BuyerProduct>(tableOptions);
+  const table: UseTableReturnType<BuyerProductFieldType> =
+    useTable<BuyerProductFieldType>(tableOptions);
 
   const handleCategoryChange = (category: string) => {
     setSelectedCategory(category);
     table.filter.clearAllConditions();
     if (category !== "all") {
       table.filter.addCondition({
-        LHSField: "Category",
-        Operator: "EQ",
+        LHSField: product.Category.meta.id,
+        Operator: ConditionOperator.EQ,
         RHSValue: category,
-        RHSType: "Constant",
+        RHSType: RHSType.Constant,
       });
     }
   };
@@ -972,16 +1005,16 @@ function ProductListPage() {
     setSelectedSort(value);
     switch (value) {
       case "price-asc":
-        table.sort.set("Price", "asc");
+        table.sort.set(product.Price.meta.id, "asc");
         break;
       case "price-desc":
-        table.sort.set("Price", "desc");
+        table.sort.set(product.Price.meta.id, "desc");
         break;
       case "newest":
-        table.sort.set("_created_at", "desc");
+        table.sort.set("_created_at", "desc");  // System field
         break;
       default:
-        table.sort.set("Title", "asc");
+        table.sort.set(product.Title.meta.id, "asc");
         break;
     }
   };
@@ -1007,7 +1040,7 @@ function ProductListPage() {
           type="text"
           placeholder="Search by name..."
           value={table.search.query}
-          onChange={(e) => table.search.set("Title", e.target.value)}
+          onChange={(e) => table.search.set(product.Title.meta.id, e.target.value)}
         />
 
         <select

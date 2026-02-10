@@ -3,7 +3,7 @@
 // Field for single selection from predefined options
 // ============================================================
 
-import type { SelectFieldConfig, SelectOption, ValidationResult, SelectFieldMeta } from "../core/types";
+import type { SelectFieldConfigType, SelectOptionType, ValidationResultType, SelectFieldMetaType } from "../core/types";
 import type { FetchFieldOptionType } from "../../types/common";
 import { api } from "../../api/client";
 import { BaseField } from "./BaseField";
@@ -27,14 +27,14 @@ import { BaseField } from "./BaseField";
  * ```
  */
 export class SelectField<T extends string = string> extends BaseField<T> {
-  protected readonly options: readonly SelectOption<T>[];
+  protected readonly options: readonly SelectOptionType<T>[];
 
-  constructor(config: SelectFieldConfig<T>) {
+  constructor(config: SelectFieldConfigType<T>) {
     super(config);
     this.options = config.options;
   }
 
-  validate(value: T | undefined): ValidationResult {
+  validate(value: T | undefined): ValidationResultType {
     if (value === undefined || value === null || value === "") {
       return { valid: true, errors: [] };
     }
@@ -58,7 +58,7 @@ export class SelectField<T extends string = string> extends BaseField<T> {
   /**
    * Fetch dynamic options from the backend, returned as typed SelectOption[]
    */
-  async fetchOptions(instanceId?: string): Promise<SelectOption<T>[]> {
+  async fetchOptions(instanceId?: string): Promise<SelectOptionType<T>[]> {
     if (!this._parentBoId) {
       throw new Error(
         `Field ${this.id} not bound to a BDO. Cannot fetch options.`
@@ -77,7 +77,7 @@ export class SelectField<T extends string = string> extends BaseField<T> {
   /**
    * Get field metadata including static options
    */
-  override get meta(): SelectFieldMeta<T> {
+  override get meta(): SelectFieldMetaType<T> {
     return {
       id: this.id,
       label: this.label,

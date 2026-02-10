@@ -98,7 +98,7 @@ sdk/bdo/
 ├── core/
 │   ├── BaseBdo.ts      # Abstract base class with protected CRUD + expression validation
 │   ├── Item.ts         # Proxy-based wrapper for field accessor access
-│   └── types.ts        # Core interfaces (FieldMeta, ValidationResult, etc.)
+│   └── types.ts        # Core interfaces (FieldMetaType, ValidationResultType, etc.)
 ├── fields/
 │   ├── BaseField.ts    # Abstract base for all field types
 │   ├── StringField.ts  # String values
@@ -131,8 +131,8 @@ Abstract base class that all BDOs extend. Has **protected** CRUD methods that su
 
 ```typescript
 // Protected methods in BaseBdo:
-protected async get(id): Promise<ItemWithData<TReadType>>
-protected async list(options?): Promise<ItemWithData<TReadType>[]>
+protected async get(id): Promise<ItemType<TReadType>>
+protected async list(options?): Promise<ItemType<TReadType>[]>
 protected async count(options?): Promise<number>
 protected async create(data: Partial<TCreateType>): Promise<CreateUpdateResponseType>
 protected async update(id, data): Promise<CreateUpdateResponseType>
@@ -146,12 +146,12 @@ protected async pivot(options): Promise<PivotResponseType>
 // Expression validation methods:
 loadMetadata(metadata: BDOMetadata): void     // Load backend schema for expression validation
 hasMetadata(): boolean                         // Check if metadata is loaded
-validateFieldExpression(fieldId, value, allValues): ValidationResult  // Validate using expressions
+validateFieldExpression(fieldId, value, allValues): ValidationResultType  // Validate using expressions
 ```
 
-#### 2. Item<T> and ItemWithData<T>
+#### 2. ItemType
 
-`Item` wraps API response data with a Proxy that provides field accessors:
+`ItemType` wraps API response data with a Proxy that provides field accessors:
 
 ```typescript
 const item = await product.get("id");
@@ -171,14 +171,12 @@ item.validate()            // Validate all fields (type + expression rules)
 item.toJSON()              // Get raw data object
 ```
 
-`ItemWithData<T>` is the type that combines Item with typed field accessors.
-
-#### 3. FieldMeta Interface
+#### 3. FieldMetaType Interface
 
 All fields expose metadata via `meta` property:
 
 ```typescript
-interface FieldMeta {
+interface FieldMetaType {
   readonly id: string;
   readonly label: string;
   readonly options?: readonly { value: unknown; label: string; disabled?: boolean }[];  // SelectField only
@@ -246,7 +244,7 @@ Every BDO follows this structure:
 ```typescript
 import {
   BaseBdo, StringField, NumberField, // ... field classes
-  type ItemWithData, type BaseField,
+  type ItemType,
 } from "@ram_28/kf-ai-sdk/bdo";
 import { api } from "@ram_28/kf-ai-sdk/api";
 
@@ -269,7 +267,7 @@ export class MyBdo extends BaseBdo<EntityType, MyBdoCreateType, MyBdoReadType, M
   }
 
   // 5. Re-exposed CRUD methods (based on role permissions)
-  public async get(id: StringFieldType): Promise<ItemWithData<MyBdoReadType>> {
+  public async get(id: StringFieldType): Promise<ItemType<MyBdoReadType>> {
     return super.get(id);
   }
   // ... other methods as needed
@@ -481,7 +479,7 @@ if (bdo.hasMetadata()) {
 | `sdk/bdo/index.ts` | Internal module exports |
 | `sdk/bdo/core/BaseBdo.ts` | Abstract base class with protected CRUD + expression validation |
 | `sdk/bdo/core/Item.ts` | Proxy wrapper, FieldAccessorLike interface |
-| `sdk/bdo/core/types.ts` | FieldMeta, ValidationResult, configs |
+| `sdk/bdo/core/types.ts` | FieldMetaType, ValidationResultType, configs |
 | `sdk/bdo/fields/BaseField.ts` | Abstract base with `meta` getter |
 | `sdk/bdo/fields/SelectField.ts` | Adds `options` to meta |
 | `sdk/bdo/fields/ReferenceField.ts` | Adds `reference` to meta |

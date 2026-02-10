@@ -69,7 +69,6 @@ export type {
   DateTimeFieldType,
   CurrencyFieldType,
   SelectFieldType,
-  LookupFieldType,
   ArrayFieldType,
   JSONFieldType,
   ReferenceFieldType,

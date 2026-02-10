@@ -3,7 +3,7 @@
 // Main class for expression-based validation
 // ============================================================
 
-import type { ValidationResult } from "../core/types";
+import type { ValidationResultType } from "../core/types";
 import type {
   BDOMetadata,
   ValidationRule,
@@ -123,7 +123,7 @@ export class ExpressionEngine {
     fieldId: string,
     value: unknown,
     allValues: Record<string, unknown>
-  ): ValidationResult {
+  ): ValidationResultType {
     const rules = this.fieldRules.get(fieldId);
 
     // No rules = valid
@@ -172,7 +172,7 @@ export class ExpressionEngine {
    * @param values - All form field values
    * @returns ValidationResult with all collected errors
    */
-  validateAll(values: Record<string, unknown>): ValidationResult {
+  validateAll(values: Record<string, unknown>): ValidationResultType {
     const allErrors: string[] = [];
 
     // Validate each field that has rules

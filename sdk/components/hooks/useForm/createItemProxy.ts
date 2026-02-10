@@ -1,11 +1,12 @@
 import type { UseFormReturn, Path, FieldValues } from "react-hook-form";
-import type { BaseBdo, FieldMeta, BaseField } from "../../../bdo";
+import type { BaseBdo, FieldMetaType } from "../../../bdo";
+import type { BaseField } from "../../../bdo/fields/BaseField";
 import type {
-  SmartFormItem,
-  ExtractEditable,
-  ExtractReadonly,
-  EditableFormFieldAccessor,
-  ReadonlyFormFieldAccessor,
+  FormItemType,
+  ExtractEditableType,
+  ExtractReadonlyType,
+  EditableFormFieldAccessorType,
+  ReadonlyFormFieldAccessorType,
 } from "./types";
 
 /**
@@ -21,10 +22,10 @@ import type {
 export function createItemProxy<B extends BaseBdo<any, any, any>>(
   bdo: B,
   form: UseFormReturn<FieldValues>,
-): SmartFormItem<ExtractEditable<B>, ExtractReadonly<B>> {
+): FormItemType<ExtractEditableType<B>, ExtractReadonlyType<B>> {
   const fields = bdo.getFields();
 
-  return new Proxy({} as SmartFormItem<ExtractEditable<B>, ExtractReadonly<B>>, {
+  return new Proxy({} as FormItemType<ExtractEditableType<B>, ExtractReadonlyType<B>>, {
     get(_, prop: string | symbol) {
       // Handle symbol properties (e.g., Symbol.toStringTag)
       if (typeof prop === "symbol") {
@@ -48,7 +49,7 @@ export function createItemProxy<B extends BaseBdo<any, any, any>>(
 
       // Field accessor
       const bdoField = fields[prop] as BaseField<unknown> | undefined;
-      const fieldMeta: FieldMeta = bdoField?.meta ?? {
+      const fieldMeta: FieldMetaType = bdoField?.meta ?? {
         id: prop,
         label: prop,
         isEditable: true,
@@ -65,7 +66,7 @@ export function createItemProxy<B extends BaseBdo<any, any, any>>(
 
       // Only add set() for editable fields
       if (isEditable) {
-        const accessor: EditableFormFieldAccessor<unknown> = {
+        const accessor: EditableFormFieldAccessorType<unknown> = {
           meta: fieldMeta,
           get: () => form.getValues(prop as Path<FieldValues>),
           set: (value: unknown) => {
@@ -80,7 +81,7 @@ export function createItemProxy<B extends BaseBdo<any, any, any>>(
         return accessor;
       }
 
-      const accessor: ReadonlyFormFieldAccessor<unknown> = {
+      const accessor: ReadonlyFormFieldAccessorType<unknown> = {
         meta: fieldMeta,
         get: () => form.getValues(prop as Path<FieldValues>),
         validate,

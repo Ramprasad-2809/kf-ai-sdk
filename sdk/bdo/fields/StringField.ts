@@ -4,7 +4,7 @@
 // ============================================================
 
 import type { StringFieldType } from "../../types/base-fields";
-import type { FieldConfig, ValidationResult } from "../core/types";
+import type { FieldConfigType, ValidationResultType } from "../core/types";
 import { BaseField } from "./BaseField";
 
 /**
@@ -19,11 +19,11 @@ import { BaseField } from "./BaseField";
  * ```
  */
 export class StringField extends BaseField<StringFieldType> {
-  constructor(config: FieldConfig) {
+  constructor(config: FieldConfigType) {
     super(config);
   }
 
-  validate(value: StringFieldType | undefined): ValidationResult {
+  validate(value: StringFieldType | undefined): ValidationResultType {
     if (value !== undefined && value !== null && typeof value !== "string") {
       return {
         valid: false,

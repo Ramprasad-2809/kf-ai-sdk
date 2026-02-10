@@ -3,7 +3,7 @@
 // Abstract base class for all field types
 // ============================================================
 
-import type { FieldConfig, ValidationResult, FieldMeta } from "../core/types";
+import type { FieldConfigType, ValidationResultType, FieldMetaType } from "../core/types";
 
 /**
  * Abstract base class for all field definitions
@@ -25,7 +25,7 @@ export abstract class BaseField<T> {
   protected readonly editable: boolean;
   protected _parentBoId?: string;
 
-  constructor(config: FieldConfig) {
+  constructor(config: FieldConfigType) {
     this.id = config.id;
     this.label = config.label;
     this.editable = config.editable ?? true;
@@ -35,12 +35,12 @@ export abstract class BaseField<T> {
    * Validate a value for this field
    * Override in subclasses for custom validation
    */
-  abstract validate(value: T | undefined): ValidationResult;
+  abstract validate(value: T | undefined): ValidationResultType;
 
   /**
    * Get field metadata (id, label, and field-specific info)
    */
-  get meta(): FieldMeta {
+  get meta(): FieldMetaType {
     return {
       id: this.id,
       label: this.label,

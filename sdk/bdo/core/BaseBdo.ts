@@ -15,12 +15,12 @@ import type {
 } from "../../types/common";
 import type { StringFieldType, SystemFields, UserRefType } from "../../types/base-fields";
 import { api } from "../../api/client";
-import { Item, type ItemWithData } from "./Item";
+import { Item, type ItemType } from "./Item";
 import { BaseField } from "../fields/BaseField";
 import { StringField } from "../fields/StringField";
 import { DateTimeField } from "../fields/DateTimeField";
 import { ReferenceField } from "../fields/ReferenceField";
-import type { ValidationResult } from "./types";
+import type { ValidationResultType, BdoMetaType } from "./types";
 import { ExpressionEngine, type BDOMetadata } from "../expressions";
 
 // Re-export SystemFields type for consumers
@@ -42,7 +42,7 @@ const USER_BO_ID = "SYS_User";
  * @example
  * ```typescript
  * class AdminProduct extends BaseBdo<ProductType> {
- *   readonly boId = "BDO_Product";
+ *   readonly meta = { _id: "BDO_Product", name: "Product" };
  *
  *   // Re-expose only methods this role can use
  *   public async get(id: StringFieldType) { return super.get(id); }
@@ -57,9 +57,9 @@ export abstract class BaseBdo<
   TReadonly extends Record<string, unknown> = {},
 > {
   /**
-   * Business Object identifier used for API calls
+   * BDO metadata — identifies this business object
    */
-  abstract readonly boId: string;
+  abstract readonly meta: BdoMetaType;
 
   // ============================================================
   // SYSTEM FIELDS (inherited by all BDOs)
@@ -120,7 +120,7 @@ export abstract class BaseBdo<
     // Bind parent BDO ID to all fields (direct protected property access)
     if (!this._fieldsBound) {
       for (const field of Object.values(allFields)) {
-        (field as unknown as { _parentBoId: string })._parentBoId = this.boId;
+        (field as unknown as { _parentBoId: string })._parentBoId = this.meta._id;
       }
       this._fieldsBound = true;
     }
@@ -170,13 +170,13 @@ export abstract class BaseBdo<
    * @param fieldId - The field identifier
    * @param value - The current value of the field
    * @param allValues - All form field values (for cross-field validation)
-   * @returns ValidationResult from expression evaluation
+   * @returns ValidationResultType from expression evaluation
    */
   validateFieldExpression(
     fieldId: string,
     value: unknown,
     allValues: Record<string, unknown>
-  ): ValidationResult {
+  ): ValidationResultType {
     if (!this._expressionEngine.hasMetadata()) {
       return { valid: true, errors: [] };
     }
@@ -190,18 +190,18 @@ export abstract class BaseBdo<
   /**
    * Get a single record by ID
    */
-  protected async get(id: StringFieldType): Promise<ItemWithData<TEditable, TReadonly>> {
-    const data = await api<TEditable & TReadonly>(this.boId).get(id);
-    return new Item<TEditable & TReadonly>(this, data as Partial<TEditable & TReadonly>) as ItemWithData<TEditable, TReadonly>;
+  protected async get(id: StringFieldType): Promise<ItemType<TEditable, TReadonly>> {
+    const data = await api<TEditable & TReadonly>(this.meta._id).get(id);
+    return new Item<TEditable & TReadonly>(this, data as Partial<TEditable & TReadonly>) as ItemType<TEditable, TReadonly>;
   }
 
   /**
    * List records with optional filtering, sorting, and pagination
    */
-  protected async list(options?: ListOptionsType): Promise<ItemWithData<TEditable, TReadonly>[]> {
-    const response = await api<TEditable & TReadonly>(this.boId).list(options);
+  protected async list(options?: ListOptionsType): Promise<ItemType<TEditable, TReadonly>[]> {
+    const response = await api<TEditable & TReadonly>(this.meta._id).list(options);
     return response.Data.map(
-      (data) => new Item<TEditable & TReadonly>(this, data as Partial<TEditable & TReadonly>) as ItemWithData<TEditable, TReadonly>
+      (data) => new Item<TEditable & TReadonly>(this, data as Partial<TEditable & TReadonly>) as ItemType<TEditable, TReadonly>
     );
   }
 
@@ -209,7 +209,7 @@ export abstract class BaseBdo<
    * Get count of records matching the filter criteria
    */
   protected async count(options?: ListOptionsType): Promise<number> {
-    const response = await api<TEntity>(this.boId).count(options);
+    const response = await api<TEntity>(this.meta._id).count(options);
     return response.Count;
   }
 
@@ -221,12 +221,12 @@ export abstract class BaseBdo<
    * Create a new record in the database
    * Returns an Item with _id from API response + the input data as field accessors
    */
-  protected async create(data: Partial<TEditable>): Promise<ItemWithData<TEditable, TReadonly>> {
-    const result = await api<TEntity>(this.boId).create(data as Partial<TEntity>);
+  protected async create(data: Partial<TEditable>): Promise<ItemType<TEditable, TReadonly>> {
+    const result = await api<TEntity>(this.meta._id).create(data as Partial<TEntity>);
     return new Item<TEditable & TReadonly>(
       this,
       { ...data, _id: result._id } as Partial<TEditable & TReadonly>,
-    ) as ItemWithData<TEditable, TReadonly>;
+    ) as ItemType<TEditable, TReadonly>;
   }
 
   // ============================================================
@@ -240,7 +240,7 @@ export abstract class BaseBdo<
     id: StringFieldType,
     data: Partial<TEditable>
   ): Promise<CreateUpdateResponseType> {
-    return api<TEntity>(this.boId).update(id, data as Partial<TEntity>);
+    return api<TEntity>(this.meta._id).update(id, data as Partial<TEntity>);
   }
 
   // ============================================================
@@ -251,7 +251,7 @@ export abstract class BaseBdo<
    * Delete a record by ID
    */
   protected async delete(id: StringFieldType): Promise<DeleteResponseType> {
-    return api<TEntity>(this.boId).delete(id);
+    return api<TEntity>(this.meta._id).delete(id);
   }
 
   // ============================================================
@@ -262,7 +262,7 @@ export abstract class BaseBdo<
    * Create a draft - compute fields without persisting
    */
   protected async draft(data: Partial<TEditable>): Promise<DraftResponseType> {
-    return api<TEntity>(this.boId).draft(data as Partial<TEntity>);
+    return api<TEntity>(this.meta._id).draft(data as Partial<TEntity>);
   }
 
   /**
@@ -272,15 +272,15 @@ export abstract class BaseBdo<
   protected async draftInteraction(
     data: Partial<TEditable>
   ): Promise<DraftResponseType & { _id: string }> {
-    return api<TEntity>(this.boId).draftInteraction(data as Partial<TEntity>);
+    return api<TEntity>(this.meta._id).draftInteraction(data as Partial<TEntity>);
   }
 
   /**
    * Create an Item wrapper for manipulating data with field accessors
    * Use this when you need get/set/validate methods on fields
    */
-  protected createItem(data?: Partial<TEditable>): ItemWithData<TEditable, TReadonly> {
-    return new Item<TEditable & TReadonly>(this, (data ?? {}) as Partial<TEditable & TReadonly>) as ItemWithData<TEditable, TReadonly>;
+  protected createItem(data?: Partial<TEditable>): ItemType<TEditable, TReadonly> {
+    return new Item<TEditable & TReadonly>(this, (data ?? {}) as Partial<TEditable & TReadonly>) as ItemType<TEditable, TReadonly>;
   }
 
   /**
@@ -290,7 +290,7 @@ export abstract class BaseBdo<
     id: StringFieldType,
     data: Partial<TEditable>
   ): Promise<DraftResponseType> {
-    return api<TEntity>(this.boId).draftPatch(id, data as Partial<TEntity>);
+    return api<TEntity>(this.meta._id).draftPatch(id, data as Partial<TEntity>);
   }
 
   // ============================================================
@@ -303,7 +303,7 @@ export abstract class BaseBdo<
   protected async metric(
     options: Omit<MetricOptionsType, "Type">
   ): Promise<MetricResponseType> {
-    return api<TEntity>(this.boId).metric(options);
+    return api<TEntity>(this.meta._id).metric(options);
   }
 
   /**
@@ -312,6 +312,6 @@ export abstract class BaseBdo<
   protected async pivot(
     options: Omit<PivotOptionsType, "Type">
   ): Promise<PivotResponseType> {
-    return api<TEntity>(this.boId).pivot(options);
+    return api<TEntity>(this.meta._id).pivot(options);
   }
 }

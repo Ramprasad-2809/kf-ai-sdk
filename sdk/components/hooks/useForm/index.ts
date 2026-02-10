@@ -2,14 +2,14 @@ export { useForm } from "./useForm";
 export { createResolver } from "./createResolver";
 export { createItemProxy } from "./createItemProxy";
 export type {
-  UseFormOptions,
-  UseFormReturn,
-  SmartFormItem,
-  EditableFormFieldAccessor,
-  ReadonlyFormFieldAccessor,
-  SmartRegister,
+  UseFormOptionsType,
+  UseFormReturnType,
+  FormItemType,
+  EditableFormFieldAccessorType,
+  ReadonlyFormFieldAccessorType,
+  FormRegisterType,
   HandleSubmitType,
-  ExtractEditable,
-  ExtractReadonly,
-  AllFields,
+  ExtractEditableType,
+  ExtractReadonlyType,
+  AllFieldsType,
 } from "./types";

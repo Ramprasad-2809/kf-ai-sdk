@@ -4,7 +4,7 @@
 // ============================================================
 
 import type { BooleanFieldType } from "../../types/base-fields";
-import type { FieldConfig, ValidationResult } from "../core/types";
+import type { FieldConfigType, ValidationResultType } from "../core/types";
 import { BaseField } from "./BaseField";
 
 /**
@@ -19,11 +19,11 @@ import { BaseField } from "./BaseField";
  * ```
  */
 export class BooleanField extends BaseField<BooleanFieldType> {
-  constructor(config: FieldConfig) {
+  constructor(config: FieldConfigType) {
     super(config);
   }
 
-  validate(value: BooleanFieldType | undefined): ValidationResult {
+  validate(value: BooleanFieldType | undefined): ValidationResultType {
     if (value !== undefined && value !== null && typeof value !== "boolean") {
       return {
         valid: false,

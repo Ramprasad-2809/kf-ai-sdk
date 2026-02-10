@@ -7,22 +7,23 @@
 export { BaseBdo, type SystemFields } from "./core/BaseBdo";
 export {
   Item,
-  type ItemWithData,
-  type FieldAccessorLike,
-  type EditableFieldAccessor,
-  type ReadonlyFieldAccessor,
+  type ItemType,
+  type FieldAccessorType,
+  type EditableFieldAccessorType,
+  type ReadonlyFieldAccessorType,
 } from "./core/Item";
 
 // Types
 export type {
-  ValidationResult,
-  SelectOption,
-  FieldConfig,
-  SelectFieldConfig,
-  ReferenceFieldConfig,
-  FieldMeta,
-  SelectFieldMeta,
-  ReferenceFieldMeta,
+  BdoMetaType,
+  ValidationResultType,
+  SelectOptionType,
+  FieldConfigType,
+  SelectFieldConfigType,
+  ReferenceFieldConfigType,
+  FieldMetaType,
+  SelectFieldMetaType,
+  ReferenceFieldMetaType,
 } from "./core/types";
 
 // Field classes
@@ -36,13 +37,3 @@ export {
   ReferenceField,
   ArrayField,
 } from "./fields";
-
-// Expression engine
-export { ExpressionEngine } from "./expressions";
-export type {
-  ExpressionTreeType,
-  ExpressionContext,
-  ValidationRule,
-  FieldDefinition,
-  BDOMetadata,
-} from "./expressions";

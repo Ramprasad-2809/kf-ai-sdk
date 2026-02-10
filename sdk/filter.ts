@@ -16,5 +16,5 @@ export {
 export {
   ConditionOperator,
   GroupOperator,
-  RHSType,
+  RHSType as FilterValueSource,
 } from './types/constants';

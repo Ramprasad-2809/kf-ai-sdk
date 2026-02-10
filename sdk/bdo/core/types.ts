@@ -3,9 +3,17 @@
 // ============================================================
 
 /**
+ * BDO-level metadata — identifies the business object
+ */
+export interface BdoMetaType {
+  readonly _id: string;
+  readonly name: string;
+}
+
+/**
  * Result of field validation
  */
-export interface ValidationResult {
+export interface ValidationResultType {
   valid: boolean;
   errors: string[];
 }
@@ -14,23 +22,23 @@ export interface ValidationResult {
  * Base field metadata — only id, label, and isEditable.
  * Specialized fields (SelectField, ReferenceField) extend this with their own properties.
  */
-export interface FieldMeta {
+export interface FieldMetaType {
   readonly id: string;
   readonly label: string;
   readonly isEditable: boolean;
 }
 
 /**
- * SelectField meta — extends FieldMeta with static options
+ * SelectField meta — extends FieldMetaType with static options
  */
-export interface SelectFieldMeta<T = string> extends FieldMeta {
-  readonly options: readonly SelectOption<T>[];
+export interface SelectFieldMetaType<T = string> extends FieldMetaType {
+  readonly options: readonly SelectOptionType<T>[];
 }
 
 /**
- * ReferenceField meta — extends FieldMeta with reference info
+ * ReferenceField meta — extends FieldMetaType with reference info
  */
-export interface ReferenceFieldMeta extends FieldMeta {
+export interface ReferenceFieldMetaType extends FieldMetaType {
   readonly reference: { bdo: string; fields: string[] };
 }
 
@@ -38,7 +46,7 @@ export interface ReferenceFieldMeta extends FieldMeta {
 /**
  * Option for select fields
  */
-export interface SelectOption<T = string> {
+export interface SelectOptionType<T = string> {
   value: T;
   label: string;
   disabled?: boolean;
@@ -47,7 +55,7 @@ export interface SelectOption<T = string> {
 /**
  * Base configuration for all fields
  */
-export interface FieldConfig {
+export interface FieldConfigType {
   id: string;
   label: string;
   editable?: boolean;
@@ -56,17 +64,17 @@ export interface FieldConfig {
 /**
  * Configuration for select fields with predefined options
  */
-export interface SelectFieldConfig<T extends string> extends FieldConfig {
-  options: readonly SelectOption<T>[];
+export interface SelectFieldConfigType<T extends string> extends FieldConfigType {
+  options: readonly SelectOptionType<T>[];
 }
 
 /**
  * Configuration for reference fields that link to other BDOs
  */
-export interface ReferenceFieldConfig<
+export interface ReferenceFieldConfigType<
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _TRef = unknown,
-> extends FieldConfig {
+> extends FieldConfigType {
   referenceBdo: string;
   referenceFields?: readonly string[];
 }

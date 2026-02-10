@@ -3,16 +3,16 @@
 // ============================================================
 // Exports useForm hook for forms with automatic validation and API operations.
 
-export { useForm, createResolver, createItemProxy } from "./components/hooks/useForm";
+export { useForm } from "./components/hooks/useForm";
 export type {
-  UseFormOptions,
-  UseFormReturn,
-  SmartFormItem,
-  EditableFormFieldAccessor,
-  ReadonlyFormFieldAccessor,
-  SmartRegister,
+  UseFormOptionsType,
+  UseFormReturnType,
+  FormItemType,
+  EditableFormFieldAccessorType,
+  ReadonlyFormFieldAccessorType,
+  FormRegisterType,
   HandleSubmitType,
-  ExtractEditable,
-  ExtractReadonly,
-  AllFields,
+  ExtractEditableType,
+  ExtractReadonlyType,
+  AllFieldsType,
 } from "./components/hooks/useForm";

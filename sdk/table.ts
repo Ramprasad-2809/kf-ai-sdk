@@ -12,5 +12,5 @@ export {
   ConditionOperator,
   GroupOperator,
   RHSType,
-  Defaults,
+  Defaults as TableDefaults,
 } from './types/constants';

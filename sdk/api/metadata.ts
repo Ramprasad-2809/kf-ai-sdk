@@ -13,7 +13,7 @@ import { getApiBaseUrl, getDefaultHeaders } from "./client";
 /**
  * BDO Schema Structure (Business Object Metadata)
  */
-export interface BackendSchema {
+export interface BackendSchemaType {
   [fieldName: string]: any;
 }
 
@@ -31,7 +31,7 @@ export interface BackendSchema {
  * console.log(schema.Fields); // Access field definitions
  * ```
  */
-export async function getBdoSchema(metaId: string): Promise<BackendSchema> {
+export async function getBdoSchema(metaId: string): Promise<BackendSchemaType> {
   try {
     const baseUrl = getApiBaseUrl();
     const headers = getDefaultHeaders();
@@ -54,7 +54,7 @@ export async function getBdoSchema(metaId: string): Promise<BackendSchema> {
       throw new Error(`Invalid BDO schema response for ${metaId}`);
     }
 
-    return bdoSchema as BackendSchema;
+    return bdoSchema as BackendSchemaType;
   } catch (error) {
     console.error(`Schema fetch error for ${metaId}:`, error);
     throw new Error(
@@ -66,7 +66,7 @@ export async function getBdoSchema(metaId: string): Promise<BackendSchema> {
 /**
  * Metadata item structure
  */
-export interface MetadataItem {
+export interface MetadataItemType {
   _id: string;
   Name: string;
   Kind: string;
@@ -98,7 +98,7 @@ export interface MetadataItem {
  */
 export async function listMetadata(
   options?: ListOptionsType
-): Promise<ListResponseType<MetadataItem>> {
+): Promise<ListResponseType<MetadataItemType>> {
   try {
     const baseUrl = getApiBaseUrl();
     const headers = getDefaultHeaders();
@@ -121,7 +121,7 @@ export async function listMetadata(
 
     const result = await response.json();
 
-    return result as ListResponseType<MetadataItem>;
+    return result as ListResponseType<MetadataItemType>;
   } catch (error) {
     console.error("Metadata list error:", error);
     throw new Error(
@@ -133,7 +133,7 @@ export async function listMetadata(
 /**
  * Field metadata structure
  */
-export interface FieldMetadata {
+export interface FieldMetadataType {
   Id: string;
   Name: string;
   Type: string;

@@ -4,7 +4,7 @@
 // ============================================================
 
 import type { ArrayFieldType } from "../../types/base-fields";
-import type { FieldConfig, ValidationResult } from "../core/types";
+import type { FieldConfigType, ValidationResultType } from "../core/types";
 import { BaseField } from "./BaseField";
 
 /**
@@ -21,11 +21,11 @@ import { BaseField } from "./BaseField";
  * ```
  */
 export class ArrayField<T = unknown> extends BaseField<ArrayFieldType<T>> {
-  constructor(config: FieldConfig) {
+  constructor(config: FieldConfigType) {
     super(config);
   }
 
-  validate(value: ArrayFieldType<T> | undefined): ValidationResult {
+  validate(value: ArrayFieldType<T> | undefined): ValidationResultType {
     if (value !== undefined && value !== null && !Array.isArray(value)) {
       return {
         valid: false,

@@ -42,7 +42,7 @@ export type ConditionGroupOperatorType = (typeof GroupOperator)[keyof typeof Gro
  * RHS value type for filter conditions
  * Derived from RHSType constant
  */
-export type FilterRHSTypeType = (typeof RHSType)[keyof typeof RHSType];
+export type FilterRHSType = (typeof RHSType)[keyof typeof RHSType];
 
 /**
  * Leaf condition (actual field comparison)
@@ -58,7 +58,7 @@ export interface ConditionType<T = any> {
   /** Right-hand side value */
   RHSValue: any;
   /** Right-hand side type (optional, defaults to Constant) */
-  RHSType?: FilterRHSTypeType;
+  RHSType?: FilterRHSType;
 }
 
 /**
@@ -159,7 +159,7 @@ export interface ListOptionsType {
  * Metric aggregation function types
  * Derived from MetricType constant
  */
-export type MetricTypeType = (typeof MetricType)[keyof typeof MetricType];
+export type AggregationType = (typeof MetricType)[keyof typeof MetricType];
 
 /**
  * Metric field configuration
@@ -168,7 +168,7 @@ export interface MetricFieldType {
   /** Field to aggregate */
   Field: string;
   /** Aggregation function type */
-  Type: MetricTypeType;
+  Type: AggregationType;
 }
 
 /**

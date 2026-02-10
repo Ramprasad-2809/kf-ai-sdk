@@ -4,7 +4,7 @@
 // ============================================================
 
 import type { NumberFieldType } from "../../types/base-fields";
-import type { FieldConfig, ValidationResult } from "../core/types";
+import type { FieldConfigType, ValidationResultType } from "../core/types";
 import { BaseField } from "./BaseField";
 
 /**
@@ -19,11 +19,11 @@ import { BaseField } from "./BaseField";
  * ```
  */
 export class NumberField extends BaseField<NumberFieldType> {
-  constructor(config: FieldConfig) {
+  constructor(config: FieldConfigType) {
     super(config);
   }
 
-  validate(value: NumberFieldType | undefined): ValidationResult {
+  validate(value: NumberFieldType | undefined): ValidationResultType {
     if (value !== undefined && value !== null && (typeof value !== "number" || isNaN(value))) {
       return {
         valid: false,

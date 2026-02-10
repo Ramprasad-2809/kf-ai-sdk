@@ -21,7 +21,7 @@ import type {
 /**
  * API client interface for a specific Business Object
  */
-export interface ResourceClient<T = any> {
+export interface ResourceClientType<T = any> {
   // ============================================================
   // BASIC CRUD OPERATIONS
   // ============================================================
@@ -166,7 +166,7 @@ export function getApiBaseUrl(): string {
  * @param bo_id - Business Object identifier (e.g., "user", "leave", "vendor")
  * @returns Resource client with CRUD operations matching API spec
  */
-export function api<T = any>(bo_id: string): ResourceClient<T> {
+export function api<T = any>(bo_id: string): ResourceClientType<T> {
   const baseUrl = apiConfig.baseUrl;
   const defaultHeaders = apiConfig.headers;
 

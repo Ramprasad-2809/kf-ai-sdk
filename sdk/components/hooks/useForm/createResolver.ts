@@ -1,5 +1,6 @@
 import type { FieldValues } from "react-hook-form";
-import type { BaseBdo, BaseField, ValidationResult } from "../../../bdo";
+import type { BaseBdo, ValidationResultType } from "../../../bdo";
+import type { BaseField } from "../../../bdo/fields/BaseField";
 
 /**
  * Creates a React Hook Form resolver for field validation.
@@ -43,7 +44,7 @@ export function createResolver<B extends BaseBdo<any, any, any>>(
       const value = values[fieldName];
 
       // 1. Type validation (existing)
-      const typeResult: ValidationResult = (
+      const typeResult: ValidationResultType = (
         field as BaseField<unknown>
       ).validate(value);
 

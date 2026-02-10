@@ -14,6 +14,9 @@ import {
   useFilter,
   isCondition,
   isConditionGroup,
+  ConditionOperator,
+  GroupOperator,
+  RHSType,
 } from "@ram_28/kf-ai-sdk/filter";
 import type {
   UseFilterOptionsType,
@@ -24,6 +27,40 @@ import type {
   ConditionGroupOperatorType,
   FilterType,
 } from "@ram_28/kf-ai-sdk/filter/types";
+```
+
+## Constants
+
+Use the provided constants instead of hardcoded strings for type-safety:
+
+```typescript
+// Condition operators
+ConditionOperator.EQ        // "EQ"
+ConditionOperator.NE        // "NE"
+ConditionOperator.GT        // "GT"
+ConditionOperator.GTE       // "GTE"
+ConditionOperator.LT        // "LT"
+ConditionOperator.LTE       // "LTE"
+ConditionOperator.Between   // "Between"
+ConditionOperator.NotBetween // "NotBetween"
+ConditionOperator.IN        // "IN"
+ConditionOperator.NIN       // "NIN"
+ConditionOperator.Empty     // "Empty"
+ConditionOperator.NotEmpty  // "NotEmpty"
+ConditionOperator.Contains  // "Contains"
+ConditionOperator.NotContains // "NotContains"
+ConditionOperator.MinLength // "MinLength"
+ConditionOperator.MaxLength // "MaxLength"
+
+// Group operators
+GroupOperator.And  // "And"
+GroupOperator.Or   // "Or"
+GroupOperator.Not  // "Not"
+
+// RHS types
+RHSType.Constant    // "Constant"
+RHSType.BOField     // "BOField"
+RHSType.AppVariable // "AppVariable"
 ```
 
 ## Type Definitions
@@ -169,16 +206,20 @@ interface UseFilterReturnType<T = any> {
 Create a simple filter with one condition.
 
 ```tsx
-import { useFilter } from "@ram_28/kf-ai-sdk/filter";
+import { useMemo } from "react";
+import { useFilter, ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
+import { BuyerProduct } from "../bdo/buyer/Product";
 
 function SimpleFilter() {
+  const product = useMemo(() => new BuyerProduct(), []);
   const filter = useFilter();
 
   const addCategoryFilter = () => {
     filter.addCondition({
-      Operator: "EQ",
-      LHSField: "Category",
+      Operator: ConditionOperator.EQ,
+      LHSField: product.Category.meta.id,
       RHSValue: "Electronics",
+      RHSType: RHSType.Constant,
     });
   };
 
@@ -206,30 +247,31 @@ Use the generic type parameter to get TypeScript validation on field names.
 ### With Generic Type
 
 ```tsx
-import { useFilter } from "@ram_28/kf-ai-sdk/filter";
-import { Product } from "../sources";
-import type { ProductForRole } from "../sources";
-import { Roles } from "../sources/roles";
-
-type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
+import { useMemo } from "react";
+import { useFilter, ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
+import { BuyerProduct } from "../bdo/buyer/Product";
+import type { BuyerProductFieldType } from "../bdo/buyer/Product";
 
 function TypeSafeFilter() {
+  const product = useMemo(() => new BuyerProduct(), []);
   // Pass the type parameter for type-safe LHSField
-  const filter = useFilter<BuyerProduct>();
+  const filter = useFilter<BuyerProductFieldType>();
 
   const addCategoryFilter = () => {
     filter.addCondition({
-      Operator: "EQ",
-      LHSField: "Category", // TypeScript validates this field exists
+      Operator: ConditionOperator.EQ,
+      LHSField: product.Category.meta.id, // Type-safe via BDO field
       RHSValue: "Electronics",
+      RHSType: RHSType.Constant,
     });
   };
 
   const addInvalidFilter = () => {
     filter.addCondition({
-      Operator: "EQ",
-      LHSField: "InvalidField", // TypeScript error: not a key of BuyerProduct
+      Operator: ConditionOperator.EQ,
+      LHSField: "InvalidField", // TypeScript error: not a key of BuyerProductFieldType
       RHSValue: "test",
+      RHSType: RHSType.Constant,
     });
   };
 
@@ -250,25 +292,37 @@ function TypeSafeFilter() {
 - Setting `initialState.filter` in `useKanban`
 
 ```tsx
-import { useFilter } from "@ram_28/kf-ai-sdk/filter";
+import { useMemo } from "react";
+import { useFilter, ConditionOperator, GroupOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
 import type { UseFilterOptionsType } from "@ram_28/kf-ai-sdk/filter/types";
-import { Product } from "../sources";
-import type { ProductForRole } from "../sources";
-import { Roles } from "../sources/roles";
+import { BuyerProduct } from "../bdo/buyer/Product";
+import type { BuyerProductFieldType } from "../bdo/buyer/Product";
 
-type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
+function FilterWithInitialState() {
+  const product = useMemo(() => new BuyerProduct(), []);
 
-// Type-safe filter options
-const initialFilter: UseFilterOptionsType<BuyerProduct> = {
-  conditions: [
-    { Operator: "EQ", LHSField: "Category", RHSValue: "Electronics" },
-    { Operator: "GT", LHSField: "Price", RHSValue: 100 },
-  ],
-  operator: "And",
-};
+  // Type-safe filter options
+  const initialFilter: UseFilterOptionsType<BuyerProductFieldType> = {
+    conditions: [
+      {
+        Operator: ConditionOperator.EQ,
+        LHSField: product.Category.meta.id,
+        RHSValue: "Electronics",
+        RHSType: RHSType.Constant,
+      },
+      {
+        Operator: ConditionOperator.GT,
+        LHSField: product.Price.meta.id,
+        RHSValue: 100,
+        RHSType: RHSType.Constant,
+      },
+    ],
+    operator: GroupOperator.And,
+  };
 
-// Use with useFilter
-const filter = useFilter<BuyerProduct>(initialFilter);
+  // Use with useFilter
+  const filter = useFilter<BuyerProductFieldType>(initialFilter);
+}
 ```
 
 ---
@@ -280,24 +334,31 @@ const filter = useFilter<BuyerProduct>(initialFilter);
 Match or exclude exact values.
 
 ```tsx
+import { useMemo } from "react";
+import { useFilter, ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
+import { BuyerProduct } from "../bdo/buyer/Product";
+
 function EqualityFilters() {
+  const product = useMemo(() => new BuyerProduct(), []);
   const filter = useFilter();
 
   // Exact match
   const filterByStatus = (status: string) => {
     filter.addCondition({
-      Operator: "EQ",
-      LHSField: "Status",
+      Operator: ConditionOperator.EQ,
+      LHSField: product.Status.meta.id,
       RHSValue: status,
+      RHSType: RHSType.Constant,
     });
   };
 
   // Exclude a value
   const excludeStatus = (status: string) => {
     filter.addCondition({
-      Operator: "NE",
-      LHSField: "Status",
+      Operator: ConditionOperator.NE,
+      LHSField: product.Status.meta.id,
       RHSValue: status,
+      RHSType: RHSType.Constant,
     });
   };
 
@@ -317,34 +378,42 @@ function EqualityFilters() {
 Filter by numeric or date comparisons.
 
 ```tsx
+import { useMemo } from "react";
+import { useFilter, ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
+import { BuyerProduct } from "../bdo/buyer/Product";
+
 function ComparisonFilters() {
+  const product = useMemo(() => new BuyerProduct(), []);
   const filter = useFilter();
 
   // Price greater than
   const filterByMinPrice = (minPrice: number) => {
     filter.addCondition({
-      Operator: "GT",
-      LHSField: "Price",
+      Operator: ConditionOperator.GT,
+      LHSField: product.Price.meta.id,
       RHSValue: minPrice,
+      RHSType: RHSType.Constant,
     });
   };
 
   // Stock less than or equal
   const filterLowStock = (threshold: number) => {
     filter.addCondition({
-      Operator: "LTE",
-      LHSField: "Stock",
+      Operator: ConditionOperator.LTE,
+      LHSField: product.Stock.meta.id,
       RHSValue: threshold,
+      RHSType: RHSType.Constant,
     });
   };
 
-  // Date comparison
+  // Date comparison (using system field)
   const filterRecent = () => {
     const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     filter.addCondition({
-      Operator: "GTE",
-      LHSField: "CreatedAt",
+      Operator: ConditionOperator.GTE,
+      LHSField: "_created_at",  // System field
       RHSValue: lastWeek,
+      RHSType: RHSType.Constant,
     });
   };
 
@@ -363,33 +432,43 @@ function ComparisonFilters() {
 Filter values within or outside a range.
 
 ```tsx
+import { useMemo } from "react";
+import { useFilter, ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
+import { BuyerProduct } from "../bdo/buyer/Product";
+import { BuyerOrder } from "../bdo/buyer/Order";
+
 function RangeFilters() {
+  const product = useMemo(() => new BuyerProduct(), []);
+  const order = useMemo(() => new BuyerOrder(), []);
   const filter = useFilter();
 
   // Price between range
   const filterPriceRange = (min: number, max: number) => {
     filter.addCondition({
-      Operator: "Between",
-      LHSField: "Price",
+      Operator: ConditionOperator.Between,
+      LHSField: product.Price.meta.id,
       RHSValue: [min, max],
+      RHSType: RHSType.Constant,
     });
   };
 
   // Date range
   const filterDateRange = (startDate: string, endDate: string) => {
     filter.addCondition({
-      Operator: "Between",
-      LHSField: "OrderDate",
+      Operator: ConditionOperator.Between,
+      LHSField: order.OrderDate.meta.id,
       RHSValue: [startDate, endDate],
+      RHSType: RHSType.Constant,
     });
   };
 
   // Exclude range
   const excludePriceRange = (min: number, max: number) => {
     filter.addCondition({
-      Operator: "NotBetween",
-      LHSField: "Price",
+      Operator: ConditionOperator.NotBetween,
+      LHSField: product.Price.meta.id,
       RHSValue: [min, max],
+      RHSType: RHSType.Constant,
     });
   };
 
@@ -409,24 +488,31 @@ function RangeFilters() {
 Match against a list of values.
 
 ```tsx
+import { useMemo } from "react";
+import { useFilter, ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
+import { BuyerProduct } from "../bdo/buyer/Product";
+
 function ListFilters() {
+  const product = useMemo(() => new BuyerProduct(), []);
   const filter = useFilter();
 
   // Match any in list
   const filterByCategories = (categories: string[]) => {
     filter.addCondition({
-      Operator: "IN",
-      LHSField: "Category",
+      Operator: ConditionOperator.IN,
+      LHSField: product.Category.meta.id,
       RHSValue: categories,
+      RHSType: RHSType.Constant,
     });
   };
 
   // Exclude list
   const excludeCategories = (categories: string[]) => {
     filter.addCondition({
-      Operator: "NIN",
-      LHSField: "Category",
+      Operator: ConditionOperator.NIN,
+      LHSField: product.Category.meta.id,
       RHSValue: categories,
+      RHSType: RHSType.Constant,
     });
   };
 
@@ -448,24 +534,31 @@ function ListFilters() {
 Search within text fields.
 
 ```tsx
+import { useMemo } from "react";
+import { useFilter, ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
+import { BuyerProduct } from "../bdo/buyer/Product";
+
 function TextFilters() {
+  const product = useMemo(() => new BuyerProduct(), []);
   const filter = useFilter();
 
   // Contains text
   const filterByKeyword = (keyword: string) => {
     filter.addCondition({
-      Operator: "Contains",
-      LHSField: "Title",
+      Operator: ConditionOperator.Contains,
+      LHSField: product.Title.meta.id,
       RHSValue: keyword,
+      RHSType: RHSType.Constant,
     });
   };
 
   // Does not contain
   const excludeKeyword = (keyword: string) => {
     filter.addCondition({
-      Operator: "NotContains",
-      LHSField: "Description",
+      Operator: ConditionOperator.NotContains,
+      LHSField: product.Description.meta.id,
       RHSValue: keyword,
+      RHSType: RHSType.Constant,
     });
   };
 
@@ -489,24 +582,31 @@ function TextFilters() {
 Filter by presence or absence of values.
 
 ```tsx
+import { useMemo } from "react";
+import { useFilter, ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
+import { Task } from "../bdo/Task";
+
 function EmptyFilters() {
+  const task = useMemo(() => new Task(), []);
   const filter = useFilter();
 
   // Has no value
   const filterUnassigned = () => {
     filter.addCondition({
-      Operator: "Empty",
-      LHSField: "AssignedTo",
+      Operator: ConditionOperator.Empty,
+      LHSField: task.AssignedTo.meta.id,
       RHSValue: null,
+      RHSType: RHSType.Constant,
     });
   };
 
   // Has a value
   const filterAssigned = () => {
     filter.addCondition({
-      Operator: "NotEmpty",
-      LHSField: "AssignedTo",
+      Operator: ConditionOperator.NotEmpty,
+      LHSField: task.AssignedTo.meta.id,
       RHSValue: null,
+      RHSType: RHSType.Constant,
     });
   };
 
@@ -528,9 +628,14 @@ function EmptyFilters() {
 All conditions must match.
 
 ```tsx
+import { useMemo } from "react";
+import { useFilter, ConditionOperator, GroupOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
+import { BuyerProduct } from "../bdo/buyer/Product";
+
 function AndFilter() {
+  const product = useMemo(() => new BuyerProduct(), []);
   const filter = useFilter({
-    operator: "And",
+    operator: GroupOperator.And,
   });
 
   const applyFilters = () => {
@@ -538,19 +643,22 @@ function AndFilter() {
 
     // Category AND Price AND InStock - all must be true
     filter.addCondition({
-      Operator: "EQ",
-      LHSField: "Category",
+      Operator: ConditionOperator.EQ,
+      LHSField: product.Category.meta.id,
       RHSValue: "Electronics",
+      RHSType: RHSType.Constant,
     });
     filter.addCondition({
-      Operator: "LTE",
-      LHSField: "Price",
+      Operator: ConditionOperator.LTE,
+      LHSField: product.Price.meta.id,
       RHSValue: 500,
+      RHSType: RHSType.Constant,
     });
     filter.addCondition({
-      Operator: "GT",
-      LHSField: "Stock",
+      Operator: ConditionOperator.GT,
+      LHSField: product.Stock.meta.id,
       RHSValue: 0,
+      RHSType: RHSType.Constant,
     });
   };
 
@@ -568,9 +676,14 @@ function AndFilter() {
 Any condition can match.
 
 ```tsx
+import { useMemo } from "react";
+import { useFilter, ConditionOperator, GroupOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
+import { Task } from "../bdo/Task";
+
 function OrFilter() {
+  const task = useMemo(() => new Task(), []);
   const filter = useFilter({
-    operator: "Or",
+    operator: GroupOperator.Or,
   });
 
   const applyFilters = () => {
@@ -578,14 +691,16 @@ function OrFilter() {
 
     // High priority OR Overdue - either can match
     filter.addCondition({
-      Operator: "EQ",
-      LHSField: "Priority",
+      Operator: ConditionOperator.EQ,
+      LHSField: task.Priority.meta.id,
       RHSValue: "High",
+      RHSType: RHSType.Constant,
     });
     filter.addCondition({
-      Operator: "LT",
-      LHSField: "DueDate",
+      Operator: ConditionOperator.LT,
+      LHSField: task.DueDate.meta.id,
       RHSValue: new Date().toISOString(),
+      RHSType: RHSType.Constant,
     });
   };
 
@@ -598,9 +713,14 @@ function OrFilter() {
 Combine AND and OR logic.
 
 ```tsx
+import { useMemo } from "react";
+import { useFilter, ConditionOperator, GroupOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
+import { BuyerProduct } from "../bdo/buyer/Product";
+
 function NestedFilter() {
+  const product = useMemo(() => new BuyerProduct(), []);
   const filter = useFilter({
-    operator: "And",
+    operator: GroupOperator.And,
   });
 
   // Build: Category = "Electronics" AND (Price < 100 OR OnSale = true)
@@ -609,29 +729,32 @@ function NestedFilter() {
 
     // Root level condition
     filter.addCondition({
-      Operator: "EQ",
-      LHSField: "Category",
+      Operator: ConditionOperator.EQ,
+      LHSField: product.Category.meta.id,
       RHSValue: "Electronics",
+      RHSType: RHSType.Constant,
     });
 
     // Create nested OR group
-    const orGroupId = filter.addConditionGroup("Or");
+    const orGroupId = filter.addConditionGroup(GroupOperator.Or);
 
     // Add conditions to the OR group
     filter.addCondition(
       {
-        Operator: "LT",
-        LHSField: "Price",
+        Operator: ConditionOperator.LT,
+        LHSField: product.Price.meta.id,
         RHSValue: 100,
+        RHSType: RHSType.Constant,
       },
       orGroupId,
     );
 
     filter.addCondition(
       {
-        Operator: "EQ",
-        LHSField: "OnSale",
+        Operator: ConditionOperator.EQ,
+        LHSField: product.OnSale.meta.id,
         RHSValue: true,
+        RHSType: RHSType.Constant,
       },
       orGroupId,
     );
@@ -646,33 +769,36 @@ function NestedFilter() {
 Create multiple levels of nested groups.
 
 ```tsx
+import { useFilter, ConditionOperator, GroupOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
+
 function DeepNestedFilter() {
   const filter = useFilter();
 
   // Build: (A AND B) OR (C AND D)
+  // Generic example - for real usage, use bdo.field.meta.id for LHSField
   const buildFilter = () => {
     filter.clearAllConditions();
-    filter.setRootOperator("Or");
+    filter.setRootOperator(GroupOperator.Or);
 
     // First AND group
-    const group1 = filter.addConditionGroup("And");
+    const group1 = filter.addConditionGroup(GroupOperator.And);
     filter.addCondition(
-      { Operator: "EQ", LHSField: "Type", RHSValue: "A" },
+      { Operator: ConditionOperator.EQ, LHSField: "Type", RHSValue: "A", RHSType: RHSType.Constant },
       group1,
     );
     filter.addCondition(
-      { Operator: "GT", LHSField: "Value", RHSValue: 10 },
+      { Operator: ConditionOperator.GT, LHSField: "Value", RHSValue: 10, RHSType: RHSType.Constant },
       group1,
     );
 
     // Second AND group
-    const group2 = filter.addConditionGroup("And");
+    const group2 = filter.addConditionGroup(GroupOperator.And);
     filter.addCondition(
-      { Operator: "EQ", LHSField: "Type", RHSValue: "B" },
+      { Operator: ConditionOperator.EQ, LHSField: "Type", RHSValue: "B", RHSType: RHSType.Constant },
       group2,
     );
     filter.addCondition(
-      { Operator: "LT", LHSField: "Value", RHSValue: 5 },
+      { Operator: ConditionOperator.LT, LHSField: "Value", RHSValue: 5, RHSType: RHSType.Constant },
       group2,
     );
   };
@@ -779,15 +905,22 @@ function FilterTree() {
 Change an existing condition's values.
 
 ```tsx
+import { useMemo, useState } from "react";
+import { useFilter, ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
+import type { ConditionOperatorType } from "@ram_28/kf-ai-sdk/filter/types";
+import { BuyerProduct } from "../bdo/buyer/Product";
+
 function EditableFilter() {
+  const product = useMemo(() => new BuyerProduct(), []);
   const filter = useFilter();
   const [conditionId, setConditionId] = useState<string | null>(null);
 
   const addFilter = () => {
     const id = filter.addCondition({
-      Operator: "GT",
-      LHSField: "Price",
+      Operator: ConditionOperator.GT,
+      LHSField: product.Price.meta.id,
       RHSValue: 50,
+      RHSType: RHSType.Constant,
     });
     setConditionId(id);
   };
@@ -814,9 +947,9 @@ function EditableFilter() {
               updateOperator(e.target.value as ConditionOperatorType)
             }
           >
-            <option value="GT">Greater Than</option>
-            <option value="LT">Less Than</option>
-            <option value="EQ">Equals</option>
+            <option value={ConditionOperator.GT}>Greater Than</option>
+            <option value={ConditionOperator.LT}>Less Than</option>
+            <option value={ConditionOperator.EQ}>Equals</option>
           </select>
           <input
             type="number"
@@ -835,21 +968,32 @@ function EditableFilter() {
 Toggle between AND/OR for a group.
 
 ```tsx
+import { useState } from "react";
+import { useFilter, ConditionOperator, GroupOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
+import type { ConditionGroupType } from "@ram_28/kf-ai-sdk/filter/types";
+
 function ToggleableGroupOperator() {
   const filter = useFilter();
   const [groupId, setGroupId] = useState<string | null>(null);
 
+  // Generic example - for real usage, use bdo.field.meta.id for LHSField
   const createGroup = () => {
-    const id = filter.addConditionGroup("And");
-    filter.addCondition({ Operator: "EQ", LHSField: "A", RHSValue: 1 }, id);
-    filter.addCondition({ Operator: "EQ", LHSField: "B", RHSValue: 2 }, id);
+    const id = filter.addConditionGroup(GroupOperator.And);
+    filter.addCondition(
+      { Operator: ConditionOperator.EQ, LHSField: "FieldA", RHSValue: 1, RHSType: RHSType.Constant },
+      id,
+    );
+    filter.addCondition(
+      { Operator: ConditionOperator.EQ, LHSField: "FieldB", RHSValue: 2, RHSType: RHSType.Constant },
+      id,
+    );
     setGroupId(id);
   };
 
   const toggleOperator = () => {
     if (groupId) {
       const group = filter.getCondition(groupId) as ConditionGroupType;
-      const newOp = group.Operator === "And" ? "Or" : "And";
+      const newOp = group.Operator === GroupOperator.And ? GroupOperator.Or : GroupOperator.And;
       filter.updateGroupOperator(groupId, newOp);
     }
   };
@@ -872,7 +1016,12 @@ function ToggleableGroupOperator() {
 Access the filter structure for API calls.
 
 ```tsx
+import { useMemo } from "react";
+import { useFilter, ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
+import { BuyerProduct } from "../bdo/buyer/Product";
+
 function FilterWithApi() {
+  const product = useMemo(() => new BuyerProduct(), []);
   const filter = useFilter();
 
   const fetchFiltered = async () => {
@@ -898,9 +1047,10 @@ function FilterWithApi() {
       <button
         onClick={() =>
           filter.addCondition({
-            Operator: "EQ",
-            LHSField: "Status",
+            Operator: ConditionOperator.EQ,
+            LHSField: product.Status.meta.id,
             RHSValue: "Active",
+            RHSType: RHSType.Constant,
           })
         }
       >
@@ -919,15 +1069,32 @@ function FilterWithApi() {
 Load filters from saved state.
 
 ```tsx
+import { useMemo } from "react";
+import { useFilter, ConditionOperator, GroupOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
+import type { ConditionType, ConditionGroupType } from "@ram_28/kf-ai-sdk/filter/types";
+import { BuyerProduct } from "../bdo/buyer/Product";
+
 function FilterWithInitialState() {
+  const product = useMemo(() => new BuyerProduct(), []);
+
   const savedFilters: Array<ConditionType | ConditionGroupType> = [
-    { Operator: "EQ", LHSField: "Status", RHSValue: "Active" },
-    { Operator: "GT", LHSField: "Price", RHSValue: 100 },
+    {
+      Operator: ConditionOperator.EQ,
+      LHSField: product.Status.meta.id,
+      RHSValue: "Active",
+      RHSType: RHSType.Constant,
+    },
+    {
+      Operator: ConditionOperator.GT,
+      LHSField: product.Price.meta.id,
+      RHSValue: 100,
+      RHSType: RHSType.Constant,
+    },
   ];
 
   const filter = useFilter({
     conditions: savedFilters,
-    operator: "And",
+    operator: GroupOperator.And,
   });
 
   return (
@@ -948,10 +1115,13 @@ The `filter.payload` property returns the filter structure ready for API consump
 ### Single Condition
 
 ```tsx
+import { ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
+
 filter.addCondition({
-  Operator: "EQ",
-  LHSField: "Status",
+  Operator: ConditionOperator.EQ,
+  LHSField: product.Status.meta.id,
   RHSValue: "Active",
+  RHSType: RHSType.Constant,
 });
 ```
 
@@ -974,13 +1144,26 @@ Produces:
 ### Multiple Conditions (AND)
 
 ```tsx
+import { ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
+
 filter.addCondition({
-  Operator: "EQ",
-  LHSField: "Category",
+  Operator: ConditionOperator.EQ,
+  LHSField: product.Category.meta.id,
   RHSValue: "Electronics",
+  RHSType: RHSType.Constant,
 });
-filter.addCondition({ Operator: "GT", LHSField: "Price", RHSValue: 100 });
-filter.addCondition({ Operator: "LTE", LHSField: "Stock", RHSValue: 50 });
+filter.addCondition({
+  Operator: ConditionOperator.GT,
+  LHSField: product.Price.meta.id,
+  RHSValue: 100,
+  RHSType: RHSType.Constant,
+});
+filter.addCondition({
+  Operator: ConditionOperator.LTE,
+  LHSField: product.Stock.meta.id,
+  RHSValue: 50,
+  RHSType: RHSType.Constant,
+});
 ```
 
 Produces:
@@ -1014,20 +1197,33 @@ Produces:
 ### Nested Groups
 
 ```tsx
+import { ConditionOperator, GroupOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
+
 // Root: AND
 // Category = "Electronics" AND (Price < 100 OR OnSale = true)
 filter.addCondition({
-  Operator: "EQ",
-  LHSField: "Category",
+  Operator: ConditionOperator.EQ,
+  LHSField: product.Category.meta.id,
   RHSValue: "Electronics",
+  RHSType: RHSType.Constant,
 });
-const orGroupId = filter.addConditionGroup("Or");
+const orGroupId = filter.addConditionGroup(GroupOperator.Or);
 filter.addCondition(
-  { Operator: "LT", LHSField: "Price", RHSValue: 100 },
+  {
+    Operator: ConditionOperator.LT,
+    LHSField: product.Price.meta.id,
+    RHSValue: 100,
+    RHSType: RHSType.Constant,
+  },
   orGroupId,
 );
 filter.addCondition(
-  { Operator: "EQ", LHSField: "OnSale", RHSValue: true },
+  {
+    Operator: ConditionOperator.EQ,
+    LHSField: product.OnSale.meta.id,
+    RHSValue: true,
+    RHSType: RHSType.Constant,
+  },
   orGroupId,
 );
 ```
@@ -1068,10 +1264,13 @@ Produces:
 ### Range Values (Between)
 
 ```tsx
+import { ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
+
 filter.addCondition({
-  Operator: "Between",
-  LHSField: "Price",
+  Operator: ConditionOperator.Between,
+  LHSField: product.Price.meta.id,
   RHSValue: [50, 200],
+  RHSType: RHSType.Constant,
 });
 ```
 
@@ -1094,10 +1293,13 @@ Produces:
 ### List Values (IN)
 
 ```tsx
+import { ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
+
 filter.addCondition({
-  Operator: "IN",
-  LHSField: "Category",
+  Operator: ConditionOperator.IN,
+  LHSField: product.Category.meta.id,
   RHSValue: ["Electronics", "Computers", "Accessories"],
+  RHSType: RHSType.Constant,
 });
 ```
 

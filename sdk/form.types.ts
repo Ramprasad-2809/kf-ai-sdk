@@ -4,14 +4,14 @@
 // Type-only exports for useForm hook.
 
 export type {
-  UseFormOptions,
-  UseFormReturn,
-  SmartFormItem,
-  EditableFormFieldAccessor,
-  ReadonlyFormFieldAccessor,
-  SmartRegister,
+  UseFormOptionsType,
+  UseFormReturnType,
+  FormItemType,
+  EditableFormFieldAccessorType,
+  ReadonlyFormFieldAccessorType,
+  FormRegisterType,
   HandleSubmitType,
-  ExtractEditable,
-  ExtractReadonly,
-  AllFields,
+  ExtractEditableType,
+  ExtractReadonlyType,
+  AllFieldsType,
 } from "./components/hooks/useForm";

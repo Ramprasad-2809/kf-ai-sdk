@@ -13,10 +13,10 @@ import { createItemProxy } from "./createItemProxy";
 import { getBdoSchema } from "../../../api/metadata";
 import type { BaseBdo } from "../../../bdo";
 import type {
-  UseFormOptions,
-  UseFormReturn,
+  UseFormOptionsType,
+  UseFormReturnType,
   HandleSubmitType,
-  AllFields,
+  AllFieldsType,
 } from "./types";
 
 /**
@@ -59,8 +59,8 @@ import type {
  * ```
  */
 export function useForm<B extends BaseBdo<any, any, any>>(
-  options: UseFormOptions<B>,
-): UseFormReturn<B> {
+  options: UseFormOptionsType<B>,
+): UseFormReturnType<B> {
   const {
     bdo,
     recordId,
@@ -88,7 +88,7 @@ export function useForm<B extends BaseBdo<any, any, any>>(
     isLoading: isLoadingRecord,
     error: recordError,
   } = useQuery({
-    queryKey: ["form-record", bdo.boId, recordId],
+    queryKey: ["form-record", bdo.meta._id, recordId],
     queryFn: async () => {
       // bdo.get returns ItemWithData - extract raw data via toJSON
       const item = await (bdo as any).get(recordId!);
@@ -103,8 +103,8 @@ export function useForm<B extends BaseBdo<any, any, any>>(
   // ============================================================
 
   const { data: schema } = useQuery({
-    queryKey: ["form-schema", bdo.boId],
-    queryFn: () => getBdoSchema(bdo.boId),
+    queryKey: ["form-schema", bdo.meta._id],
+    queryFn: () => getBdoSchema(bdo.meta._id),
     staleTime: 30 * 60 * 1000, // Cache for 30 minutes
     gcTime: 60 * 60 * 1000, // Keep in cache for 1 hour
   });
@@ -239,7 +239,7 @@ export function useForm<B extends BaseBdo<any, any, any>>(
     getValues: form.getValues as any,
     reset: form.reset as any,
     trigger: form.trigger as any,
-    control: form.control as unknown as Control<AllFields<B>>,
+    control: form.control as unknown as Control<AllFieldsType<B>>,
     formState: form.formState as any,
 
     // Flattened state for convenience

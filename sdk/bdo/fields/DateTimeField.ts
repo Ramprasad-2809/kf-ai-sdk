@@ -3,7 +3,7 @@
 // Field for date and datetime values
 // ============================================================
 
-import type { FieldConfig, ValidationResult } from "../core/types";
+import type { FieldConfigType, ValidationResultType } from "../core/types";
 import { BaseField } from "./BaseField";
 
 /**
@@ -23,11 +23,11 @@ type DateTimeValue = string;
  * ```
  */
 export class DateTimeField extends BaseField<DateTimeValue> {
-  constructor(config: FieldConfig) {
+  constructor(config: FieldConfigType) {
     super(config);
   }
 
-  validate(value: DateTimeValue | undefined): ValidationResult {
+  validate(value: DateTimeValue | undefined): ValidationResultType {
     if (value === undefined || value === null || value === "") {
       return { valid: true, errors: [] };
     }

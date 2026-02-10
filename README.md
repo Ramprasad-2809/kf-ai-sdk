@@ -63,7 +63,7 @@ import { useTable } from "@ram_28/kf-ai-sdk/table";
 import { useFilter } from "@ram_28/kf-ai-sdk/filter";
 
 // Types
-import type { UseFormOptions, UseFormReturn } from "@ram_28/kf-ai-sdk/form/types";
+import type { UseFormOptionsType, UseFormReturnType } from "@ram_28/kf-ai-sdk/form/types";
 import type { UseTableOptionsType, UseTableReturnType } from "@ram_28/kf-ai-sdk/table/types";
 import type { UseFilterOptionsType, UseFilterReturnType } from "@ram_28/kf-ai-sdk/filter/types";
 

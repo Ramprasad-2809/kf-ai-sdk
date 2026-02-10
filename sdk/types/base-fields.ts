@@ -219,14 +219,6 @@ export interface JSONArrayType extends Array<JSONValueType> {}
  */
 export type SelectFieldType<T extends string> = T;
 
-/**
- * Alias for ReferenceFieldType (Lookup = Reference in the backend)
- * @template TReferencedType - The full type of the referenced BDO record
- * @deprecated Use ReferenceFieldType instead
- */
-export type LookupFieldType<TReferencedType = unknown> =
-  ReferenceFieldType<TReferencedType>;
-
 // ============================================================
 // CONTAINER AND UTILITY TYPES
 // ============================================================
@@ -277,7 +269,7 @@ export type OptionalFieldType<T> = T | undefined;
  * Utility type to extract the base type from a field type
  * Useful for runtime validation and type guards
  */
-export type ExtractFieldTypeType<T> =
+export type ExtractFieldType<T> =
   T extends OptionalFieldType<infer U> ? U : T;
 
 // ============================================================

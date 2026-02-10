@@ -6,11 +6,13 @@
 
 // BDO-specific types
 export type {
-  ValidationResult,
-  SelectOption,
-  FieldConfig,
-  SelectFieldConfig,
-  ReferenceFieldConfig,
+  ValidationResultType,
+  SelectOptionType,
+  FieldConfigType,
+  SelectFieldConfigType,
+  ReferenceFieldConfigType,
+  BdoMetaType,
+  FieldMetaType,
 } from "./bdo/core/types";
 
 // Re-export SDK field types
@@ -44,5 +46,5 @@ export type {
 // SystemFields type
 export type { SystemFields } from "./bdo/core/BaseBdo";
 
-// ItemWithData type
-export type { ItemWithData } from "./bdo/core/Item";
+// ItemType
+export type { ItemType } from "./bdo/core/Item";

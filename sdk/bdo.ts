@@ -4,17 +4,11 @@
 // ============================================================
 
 // Core classes
-export { BaseBdo, type SystemFields } from "./bdo/core/BaseBdo";
-export {
-  Item,
-  type FieldAccessorLike,
-  type EditableFieldAccessor,
-  type ReadonlyFieldAccessor,
-} from "./bdo/core/Item";
+export { BaseBdo } from "./bdo/core/BaseBdo";
+export type { SystemFields } from "./bdo/core/BaseBdo";
 
 // Field classes
 export {
-  BaseField,
   StringField,
   NumberField,
   BooleanField,
@@ -37,40 +31,19 @@ export type {
   UserRefType,
 } from "./types/base-fields";
 
-export type {
-  ListOptionsType,
-  CreateUpdateResponseType,
-  DeleteResponseType,
-  CountResponseType,
-  MetricOptionsType,
-  MetricResponseType,
-  PivotOptionsType,
-  PivotResponseType,
-  DraftResponseType,
-  FilterType,
-  ConditionType,
-  ConditionGroupType,
-  SortType,
-} from "./types/common";
-
 // BDO-specific types
 export type {
-  ValidationResult,
-  SelectOption,
-  FieldConfig,
-  SelectFieldConfig,
-  ReferenceFieldConfig,
-  FieldMeta,
+  BdoMetaType,
+  ValidationResultType,
+  SelectOptionType,
+  FieldConfigType,
+  SelectFieldConfigType,
+  ReferenceFieldConfigType,
+  FieldMetaType,
 } from "./bdo/core/types";
 
-// ItemWithData type
-export type { ItemWithData } from "./bdo/core/Item";
+// ItemType
+export type { ItemType } from "./bdo/core/Item";
 
 // Constants
-export {
-  SystemField,
-  ConditionOperator,
-  GroupOperator,
-  RHSType,
-  SortDirection,
-} from "./types/constants";
+export { SystemField } from "./types/constants";
