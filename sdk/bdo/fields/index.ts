@@ -10,3 +10,6 @@ export { DateTimeField } from "./DateTimeField";
 export { SelectField } from "./SelectField";
 export { ReferenceField } from "./ReferenceField";
 export { ArrayField } from "./ArrayField";
+export { DateField } from "./DateField";
+export { TextAreaField } from "./TextAreaField";
+export { ObjectField } from "./ObjectField";

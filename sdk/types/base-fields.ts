@@ -217,7 +217,7 @@ export interface JSONArrayType extends Array<JSONValueType> {}
  * @example
  * SelectFieldType<'active' | 'inactive' | 'pending'> // => 'active' | 'inactive' | 'pending'
  */
-export type SelectFieldType<T extends string> = T;
+export type SelectFieldType<T extends string | number = string> = T;
 
 // ============================================================
 // CONTAINER AND UTILITY TYPES

@@ -26,7 +26,7 @@ import { BaseField } from "./BaseField";
  * });
  * ```
  */
-export class SelectField<T extends string = string> extends BaseField<T> {
+export class SelectField<T extends string | number = string> extends BaseField<T> {
   protected readonly options: readonly SelectOptionType<T>[];
 
   constructor(config: SelectFieldConfigType<T>) {
@@ -35,7 +35,7 @@ export class SelectField<T extends string = string> extends BaseField<T> {
   }
 
   validate(value: T | undefined): ValidationResultType {
-    if (value === undefined || value === null || value === "") {
+    if (value === undefined || value === null || (value as string) === "") {
       return { valid: true, errors: [] };
     }
 

@@ -13,9 +13,12 @@ export {
   NumberField,
   BooleanField,
   DateTimeField,
+  DateField,
+  TextAreaField,
   SelectField,
   ReferenceField,
   ArrayField,
+  ObjectField,
 } from "./bdo/fields";
 
 // Re-export types for consumer convenience
@@ -25,8 +28,11 @@ export type {
   BooleanFieldType,
   DateFieldType,
   DateTimeFieldType,
+  TextAreaFieldType,
+  SelectFieldType,
   ReferenceFieldType,
   ArrayFieldType,
+  ObjectFieldType,
   SystemFieldsType,
   UserRefType,
 } from "./types/base-fields";

@@ -42,4 +42,8 @@ export type {
 
   // Utility types
   ExtractFieldType,
+
+  // System types
+  SystemFieldsType,
+  UserRefType,
 } from './types/base-fields';

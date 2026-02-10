@@ -31,7 +31,7 @@ export interface FieldMetaType {
 /**
  * SelectField meta — extends FieldMetaType with static options
  */
-export interface SelectFieldMetaType<T = string> extends FieldMetaType {
+export interface SelectFieldMetaType<T extends string | number = string> extends FieldMetaType {
   readonly options: readonly SelectOptionType<T>[];
 }
 
@@ -64,7 +64,7 @@ export interface FieldConfigType {
 /**
  * Configuration for select fields with predefined options
  */
-export interface SelectFieldConfigType<T extends string> extends FieldConfigType {
+export interface SelectFieldConfigType<T extends string | number = string> extends FieldConfigType {
   options: readonly SelectOptionType<T>[];
 }
 
