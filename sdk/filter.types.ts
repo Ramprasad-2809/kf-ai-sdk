@@ -13,5 +13,5 @@ export type {
   ConditionGroupType,
   ConditionGroupOperatorType,
   FilterType,
-  FilterRHSTypeType,
+  FilterRHSType,
 } from './components/hooks/useFilter/types';

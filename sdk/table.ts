@@ -5,3 +5,12 @@
 
 // Main hook
 export { useTable } from './components/hooks/useTable/useTable';
+
+// Constants
+export {
+  SortDirection,
+  ConditionOperator,
+  GroupOperator,
+  RHSType,
+  Defaults as TableDefaults,
+} from './types/constants';

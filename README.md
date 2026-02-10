@@ -1,6 +1,6 @@
 # @ram_28/kf-ai-sdk
 
-A type-safe SDK for building modern web applications with React hooks for forms, tables, kanban boards, and filtering.
+A type-safe SDK for building modern web applications with React hooks for forms, tables, and filtering.
 
 ## Table of Contents
 
@@ -14,10 +14,10 @@ A type-safe SDK for building modern web applications with React hooks for forms,
   - [Multiple Auth Providers](#multiple-auth-providers)
   - [Protected Routes](#protected-routes)
 - [Hooks](#hooks)
-  - [useTable](#usetable)
   - [useForm](#useform)
-  - [useKanban](#usekanban)
+  - [useTable](#usetable)
   - [useFilter](#usefilter)
+- [BDO (Business Data Object)](#bdo-business-data-object)
 - [API Client](#api-client)
 - [Type System](#type-system)
 - [Utilities](#utilities)
@@ -42,12 +42,12 @@ npm install react @tanstack/react-query
 ## Features
 
 - **Authentication** - Cookie-based auth with AuthProvider and useAuth hook
-- **useForm** - Dynamic schema-driven forms with backend validation
+- **useForm** - BDO-integrated forms with automatic validation and API calls
 - **useTable** - Data tables with sorting, pagination, and React Query integration
-- **useKanban** - Kanban board state management with drag-drop support
 - **useFilter** - Advanced filtering with logical operators and payload builders
+- **BDO Module** - Type-safe, role-based data access layer with expression validation
 - **API Client** - Type-safe CRUD operations with structured filtering and sorting
-- **Type System** - 11 semantic field types (IdField, StringField, CurrencyField, etc.)
+- **Type System** - 10 semantic field types (StringField, NumberField, CurrencyField, etc.)
 - **Utilities** - Formatting helpers for currency, dates, numbers, and more
 
 ## Quick Start
@@ -60,14 +60,15 @@ import type { UseAuthReturnType, UserDetailsType } from "@ram_28/kf-ai-sdk/auth/
 // Hooks
 import { useForm } from "@ram_28/kf-ai-sdk/form";
 import { useTable } from "@ram_28/kf-ai-sdk/table";
-import { useKanban } from "@ram_28/kf-ai-sdk/kanban";
 import { useFilter } from "@ram_28/kf-ai-sdk/filter";
 
 // Types
 import type { UseFormOptionsType, UseFormReturnType } from "@ram_28/kf-ai-sdk/form/types";
 import type { UseTableOptionsType, UseTableReturnType } from "@ram_28/kf-ai-sdk/table/types";
-import type { UseKanbanOptionsType, UseKanbanReturnType } from "@ram_28/kf-ai-sdk/kanban/types";
 import type { UseFilterOptionsType, UseFilterReturnType } from "@ram_28/kf-ai-sdk/filter/types";
+
+// BDO
+import { BaseBdo, StringField, NumberField } from "@ram_28/kf-ai-sdk/bdo";
 
 // API
 import { api } from "@ram_28/kf-ai-sdk/api";
@@ -77,7 +78,7 @@ import type { ListResponseType, FilterType } from "@ram_28/kf-ai-sdk/api/types";
 import { formatCurrency, formatDate } from "@ram_28/kf-ai-sdk/utils";
 
 // Base Field Types
-import type { IdFieldType, StringFieldType, CurrencyFieldType } from "@ram_28/kf-ai-sdk/types";
+import type { StringFieldType, CurrencyFieldType } from "@ram_28/kf-ai-sdk/types";
 ```
 
 ## Authentication
@@ -201,6 +202,41 @@ function ProtectedRoute({ children, requiredRoles }) {
 
 ## Hooks
 
+### useForm
+
+BDO-integrated form hook with automatic validation and API calls.
+
+```tsx
+import { useForm } from "@ram_28/kf-ai-sdk/form";
+import { AdminProduct } from "./bdo/admin/Product";
+
+function ProductForm() {
+  const product = new AdminProduct();
+
+  const { register, handleSubmit, errors, isSubmitting } = useForm({
+    bdo: product,
+    defaultValues: { Title: "", Price: 0 },
+  });
+
+  return (
+    <form onSubmit={handleSubmit(
+      (result) => console.log("Created:", result),
+      (error) => console.error("Error:", error)
+    )}>
+      <input {...register("Title")} placeholder="Product Title" />
+      {errors.Title && <span>{errors.Title.message}</span>}
+
+      <input {...register("Price")} type="number" placeholder="Price" />
+      {errors.Price && <span>{errors.Price.message}</span>}
+
+      <button type="submit" disabled={isSubmitting}>
+        {isSubmitting ? "Creating..." : "Create Product"}
+      </button>
+    </form>
+  );
+}
+```
+
 ### useTable
 
 Data table hook with sorting, pagination, and React Query integration.
@@ -254,73 +290,6 @@ function ProductTable() {
 }
 ```
 
-### useForm
-
-Schema-driven form hook with backend validation support.
-
-```tsx
-import { useForm } from "@ram_28/kf-ai-sdk/form";
-
-function ProductForm() {
-  const form = useForm({
-    source: "products",
-    operation: "create",
-    onSuccess: (data) => {
-      console.log("Created:", data);
-    },
-  });
-
-  return (
-    <form onSubmit={form.handleSubmit()}>
-      <input {...form.register("name")} placeholder="Product Name" />
-      {form.errors.name && <span>{form.errors.name.message}</span>}
-
-      <input {...form.register("price")} type="number" placeholder="Price" />
-      {form.errors.price && <span>{form.errors.price.message}</span>}
-
-      <button type="submit" disabled={form.isSubmitting}>
-        {form.isSubmitting ? "Creating..." : "Create Product"}
-      </button>
-    </form>
-  );
-}
-```
-
-### useKanban
-
-Kanban board state management with drag-drop support.
-
-```tsx
-import { useKanban } from "@ram_28/kf-ai-sdk/kanban";
-import { Kanban, KanbanColumn, KanbanCard } from "@ram_28/kf-ai-sdk/kanban/ui";
-
-function TaskBoard() {
-  const kanban = useKanban({
-    source: "tasks",
-    groupByField: "status",
-    columns: [
-      { id: "todo", title: "To Do" },
-      { id: "in-progress", title: "In Progress" },
-      { id: "done", title: "Done" },
-    ],
-  });
-
-  return (
-    <Kanban>
-      {kanban.columns.map((column) => (
-        <KanbanColumn key={column.id} column={column}>
-          {column.cards.map((card) => (
-            <KanbanCard key={card.id} card={card}>
-              {card.title}
-            </KanbanCard>
-          ))}
-        </KanbanColumn>
-      ))}
-    </Kanban>
-  );
-}
-```
-
 ### useFilter
 
 Advanced filtering with logical operators.
@@ -356,6 +325,32 @@ function ProductFilter() {
       <button onClick={handleApply}>Apply Filters</button>
     </div>
   );
+}
+```
+
+## BDO (Business Data Object)
+
+Type-safe, role-based data access layer:
+
+```tsx
+import { BaseBdo, StringField, NumberField } from "@ram_28/kf-ai-sdk/bdo";
+
+// Define your BDO class
+class AdminProduct extends BaseBdo<ProductType> {
+  readonly boId = "BDO_Product";
+
+  readonly Title = new StringField({ id: "Title", label: "Product Title" });
+  readonly Price = new NumberField({ id: "Price", label: "Price" });
+
+  protected _getFieldDefinitions() {
+    return { Title: this.Title, Price: this.Price };
+  }
+
+  // Expose only the methods this role can use
+  public async get(id: string) { return super.get(id); }
+  public async list(options?: ListOptionsType) { return super.list(options); }
+  public async create(data: Partial<ProductType>) { return super.create(data); }
+  public async update(id: string, data: Partial<ProductType>) { return super.update(id, data); }
 }
 ```
 
@@ -419,7 +414,6 @@ The SDK provides semantic field types for type-safe data modeling:
 
 ```tsx
 import type {
-  IdFieldType,
   StringFieldType,
   TextAreaFieldType,
   NumberFieldType,
@@ -432,7 +426,7 @@ import type {
 
 // Define your data types
 interface Product {
-  _id: IdFieldType;
+  _id: StringFieldType;
   name: StringFieldType;
   description: TextAreaFieldType;
   price: CurrencyFieldType;
@@ -453,14 +447,12 @@ import {
   formatDate,
   formatDateTime,
   formatNumber,
-  formatPercentage,
 } from "@ram_28/kf-ai-sdk/utils";
 
 formatCurrency(99.99); // "$99.99"
 formatDate(new Date()); // "Jan 11, 2024"
 formatDateTime(new Date()); // "Jan 11, 2024, 10:30 AM"
 formatNumber(1234.56, 2); // "1,234.56"
-formatPercentage(0.156); // "15.6%"
 ```
 
 ### Class Names
@@ -477,11 +469,8 @@ cn("text-red-500", condition && "text-blue-500");
 
 Detailed documentation for each feature:
 
-- [useForm Documentation](./docs/useForm.md)
 - [useTable Documentation](./docs/useTable.md)
-- [useKanban Documentation](./docs/useKanban.md)
 - [useFilter Documentation](./docs/useFilter.md)
-- [Quick Reference](./docs/QUICK_REFERENCE.md)
 
 ## Requirements
 

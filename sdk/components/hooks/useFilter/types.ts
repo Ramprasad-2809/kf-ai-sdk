@@ -3,7 +3,7 @@ import type {
   ConditionGroupType,
   ConditionGroupOperatorType,
   FilterType,
-  FilterRHSTypeType,
+  FilterRHSType,
 } from "../../../types/common";
 
 // Re-export from common types for convenience
@@ -12,7 +12,7 @@ export type {
   ConditionGroupType,
   ConditionGroupOperatorType,
   FilterType,
-  FilterRHSTypeType,
+  FilterRHSType,
 };
 
 // ============================================================

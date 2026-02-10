@@ -1,26 +1,26 @@
 # Form SDK API
 
-This Form SDK API proivdes the React-hooks and apis to build Form component when building the Pages.
-Here is the example of building Form Component with Form state management with schema validation, computed fields.
-
-You SHOULD only use this API to build Form component
+This Form SDK API provides React hooks for building forms with automatic validation,
+API integration, and type-safe field handling.
 
 ## Imports
 
 ```typescript
-import {
-  useForm,
-  parseApiError,
-  isNetworkError,
-  isValidationError,
-  clearFormCache,
-} from "@ram_28/kf-ai-sdk/form";
+import { useForm, ValidationMode, FormOperation } from "@ram_28/kf-ai-sdk/form";
 import type {
   UseFormOptionsType,
   UseFormReturnType,
-  FormFieldConfigType,
-  FieldErrors,
+  FormItemType,
+  FormRegisterType,
+  HandleSubmitType,
+  FormOperationType,
+  ValidationModeType,
+  EditableFormFieldAccessorType,
+  ReadonlyFormFieldAccessorType,
 } from "@ram_28/kf-ai-sdk/form/types";
+
+// For filter conditions in forms
+import { ConditionOperator, GroupOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
 ```
 
 ## Type Definitions
@@ -28,683 +28,682 @@ import type {
 ### UseFormOptionsType
 
 ```typescript
-// Hook options for initializing the form
-interface UseFormOptionsType<T> {
-  // Business Object ID (required)
-  // Example: product._id
-  source: string;
+interface UseFormOptionsType<B extends BaseBdo<any, any, any>> {
+  // Required: The BDO instance to use
+  bdo: B;
 
-  // Form operation mode (required)
-  // - "create": Creates new record
-  // - "update": Edit existing record, loads record data
-  operation: "create" | "update";
-
-  // Record ID - required for update operations (required for operation: update)
-  // The form will fetch this record's data on mount
+  // For edit mode - fetches existing record automatically
   recordId?: string;
 
-  // Initial form values
-  // Merged with schema defaults and (for update) fetched record data
-  defaultValues?: Partial<T>;
+  // Explicit operation (auto-inferred from recordId if not provided)
+  // Use FormOperation.Create or FormOperation.Update
+  operation?: FormOperationType;
 
-  // Validation trigger mode (from react-hook-form)
-  // - "onBlur" (default): Validate when field loses focus
-  // - "onChange": Validate on every keystroke
-  // - "onSubmit": Validate only on form submission
-  // - "onTouched": Validate on first blur, then on every change
-  // - "all": Validate on both blur and change
-  // Note: Computation (draft API) always fires on blur regardless of this setting
-  mode?: "onBlur" | "onChange" | "onSubmit" | "onTouched" | "all";
+  // Initial form values (for create mode)
+  defaultValues?: Partial<EditableFieldType>;
 
-  // Enable form initialization (default: true)
-  // Set to false to defer schema fetching
-  enabled?: boolean;
+  // Validation timing (default: ValidationMode.OnBlur)
+  // Use ValidationMode constant for type-safety
+  mode?: ValidationModeType;
 
-  // Callback when schema loading fails
-  // Use for error reporting or retry logic
-  onSchemaError?: (error: Error) => void;
+  // Enable draft API for computed fields (default: false)
+  enableDraft?: boolean;
 }
 ```
 
 ### UseFormReturnType
 
 ```typescript
-// Hook return type with all form state and methods
-interface UseFormReturnType<T> {
+interface UseFormReturnType<B extends BaseBdo<any, any, any>> {
   // ============================================================
-  // FORM METHODS (from react-hook-form)
-  // ============================================================
-
-  // Register a field for validation and form handling
-  // Returns props to spread on input elements
-  register: (name: keyof T, options?: RegisterOptions) => InputProps;
-
-  // Handle form submission
-  // - onSuccess: Called with response data on successful save
-  // - onError: Called with FieldErrors (validation) or Error (API)
-  handleSubmit: (
-    onSuccess?: (data: T) => void,
-    onError?: (error: FieldErrors<T> | Error) => void,
-  ) => (e?: React.BaseSyntheticEvent) => Promise<void>;
-
-  // Watch field values reactively
-  // watch("Price") returns current value, re-renders on change
-  watch: (name?: keyof T) => any;
-
-  // Set field value programmatically
-  // Useful for computed previews, templates, external data
-  setValue: (name: keyof T, value: any, options?: SetValueConfig) => void;
-
-  // Reset form to initial/provided values
-  reset: (values?: T) => void;
-
-  // ============================================================
-  // FORM STATE (flattened - no nested formState object)
+  // CORE
   // ============================================================
 
-  // Current validation errors by field name
-  errors: FieldErrors<T>;
+  // Item proxy with typed field accessors
+  item: FormItemType<EditableFieldType, ReadonlyFieldType>;
 
-  // True when all fields pass validation
-  isValid: boolean;
+  // BDO reference and operation info
+  bdo: B;
+  operation: FormOperationType;  // FormOperation.Create or FormOperation.Update
+  recordId?: string;
 
-  // True when any field has been modified
+  // Smart register (auto-disables readonly fields)
+  register: FormRegisterType<EditableFieldType, ReadonlyFieldType>;
+
+  // Custom handleSubmit (handles API call + payload filtering)
+  handleSubmit: HandleSubmitType;
+
+  // ============================================================
+  // REACT HOOK FORM METHODS
+  // ============================================================
+
+  watch: UseFormWatch<AllFieldsType>;
+  setValue: UseFormSetValue<EditableFieldType>;
+  getValues: UseFormGetValues<AllFieldsType>;
+  reset: UseFormReset<AllFieldsType>;
+  trigger: UseFormTrigger<AllFieldsType>;
+  control: Control<AllFieldsType>;
+
+  // ============================================================
+  // FORM STATE
+  // ============================================================
+
+  formState: FormState<AllFieldsType>;
+  errors: FieldErrors<AllFieldsType>;
   isDirty: boolean;
-
-  // True during form submission
+  isValid: boolean;
   isSubmitting: boolean;
-
-  // True after successful submission
   isSubmitSuccessful: boolean;
+  dirtyFields: Partial<Record<keyof AllFieldsType, boolean>>;
 
   // ============================================================
-  // LOADING STATES
+  // LOADING & ERROR
   // ============================================================
 
-  // True during initial load
-  isLoading: boolean;
-
-  // True during background operations
-  isFetching: boolean;
+  isLoading: boolean;      // Fetching record data
+  isFetching: boolean;     // Same as isLoading
+  loadError: Error | null; // Schema/record fetch error
 
   // ============================================================
-  // ERROR HANDLING
+  // DRAFT (OPTIONAL)
   // ============================================================
 
-  // Error from schema/record loading (not submission errors)
-  loadError: Error | null;
-
-  // True when loadError is present
-  hasError: boolean;
-
-  // ============================================================
-  // SCHEMA INFORMATION
-  // ============================================================
-
-  // Raw BDO schema (for advanced use cases)
-  schema: BDOSchemaType | null;
-
-  // Processed schema with field configs ready for rendering
-  schemaConfig: FormSchemaConfigType | null;
-
-  // List of computed field names
-  computedFields: Array<keyof T>;
-
-  // List of required field names
-  requiredFields: Array<keyof T>;
-
-  // ============================================================
-  // FIELD HELPERS
-  // ============================================================
-
-  // Get configuration for a specific field
-  // Returns null if field doesn't exist
-  getField: (fieldName: keyof T) => FormFieldConfigType | null;
-
-  // Get all field configurations as a record
-  getFields: () => Record<keyof T, FormFieldConfigType>;
-
-  // Check if a field exists in the schema
-  hasField: (fieldName: keyof T) => boolean;
-
-  // Check if a field is required
-  isFieldRequired: (fieldName: keyof T) => boolean;
-
-  // Check if a field is computed (read-only, server-calculated)
-  isFieldComputed: (fieldName: keyof T) => boolean;
-
-  // ============================================================
-  // OPERATIONS
-  // ============================================================
-
-  // Refresh schema from server (clears cache)
-  refreshSchema: () => Promise<void>;
-
-  // Clear all validation errors
-  clearErrors: () => void;
+  draftId?: string;
+  isCreatingDraft?: boolean;
 }
 ```
 
-### FormFieldConfigType
+### FormItemType (Item Proxy)
 
 ```typescript
-// Field configuration from processed schema
-interface FormFieldConfigType {
-  // Field identifier (matches BDO field name)
-  name: string;
+type FormItemType<TEditable, TReadonly> = {
+  // Editable field accessors
+  [K in keyof TEditable]: EditableFormFieldAccessorType<TEditable[K]>;
+} & {
+  // Readonly field accessors
+  [K in keyof TReadonly]: ReadonlyFormFieldAccessorType<TReadonly[K]>;
+} & {
+  // Direct access
+  readonly _id: string | undefined;
 
-  // Input type for rendering
-  // "text" | "number" | "email" | "date" | "datetime-local"
-  // "checkbox" | "select" | "textarea" | "reference"
-  type: FormFieldTypeType;
+  // Methods
+  toJSON(): Partial<TEditable & TReadonly>;
+  validate(): Promise<boolean>;
+};
+```
 
-  // Display label (from schema or derived from name)
-  label: string;
+### Field Accessor Types
 
-  // Whether field is required for submission
-  required: boolean;
+```typescript
+// For editable fields
+interface EditableFormFieldAccessorType<T> {
+  readonly meta: FieldMetaType;
+  get(): T | undefined;
+  set(value: T): void;
+  validate(): ValidationResultType;
+}
 
-  // Whether field is computed (read-only, server-calculated)
-  computed: boolean;
-
-  // Default value from schema
-  defaultValue?: any;
-
-  // Options for select/reference fields
-  // { value: any, label: string }[]
-  options?: SelectOptionType[];
-
-  // Field description for help text
-  description?: string;
-
-  // User permissions for this field
-  permission: {
-    editable: boolean; // Can user edit this field
-    readable: boolean; // Can user see this field
-    hidden: boolean; // Should field be completely hidden
-  };
+// For readonly fields (no set method)
+interface ReadonlyFormFieldAccessorType<T> {
+  readonly meta: FieldMetaType;
+  get(): T | undefined;
+  validate(): ValidationResultType;
 }
 ```
+
+---
 
 ## Basic Example
 
-```tsx
-import { useForm } from "@ram_28/kf-ai-sdk/form";
-import { Product } from "../sources";
-import type { ProductForRole } from "../sources";
-import { Roles } from "../sources/roles";
+### Create Mode
 
-type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
+```tsx
+import { useMemo } from "react";
+import { useForm, ValidationMode } from "@ram_28/kf-ai-sdk/form";
+import type {
+  UseFormOptionsType,
+  UseFormReturnType,
+  FormItemType,
+  FormRegisterType,
+  HandleSubmitType,
+} from "@ram_28/kf-ai-sdk/form/types";
+import type { FieldErrors } from "react-hook-form";
+import type { CreateUpdateResponseType } from "@ram_28/kf-ai-sdk/api/types";
+import { SellerProduct } from "../bdo/seller/Product";
+import type {
+  SellerProductEditableFieldType,
+  SellerProductReadonlyFieldType,
+} from "../bdo/seller/Product";
 
 function CreateProductForm() {
-  const product = new Product(Roles.Buyer);
+  // 1. Instantiate BDO (memoized)
+  const product: SellerProduct = useMemo(() => new SellerProduct(), []);
 
-  const form = useForm<BuyerProduct>({
-    source: product._id,
-    operation: "create",
+  // 2. Form options with explicit type
+  const formOptions: UseFormOptionsType<SellerProduct> = {
+    bdo: product,
     defaultValues: {
       Title: "",
       Price: 0,
-      Category: "",
-    },
-  });
+      Stock: 0,
+    } satisfies Partial<SellerProductEditableFieldType>,
+    mode: ValidationMode.OnBlur,
+  };
 
-  if (form.isLoading) return <div>Loading...</div>;
+  // 3. Initialize form with typed destructuring
+  const {
+    register,
+    handleSubmit,
+    item,
+    errors,
+    isSubmitting,
+  }: {
+    register: FormRegisterType<SellerProductEditableFieldType, SellerProductReadonlyFieldType>;
+    handleSubmit: HandleSubmitType<CreateUpdateResponseType>;
+    item: FormItemType<SellerProductEditableFieldType, SellerProductReadonlyFieldType>;
+    errors: FieldErrors<SellerProductEditableFieldType & SellerProductReadonlyFieldType>;
+    isSubmitting: boolean;
+  } = useForm(formOptions);
+
+  // 4. Typed handlers
+  const onSuccess = (data: CreateUpdateResponseType): void => {
+    console.log("Created with ID:", data._id);
+  };
+
+  const onError = (error: FieldErrors | Error): void => {
+    if (error instanceof Error) {
+      console.error("API Error:", error.message);
+    } else {
+      console.error("Validation errors:", error);
+    }
+  };
+
+  // Type for item proxy
+  type ProductItem = FormItemType<
+    SellerProductEditableFieldType,
+    SellerProductReadonlyFieldType
+  >;
 
   return (
-    <form onSubmit={form.handleSubmit((data) => console.log("Created:", data))}>
+    <form onSubmit={handleSubmit(onSuccess, onError)}>
+      {/* Use field.meta.id for register */}
       <div>
-        <label>Title</label>
-        <input {...form.register("Title")} />
-        {form.errors.Title && <span>{form.errors.Title.message}</span>}
+        <label>{product.Title.meta.label}</label>
+        <input {...register(product.Title.meta.id)} />
+        {errors.Title && <span>{errors.Title.message}</span>}
       </div>
 
       <div>
-        <label>Price</label>
-        <input type="number" {...form.register("Price")} />
+        <label>{product.Price.meta.label}</label>
+        <input type="number" {...register(product.Price.meta.id)} />
+        {errors.Price && <span>{errors.Price.message}</span>}
       </div>
 
-      <div>
-        <label>Category</label>
-        <input {...form.register("Category")} />
-      </div>
-
-      <button type="submit" disabled={form.isSubmitting}>
-        {form.isSubmitting ? "Creating..." : "Create Product"}
+      <button type="submit" disabled={isSubmitting}>
+        {isSubmitting ? "Creating..." : "Create Product"}
       </button>
     </form>
   );
 }
 ```
 
-## Examples
-
-### Product Listing Form
-
-Create form with validation and success handling.
+### Edit Mode
 
 ```tsx
-import { useForm } from "@ram_28/kf-ai-sdk/form";
-import type { FieldErrors } from "@ram_28/kf-ai-sdk/form/types";
-import { useNavigate } from "react-router-dom";
-import { Product } from "../sources";
-import type { ProductForRole } from "../sources";
-import { Roles } from "../sources/roles";
+import { useMemo } from "react";
+import { useForm, ValidationMode } from "@ram_28/kf-ai-sdk/form";
+import type {
+  UseFormOptionsType,
+  UseFormReturnType,
+} from "@ram_28/kf-ai-sdk/form/types";
+import type { FieldErrors } from "react-hook-form";
+import type { CreateUpdateResponseType } from "@ram_28/kf-ai-sdk/api/types";
+import { SellerProduct } from "../bdo/seller/Product";
+import type {
+  SellerProductEditableFieldType,
+  SellerProductReadonlyFieldType,
+} from "../bdo/seller/Product";
 
-type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
+interface EditProductFormProps {
+  productId: string;
+  onClose: () => void;
+}
 
-function ProductListingForm() {
-  const product = new Product(Roles.Buyer);
-  const navigate = useNavigate();
+function EditProductForm({ productId, onClose }: EditProductFormProps) {
+  const product: SellerProduct = useMemo(() => new SellerProduct(), []);
 
-  const form = useForm<BuyerProduct>({
-    source: product._id,
-    operation: "create",
+  // Form options for edit mode
+  const formOptions: UseFormOptionsType<SellerProduct> = {
+    bdo: product,
+    recordId: productId,  // Triggers edit mode - fetches existing record
+    mode: ValidationMode.OnBlur,
+  };
+
+  // Typed destructuring
+  const {
+    register,
+    handleSubmit,
+    item,
+    errors,
+    isLoading,
+    isSubmitting,
+    loadError,
+  }: {
+    register: FormRegisterType<SellerProductEditableFieldType, SellerProductReadonlyFieldType>;
+    handleSubmit: HandleSubmitType<CreateUpdateResponseType>;
+    item: FormItemType<SellerProductEditableFieldType, SellerProductReadonlyFieldType>;
+    errors: FieldErrors<SellerProductEditableFieldType & SellerProductReadonlyFieldType>;
+    isLoading: boolean;
+    isSubmitting: boolean;
+    loadError: Error | null;
+  } = useForm(formOptions);
+
+  if (isLoading) return <div>Loading...</div>;
+  if (loadError) return <div>Error: {loadError.message}</div>;
+
+  const onSuccess = (data: CreateUpdateResponseType): void => {
+    console.log("Updated:", data._id);
+    onClose();
+  };
+
+  const onError = (error: FieldErrors | Error): void => {
+    console.error("Error:", error);
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSuccess, onError)}>
+      {/* Readonly fields are auto-disabled */}
+      <div>
+        <label>{product.ASIN.meta.label}</label>
+        <input {...register(product.ASIN.meta.id)} />
+        {/* This input is automatically disabled: true for readonly fields */}
+      </div>
+
+      {/* Editable fields */}
+      <div>
+        <label>{product.Title.meta.label}</label>
+        <input {...register(product.Title.meta.id)} />
+        {errors.Title && <span>{errors.Title.message}</span>}
+      </div>
+
+      <button type="submit" disabled={isSubmitting}>
+        {isSubmitting ? "Saving..." : "Save Changes"}
+      </button>
+    </form>
+  );
+}
+```
+
+---
+
+## register() Function
+
+The `register` function extends React Hook Form's standard register with automatic readonly field handling.
+
+### Behavior
+
+```typescript
+// For editable fields - standard result
+register(product.Title.meta.id)
+// => UseFormRegisterReturn
+
+// For readonly fields - includes disabled: true
+register(product.ASIN.meta.id)
+// => UseFormRegisterReturn & { disabled: true }
+```
+
+### Usage
+
+```tsx
+// Always use field.meta.id (not hardcoded strings)
+<input {...register(product.Title.meta.id)} />
+<input {...register(product.Price.meta.id)} />
+
+// Readonly fields are auto-disabled
+<input {...register(product.ASIN.meta.id)} />  // disabled: true added automatically
+
+// With additional options
+<input {...register(product.Email.meta.id, { required: true })} />
+```
+
+---
+
+## handleSubmit() Function
+
+Custom handleSubmit that handles API calls automatically and filters payload to editable fields only.
+
+### Type
+
+```typescript
+type HandleSubmitType<TRead = unknown> = (
+  onSuccess?: (data: TRead, e?: React.BaseSyntheticEvent) => void | Promise<void>,
+  onError?: (error: FieldErrors | Error, e?: React.BaseSyntheticEvent) => void | Promise<void>,
+) => (e?: React.BaseSyntheticEvent) => Promise<void>;
+```
+
+### Execution Flow
+
+1. Validation runs (type + expression validation)
+2. If **valid**: Filters payload to editable fields -> Calls `bdo.create()` or `bdo.update()` -> Calls `onSuccess(result)`
+3. If **invalid**: Calls `onError(FieldErrors)`
+4. API errors: Calls `onError(Error)`
+
+### Usage
+
+```tsx
+const onSuccess = (data: CreateUpdateResponseType) => {
+  console.log("Saved with ID:", data._id);
+  router.push("/products");
+};
+
+const onError = (error: FieldErrors | Error) => {
+  if (error instanceof Error) {
+    // API error
+    toast.error(`Failed: ${error.message}`);
+  } else {
+    // Validation errors (already shown by field error messages)
+    toast.error("Please fix the errors above");
+  }
+};
+
+<form onSubmit={handleSubmit(onSuccess, onError)}>
+  {/* form fields */}
+</form>
+```
+
+---
+
+## item Proxy
+
+The `item` object provides field-level access with typed accessors.
+
+### Field Access
+
+```tsx
+// Get field value
+const title = item.Title.get();
+
+// Set field value (editable fields only)
+item.Title.set("New Title");
+
+// Access field metadata
+item.Title.meta.id        // "Title"
+item.Title.meta.label     // "Product Title"
+item.Title.meta.isEditable // true
+
+// Validate single field
+const result = item.Title.validate();
+// => { valid: boolean, errors: string[] }
+
+// Direct _id access
+const recordId = item._id;
+
+// Get all values as JSON
+const data = item.toJSON();
+
+// Validate all fields
+const isValid = await item.validate();
+```
+
+### Readonly Field Behavior
+
+```tsx
+// Readonly fields don't have set() method
+item.ASIN.get()           // Works
+item.ASIN.set("...")      // TypeScript error - method doesn't exist
+item.ASIN.meta.isEditable // false
+```
+
+---
+
+## Validation
+
+useForm provides two-phase validation:
+
+### Phase 1: Type Validation
+From field classes (StringField, NumberField, etc.)
+
+### Phase 2: Expression Validation
+From backend schema rules (automatically fetched)
+
+### Validation Timing
+
+Controlled by the `mode` option:
+
+```typescript
+import { ValidationMode } from "@ram_28/kf-ai-sdk/form";
+
+useForm({
+  bdo: product,
+  mode: ValidationMode.OnBlur,    // Validate on blur (default)
+  // mode: ValidationMode.OnChange,  // Validate on every keystroke
+  // mode: ValidationMode.OnSubmit,  // Validate only on submit
+});
+```
+
+### Readonly Field Handling
+
+- Readonly fields are **skipped** during validation
+- They never generate validation errors
+- `register()` auto-adds `disabled: true`
+
+---
+
+## Complete Example
+
+```tsx
+import { useMemo, useState } from "react";
+import { useForm, ValidationMode, FormOperation } from "@ram_28/kf-ai-sdk/form";
+import type {
+  UseFormOptionsType,
+  UseFormReturnType,
+  FormItemType,
+  FormRegisterType,
+  HandleSubmitType,
+  FormOperationType,
+} from "@ram_28/kf-ai-sdk/form/types";
+import type { FieldErrors, UseFormWatch, UseFormSetValue } from "react-hook-form";
+import type { CreateUpdateResponseType } from "@ram_28/kf-ai-sdk/api/types";
+import { SellerProduct } from "../bdo/seller/Product";
+import type {
+  SellerProductEditableFieldType,
+  SellerProductReadonlyFieldType,
+} from "../bdo/seller/Product";
+
+// Combine editable + readonly for errors type
+type AllFieldsType = SellerProductEditableFieldType & SellerProductReadonlyFieldType;
+
+interface ProductFormProps {
+  productId?: string;  // Undefined for create, defined for edit
+  onSuccess: () => void;
+}
+
+function ProductForm({ productId, onSuccess }: ProductFormProps) {
+  const [generalError, setGeneralError] = useState<string | null>(null);
+  const product: SellerProduct = useMemo(() => new SellerProduct(), []);
+
+  // Form options with explicit types
+  const formOptions: UseFormOptionsType<SellerProduct> = {
+    bdo: product,
+    recordId: productId,
     defaultValues: {
       Title: "",
       Description: "",
       Price: 0,
-      Category: "Electronics",
       Stock: 0,
-    },
-    mode: "onBlur",
-  });
-
-  const onSuccess = (data: BuyerProduct) => {
-    toast.success(`Product "${data.Title}" created!`);
-    navigate(`/products/${data._id}`);
+    } satisfies Partial<SellerProductEditableFieldType>,
+    mode: ValidationMode.OnBlur,
   };
 
-  const onError = (error: FieldErrors<BuyerProduct> | Error) => {
-    if (error instanceof Error) {
-      toast.error(`Failed: ${error.message}`);
-    } else {
-      toast.error("Please fix the validation errors");
-    }
-  };
+  // Typed destructuring
+  const {
+    register,
+    handleSubmit,
+    item,
+    errors,
+    isLoading,
+    isSubmitting,
+    loadError,
+    watch,
+    setValue,
+    operation,
+  }: {
+    register: FormRegisterType<SellerProductEditableFieldType, SellerProductReadonlyFieldType>;
+    handleSubmit: HandleSubmitType<CreateUpdateResponseType>;
+    item: FormItemType<SellerProductEditableFieldType, SellerProductReadonlyFieldType>;
+    errors: FieldErrors<AllFieldsType>;
+    isLoading: boolean;
+    isSubmitting: boolean;
+    loadError: Error | null;
+    watch: UseFormWatch<AllFieldsType>;
+    setValue: UseFormSetValue<SellerProductEditableFieldType>;
+    operation: FormOperationType;
+  } = useForm(formOptions);
 
-  if (form.isLoading) return <div>Loading form...</div>;
-
-  return (
-    <form onSubmit={form.handleSubmit(onSuccess, onError)}>
-      <div>
-        <label>Title {form.isFieldRequired("Title") && "*"}</label>
-        <input {...form.register("Title")} />
-        {form.errors.Title && (
-          <span className="error">{form.errors.Title.message}</span>
-        )}
-      </div>
-
-      <div>
-        <label>Description</label>
-        <textarea {...form.register("Description")} rows={4} />
-      </div>
-
-      <div>
-        <label>Price *</label>
-        <input type="number" step="0.01" {...form.register("Price")} />
-        {form.errors.Price && (
-          <span className="error">{form.errors.Price.message}</span>
-        )}
-      </div>
-
-      <div>
-        <label>Stock</label>
-        <input type="number" {...form.register("Stock")} />
-      </div>
-
-      <button type="submit" disabled={form.isSubmitting || !form.isValid}>
-        {form.isSubmitting ? "Creating..." : "Create Product"}
-      </button>
-    </form>
-  );
-}
-```
-
-### Edit Product
-
-Update mode with record loading state.
-
-```tsx
-import { useForm } from "@ram_28/kf-ai-sdk/form";
-import { Product } from "../sources";
-import type { ProductForRole } from "../sources";
-import { Roles } from "../sources/roles";
-
-type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
-
-function EditProductForm({ productId }: { productId: string }) {
-  const product = new Product(Roles.Buyer);
-
-  const form = useForm<BuyerProduct>({
-    source: product._id,
-    operation: "update",
-    recordId: productId,
-  });
-
-  if (form.isLoading) {
+  // Loading state
+  if (isLoading) {
     return <div>Loading product...</div>;
   }
 
-  if (form.hasError) {
-    return (
-      <div>
-        <p>Failed to load product: {form.loadError?.message}</p>
-        <button onClick={() => form.refreshSchema()}>Retry</button>
-      </div>
-    );
+  if (loadError) {
+    return <div>Error loading product: {loadError.message}</div>;
   }
 
-  return (
-    <form onSubmit={form.handleSubmit(() => toast.success("Product updated!"))}>
-      <div>
-        <label>Title</label>
-        <input {...form.register("Title")} />
-      </div>
+  // Typed handlers
+  const onFormSuccess = (data: CreateUpdateResponseType): void => {
+    setGeneralError(null);
+    console.log("Saved with ID:", data._id);
+    onSuccess();
+  };
 
-      <div>
-        <label>Price</label>
-        <input type="number" {...form.register("Price")} />
-      </div>
+  const onFormError = (error: FieldErrors | Error): void => {
+    if (error instanceof Error) {
+      setGeneralError(error.message);
+    } else {
+      setGeneralError("Please fix the validation errors");
+    }
+  };
 
-      <div>
-        <label>Stock</label>
-        <input type="number" {...form.register("Stock")} />
-      </div>
-
-      <button type="submit" disabled={!form.isDirty || form.isSubmitting}>
-        {form.isSubmitting ? "Saving..." : "Save Changes"}
-      </button>
-
-      <button
-        type="button"
-        onClick={() => form.reset()}
-        disabled={!form.isDirty}
-      >
-        Discard Changes
-      </button>
-    </form>
-  );
-}
-```
-
-### Auto-Calculate Discount
-
-Working with computed fields and the watch function.
-
-```tsx
-import { useForm } from "@ram_28/kf-ai-sdk/form";
-import { Product } from "../sources";
-import type { ProductForRole } from "../sources";
-import { Roles } from "../sources/roles";
-
-type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
-
-function PricingForm() {
-  const product = new Product(Roles.Buyer);
-
-  const form = useForm<BuyerProduct>({
-    source: product._id,
-    operation: "create",
-    defaultValues: {
-      MRP: 0,
-      Price: 0,
-    },
-  });
-
-  // Watch computed field value from server
-  const discount = form.watch("Discount");
-
-  if (form.isLoading) return <div>Loading...</div>;
+  // Watch for dynamic behavior
+  const currentPrice = watch(product.Price.meta.id);
 
   return (
-    <form onSubmit={form.handleSubmit()}>
-      <div>
-        <label>MRP (Maximum Retail Price)</label>
-        <input type="number" {...form.register("MRP")} />
-      </div>
+    <form onSubmit={handleSubmit(onFormSuccess, onFormError)}>
+      <h2>{operation === FormOperation.Create ? "Create Product" : "Edit Product"}</h2>
 
-      <div>
-        <label>Selling Price</label>
-        <input type="number" {...form.register("Price")} />
-      </div>
+      {generalError && (
+        <div className="error-banner">{generalError}</div>
+      )}
 
-      {/* Computed field - read-only, server-calculated */}
-      {form.isFieldComputed("Discount") && (
-        <div>
-          <label>Discount % (auto-calculated)</label>
-          <input type="number" value={discount ?? 0} readOnly disabled />
+      {/* Readonly field (auto-disabled) */}
+      {operation === FormOperation.Update && (
+        <div className="field">
+          <label>{product.ASIN.meta.label}</label>
+          <input {...register(product.ASIN.meta.id)} />
         </div>
       )}
 
-      <button type="submit">Save Product</button>
-    </form>
-  );
-}
-```
-
-### Static Dropdown
-
-Static fields return options with `Value` and `Label`.
-
-```tsx
-import { useState } from "react";
-import { useForm } from "@ram_28/kf-ai-sdk/form";
-import { Product } from "../sources";
-import type { ProductForRole } from "../sources";
-import { Roles } from "../sources/roles";
-
-type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
-
-function ProductCategoryForm({ recordId }: { recordId: string }) {
-  const product = new Product(Roles.Buyer);
-  const [categoryOptions, setCategoryOptions] = useState<
-    { Value: string; Label: string }[]
-  >([]);
-  const [isOpen, setIsOpen] = useState(false);
-  const [loadingOptions, setLoadingOptions] = useState(false);
-
-  const form = useForm<BuyerProduct>({
-    source: product._id,
-    operation: "update",
-    recordId,
-  });
-
-  // Fetch options only when dropdown is opened
-  const handleDropdownOpen = async () => {
-    if (categoryOptions.length > 0) {
-      setIsOpen(true);
-      return; // Already loaded
-    }
-
-    setLoadingOptions(true);
-    setIsOpen(true);
-
-    try {
-      const options = await product.fetchField(recordId, "Category");
-      setCategoryOptions(options);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoadingOptions(false);
-    }
-  };
-
-  if (form.isLoading) return <div>Loading...</div>;
-
-  return (
-    <form onSubmit={form.handleSubmit()}>
-      <div>
-        <label>Category</label>
-        <select {...form.register("Category")} onFocus={handleDropdownOpen}>
-          <option value="">Select category</option>
-          {loadingOptions ? (
-            <option disabled>Loading...</option>
-          ) : (
-            categoryOptions.map((opt) => (
-              <option key={opt.Value} value={opt.Value}>
-                {opt.Label}
-              </option>
-            ))
-          )}
-        </select>
-      </div>
-
-      <button type="submit">Save</button>
-    </form>
-  );
-}
-```
-
-### Dynamic Reference Dropdown
-
-Reference fields return the full object structure. Use a custom dropdown to display rich cards.
-
-```tsx
-import { useState } from "react";
-import { useForm } from "@ram_28/kf-ai-sdk/form";
-import { Product } from "../sources";
-import type { ProductForRole } from "../sources";
-import { Roles } from "../sources/roles";
-
-type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
-
-type SupplierOption = {
-  _id: string;
-  SupplierName: string;
-  Rating: number;
-};
-
-function ProductSupplierForm({ recordId }: { recordId: string }) {
-  const product = new Product(Roles.Buyer);
-  const [supplierOptions, setSupplierOptions] = useState<SupplierOption[]>([]);
-  const [selectedSupplier, setSelectedSupplier] =
-    useState<SupplierOption | null>(null);
-  const [isOpen, setIsOpen] = useState(false);
-  const [loadingOptions, setLoadingOptions] = useState(false);
-
-  const form = useForm<BuyerProduct>({
-    source: product._id,
-    operation: "update",
-    recordId,
-  });
-
-  // Fetch options only when dropdown is clicked
-  const handleDropdownClick = async () => {
-    setIsOpen(!isOpen);
-
-    if (supplierOptions.length > 0 || loadingOptions) return;
-
-    setLoadingOptions(true);
-    try {
-      const options = await product.fetchField(recordId, "SupplierInfo");
-      setSupplierOptions(options);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoadingOptions(false);
-    }
-  };
-
-  const handleSelect = (supplier: SupplierOption) => {
-    setSelectedSupplier(supplier);
-    form.setValue("SupplierInfo", {
-      _id: supplier._id,
-      SupplierName: supplier.SupplierName,
-    });
-    setIsOpen(false);
-  };
-
-  if (form.isLoading) return <div>Loading...</div>;
-
-  return (
-    <form onSubmit={form.handleSubmit()}>
-      <div className="dropdown">
-        <label>Supplier</label>
-
-        {/* Selected value display */}
-        <button type="button" onClick={handleDropdownClick}>
-          {selectedSupplier ? selectedSupplier.SupplierName : "Select supplier"}
-        </button>
-
-        {/* Dropdown options with cards */}
-        {isOpen && (
-          <div className="dropdown-menu">
-            {loadingOptions ? (
-              <div className="dropdown-item">Loading...</div>
-            ) : (
-              supplierOptions.map((supplier) => (
-                <div
-                  key={supplier._id}
-                  className="dropdown-card"
-                  onClick={() => handleSelect(supplier)}
-                >
-                  <span className="supplier-name">{supplier.SupplierName}</span>
-                  <span className="supplier-rating">
-                    {"★".repeat(supplier.Rating)}
-                    {"☆".repeat(5 - supplier.Rating)}
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
+      {/* Title */}
+      <div className="field">
+        <label>{product.Title.meta.label}</label>
+        <input
+          {...register(product.Title.meta.id)}
+          placeholder="Enter product title"
+        />
+        {errors.Title && (
+          <span className="error">{errors.Title.message}</span>
         )}
       </div>
 
-      <button type="submit">Save</button>
+      {/* Description */}
+      <div className="field">
+        <label>{product.Description.meta.label}</label>
+        <textarea {...register(product.Description.meta.id)} rows={4} />
+        {errors.Description && (
+          <span className="error">{errors.Description.message}</span>
+        )}
+      </div>
+
+      {/* Price */}
+      <div className="field">
+        <label>{product.Price.meta.label}</label>
+        <input
+          type="number"
+          step="0.01"
+          {...register(product.Price.meta.id)}
+        />
+        {errors.Price && (
+          <span className="error">{errors.Price.message}</span>
+        )}
+        {currentPrice > 1000 && (
+          <span className="warning">High price - verify before saving</span>
+        )}
+      </div>
+
+      {/* Stock */}
+      <div className="field">
+        <label>{product.Stock.meta.label}</label>
+        <input
+          type="number"
+          {...register(product.Stock.meta.id)}
+        />
+        {errors.Stock && (
+          <span className="error">{errors.Stock.message}</span>
+        )}
+      </div>
+
+      {/* Category (using setValue for select) */}
+      <div className="field">
+        <label>{product.Category.meta.label}</label>
+        <select
+          value={watch(product.Category.meta.id) || ""}
+          onChange={(e) => setValue(product.Category.meta.id, e.target.value)}
+        >
+          <option value="">Select category</option>
+          <option value="Electronics">Electronics</option>
+          <option value="Clothing">Clothing</option>
+          <option value="Books">Books</option>
+        </select>
+        {errors.Category && (
+          <span className="error">{errors.Category.message}</span>
+        )}
+      </div>
+
+      {/* Actions */}
+      <div className="actions">
+        <button type="submit" disabled={isSubmitting}>
+          {isSubmitting
+            ? (operation === FormOperation.Create ? "Creating..." : "Saving...")
+            : (operation === FormOperation.Create ? "Create Product" : "Save Changes")
+          }
+        </button>
+      </div>
+
+      {/* Debug: Show current values */}
+      <details>
+        <summary>Current Values</summary>
+        <pre>{JSON.stringify(item.toJSON(), null, 2)}</pre>
+      </details>
     </form>
   );
 }
 ```
 
-## Error Utilities
+---
+
+## Constants Reference
 
 ```typescript
-import {
-  parseApiError,
-  isNetworkError,
-  isValidationError,
-  clearFormCache,
-} from "@ram_28/kf-ai-sdk/form";
-```
+import { ValidationMode, FormOperation } from "@ram_28/kf-ai-sdk/form";
 
-### parseApiError
+// Validation timing
+ValidationMode.OnBlur    // "onBlur"
+ValidationMode.OnChange  // "onChange"
+ValidationMode.OnSubmit  // "onSubmit"
+ValidationMode.OnTouched // "onTouched"
+ValidationMode.All       // "all"
 
-Extract user-friendly message from any error type.
-
-```typescript
-const onError = (error: Error) => {
-  const message = parseApiError(error);
-  toast.error(message);
-};
-```
-
-### isNetworkError
-
-Check if error is network-related (connection, timeout).
-
-```typescript
-if (isNetworkError(error)) {
-  toast.error("Network error. Please check your connection.");
-}
-```
-
-### isValidationError
-
-Check if error is a server-side validation error.
-
-```typescript
-if (isValidationError(error)) {
-  toast.error("Validation failed. Please check your input.");
-}
-```
-
-### clearFormCache
-
-Clear the schema cache (30-minute TTL by default).
-
-```typescript
-// Clear cache and reload to get fresh schema
-clearFormCache();
-window.location.reload();
+// Form operation
+FormOperation.Create     // "create"
+FormOperation.Update     // "update"
 ```

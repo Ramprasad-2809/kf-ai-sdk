@@ -7,7 +7,7 @@ export type {
   ConditionGroupType,
   ConditionGroupOperatorType,
   FilterType,
-  FilterRHSTypeType,
+  FilterRHSType,
   UseFilterOptionsType,
   UseFilterReturnType,
 } from "./types";

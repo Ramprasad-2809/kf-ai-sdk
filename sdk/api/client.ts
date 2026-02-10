@@ -16,13 +16,12 @@ import type {
   DraftResponseType,
   FieldsResponseType,
   FetchFieldOptionType,
-  FetchFieldResponseType,
 } from "../types/common";
 
 /**
  * API client interface for a specific Business Object
  */
-export interface ResourceClient<T = any> {
+export interface ResourceClientType<T = any> {
   // ============================================================
   // BASIC CRUD OPERATIONS
   // ============================================================
@@ -105,8 +104,15 @@ export interface ResourceClient<T = any> {
   /**
    * Fetch reference data for a specific field (for lookup and dropdown fields)
    * GET /{bo_id}/{instance_id}/field/{field_id}/fetch
+   *
+   * @template TResult - The type of data returned. Defaults to FetchFieldOptionType
+   *   - For SelectField: FetchFieldOptionType[] (with Value/Label)
+   *   - For ReferenceField: TRef[] (full entity objects)
    */
-  fetchField(instanceId: string, fieldId: string): Promise<FetchFieldOptionType[]>;
+  fetchField<TResult = FetchFieldOptionType>(
+    instanceId: string,
+    fieldId: string
+  ): Promise<TResult[]>;
 }
 
 /**
@@ -160,7 +166,7 @@ export function getApiBaseUrl(): string {
  * @param bo_id - Business Object identifier (e.g., "user", "leave", "vendor")
  * @returns Resource client with CRUD operations matching API spec
  */
-export function api<T = any>(bo_id: string): ResourceClient<T> {
+export function api<T = any>(bo_id: string): ResourceClientType<T> {
   const baseUrl = apiConfig.baseUrl;
   const defaultHeaders = apiConfig.headers;
 
@@ -417,10 +423,10 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
       return response.json();
     },
 
-    async fetchField(
+    async fetchField<TResult = FetchFieldOptionType>(
       instanceId: string,
       fieldId: string
-    ): Promise<FetchFieldOptionType[]> {
+    ): Promise<TResult[]> {
       const response = await fetch(
         `${baseUrl}/api/app/${bo_id}/${instanceId}/field/${fieldId}/fetch`,
         {
@@ -435,7 +441,7 @@ export function api<T = any>(bo_id: string): ResourceClient<T> {
         );
       }
 
-      const responseData: FetchFieldResponseType = await response.json();
+      const responseData: { Data: TResult[] } = await response.json();
       return responseData.Data;
     },
   };

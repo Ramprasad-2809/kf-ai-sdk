@@ -25,3 +25,12 @@ export {
 
 // Metadata API client
 export { getBdoSchema, listMetadata } from './api/metadata';
+
+// Constants
+export {
+  MetricType,
+  QueryType,
+  HttpMethod,
+  DateEncodingKey,
+  DeleteStatus,
+} from './types/constants';
