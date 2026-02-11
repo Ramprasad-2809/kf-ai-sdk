@@ -1,6 +1,7 @@
 // Main API client
 export {
   api,
+  createResourceClient,
   setApiBaseUrl,
   setDefaultHeaders,
   getDefaultHeaders,

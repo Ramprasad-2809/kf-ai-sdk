@@ -26,6 +26,8 @@ export default defineConfig({
         'auth.types': path.resolve(__dirname, '../sdk/auth.types.ts'),
         api: path.resolve(__dirname, '../sdk/api.ts'),
         'api.types': path.resolve(__dirname, '../sdk/api.types.ts'),
+        workflow: path.resolve(__dirname, '../sdk/workflow.ts'),
+        'workflow.types': path.resolve(__dirname, '../sdk/workflow.types.ts'),
         utils: path.resolve(__dirname, '../sdk/utils.ts'),
         types: path.resolve(__dirname, '../sdk/base-types.ts'),
       },

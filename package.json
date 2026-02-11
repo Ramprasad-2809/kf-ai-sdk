@@ -137,6 +137,26 @@
         "default": "./dist/api.types.cjs"
       }
     },
+    "./workflow": {
+      "import": {
+        "types": "./dist/workflow.d.ts",
+        "default": "./dist/workflow.mjs"
+      },
+      "require": {
+        "types": "./dist/workflow.d.ts",
+        "default": "./dist/workflow.cjs"
+      }
+    },
+    "./workflow/types": {
+      "import": {
+        "types": "./dist/workflow.types.d.ts",
+        "default": "./dist/workflow.types.mjs"
+      },
+      "require": {
+        "types": "./dist/workflow.types.d.ts",
+        "default": "./dist/workflow.types.cjs"
+      }
+    },
     "./utils": {
       "import": {
         "types": "./dist/utils.d.ts",

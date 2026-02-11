@@ -60,6 +60,12 @@ export type {
 export { api, setApiBaseUrl, getApiBaseUrl, getBdoSchema } from './api';
 
 // ============================================================
+// WORKFLOW CLIENT - Business Process / Activity operations
+// ============================================================
+
+export { Workflow, useActivityForm } from './workflow';
+
+// ============================================================
 // TYPES - Core type definitions
 // ============================================================
 
