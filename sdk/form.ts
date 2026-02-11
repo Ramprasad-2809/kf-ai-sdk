@@ -1,15 +1,18 @@
 // ============================================================
-// FORM MODULE - Main Entry Point
-// @ram_28/kf-ai-sdk/form
+// Form Entry Point
 // ============================================================
+// Exports useForm hook for forms with automatic validation and API operations.
 
-// Main hook
-export { useForm } from './components/hooks/useForm/useForm';
-
-// Error handling utilities
-export {
-  parseApiError,
-  isNetworkError,
-  isValidationError,
-  clearCache as clearFormCache,
-} from './components/hooks/useForm/apiClient';
+export { useForm } from "./components/hooks/useForm";
+export type {
+  UseFormOptionsType,
+  UseFormReturnType,
+  FormItemType,
+  EditableFormFieldAccessorType,
+  ReadonlyFormFieldAccessorType,
+  FormRegisterType,
+  HandleSubmitType,
+  ExtractEditableType,
+  ExtractReadonlyType,
+  AllFieldsType,
+} from "./components/hooks/useForm";

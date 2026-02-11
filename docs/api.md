@@ -99,7 +99,7 @@ interface MetricFieldType {
 
   // Aggregation function
   // Sum | Avg | Count | Max | Min | DistinctCount | BlankCount | NotBlankCount | Concat | DistinctConcat
-  Type: MetricTypeType;
+  Type: AggregationType;
 }
 ```
 

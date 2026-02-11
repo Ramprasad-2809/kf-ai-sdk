@@ -1,7 +1,17 @@
+import {
+  SortDirection,
+  ConditionOperator,
+  GroupOperator,
+  RHSType,
+  MetricType,
+  DeleteStatus,
+} from "./constants";
+
 /**
  * Sort direction for API queries (matching API spec)
+ * Derived from SortDirection constant
  */
-export type SortDirectionType = "ASC" | "DESC";
+export type SortDirectionType = (typeof SortDirection)[keyof typeof SortDirection];
 
 /**
  * Sort configuration: array of field-direction mappings
@@ -17,23 +27,22 @@ export type SortType = SortOptionType[];
 /**
  * Condition operators for individual conditions (leaf nodes)
  * Used in Condition.Operator
+ * Derived from ConditionOperator constant
  */
-export type ConditionOperatorType =
-  | "EQ" | "NE" | "GT" | "GTE" | "LT" | "LTE"
-  | "Between" | "NotBetween" | "IN" | "NIN"
-  | "Empty" | "NotEmpty" | "Contains" | "NotContains"
-  | "MinLength" | "MaxLength";
+export type ConditionOperatorType = (typeof ConditionOperator)[keyof typeof ConditionOperator];
 
 /**
  * Operators for combining conditions in a group (tree nodes)
  * Used in ConditionGroup.Operator
+ * Derived from GroupOperator constant
  */
-export type ConditionGroupOperatorType = "And" | "Or" | "Not";
+export type ConditionGroupOperatorType = (typeof GroupOperator)[keyof typeof GroupOperator];
 
 /**
  * RHS value type for filter conditions
+ * Derived from RHSType constant
  */
-export type FilterRHSTypeType = "Constant" | "BOField" | "AppVariable";
+export type FilterRHSType = (typeof RHSType)[keyof typeof RHSType];
 
 /**
  * Leaf condition (actual field comparison)
@@ -49,7 +58,7 @@ export interface ConditionType<T = any> {
   /** Right-hand side value */
   RHSValue: any;
   /** Right-hand side type (optional, defaults to Constant) */
-  RHSType?: FilterRHSTypeType;
+  RHSType?: FilterRHSType;
 }
 
 /**
@@ -105,7 +114,7 @@ export interface CreateUpdateResponseType {
  */
 export interface DeleteResponseType {
   /** Status of the delete operation */
-  status: "success";
+  status: (typeof DeleteStatus)[keyof typeof DeleteStatus];
 }
 
 /**
@@ -148,18 +157,9 @@ export interface ListOptionsType {
 
 /**
  * Metric aggregation function types
+ * Derived from MetricType constant
  */
-export type MetricTypeType =
-  | "Sum"
-  | "Avg"
-  | "Count"
-  | "Max"
-  | "Min"
-  | "DistinctCount"
-  | "BlankCount"
-  | "NotBlankCount"
-  | "Concat"
-  | "DistinctConcat";
+export type AggregationType = (typeof MetricType)[keyof typeof MetricType];
 
 /**
  * Metric field configuration
@@ -168,7 +168,7 @@ export interface MetricFieldType {
   /** Field to aggregate */
   Field: string;
   /** Aggregation function type */
-  Type: MetricTypeType;
+  Type: AggregationType;
 }
 
 /**

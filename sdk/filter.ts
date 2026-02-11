@@ -11,3 +11,10 @@ export {
   isCondition,
   isConditionGroup,
 } from './components/hooks/useFilter/types';
+
+// Constants
+export {
+  ConditionOperator,
+  GroupOperator,
+  RHSType as FilterValueSource,
+} from './types/constants';

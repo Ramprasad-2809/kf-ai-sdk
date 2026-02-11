@@ -7,7 +7,7 @@ export {
   getDefaultHeaders,
   getApiBaseUrl,
 } from "./client";
-export type { ResourceClient } from "./client";
+export type { ResourceClientType } from "./client";
 
 // DateTime utilities
 export {
@@ -22,7 +22,7 @@ export {
 
 // Metadata API client
 export { getBdoSchema, listMetadata } from "./metadata";
-export type { BackendSchema, MetadataItem, FieldMetadata } from "./metadata";
+export type { BackendSchemaType, MetadataItemType, FieldMetadataType } from "./metadata";
 
 // Re-export common types for convenience
 export type {
@@ -35,7 +35,7 @@ export type {
   ConditionGroupType,
   ConditionGroupOperatorType,
   FilterType,
-  FilterRHSTypeType,
+  FilterRHSType,
   ConditionOperatorType,
   // List types
   ListOptionsType,
@@ -45,7 +45,7 @@ export type {
   DeleteResponseType,
   CountResponseType,
   // Metric types
-  MetricTypeType,
+  AggregationType,
   MetricFieldType,
   MetricOptionsType,
   MetricResponseType,

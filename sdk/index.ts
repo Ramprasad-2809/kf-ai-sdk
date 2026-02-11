@@ -15,25 +15,6 @@ export type {
   UseTableReturnType,
 } from './components/hooks/useTable';
 
-// Form hook - Schema-driven forms with validation
-export { useForm } from './components/hooks/useForm';
-export type {
-  UseFormOptionsType,
-  UseFormReturnType,
-  FormFieldConfigType,
-  FormSchemaConfigType,
-} from './components/hooks/useForm';
-
-// Kanban hook - Kanban board state management
-export { useKanban } from './components/hooks/useKanban';
-export type {
-  UseKanbanOptionsType,
-  UseKanbanReturnType,
-  KanbanCardType,
-  KanbanColumnType,
-  ColumnConfigType,
-} from './components/hooks/useKanban';
-
 // Filter hook - Advanced filtering with logical operators
 export { useFilter, isCondition, isConditionGroup } from './components/hooks/useFilter';
 export type {
@@ -85,7 +66,6 @@ export type {
 
 // Base field types
 export type {
-  IdFieldType,
   StringFieldType,
   TextAreaFieldType,
   NumberFieldType,
@@ -95,7 +75,6 @@ export type {
   DateTimeFieldType,
   CurrencyFieldType,
   SelectFieldType,
-  LookupFieldType,
   ArrayFieldType,
   JSONFieldType,
   ReferenceFieldType,
@@ -140,22 +119,6 @@ export {
   buildCountOptions,
   combineFilters,
 } from './utils/api';
-
-// ============================================================
-// UI COMPONENTS - Pre-built React components
-// ============================================================
-
-export {
-  Kanban,
-  KanbanColumn,
-  KanbanColumnHeader,
-  KanbanColumnTitle,
-  KanbanColumnContent,
-  KanbanCard,
-  KanbanCardTitle,
-  KanbanCardDescription,
-  KanbanColumnFooter,
-} from './components/ui';
 
 // ============================================================
 // LEGACY EXPORTS - For backwards compatibility

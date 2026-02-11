@@ -1,6 +1,6 @@
 {
   "name": "@ram_28/kf-ai-sdk",
-  "version": "1.0.35",
+  "version": "2.0.0",
   "description": "Type-safe, AI-driven SDK for building modern web applications with role-based access control",
   "author": "Ramprasad",
   "license": "MIT",
@@ -45,36 +45,6 @@
       "require": {
         "types": "./dist/table.types.d.ts",
         "default": "./dist/table.types.cjs"
-      }
-    },
-    "./kanban": {
-      "import": {
-        "types": "./dist/kanban.d.ts",
-        "default": "./dist/kanban.mjs"
-      },
-      "require": {
-        "types": "./dist/kanban.d.ts",
-        "default": "./dist/kanban.cjs"
-      }
-    },
-    "./kanban/types": {
-      "import": {
-        "types": "./dist/kanban.types.d.ts",
-        "default": "./dist/kanban.types.mjs"
-      },
-      "require": {
-        "types": "./dist/kanban.types.d.ts",
-        "default": "./dist/kanban.types.cjs"
-      }
-    },
-    "./kanban/ui": {
-      "import": {
-        "types": "./dist/kanban.ui.d.ts",
-        "default": "./dist/kanban.ui.mjs"
-      },
-      "require": {
-        "types": "./dist/kanban.ui.d.ts",
-        "default": "./dist/kanban.ui.cjs"
       }
     },
     "./filter": {
@@ -169,12 +139,32 @@
     },
     "./types": {
       "import": {
-        "types": "./dist/base-types.d.ts",
+        "types": "./dist/types/index.d.ts",
         "default": "./dist/types.mjs"
       },
       "require": {
-        "types": "./dist/base-types.d.ts",
+        "types": "./dist/types/index.d.ts",
         "default": "./dist/types.cjs"
+      }
+    },
+    "./bdo": {
+      "import": {
+        "types": "./dist/bdo.d.ts",
+        "default": "./dist/bdo.mjs"
+      },
+      "require": {
+        "types": "./dist/bdo.d.ts",
+        "default": "./dist/bdo.cjs"
+      }
+    },
+    "./bdo/types": {
+      "import": {
+        "types": "./dist/bdo.types.d.ts",
+        "default": "./dist/bdo.types.mjs"
+      },
+      "require": {
+        "types": "./dist/bdo.types.d.ts",
+        "default": "./dist/bdo.types.cjs"
       }
     },
     "./docs/*": "./docs/*"
@@ -201,11 +191,9 @@
     "typescript",
     "useForm",
     "useTable",
-    "useKanban",
     "useFilter",
-    "form-validation",
+    "bdo",
     "data-table",
-    "kanban-board",
     "api-client",
     "type-safe"
   ],

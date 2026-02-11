@@ -4,10 +4,10 @@
 // ============================================================
 
 // Resource client type
-export type { ResourceClient } from './api/client';
+export type { ResourceClientType } from './api/client';
 
 // Metadata types
-export type { BackendSchema, MetadataItem, FieldMetadata } from './api/metadata';
+export type { BackendSchemaType, MetadataItemType, FieldMetadataType } from './api/metadata';
 
 // DateTime types from base-fields
 export type { DateTimeEncodedType, DateEncodedType } from './types/base-fields';
@@ -25,7 +25,7 @@ export type {
   ConditionGroupOperatorType,
   ConditionOperatorType,
   FilterType,
-  FilterRHSTypeType,
+  FilterRHSType,
 
   // List types
   ListOptionsType,
@@ -36,7 +36,7 @@ export type {
   CountResponseType,
 
   // Metric types
-  MetricTypeType,
+  AggregationType,
   MetricFieldType,
   MetricOptionsType,
   MetricResponseType,
