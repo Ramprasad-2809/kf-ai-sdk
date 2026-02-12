@@ -17,6 +17,8 @@ import type {
   UseFormReturnType,
   HandleSubmitType,
   AllFieldsType,
+  CreatableBdo,
+  UpdatableBdo,
 } from "./types";
 
 /**
@@ -30,33 +32,7 @@ import type {
  * - Full access to all RHF methods and state
  * - Smart register: auto-disables readonly fields
  * - Payload filtering: handleSubmit auto-filters to editable fields only
- *
- * @example
- * ```tsx
- * const product = new SellerProduct();
- *
- * // Create mode
- * const { register, handleSubmit, item, errors } = useForm({
- *   bdo: product,
- *   defaultValues: { Title: "", Price: 0 },
- * });
- *
- * // Edit mode
- * const { register, handleSubmit, item, isLoading } = useForm({
- *   bdo: product,
- *   recordId: "product_123",
- * });
- *
- * // In JSX - readonly fields auto-disabled!
- * <form onSubmit={handleSubmit(
- *   (result) => toast.success("Saved!"),
- *   (error) => toast.error(error.message)
- * )}>
- *   <input {...register("Title")} />
- *   <input {...register("ASIN")} />  {// auto disabled: true for readonly }
- *   {errors.Title && <span>{errors.Title.message}</span>}
- * </form>
- * ```
+ * - Constraint validation: auto-validates required, length, etc. from field meta
  */
 export function useForm<B extends BaseBdo<any, any, any>>(
   options: UseFormOptionsType<B>,
@@ -68,6 +44,8 @@ export function useForm<B extends BaseBdo<any, any, any>>(
     defaultValues,
     mode = "onBlur",
     enableDraft: _enableDraft = false,
+    enableConstraintValidation,
+    enableExpressionValidation,
   } = options;
 
   // Infer operation from recordId if not explicitly provided
@@ -77,7 +55,10 @@ export function useForm<B extends BaseBdo<any, any, any>>(
   // RESOLVER (memoized)
   // ============================================================
 
-  const resolver = useMemo(() => createResolver(bdo), [bdo]);
+  const resolver = useMemo(
+    () => createResolver(bdo, { enableConstraintValidation }),
+    [bdo, enableConstraintValidation],
+  );
 
   // ============================================================
   // RECORD FETCHING (Edit Mode)
@@ -86,12 +67,14 @@ export function useForm<B extends BaseBdo<any, any, any>>(
   const {
     data: record,
     isLoading: isLoadingRecord,
+    isFetching: isFetchingRecord,
     error: recordError,
   } = useQuery({
     queryKey: ["form-record", bdo.meta._id, recordId],
     queryFn: async () => {
       // bdo.get returns ItemWithData - extract raw data via toJSON
-      const item = await (bdo as any).get(recordId!);
+      // Safe: update operation requires UpdatableBdo (enforced by UseFormOptionsType)
+      const item = await (bdo as unknown as UpdatableBdo).get(recordId!);
       return item.toJSON();
     },
     enabled: operation === "update" && !!recordId,
@@ -107,6 +90,7 @@ export function useForm<B extends BaseBdo<any, any, any>>(
     queryFn: () => getBdoSchema(bdo.meta._id),
     staleTime: 30 * 60 * 1000, // Cache for 30 minutes
     gcTime: 60 * 60 * 1000, // Keep in cache for 1 hour
+    enabled: enableExpressionValidation !== false,
   });
 
   // Load metadata into bdo when schema is fetched
@@ -151,7 +135,7 @@ export function useForm<B extends BaseBdo<any, any, any>>(
       const rhfResult = form.register(name as any, registerOptions);
 
       // If field is readonly, add disabled: true
-      if (!fields[name]?.meta.isEditable) {
+      if (fields[name]?.readOnly) {
         return { ...rhfResult, disabled: true };
       }
 
@@ -170,22 +154,33 @@ export function useForm<B extends BaseBdo<any, any, any>>(
         // onValid - validation passed, make API call
         async (data, e) => {
           try {
-            // Filter payload to only editable fields
             const filteredData: Record<string, unknown> = {};
-            for (const [key, value] of Object.entries(data)) {
-              if (fields[key]?.meta.isEditable) {
-                filteredData[key] = value;
+
+            if (operation === "create") {
+              // Create mode - send all known, non-readonly fields
+              for (const [key, value] of Object.entries(data)) {
+                if (fields[key] && !fields[key].readOnly) {
+                  filteredData[key] = value;
+                }
+              }
+            } else {
+              // Update mode - send only known, non-readonly, dirty fields
+              const dirtyFields = form.formState.dirtyFields;
+              for (const [key, value] of Object.entries(data)) {
+                if (fields[key] && !fields[key].readOnly && dirtyFields[key]) {
+                  filteredData[key] = value;
+                }
               }
             }
 
             let result: unknown;
 
             if (operation === "create") {
-              // Create mode - call create with filtered data
-              result = await (bdo as any).create(filteredData);
+              // Safe: create operation requires CreatableBdo (enforced by UseFormOptionsType)
+              result = await (bdo as unknown as CreatableBdo).create(filteredData);
             } else {
-              // Update mode - call update with recordId and filtered data
-              result = await (bdo as any).update(recordId!, filteredData);
+              // Safe: update operation requires UpdatableBdo (enforced by UseFormOptionsType)
+              result = await (bdo as unknown as UpdatableBdo).update(recordId!, filteredData);
             }
 
             // Success callback
@@ -201,18 +196,8 @@ export function useForm<B extends BaseBdo<any, any, any>>(
         },
       );
     },
-    [form, bdo, operation, recordId],
+    [form, bdo, operation, recordId, fields],
   );
-
-  // ============================================================
-  // DRAFT API INTEGRATION (Optional - Future Enhancement)
-  // ============================================================
-
-  // TODO: Implement draft API integration when enableDraft is true
-  // This would:
-  // 1. Create draft on mount (for create mode)
-  // 2. Call draftPatch on blur for computed field updates
-  // 3. Track draftId state
 
   // ============================================================
   // RETURN
@@ -252,7 +237,7 @@ export function useForm<B extends BaseBdo<any, any, any>>(
 
     // Loading states
     isLoading: isLoadingRecord,
-    isFetching: isLoadingRecord,
+    isFetching: isFetchingRecord,
 
     // Error
     loadError: recordError as Error | null,

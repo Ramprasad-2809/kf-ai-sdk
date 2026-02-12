@@ -1,41 +1,46 @@
-# API
+# API Types Reference
 
-This Api SDK provides the interface for making any api call to server.
+Request and response types for all BDO methods, grouped by method.
 
-Direct API methods for CRUD operations, drafts, metrics, and metadata.
-
-You SHOULD only use this Api for making any api call to post and read data.
-
-## Setup
-
-```typescript
-import { Product } from "../sources";
-import type { ProductForRole } from "../sources";
-import { Roles } from "../sources/roles";
-
-type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
-
-const product = new Product(Roles.Buyer);
-```
+For the BDO pattern, field classes, and `ItemType` accessor documentation, see [bdo.md](bdo.md).
 
 ---
 
-## Type Definitions
+## Read Operations
 
-### ListOptionsType
+### get
+
+Fetches a single record by ID.
 
 ```typescript
-// Options for listing records with pagination, filtering, and sorting
+async get(id: string): Promise<ItemType<TEditable, TReadonly>>
+```
+
+**Request:** `id: string`
+
+**Response:** [`ItemType<TEditable, TReadonly>`](bdo.md#itemtype--runtime-accessor-pattern) — Proxy-wrapped record with field accessors.
+
+---
+
+### list
+
+Fetches paginated records with optional filtering, sorting, and pagination.
+
+```typescript
+async list(options?: ListOptionsType): Promise<ItemType<TEditable, TReadonly>[]>
+```
+
+**Request:**
+
+```typescript
 interface ListOptionsType {
   // Specific fields to return (omit for all fields)
   Field?: string[];
 
-  // Filter criteria (see useFilter docs)
-  // For search, use a Contains filter condition on the desired field
+  // Filter criteria
   Filter?: FilterType;
 
-  // Sort configuration
-  // Format: [{ "fieldName": "ASC" }] or [{ "fieldName": "DESC" }]
+  // Sort configuration: [{ "fieldName": "ASC" | "DESC" }]
   Sort?: SortType;
 
   // Page number (1-indexed, default: 1)
@@ -46,322 +51,39 @@ interface ListOptionsType {
 }
 ```
 
-> **Note:** For search functionality, use a `Filter` with the `Contains` operator on the desired field rather than a separate search parameter. See the search examples in the [list method](#list) section.
+**Response:** [`ItemType<TEditable, TReadonly>[]`](bdo.md#itemtype--runtime-accessor-pattern) — Array of Proxy-wrapped records.
 
-### ListResponseType
-
-```typescript
-// Response from list operation
-interface ListResponseType<T> {
-  // Array of records for current page
-  Data: T[];
-}
-```
-
-### CreateUpdateResponseType
-
-```typescript
-// Response from create or update operations
-interface CreateUpdateResponseType {
-  // ID of the created or updated record
-  _id: string;
-}
-```
-
-### DeleteResponseType
-
-```typescript
-// Response from delete operation
-interface DeleteResponseType {
-  // Always "success" on successful deletion
-  status: "success";
-}
-```
-
-### DraftResponseType
-
-```typescript
-// Response from draft operations
-// Contains computed field values returned by server
-interface DraftResponseType {
-  // Keys are field names, values are computed results
-  [fieldName: string]: any;
-}
-```
-
-### MetricFieldType
-
-```typescript
-// Definition for a single metric aggregation
-interface MetricFieldType {
-  // Field to aggregate
-  Field: string;
-
-  // Aggregation function
-  // Sum | Avg | Count | Max | Min | DistinctCount | BlankCount | NotBlankCount | Concat | DistinctConcat
-  Type: AggregationType;
-}
-```
-
-### MetricOptionsType
-
-```typescript
-// Options for metric aggregation queries
-interface MetricOptionsType {
-  // Fields to group by (empty array for totals)
-  GroupBy: string[];
-
-  // Metric definitions
-  Metric: MetricFieldType[];
-
-  // Optional filter criteria
-  Filter?: FilterType;
-}
-```
-
-### MetricResponseType
-
-```typescript
-// Response from metric aggregation
-interface MetricResponseType {
-  // Aggregated data rows
-  // Keys follow pattern: {type}_{Field} (e.g., "count__id", "sum_Stock", "avg_Price")
-  Data: Record<string, any>[];
-}
-```
-
-### PivotOptionsType
-
-```typescript
-// Options for pivot table queries
-interface PivotOptionsType {
-  // Row dimension fields
-  Row: string[];
-
-  // Column dimension fields
-  Column: string[];
-
-  // Metric definitions
-  Metric: MetricFieldType[];
-
-  // Optional filter criteria
-  Filter?: FilterType;
-}
-```
-
-### PivotHeaderItemType
-
-```typescript
-// Header item in pivot response
-interface PivotHeaderItemType {
-  // Header label
-  Label: string;
-
-  // Nested child headers (for hierarchical dimensions)
-  Children?: PivotHeaderItemType[];
-}
-```
-
-### PivotResponseType
-
-```typescript
-// Response from pivot table query
-interface PivotResponseType {
-  Data: {
-    // Row headers (hierarchical)
-    RowHeader: PivotHeaderItemType[];
-
-    // Column headers (hierarchical)
-    ColumnHeader: PivotHeaderItemType[];
-
-    // Value matrix [row][column]
-    Value: (number | string | null)[][];
-  };
-}
-```
-
-### FieldsResponseType
-
-```typescript
-// Response from fields metadata query
-interface FieldsResponseType {
-  // Field metadata array
-  Data: Record<string, any>[];
-}
-```
+> **Search:** Use a `Filter` with the `Contains` operator on the desired field. See [useFilter docs](useFilter.md).
 
 ---
 
-## Methods
+### count
 
-### list
-
-Fetches paginated records with optional filtering, sorting, and search.
+Returns the count of records matching filter criteria.
 
 ```typescript
-const response = await product.list(options?: ListOptionsType): Promise<ListResponseType<T>>
+async count(options?: ListOptionsType): Promise<number>
 ```
 
-**Example:** Fetch paginated products with filter
+**Request:** `ListOptionsType` (same as [list](#list))
 
-```typescript
-import { Product } from "../sources";
-import type { ProductForRole } from "../sources";
-import { Roles } from "../sources/roles";
-
-type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
-
-const product = new Product(Roles.Buyer);
-
-const response = await product.list({
-  Field: ["Title", "Price", "Category"],
-  Filter: {
-    Operator: "And",
-    Condition: [
-      {
-        LHSField: "Category",
-        Operator: "EQ",
-        RHSValue: "Electronics",
-        RHSType: "Constant",
-      },
-    ],
-  },
-  Sort: [{ Price: "ASC" }],
-  Page: 1,
-  PageSize: 20,
-});
-
-// response.Data contains array of products
-response.Data.forEach((item) => {
-  console.log(item.Title, item.Price);
-});
-```
-
-**Example:** Search products by field
-
-To search records, use a filter with the `Contains` operator on the desired field:
-
-```typescript
-import { Product } from "../sources";
-import type { ProductForRole } from "../sources";
-import { Roles } from "../sources/roles";
-
-type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
-
-const product = new Product(Roles.Buyer);
-
-// Search for products where Title contains "laptop"
-const response = await product.list({
-  Filter: {
-    Operator: "And",
-    Condition: [
-      {
-        LHSField: "Title",
-        Operator: "Contains",
-        RHSValue: "laptop",
-        RHSType: "Constant",
-      },
-    ],
-  },
-  Sort: [{ Title: "ASC" }],
-  Page: 1,
-  PageSize: 20,
-});
-
-// response.Data contains matching products
-response.Data.forEach((item) => {
-  console.log(item.Title, item.Price);
-});
-```
-
-**Example:** Search with additional filters
-
-Combine search with other filter conditions:
-
-```typescript
-// Search for "wireless" products in Electronics category
-const response = await product.list({
-  Filter: {
-    Operator: "And",
-    Condition: [
-      {
-        LHSField: "Title",
-        Operator: "Contains",
-        RHSValue: "wireless",
-        RHSType: "Constant",
-      },
-      {
-        LHSField: "Category",
-        Operator: "EQ",
-        RHSValue: "Electronics",
-        RHSType: "Constant",
-      },
-    ],
-  },
-  Page: 1,
-  PageSize: 20,
-});
-```
+**Response:** `number` — count returned directly (internally unwraps `{ Count: number }`).
 
 ---
 
-### get
-
-Fetches a single record by ID.
-
-```typescript
-const record = await product.get(id: string): Promise<T>
-```
-
-**Example:** Fetch single product
-
-```typescript
-import { Product } from "../sources";
-import type { ProductForRole } from "../sources";
-import { Roles } from "../sources/roles";
-
-type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
-
-const product = new Product(Roles.Buyer);
-
-const item = await product.get("prod_abc123");
-
-console.log(item.Title);
-console.log(item.Price);
-console.log(item.Description);
-```
-
----
+## Write Operations
 
 ### create
 
 Creates a new record.
 
 ```typescript
-const response = await product.create(data: Partial<T>): Promise<CreateUpdateResponseType>
+async create(data: Partial<TEditable>): Promise<ItemType<TEditable, TReadonly>>
 ```
 
-**Example:** Create new product
+**Request:** `Partial<TEditable>` — field values for the new record.
 
-```typescript
-import { Product } from "../sources";
-import type { ProductForRole } from "../sources";
-import { Roles } from "../sources/roles";
-
-type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
-
-const product = new Product(Roles.Buyer);
-
-const response = await product.create({
-  Title: "Wireless Headphones",
-  Price: 99.99,
-  Category: "Electronics",
-  Stock: 50,
-  Description: "High-quality wireless headphones with noise cancellation",
-});
-
-console.log("Created product with ID:", response._id);
-```
+**Response:** [`ItemType<TEditable, TReadonly>`](bdo.md#itemtype--runtime-accessor-pattern) — the created record with `_id` from the API and input data as field accessors.
 
 ---
 
@@ -370,26 +92,17 @@ console.log("Created product with ID:", response._id);
 Updates an existing record.
 
 ```typescript
-const response = await product.update(id: string, data: Partial<T>): Promise<CreateUpdateResponseType>
+async update(id: string, data: Partial<TEditable>): Promise<CreateUpdateResponseType>
 ```
 
-**Example:** Update product price
+**Request:** `id: string`, `data: Partial<TEditable>`
+
+**Response:**
 
 ```typescript
-import { Product } from "../sources";
-import type { ProductForRole } from "../sources";
-import { Roles } from "../sources/roles";
-
-type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
-
-const product = new Product(Roles.Buyer);
-
-const response = await product.update("prod_abc123", {
-  Price: 79.99,
-  Stock: 45,
-});
-
-console.log("Updated product:", response._id);
+interface CreateUpdateResponseType {
+  _id: string;
+}
 ```
 
 ---
@@ -399,56 +112,40 @@ console.log("Updated product:", response._id);
 Deletes a record by ID.
 
 ```typescript
-const response = await product.delete(id: string): Promise<DeleteResponseType>
+async delete(id: string): Promise<DeleteResponseType>
 ```
 
-**Example:** Delete product
+**Request:** `id: string`
+
+**Response:**
 
 ```typescript
-import { Product } from "../sources";
-import type { ProductForRole } from "../sources";
-import { Roles } from "../sources/roles";
-
-type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
-
-const product = new Product(Roles.Buyer);
-
-const response = await product.delete("prod_abc123");
-
-if (response.status === "success") {
-  console.log("Product deleted successfully");
+interface DeleteResponseType {
+  status: "success";
 }
 ```
 
 ---
+
+## Draft Operations
 
 ### draft
 
 Previews computed field values for a new record without saving.
 
 ```typescript
-const response = await product.draft(data: Partial<T>): Promise<DraftResponseType>
+async draft(data: Partial<TEditable>): Promise<DraftResponseType>
 ```
 
-**Example:** Preview computed discount
+**Request:** `Partial<TEditable>` — field values to compute against.
+
+**Response:**
 
 ```typescript
-import { Product } from "../sources";
-import type { ProductForRole } from "../sources";
-import { Roles } from "../sources/roles";
-
-type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
-
-const product = new Product(Roles.Buyer);
-
-const draftResponse = await product.draft({
-  Price: 100,
-  DiscountPercent: 15,
-});
-
-// Server computes and returns calculated fields
-console.log("Computed discount amount:", draftResponse.DiscountAmount);
-console.log("Computed final price:", draftResponse.FinalPrice);
+interface DraftResponseType {
+  // Keys are field names, values are server-computed results
+  [fieldName: string]: any;
+}
 ```
 
 ---
@@ -458,146 +155,68 @@ console.log("Computed final price:", draftResponse.FinalPrice);
 Previews computed field values for an existing record being edited.
 
 ```typescript
-const response = await product.draftPatch(id: string, data: Partial<T>): Promise<DraftResponseType>
+async draftPatch(id: string, data: Partial<TEditable>): Promise<DraftResponseType>
 ```
 
-**Example:** Update draft during editing
+**Request:** `id: string`, `data: Partial<TEditable>`
 
-```typescript
-import { Product } from "../sources";
-import type { ProductForRole } from "../sources";
-import { Roles } from "../sources/roles";
-
-type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
-
-const product = new Product(Roles.Buyer);
-
-const draftResponse = await product.draftPatch("prod_abc123", {
-  Price: 120,
-  DiscountPercent: 20,
-});
-
-// Server computes updated calculated fields
-console.log("Updated discount amount:", draftResponse.DiscountAmount);
-console.log("Updated final price:", draftResponse.FinalPrice);
-```
+**Response:** `DraftResponseType` (same as [draft](#draft))
 
 ---
+
+### draftInteraction
+
+Creates/updates a draft without requiring an instance ID. Returns computed fields along with a temporary `_id`.
+
+```typescript
+async draftInteraction(data: Partial<TEditable>): Promise<DraftResponseType & { _id: string }>
+```
+
+**Request:** `Partial<TEditable>`
+
+**Response:** `DraftResponseType & { _id: string }` — computed fields plus a temporary draft ID.
+
+---
+
+## Analytics Operations
 
 ### metric
 
 Performs aggregation queries on records.
 
 ```typescript
-const response = await product.metric(options: MetricOptionsType): Promise<MetricResponseType>
+async metric(options: Omit<MetricOptionsType, "Type">): Promise<MetricResponseType>
 ```
 
-**Example 1:** Total count
+> `Type` is added internally — pass only `GroupBy`, `Metric`, and optional `Filter`.
+
+**Request:**
 
 ```typescript
-import { Product } from "../sources";
-import type { ProductForRole } from "../sources";
-import { Roles } from "../sources/roles";
+interface MetricOptionsType {
+  Type: "Metric";    // added internally
+  GroupBy: string[]; // fields to group by (empty array for totals)
+  Metric: MetricFieldType[];
+  Filter?: FilterType;
+}
 
-type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
-
-const product = new Product(Roles.Buyer);
-
-const response = await product.metric({
-  GroupBy: [],
-  Metric: [{ Field: "_id", Type: "Count" }],
-});
-
-// Response: { Data: [{ "count__id": 150 }] }
-console.log("Total products:", response.Data[0]["count__id"]);
+interface MetricFieldType {
+  Field: string;
+  Type: AggregationType;
+}
 ```
 
-**Example 2:** Sum with filter (low stock count)
+**Response:**
 
 ```typescript
-import { Product } from "../sources";
-import type { ProductForRole } from "../sources";
-import { Roles } from "../sources/roles";
-
-type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
-
-const product = new Product(Roles.Buyer);
-
-const response = await product.metric({
-  GroupBy: [],
-  Metric: [{ Field: "_id", Type: "Count" }],
-  Filter: {
-    Operator: "And",
-    Condition: [
-      {
-        LHSField: "Stock",
-        Operator: "LT",
-        RHSValue: 10,
-        RHSType: "Constant",
-      },
-    ],
-  },
-});
-
-// Response: { Data: [{ "count__id": 12 }] }
-console.log("Low stock products:", response.Data[0]["count__id"]);
+interface MetricResponseType {
+  // Keys follow pattern: {type}_{Field}
+  // e.g., "count__id", "sum_Stock", "avg_Price"
+  Data: Record<string, any>[];
+}
 ```
 
-**Example 3:** Group by field (products by category)
-
-```typescript
-import { Product } from "../sources";
-import type { ProductForRole } from "../sources";
-import { Roles } from "../sources/roles";
-
-type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
-
-const product = new Product(Roles.Buyer);
-
-const response = await product.metric({
-  GroupBy: ["Category"],
-  Metric: [{ Field: "_id", Type: "Count" }],
-});
-
-// Response: { Data: [
-//   { "Category": "Electronics", "count__id": 45 },
-//   { "Category": "Books", "count__id": 30 },
-//   { "Category": "Clothing", "count__id": 25 }
-// ] }
-response.Data.forEach((row) => {
-  console.log(`${row.Category}: ${row["count__id"]} products`);
-});
-```
-
-**Example 4:** Multiple metrics (stock sum and average by category)
-
-```typescript
-import { Product } from "../sources";
-import type { ProductForRole } from "../sources";
-import { Roles } from "../sources/roles";
-
-type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
-
-const product = new Product(Roles.Buyer);
-
-const response = await product.metric({
-  GroupBy: ["Category"],
-  Metric: [
-    { Field: "Stock", Type: "Sum" },
-    { Field: "Price", Type: "Avg" },
-  ],
-});
-
-// Response: { Data: [
-//   { "Category": "Electronics", "sum_Stock": 500, "avg_Price": 299.99 },
-//   { "Category": "Books", "sum_Stock": 1200, "avg_Price": 24.99 }
-// ] }
-response.Data.forEach((row) => {
-  console.log(
-    `${row.Category}: ${row["sum_Stock"]} total stock, $${row["avg_Price"]} avg price`,
-  );
-});
-```
+**Response key pattern:** `{lowercase_type}_{Field}` — e.g., `{ Field: "Stock", Type: "Sum" }` produces key `"sum_Stock"`.
 
 ---
 
@@ -606,130 +225,79 @@ response.Data.forEach((row) => {
 Creates pivot table aggregations with row and column dimensions.
 
 ```typescript
-const response = await product.pivot(options: PivotOptionsType): Promise<PivotResponseType>
+async pivot(options: Omit<PivotOptionsType, "Type">): Promise<PivotResponseType>
 ```
 
-**Example:** Sales pivot by region and quarter
+> `Type` is added internally — pass only `Row`, `Column`, `Metric`, and optional `Filter`.
+
+**Request:**
 
 ```typescript
-import { Order } from "../sources";
-import type { OrderForRole } from "../sources";
-import { Roles } from "../sources/roles";
+interface PivotOptionsType {
+  Type: "Pivot";     // added internally
+  Row: string[];     // row dimension fields
+  Column: string[];  // column dimension fields
+  Metric: MetricFieldType[];
+  Filter?: FilterType;
+}
+```
 
-type AdminOrder = OrderForRole<typeof Roles.Admin>;
+**Response:**
 
-const order = new Order(Roles.Admin);
+```typescript
+interface PivotResponseType {
+  Data: {
+    RowHeader: PivotHeaderItemType[];
+    ColumnHeader: PivotHeaderItemType[];
+    Value: (number | string | null)[][]; // [row][column]
+  };
+}
 
-const response = await order.pivot({
-  Row: ["Region"],
-  Column: ["Quarter"],
-  Metric: [{ Field: "Amount", Type: "Sum" }],
-});
-
-// Response structure:
-// {
-//   Data: {
-//     RowHeader: [
-//       { Label: "North" },
-//       { Label: "South" },
-//       { Label: "East" },
-//       { Label: "West" }
-//     ],
-//     ColumnHeader: [
-//       { Label: "Q1" },
-//       { Label: "Q2" },
-//       { Label: "Q3" },
-//       { Label: "Q4" }
-//     ],
-//     Value: [
-//       [10000, 12000, 15000, 18000],  // North
-//       [8000, 9500, 11000, 13000],    // South
-//       [7500, 8000, 9000, 10500],     // East
-//       [6000, 7000, 8500, 9000]       // West
-//     ]
-//   }
-// }
-
-const { RowHeader, ColumnHeader, Value } = response.Data;
-
-RowHeader.forEach((row, rowIndex) => {
-  ColumnHeader.forEach((col, colIndex) => {
-    console.log(`${row.Label} - ${col.Label}: $${Value[rowIndex][colIndex]}`);
-  });
-});
+interface PivotHeaderItemType {
+  Key: string;
+  Children?: PivotHeaderItemType[];
+}
 ```
 
 ---
 
-### fields
+## Shared Types
 
-Fetches field metadata for the source.
+### FilterType
 
 ```typescript
-const response = await product.fields(): Promise<FieldsResponseType>
+type FilterType = ConditionGroupType;
+
+interface ConditionGroupType {
+  Operator: "And" | "Or" | "Not";
+  Condition: Array<ConditionType | ConditionGroupType>;
+}
+
+interface ConditionType {
+  Operator: ConditionOperatorType;
+  LHSField: string;
+  RHSValue: any;
+  RHSType?: "Constant" | "BOField" | "AppVariable";
+}
 ```
 
-**Example:** Get field metadata
+**Condition Operators:** `EQ`, `NE`, `GT`, `GTE`, `LT`, `LTE`, `Between`, `NotBetween`, `IN`, `NIN`, `Empty`, `NotEmpty`, `Contains`, `NotContains`, `MinLength`, `MaxLength`
+
+For full filter documentation, see the [useFilter docs](useFilter.md).
+
+### SortType
 
 ```typescript
-import { Product } from "../sources";
-import type { ProductForRole } from "../sources";
-import { Roles } from "../sources/roles";
-
-type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
-
-const product = new Product(Roles.Buyer);
-
-const response = await product.fields();
-
-// response.Data contains array of field metadata objects
-response.Data.forEach((field) => {
-  console.log(`Field: ${field.Name}, Type: ${field.Type}`);
-});
+type SortType = Record<string, "ASC" | "DESC">[];
 ```
 
----
+Format: `[{ "fieldName": "ASC" }, { "anotherField": "DESC" }]`
 
-### fetchField
-
-Fetches options for reference or static fields (used for dropdowns).
+### AggregationType
 
 ```typescript
-const options = await product.fetchField(instanceId: string, fieldId: keyof T): Promise<T[] | StaticOptionType[]>
-```
-
-**Parameters:**
-
-- `instanceId: string` - Record ID or draft ID
-- `fieldId: keyof T` - Field name
-
-**Response:** Depends on field type:
-
-- **Reference fields:** Returns `T[]` (full referenced records)
-- **Static fields:** Returns `{ Value: string; Label: string }[]`
-
-**Example:** Fetch supplier options for dropdown
-
-```typescript
-import { Product } from "../sources";
-import type { ProductForRole } from "../sources";
-import { Roles } from "../sources/roles";
-
-type BuyerProduct = ProductForRole<typeof Roles.Buyer>;
-
-const product = new Product(Roles.Buyer);
-
-// For a new record, use empty string or draft ID
-const suppliers = await product.fetchField("", "Supplier");
-
-// For reference fields, returns full records
-suppliers.forEach((supplier) => {
-  console.log(`${supplier._id}: ${supplier.Name}`);
-});
-
-// For static fields, returns value/label pairs
-const statuses = await product.fetchField("prod_abc123", "Status");
-statuses.forEach((option) => {
-  console.log(`${option.Value}: ${option.Label}`);
-});
+type AggregationType =
+  | "Sum" | "Avg" | "Count" | "Max" | "Min"
+  | "DistinctCount" | "BlankCount" | "NotBlankCount"
+  | "Concat" | "DistinctConcat";
 ```

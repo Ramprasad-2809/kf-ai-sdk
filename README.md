@@ -47,7 +47,7 @@ npm install react @tanstack/react-query
 - **useFilter** - Advanced filtering with logical operators and payload builders
 - **BDO Module** - Type-safe, role-based data access layer with expression validation
 - **API Client** - Type-safe CRUD operations with structured filtering and sorting
-- **Type System** - 10 semantic field types (StringField, NumberField, CurrencyField, etc.)
+- **Type System** - 12 semantic field types (StringField, NumberField, TextField, etc.)
 - **Utilities** - Formatting helpers for currency, dates, numbers, and more
 
 ## Quick Start
@@ -78,7 +78,7 @@ import type { ListResponseType, FilterType } from "@ram_28/kf-ai-sdk/api/types";
 import { formatCurrency, formatDate } from "@ram_28/kf-ai-sdk/utils";
 
 // Base Field Types
-import type { StringFieldType, CurrencyFieldType } from "@ram_28/kf-ai-sdk/types";
+import type { StringFieldType, NumberFieldType } from "@ram_28/kf-ai-sdk/types";
 ```
 
 ## Authentication
@@ -295,34 +295,32 @@ function ProductTable() {
 Advanced filtering with logical operators.
 
 ```tsx
-import { useFilter } from "@ram_28/kf-ai-sdk/filter";
+import { ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
+import { BuyerProduct } from "./bdo/buyer/Product";
 
 function ProductFilter() {
-  const filter = useFilter({
-    fields: {
-      name: { type: "string" },
-      price: { type: "number" },
-      category: {
-        type: "select",
-        options: ["electronics", "clothing", "books"],
-      },
-    },
-  });
-
-  const handleApply = () => {
-    const payload = buildFilterPayload(filter.conditions);
-    // Use payload with API
-  };
+  const product = new BuyerProduct();
+  const filter = useFilter();
 
   return (
     <div>
-      <button onClick={() => filter.addCondition("name", "contains", "")}>
+      <button onClick={() => filter.addCondition({
+        Operator: ConditionOperator.Contains,
+        LHSField: product.Title.id,
+        RHSValue: "",
+        RHSType: RHSType.Constant,
+      })}>
         Add Name Filter
       </button>
-      <button onClick={() => filter.addCondition("price", "gte", 0)}>
+      <button onClick={() => filter.addCondition({
+        Operator: ConditionOperator.GTE,
+        LHSField: product.Price.id,
+        RHSValue: 0,
+        RHSType: RHSType.Constant,
+      })}>
         Add Price Filter
       </button>
-      <button onClick={handleApply}>Apply Filters</button>
+      <button onClick={() => console.log(filter.payload)}>Apply Filters</button>
     </div>
   );
 }
@@ -336,21 +334,17 @@ Type-safe, role-based data access layer:
 import { BaseBdo, StringField, NumberField } from "@ram_28/kf-ai-sdk/bdo";
 
 // Define your BDO class
-class AdminProduct extends BaseBdo<ProductType> {
-  readonly boId = "BDO_Product";
+class AdminProduct extends BaseBdo<ProductType, ProductEditableType, ProductReadonlyType> {
+  readonly meta = { _id: "BDO_Product", name: "Product" } as const;
 
-  readonly Title = new StringField({ id: "Title", label: "Product Title" });
-  readonly Price = new NumberField({ id: "Price", label: "Price" });
-
-  protected _getFieldDefinitions() {
-    return { Title: this.Title, Price: this.Price };
-  }
+  readonly Title = new StringField({ _id: "Title", Name: "Product Title", Type: "String", Constraint: { Required: true } });
+  readonly Price = new NumberField({ _id: "Price", Name: "Price", Type: "Number" });
 
   // Expose only the methods this role can use
   public async get(id: string) { return super.get(id); }
-  public async list(options?: ListOptionsType) { return super.list(options); }
-  public async create(data: Partial<ProductType>) { return super.create(data); }
-  public async update(id: string, data: Partial<ProductType>) { return super.update(id, data); }
+  public async list(options?: any) { return super.list(options); }
+  public async create(data: Partial<ProductEditableType>) { return super.create(data); }
+  public async update(id: string, data: Partial<ProductEditableType>) { return super.update(id, data); }
 }
 ```
 
@@ -387,13 +381,13 @@ async function productOperations() {
   // List with filtering and sorting
   const products = await api("products").list({
     Filter: {
-      Operator: "AND",
+      Operator: "And",
       Condition: [
         { Operator: "EQ", LHSField: "category", RHSValue: "electronics" },
         { Operator: "GTE", LHSField: "price", RHSValue: 50 },
       ],
     },
-    Sort: [{ Field: "price", Order: "DESC" }],
+    Sort: [{ "price": "DESC" }],
     Page: 1,
     PageSize: 25,
   });
@@ -401,7 +395,7 @@ async function productOperations() {
   // Count records
   const count = await api("products").count({
     Filter: {
-      Operator: "AND",
+      Operator: "And",
       Condition: [{ Operator: "EQ", LHSField: "inStock", RHSValue: true }],
     },
   });
@@ -415,21 +409,21 @@ The SDK provides semantic field types for type-safe data modeling:
 ```tsx
 import type {
   StringFieldType,
-  TextAreaFieldType,
+  TextFieldType,
   NumberFieldType,
   BooleanFieldType,
   DateFieldType,
   DateTimeFieldType,
-  CurrencyFieldType,
   SelectFieldType,
+  ReferenceFieldType,
 } from "@ram_28/kf-ai-sdk/types";
 
 // Define your data types
 interface Product {
   _id: StringFieldType;
   name: StringFieldType;
-  description: TextAreaFieldType;
-  price: CurrencyFieldType;
+  description: TextFieldType;
+  price: NumberFieldType;
   quantity: NumberFieldType;
   inStock: BooleanFieldType;
   category: SelectFieldType<"electronics" | "clothing" | "books">;
@@ -471,6 +465,9 @@ Detailed documentation for each feature:
 
 - [useTable Documentation](./docs/useTable.md)
 - [useFilter Documentation](./docs/useFilter.md)
+- [useForm Documentation](./docs/useForm.md)
+- [useAuth Documentation](./docs/useAuth.md)
+- [API Documentation](./docs/api.md)
 
 ## Requirements
 

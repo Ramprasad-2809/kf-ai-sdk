@@ -18,30 +18,160 @@ export interface ValidationResultType {
   errors: string[];
 }
 
-/**
- * Base field metadata — only id, label, and isEditable.
- * Specialized fields (SelectField, ReferenceField) extend this with their own properties.
- */
-export interface FieldMetaType {
-  readonly id: string;
+// ============================================================
+// RAW BACKEND META TYPES
+// These represent the exact JSON shape from the backend,
+// with _id injected by the generator.
+// ============================================================
+
+/** Base constraint shape shared by all field types */
+export interface BaseConstraintType {
+  Required?: boolean;
+  PrimaryKey?: boolean;
+  DefaultValue?: unknown;
+}
+
+/** Base field meta — raw backend shape + injected _id */
+export interface BaseFieldMetaType {
+  _id: string;
+  Name: string;
+  Type: string;
+  ReadOnly?: boolean;
+  Required?: boolean;
+  Constraint?: BaseConstraintType;
+  DefaultValue?: unknown;
+}
+
+export interface StringFieldMetaType extends BaseFieldMetaType {
+  Type: "String";
+  Constraint?: BaseConstraintType & {
+    Length?: number;
+    Enum?: string[];
+  };
+  DefaultValue?: string;
+  View?: {
+    DataObject?: { Type: string; Id: string };
+    Fields?: string[];
+    Search?: string[];
+    Filter?: Record<string, unknown>;
+    Sort?: unknown[];
+  };
+}
+
+export interface TextFieldMetaType extends BaseFieldMetaType {
+  Type: "Text";
+  Constraint?: BaseConstraintType & {
+    Format?: "Plain" | "Markdown";
+  };
+  DefaultValue?: string;
+}
+
+export interface NumberFieldMetaType extends BaseFieldMetaType {
+  Type: "Number";
+  Constraint?: BaseConstraintType & {
+    IntegerPart?: number;
+    FractionPart?: number;
+  };
+  DefaultValue?: number;
+}
+
+export interface BooleanFieldMetaType extends BaseFieldMetaType {
+  Type: "Boolean";
+  Constraint?: BaseConstraintType;
+  DefaultValue?: boolean;
+}
+
+export interface DateFieldMetaType extends BaseFieldMetaType {
+  Type: "Date";
+  Constraint?: BaseConstraintType;
+  DefaultValue?: string;
+}
+
+export interface DateTimeFieldMetaType extends BaseFieldMetaType {
+  Type: "DateTime";
+  Constraint?: BaseConstraintType & {
+    Precision?: "Second" | "Millisecond";
+  };
+  DefaultValue?: string;
+}
+
+export interface SelectFieldMetaType extends BaseFieldMetaType {
+  Type: "String";
+  Constraint?: BaseConstraintType & {
+    Enum: string[];
+  };
+  DefaultValue?: string;
+}
+
+export interface ReferenceFieldMetaType extends BaseFieldMetaType {
+  Type: "Reference";
+  Constraint?: BaseConstraintType;
+  View?: {
+    DataObject: { Type: string; Id: string };
+    Fields?: string[];
+    Search?: string[];
+    Filter?: Record<string, unknown>;
+    Sort?: unknown[];
+  };
+}
+
+export interface UserFieldMetaType extends BaseFieldMetaType {
+  Type: "User";
+  Constraint?: BaseConstraintType;
+  View?: {
+    Filter?: Record<string, unknown>;
+    Sort?: unknown[];
+    BusinessEntity?: string;
+  };
+}
+
+export interface ArrayFieldMetaType extends BaseFieldMetaType {
+  Type: "Array";
+  Constraint?: BaseConstraintType;
+  Property?: BaseFieldMetaType;
+}
+
+export interface ObjectFieldMetaType extends BaseFieldMetaType {
+  Type: "Object";
+  Constraint?: BaseConstraintType;
+  Property?: Record<string, BaseFieldMetaType>;
+}
+
+export interface FileFieldMetaType extends BaseFieldMetaType {
+  Type: "File";
+  Constraint?: BaseConstraintType;
+}
+
+// ============================================================
+// RUNTIME ACCESSOR TYPES
+// These represent what item.Title looks like at runtime
+// ============================================================
+
+/** Base runtime accessor — every field accessor has these */
+export interface BaseFieldAccessorType<T> {
   readonly label: string;
-  readonly isEditable: boolean;
+  readonly required: boolean;
+  readonly readOnly: boolean;
+  readonly defaultValue: unknown;
+  readonly meta: BaseFieldMetaType;
+  get(): T | undefined;
+  validate(): ValidationResultType;
 }
 
-/**
- * SelectField meta — extends FieldMetaType with static options
- */
-export interface SelectFieldMetaType<T extends string | number = string> extends FieldMetaType {
-  readonly options: readonly SelectOptionType<T>[];
+/** Editable accessor adds set() */
+export interface EditableFieldAccessorType<T> extends BaseFieldAccessorType<T> {
+  set(value: T): void;
 }
 
-/**
- * ReferenceField meta — extends FieldMetaType with reference info
- */
-export interface ReferenceFieldMetaType extends FieldMetaType {
-  readonly reference: { bdo: string; fields: string[] };
-}
+/** Readonly accessor has no set() */
+export type ReadonlyFieldAccessorType<T> = BaseFieldAccessorType<T>;
 
+/** Union of editable or readonly accessor */
+export type FieldAccessorType<T> = EditableFieldAccessorType<T> | ReadonlyFieldAccessorType<T>;
+
+// ============================================================
+// SELECT FIELD OPTIONS
+// ============================================================
 
 /**
  * Option for select fields
@@ -51,31 +181,3 @@ export interface SelectOptionType<T = string> {
   label: string;
   disabled?: boolean;
 }
-
-/**
- * Base configuration for all fields
- */
-export interface FieldConfigType {
-  id: string;
-  label: string;
-  editable?: boolean;
-}
-
-/**
- * Configuration for select fields with predefined options
- */
-export interface SelectFieldConfigType<T extends string | number = string> extends FieldConfigType {
-  options: readonly SelectOptionType<T>[];
-}
-
-/**
- * Configuration for reference fields that link to other BDOs
- */
-export interface ReferenceFieldConfigType<
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _TRef = unknown,
-> extends FieldConfigType {
-  referenceBdo: string;
-  referenceFields?: readonly string[];
-}
-

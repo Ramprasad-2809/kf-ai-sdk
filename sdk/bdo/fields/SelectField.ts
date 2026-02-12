@@ -3,35 +3,34 @@
 // Field for single selection from predefined options
 // ============================================================
 
-import type { SelectFieldConfigType, SelectOptionType, ValidationResultType, SelectFieldMetaType } from "../core/types";
+import type { SelectFieldMetaType as SelectFieldMetaRawType, SelectOptionType, ValidationResultType } from "../core/types";
 import type { FetchFieldOptionType } from "../../types/common";
 import { api } from "../../api/client";
 import { BaseField } from "./BaseField";
 
 /**
- * Field definition for select fields with predefined options
+ * Field definition for select fields.
+ * Options are derived from Constraint.Enum in the raw meta.
  *
  * @template T - Union type of allowed option values
  *
  * @example
  * ```typescript
- * readonly Status = new SelectField<"active" | "inactive" | "pending">({
- *   id: "Status",
- *   label: "Status",
- *   options: [
- *     { value: "active", label: "Active" },
- *     { value: "inactive", label: "Inactive" },
- *     { value: "pending", label: "Pending" }
- *   ]
+ * readonly Status = new SelectField<"active" | "inactive">({
+ *   _id: "Status", Name: "Status", Type: "String",
+ *   Constraint: { Enum: ["active", "inactive"] },
  * });
  * ```
  */
 export class SelectField<T extends string | number = string> extends BaseField<T> {
-  protected readonly options: readonly SelectOptionType<T>[];
+  constructor(meta: SelectFieldMetaRawType) {
+    super(meta);
+  }
 
-  constructor(config: SelectFieldConfigType<T>) {
-    super(config);
-    this.options = config.options;
+  /** Static options derived from Constraint.Enum */
+  get options(): readonly SelectOptionType<T>[] {
+    const enumValues = (this._meta as SelectFieldMetaRawType).Constraint?.Enum ?? [];
+    return enumValues.map(v => ({ value: v as T, label: v }));
   }
 
   validate(value: T | undefined): ValidationResultType {
@@ -72,17 +71,5 @@ export class SelectField<T extends string | number = string> extends BaseField<T
       value: item.Value as T,
       label: item.Label,
     }));
-  }
-
-  /**
-   * Get field metadata including static options
-   */
-  override get meta(): SelectFieldMetaType<T> {
-    return {
-      id: this.id,
-      label: this.label,
-      isEditable: this.editable,
-      options: this.options,
-    };
   }
 }

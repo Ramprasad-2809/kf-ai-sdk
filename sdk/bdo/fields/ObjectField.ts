@@ -4,7 +4,7 @@
 // ============================================================
 
 import type { ObjectFieldType } from "../../types/base-fields";
-import type { FieldConfigType, ValidationResultType } from "../core/types";
+import type { ObjectFieldMetaType, ValidationResultType } from "../core/types";
 import { BaseField } from "./BaseField";
 
 /**
@@ -13,16 +13,20 @@ import { BaseField } from "./BaseField";
  * @example
  * ```typescript
  * readonly Config = new ObjectField({
- *   id: "Config",
- *   label: "Configuration"
+ *   _id: "Config", Name: "Configuration", Type: "Object",
  * });
  * ```
  */
 export class ObjectField<
   T extends Record<string, unknown> = Record<string, unknown>,
 > extends BaseField<ObjectFieldType<T>> {
-  constructor(config: FieldConfigType) {
-    super(config);
+  constructor(meta: ObjectFieldMetaType) {
+    super(meta);
+  }
+
+  /** Nested property definitions */
+  get properties(): Record<string, unknown> | undefined {
+    return (this._meta as ObjectFieldMetaType).Property;
   }
 
   validate(value: ObjectFieldType<T> | undefined): ValidationResultType {

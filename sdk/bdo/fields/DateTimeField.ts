@@ -3,7 +3,7 @@
 // Field for date and datetime values
 // ============================================================
 
-import type { FieldConfigType, ValidationResultType } from "../core/types";
+import type { DateTimeFieldMetaType, ValidationResultType } from "../core/types";
 import { BaseField } from "./BaseField";
 
 /**
@@ -17,14 +17,18 @@ type DateTimeValue = string;
  * @example
  * ```typescript
  * readonly CreatedAt = new DateTimeField({
- *   id: "_created_at",
- *   label: "Created At"
+ *   _id: "_created_at", Name: "Created At", Type: "DateTime", ReadOnly: true,
  * });
  * ```
  */
 export class DateTimeField extends BaseField<DateTimeValue> {
-  constructor(config: FieldConfigType) {
-    super(config);
+  constructor(meta: DateTimeFieldMetaType) {
+    super(meta);
+  }
+
+  /** DateTime-specific: precision */
+  get precision(): "Second" | "Millisecond" {
+    return (this._meta as DateTimeFieldMetaType).Constraint?.Precision ?? "Second";
   }
 
   validate(value: DateTimeValue | undefined): ValidationResultType {

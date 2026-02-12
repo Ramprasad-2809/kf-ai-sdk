@@ -8,11 +8,25 @@
 export type {
   ValidationResultType,
   SelectOptionType,
-  FieldConfigType,
-  SelectFieldConfigType,
-  ReferenceFieldConfigType,
   BdoMetaType,
-  FieldMetaType,
+  BaseFieldMetaType,
+  BaseConstraintType,
+  StringFieldMetaType,
+  TextFieldMetaType,
+  NumberFieldMetaType,
+  BooleanFieldMetaType,
+  DateFieldMetaType,
+  DateTimeFieldMetaType,
+  SelectFieldMetaType,
+  ReferenceFieldMetaType,
+  UserFieldMetaType,
+  ArrayFieldMetaType,
+  ObjectFieldMetaType,
+  FileFieldMetaType,
+  BaseFieldAccessorType,
+  EditableFieldAccessorType,
+  ReadonlyFieldAccessorType,
+  FieldAccessorType,
 } from "./bdo/core/types";
 
 // Re-export SDK field types
@@ -22,26 +36,17 @@ export type {
   BooleanFieldType,
   DateFieldType,
   DateTimeFieldType,
+  TextFieldType,
+  TextAreaFieldType,
+  SelectFieldType,
   ReferenceFieldType,
   ArrayFieldType,
+  ObjectFieldType,
+  UserFieldType,
+  FileFieldType,
+  SystemFieldsType,
+  UserRefType,
 } from "./types/base-fields";
-
-// Re-export API types
-export type {
-  ListOptionsType,
-  CreateUpdateResponseType,
-  DeleteResponseType,
-  CountResponseType,
-  MetricOptionsType,
-  MetricResponseType,
-  PivotOptionsType,
-  PivotResponseType,
-  DraftResponseType,
-  FilterType,
-  ConditionType,
-  ConditionGroupType,
-  SortType,
-} from "./types/common";
 
 // SystemFields type
 export type { SystemFields } from "./bdo/core/BaseBdo";

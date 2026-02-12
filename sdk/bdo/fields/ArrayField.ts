@@ -4,7 +4,7 @@
 // ============================================================
 
 import type { ArrayFieldType } from "../../types/base-fields";
-import type { FieldConfigType, ValidationResultType } from "../core/types";
+import type { ArrayFieldMetaType, BaseFieldMetaType, ValidationResultType } from "../core/types";
 import { BaseField } from "./BaseField";
 
 /**
@@ -15,14 +15,18 @@ import { BaseField } from "./BaseField";
  * @example
  * ```typescript
  * readonly Tags = new ArrayField<string>({
- *   id: "Tags",
- *   label: "Tags"
+ *   _id: "Tags", Name: "Tags", Type: "Array",
  * });
  * ```
  */
 export class ArrayField<T = unknown> extends BaseField<ArrayFieldType<T>> {
-  constructor(config: FieldConfigType) {
-    super(config);
+  constructor(meta: ArrayFieldMetaType) {
+    super(meta);
+  }
+
+  /** Element type descriptor for array items */
+  get elementType(): BaseFieldMetaType | undefined {
+    return (this._meta as ArrayFieldMetaType).Property;
   }
 
   validate(value: ArrayFieldType<T> | undefined): ValidationResultType {

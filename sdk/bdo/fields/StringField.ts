@@ -4,7 +4,7 @@
 // ============================================================
 
 import type { StringFieldType } from "../../types/base-fields";
-import type { FieldConfigType, ValidationResultType } from "../core/types";
+import type { StringFieldMetaType, ValidationResultType } from "../core/types";
 import { BaseField } from "./BaseField";
 
 /**
@@ -13,14 +13,19 @@ import { BaseField } from "./BaseField";
  * @example
  * ```typescript
  * readonly Title = new StringField({
- *   id: "Title",
- *   label: "Title"
+ *   _id: "Title", Name: "Title", Type: "String",
+ *   Constraint: { Length: 255 },
  * });
  * ```
  */
 export class StringField extends BaseField<StringFieldType> {
-  constructor(config: FieldConfigType) {
-    super(config);
+  constructor(meta: StringFieldMetaType) {
+    super(meta);
+  }
+
+  /** String-specific: max length constraint */
+  get length(): number | undefined {
+    return (this._meta as StringFieldMetaType).Constraint?.Length;
   }
 
   validate(value: StringFieldType | undefined): ValidationResultType {

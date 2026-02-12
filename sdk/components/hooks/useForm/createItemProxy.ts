@@ -1,6 +1,8 @@
 import type { UseFormReturn, Path, FieldValues } from "react-hook-form";
-import type { BaseBdo, FieldMetaType } from "../../../bdo";
+import type { BaseBdo } from "../../../bdo";
+import type { BaseFieldMetaType } from "../../../bdo/core/types";
 import type { BaseField } from "../../../bdo/fields/BaseField";
+import { validateConstraints } from "./createResolver";
 import type {
   FormItemType,
   ExtractEditableType,
@@ -24,6 +26,7 @@ export function createItemProxy<B extends BaseBdo<any, any, any>>(
   form: UseFormReturn<FieldValues>,
 ): FormItemType<ExtractEditableType<B>, ExtractReadonlyType<B>> {
   const fields = bdo.getFields();
+  const accessorCache = new Map<string, EditableFormFieldAccessorType<unknown> | ReadonlyFormFieldAccessorType<unknown>>();
 
   return new Proxy({} as FormItemType<ExtractEditableType<B>, ExtractReadonlyType<B>>, {
     get(_, prop: string | symbol) {
@@ -47,26 +50,53 @@ export function createItemProxy<B extends BaseBdo<any, any, any>>(
         return () => form.trigger();
       }
 
+      // Return cached accessor if available
+      if (accessorCache.has(prop)) {
+        return accessorCache.get(prop);
+      }
+
       // Field accessor
       const bdoField = fields[prop] as BaseField<unknown> | undefined;
-      const fieldMeta: FieldMetaType = bdoField?.meta ?? {
-        id: prop,
-        label: prop,
-        isEditable: true,
+      const fieldMeta: BaseFieldMetaType = bdoField?.meta ?? {
+        _id: prop,
+        Name: prop,
+        Type: "String",
       };
-      const isEditable = fieldMeta.isEditable;
+      const isReadOnly = bdoField?.readOnly ?? false;
 
-      // Base accessor parts (shared between editable and readonly)
+      // Full validation: type + constraint + expression (matches createResolver pipeline)
       const validate = () => {
-        if (bdoField) {
-          return bdoField.validate(form.getValues(prop as Path<FieldValues>));
+        if (!bdoField) return { valid: true, errors: [] };
+        const value = form.getValues(prop as Path<FieldValues>);
+
+        // 1. Type validation
+        const typeResult = bdoField.validate(value);
+        if (!typeResult.valid) return typeResult;
+
+        // 2. Constraint validation
+        const constraintResult = validateConstraints(bdoField as BaseField<unknown>, value);
+        if (!constraintResult.valid) return constraintResult;
+
+        // 3. Expression validation
+        if (bdo.hasMetadata()) {
+          const exprResult = bdo.validateFieldExpression(
+            prop,
+            value,
+            form.getValues() as Record<string, unknown>,
+          );
+          if (!exprResult.valid) return exprResult;
         }
+
         return { valid: true, errors: [] };
       };
 
-      // Only add set() for editable fields
-      if (isEditable) {
+      // Only add set() for non-readOnly fields
+      if (!isReadOnly) {
         const accessor: EditableFormFieldAccessorType<unknown> = {
+          label: bdoField?.label ?? prop,
+          required: bdoField?.required ?? false,
+          readOnly: false,
+          defaultValue: bdoField?.defaultValue,
           meta: fieldMeta,
           get: () => form.getValues(prop as Path<FieldValues>),
           set: (value: unknown) => {
@@ -78,14 +108,20 @@ export function createItemProxy<B extends BaseBdo<any, any, any>>(
           },
           validate,
         };
+        accessorCache.set(prop, accessor);
         return accessor;
       }
 
       const accessor: ReadonlyFormFieldAccessorType<unknown> = {
+        label: bdoField?.label ?? prop,
+        required: bdoField?.required ?? false,
+        readOnly: true,
+        defaultValue: bdoField?.defaultValue,
         meta: fieldMeta,
         get: () => form.getValues(prop as Path<FieldValues>),
         validate,
       };
+      accessorCache.set(prop, accessor);
       return accessor;
     },
 

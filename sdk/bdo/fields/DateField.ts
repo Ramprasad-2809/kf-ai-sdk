@@ -4,7 +4,7 @@
 // ============================================================
 
 import type { DateFieldType } from "../../types/base-fields";
-import type { FieldConfigType, ValidationResultType } from "../core/types";
+import type { DateFieldMetaType, ValidationResultType } from "../core/types";
 import { BaseField } from "./BaseField";
 
 /**
@@ -13,14 +13,13 @@ import { BaseField } from "./BaseField";
  * @example
  * ```typescript
  * readonly BirthDate = new DateField({
- *   id: "BirthDate",
- *   label: "Birth Date"
+ *   _id: "BirthDate", Name: "Birth Date", Type: "Date",
  * });
  * ```
  */
 export class DateField extends BaseField<DateFieldType> {
-  constructor(config: FieldConfigType) {
-    super(config);
+  constructor(meta: DateFieldMetaType) {
+    super(meta);
   }
 
   validate(value: DateFieldType | undefined): ValidationResultType {

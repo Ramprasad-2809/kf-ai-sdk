@@ -4,7 +4,7 @@
 // ============================================================
 
 import type { NumberFieldType } from "../../types/base-fields";
-import type { FieldConfigType, ValidationResultType } from "../core/types";
+import type { NumberFieldMetaType, ValidationResultType } from "../core/types";
 import { BaseField } from "./BaseField";
 
 /**
@@ -13,15 +13,18 @@ import { BaseField } from "./BaseField";
  * @example
  * ```typescript
  * readonly Price = new NumberField({
- *   id: "Price",
- *   label: "Price"
+ *   _id: "Price", Name: "Price", Type: "Number",
+ *   Constraint: { IntegerPart: 9, FractionPart: 2 },
  * });
  * ```
  */
 export class NumberField extends BaseField<NumberFieldType> {
-  constructor(config: FieldConfigType) {
-    super(config);
+  constructor(meta: NumberFieldMetaType) {
+    super(meta);
   }
+
+  get integerPart(): number { return (this._meta as NumberFieldMetaType).Constraint?.IntegerPart ?? 9; }
+  get fractionPart(): number | undefined { return (this._meta as NumberFieldMetaType).Constraint?.FractionPart; }
 
   validate(value: NumberFieldType | undefined): ValidationResultType {
     if (value !== undefined && value !== null && (typeof value !== "number" || isNaN(value))) {

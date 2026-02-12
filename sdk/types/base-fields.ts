@@ -18,15 +18,18 @@ export type StringFieldType<
 > = T;
 
 /**
- * Multi-line text field for longer content
+ * Text field for longer content (replaces TextAreaFieldType)
  * Resolves to: string
  * Storage: TEXT in database
  * Use this for descriptions, comments, rich text content
- *
- * @example
- * TextAreaFieldType // => string (multi-line)
  */
-export type TextAreaFieldType = string;
+export type TextFieldType = string;
+
+/**
+ * Multi-line text field (deprecated alias for TextFieldType)
+ * @deprecated Use TextFieldType instead
+ */
+export type TextAreaFieldType = TextFieldType;
 
 /**
  * Numeric field with optional precision constraints
@@ -40,17 +43,6 @@ export type TextAreaFieldType = string;
  * NumberFieldType<2> // => number with 2 decimal places
  */
 export type NumberFieldType<_Precision extends number = never> = number;
-
-/**
- * Large integer field for big numbers
- * Resolves to: number
- * Storage: BIGINT in database
- * Use this for large counters, timestamps, file sizes
- *
- * @example
- * LongFieldType // => number (large integer)
- */
-export type LongFieldType = number;
 
 /**
  * Boolean field
@@ -112,42 +104,9 @@ type Second = number;
 export type DateTimeFieldType =
   `${Year}-${Month}-${Day}T${Hour}:${Minute}:${Second}`;
 
-// export type DateTimeFieldType = string;
-
 // ============================================================
 // COMPLEX FIELD TYPES
 // ============================================================
-
-/**
- * Currency field supporting multiple value formats
- * Resolves to: CurrencyValueType
- * Storage: JSON/VARCHAR in database
- * Use this for prices, monetary amounts, financial data
- *
- * @example
- * CurrencyFieldType // => {value: number, currency: string} | string
- */
-export type CurrencyFieldType = CurrencyValueType;
-
-/**
- * Currency value format - supports both object and string representations
- */
-export type CurrencyValueType =
-  | { value: number; currency: string } // Object format: {value: 100.50, currency: "USD"}
-  | string; // String format: "100.50 USD" or "USD 100.50"
-
-/**
- * JSON field for structured data
- * @template T - Expected JSON structure (optional)
- * Resolves to: T or JSONValueType
- * Storage: JSON/TEXT in database
- * Use this for configurations, metadata, flexible schemas
- *
- * @example
- * JSONFieldType // => JSONValueType (any valid JSON)
- * JSONFieldType<{settings: {theme: string}}> // => {settings: {theme: string}}
- */
-export type JSONFieldType<T = JSONValueType> = T;
 
 /**
  * Reference/Lookup field for relationships to other Business Data Objects
@@ -191,23 +150,6 @@ export type ExtractFetchFieldType<T> = T extends { _id: string }
   : { Value: string; Label: string };
 
 /**
- * Valid JSON value types
- */
-export type JSONValueType =
-  | string
-  | number
-  | boolean
-  | null
-  | JSONObjectType
-  | JSONArrayType;
-
-export interface JSONObjectType {
-  [key: string]: JSONValueType;
-}
-
-export interface JSONArrayType extends Array<JSONValueType> {}
-
-/**
  * Select field for single choice from predefined options
  * @template T - Union of allowed option values
  * Resolves to: T
@@ -218,6 +160,22 @@ export interface JSONArrayType extends Array<JSONValueType> {}
  * SelectFieldType<'active' | 'inactive' | 'pending'> // => 'active' | 'inactive' | 'pending'
  */
 export type SelectFieldType<T extends string | number = string> = T;
+
+// ============================================================
+// NEW FIELD VALUE TYPES
+// ============================================================
+
+/**
+ * User field for user references
+ * Resolves to: { _id: string; _name: string }
+ */
+export type UserFieldType = { _id: string; _name: string };
+
+/**
+ * File field for file attachments
+ * Resolves to: Record<string, unknown>
+ */
+export type FileFieldType = Record<string, unknown>;
 
 // ============================================================
 // CONTAINER AND UTILITY TYPES
@@ -278,11 +236,9 @@ export type ExtractFieldType<T> =
 
 /**
  * User reference type for _created_by / _modified_by fields
+ * @deprecated Use UserFieldType instead
  */
-export type UserRefType = {
-  _id: StringFieldType;
-  username: StringFieldType;
-};
+export type UserRefType = UserFieldType;
 
 /**
  * System fields type - use with intersection (&) in entity types
@@ -299,8 +255,8 @@ export type SystemFieldsType = {
   _id: StringFieldType;
   _created_at: DateTimeFieldType;
   _modified_at: DateTimeFieldType;
-  _created_by: UserRefType;
-  _modified_by: UserRefType;
+  _created_by: UserFieldType;
+  _modified_by: UserFieldType;
   _version: StringFieldType;
   _m_version: StringFieldType;
 };
