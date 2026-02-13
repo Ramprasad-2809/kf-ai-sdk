@@ -11,6 +11,22 @@ import type {
   CreateUpdateResponseType,
 } from "../types/common";
 
+import type {
+  StringFieldType,
+  SelectFieldType,
+  DateTimeFieldType,
+  ReferenceFieldType,
+} from "../types/base-fields";
+import type { UserRefType } from "../types/base-fields";
+
+/**
+ * Response from Workflow.start()
+ */
+export interface WorkflowStartResponseType {
+  activityId: string;
+  activityInstanceId: string;
+}
+
 /**
  * Response from the activity progress endpoint
  */
@@ -21,47 +37,48 @@ export interface ActivityProgressType {
 }
 
 /**
- * Activity instance operations — returned by Workflow.activity()
+ * System fields present on every activity instance response.
+ * Returned alongside activity-specific fields from `list()` and `read()`.
  */
-export interface ActivityOperations<T> {
-  /** Complete the activity (POST .../done) */
-  complete(): Promise<CreateUpdateResponseType>;
-
-  /** Read the activity instance data (GET .../read) */
-  read(): Promise<T>;
-
-  /** Get activity progress (GET .../progress) */
-  progress(): Promise<ActivityProgressType>;
-
-  /** Update the activity instance (POST .../update) */
-  update(data: Partial<T>): Promise<CreateUpdateResponseType>;
-
-  /** Start a draft edit session (PATCH .../draft) */
-  draftStart(data: Partial<T>): Promise<DraftResponseType>;
-
-  /** End a draft edit session and commit (POST .../draft) */
-  draftEnd(data: Partial<T>): Promise<CreateUpdateResponseType>;
-}
+export type ActivityInstanceFieldsType = {
+  _id: StringFieldType;
+  Status: SelectFieldType<"InProgress" | "Completed">;
+  AssignedTo: ReferenceFieldType<UserRefType>;
+  CompletedAt: DateTimeFieldType;
+};
 
 /**
- * Task listing operations — returned by Workflow.task()
+ * Unified activity operations — returned by Workflow.activity(activityId)
+ *
+ * List-level methods operate on the activity as a whole.
+ * Instance-level methods accept `instanceId` as their first parameter.
  */
-export interface TaskOperations<T> {
-  /** List tasks (POST .../task/list) */
-  listTasks(options?: ListOptionsType): Promise<ListResponseType<T>>;
+export interface ActivityOperations<T> {
+  // ── List-level ──────────────────────────────────────────────
 
-  /** Get task metrics (POST .../task/metric) */
-  taskMetric(options: Omit<MetricOptionsType, "Type">): Promise<MetricResponseType>;
+  /** List activity instances (POST .../list) */
+  list(options?: ListOptionsType): Promise<ListResponseType<ActivityInstanceFieldsType & T>>;
 
-  /** List my items (POST .../myitem/list) */
-  listMyItems(options?: ListOptionsType): Promise<ListResponseType<T>>;
+  /** Get activity metrics (POST .../metric) */
+  metric(options: Omit<MetricOptionsType, "Type">): Promise<MetricResponseType>;
 
-  /** Get my item metrics (POST .../myitem/metric) */
-  myItemMetric(options: Omit<MetricOptionsType, "Type">): Promise<MetricResponseType>;
+  // ── Instance-level ──────────────────────────────────────────
 
-  /** List participated items (POST .../participated/list) */
-  listParticipated(options?: ListOptionsType): Promise<ListResponseType<T>>;
+  /** Read the activity instance data (GET .../read) */
+  read(instanceId: string): Promise<ActivityInstanceFieldsType & T>;
 
-  /** Get participated metrics (POST .../participated/metric) */
-  participatedMetric(options: Omit<MetricOptionsType, "Type">): Promise<MetricResponseType>;
+  /** Update the activity instance (POST .../update) */
+  update(instanceId: string, data: Partial<T>): Promise<CreateUpdateResponseType>;
+
+  /** Start a draft edit session (PATCH .../draft) */
+  draftStart(instanceId: string, data: Partial<T>): Promise<DraftResponseType>;
+
+  /** End a draft edit session and commit (POST .../draft) */
+  draftEnd(instanceId: string, data: Partial<T>): Promise<CreateUpdateResponseType>;
+
+  /** Complete the activity (POST .../done) */
+  complete(instanceId: string): Promise<CreateUpdateResponseType>;
+
+  /** Get activity progress (GET .../progress) */
+  progress(instanceId: string): Promise<ActivityProgressType>;
 }

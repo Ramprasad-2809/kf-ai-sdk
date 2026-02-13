@@ -2,20 +2,22 @@
 // USE ACTIVITY FORM HOOK
 // ============================================================
 // React hook for building forms bound to workflow activity input fields.
-// Wraps react-hook-form and integrates with the Workflow API client.
+// Accepts an Activity class instance and integrates with
+// react-hook-form and the Workflow API client.
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useForm as useReactHookForm } from "react-hook-form";
-import type { Path } from "react-hook-form";
+import type { Path, FieldValues } from "react-hook-form";
 
+import type { Activity } from "../../Activity";
 import type {
   UseActivityFormOptions,
   UseActivityFormReturn,
-  ActivityFieldConfig,
+  AllActivityFields,
 } from "./types";
 
-import { parseActivityFields } from "./fieldParser";
-import { Workflow } from "../../client";
+import { createActivityResolver } from "./createActivityResolver";
+import { createActivityItemProxy } from "./createActivityItemProxy";
 import { toError } from "../../../utils/error-handling";
 
 // ============================================================
@@ -23,13 +25,13 @@ import { toError } from "../../../utils/error-handling";
 // ============================================================
 
 export function useActivityForm<
-  T extends Record<string, any> = Record<string, any>,
->(options: UseActivityFormOptions<T>): UseActivityFormReturn<T> {
+  A extends Activity<any, any, any>,
+>(
+  activity: A,
+  options: UseActivityFormOptions<A>,
+): UseActivityFormReturn<A> {
   const {
-    bp_id,
-    task_id,
-    task_instance_id,
-    fields,
+    activity_instance_id,
     defaultValues = {},
     mode = "onBlur",
     enabled = true,
@@ -48,66 +50,58 @@ export function useActivityForm<
   const computeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ============================================================
-  // PARSE FIELD DEFINITIONS (memoized)
+  // FIELD DISCOVERY (memoized)
   // ============================================================
 
-  const fieldConfigs = useMemo(
-    () => parseActivityFields(fields),
-    [fields]
+  const fields = useMemo(
+    () => activity._getFields(),
+    [activity],
   );
 
-  const computedFields = useMemo<Array<keyof T>>(
+  // Identify readonly fields (editable: false) — these are "computed" in workflow context
+  const readonlyFieldNames = useMemo<string[]>(
     () =>
-      Object.keys(fieldConfigs).filter(
-        (k) => fieldConfigs[k].computed
-      ) as Array<keyof T>,
-    [fieldConfigs]
-  );
-
-  const requiredFields = useMemo<Array<keyof T>>(
-    () =>
-      Object.keys(fieldConfigs).filter(
-        (k) => fieldConfigs[k].required
-      ) as Array<keyof T>,
-    [fieldConfigs]
+      Object.keys(fields).filter(
+        (k) => !fields[k].meta.isEditable,
+      ),
+    [fields],
   );
 
   // ============================================================
-  // DEFAULT VALUES (merge schema defaults + user defaults)
+  // RESOLVER (field type validation)
   // ============================================================
 
-  const mergedDefaults = useMemo(() => {
-    const vals: Record<string, any> = {};
-
-    // Apply type-appropriate defaults from field configs
-    for (const [fieldId, cfg] of Object.entries(fieldConfigs)) {
-      if (cfg.defaultValue !== undefined) {
-        vals[fieldId] = cfg.defaultValue;
-      }
-    }
-
-    // User-provided defaults override
-    Object.assign(vals, defaultValues);
-
-    return vals as Partial<T>;
-  }, [fieldConfigs, defaultValues]);
+  const resolver = useMemo(
+    () => createActivityResolver(activity),
+    [activity],
+  );
 
   // ============================================================
   // REACT HOOK FORM
   // ============================================================
 
-  const rhf = useReactHookForm<T>({
+  const rhf = useReactHookForm({
     mode,
-    defaultValues: mergedDefaults as any,
+    defaultValues: defaultValues as any,
+    resolver,
   });
 
   // ============================================================
-  // WORKFLOW CLIENT
+  // ITEM PROXY (always in sync with RHF state)
+  // ============================================================
+
+  const item = useMemo(
+    () => createActivityItemProxy(activity, rhf as any),
+    [activity, rhf],
+  );
+
+  // ============================================================
+  // ACTIVITY OPERATIONS
   // ============================================================
 
   const activityRef = useMemo(
-    () => new Workflow<T>(bp_id).activity(task_id, task_instance_id),
-    [bp_id, task_id, task_instance_id]
+    () => activity._getOps(),
+    [activity],
   );
 
   // ============================================================
@@ -124,13 +118,13 @@ export function useActivityForm<
       setLoadError(null);
 
       try {
-        const data = await activityRef.read();
+        const data = await activityRef.read(activity_instance_id);
 
         if (!active) return;
 
         // Populate form with existing data
         if (data && typeof data === "object") {
-          rhf.reset({ ...mergedDefaults, ...data } as any);
+          rhf.reset({ ...defaultValues, ...data } as any);
         }
       } catch (error) {
         if (!active) return;
@@ -148,7 +142,7 @@ export function useActivityForm<
     return () => {
       active = false;
     };
-  }, [enabled, activityRef]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [enabled, activityRef, activity_instance_id]);
 
   // ============================================================
   // DRAFT COMPUTATION ON BLUR
@@ -156,8 +150,8 @@ export function useActivityForm<
 
   const triggerDraftComputation = useCallback(
     async (_fieldName: string) => {
-      // Only trigger if there are computed fields that might need updating
-      if (computedFields.length === 0) return;
+      // Only trigger if there are readonly/computed fields that might need updating
+      if (readonlyFieldNames.length === 0) return;
       if (isComputingRef.current) return;
 
       if (computeTimeoutRef.current) {
@@ -171,25 +165,25 @@ export function useActivityForm<
         try {
           const currentValues = rhf.getValues();
 
-          // Build payload excluding computed fields
-          const payload: Partial<T> = {};
-          const computedSet = new Set(computedFields as string[]);
+          // Build payload excluding readonly/computed fields
+          const payload: Record<string, unknown> = {};
+          const readonlySet = new Set(readonlyFieldNames);
 
           Object.keys(currentValues).forEach((key) => {
-            if (!computedSet.has(key)) {
+            if (!readonlySet.has(key)) {
               (payload as any)[key] = (currentValues as any)[key];
             }
           });
 
-          const response = await activityRef.draftStart(payload);
+          const response = await activityRef.draftStart(activity_instance_id, payload as any);
 
           // Apply computed fields returned from the server
           if (response && typeof response === "object") {
             Object.entries(response).forEach(([key, value]) => {
-              if (computedSet.has(key)) {
+              if (readonlySet.has(key)) {
                 const current = rhf.getValues(key as any);
                 if (current !== value) {
-                  rhf.setValue(key as Path<T>, value as any, {
+                  rhf.setValue(key as Path<FieldValues>, value as any, {
                     shouldDirty: false,
                     shouldValidate: false,
                   });
@@ -204,19 +198,19 @@ export function useActivityForm<
         }
       }, 300);
     },
-    [activityRef, computedFields, rhf]
+    [activityRef, readonlyFieldNames, rhf],
   );
 
   // ============================================================
-  // REGISTER (enhanced with onBlur draft computation)
+  // REGISTER (enhanced with onBlur draft computation + auto-disable)
   // ============================================================
 
   const register = useCallback(
-    <K extends Path<T>>(name: K, options?: any) => {
-      const fieldConfig = fieldConfigs[name as string];
-      const fieldValidation = fieldConfig?.validation || {};
+    (name: string, registerOptions?: any) => {
+      const field = fields[name];
+      const isReadonly = field ? !field.meta.isEditable : false;
 
-      const originalOnBlur = options?.onBlur;
+      const originalOnBlur = registerOptions?.onBlur;
 
       const enhancedOnBlur = async (e: any) => {
         if (originalOnBlur) {
@@ -229,26 +223,33 @@ export function useActivityForm<
           mode === "onBlur" || mode === "onTouched" || mode === "all";
 
         if (shouldTriggerOnBlur) {
-          isValid = await rhf.trigger(name);
+          isValid = await rhf.trigger(name as Path<FieldValues>);
         } else {
-          const fieldState = rhf.getFieldState(name, rhf.formState);
+          const fieldState = rhf.getFieldState(name as any, rhf.formState);
           isValid = !fieldState.error;
         }
 
         // Fire draft computation if field is valid
         if (isValid) {
-          await triggerDraftComputation(name as string);
+          await triggerDraftComputation(name);
         }
       };
 
-      return rhf.register(name, {
-        ...fieldValidation,
-        ...options,
+      const result = rhf.register(name as Path<FieldValues>, {
+        ...registerOptions,
         onBlur: enhancedOnBlur,
+        ...(isReadonly ? { disabled: true } : {}),
       });
+
+      // For readonly fields, add disabled flag to the return
+      if (isReadonly) {
+        return { ...result, disabled: true as const };
+      }
+
+      return result;
     },
-    [rhf, fieldConfigs, triggerDraftComputation, mode]
-  );
+    [rhf, fields, triggerDraftComputation, mode],
+  ) as UseActivityFormReturn<A>["register"];
 
   // ============================================================
   // HANDLE SUBMIT — activity.update() + activity.draftEnd()
@@ -257,34 +258,34 @@ export function useActivityForm<
   const handleSubmit = useCallback(
     (
       onSuccess?: (
-        data: T,
-        e?: React.BaseSyntheticEvent
+        data: AllActivityFields<A>,
+        e?: React.BaseSyntheticEvent,
       ) => void | Promise<void>,
       onError?: (
-        error: import("react-hook-form").FieldErrors<T> | Error,
-        e?: React.BaseSyntheticEvent
-      ) => void | Promise<void>
+        error: any,
+        e?: React.BaseSyntheticEvent,
+      ) => void | Promise<void>,
     ) => {
       return rhf.handleSubmit(
         async (data, event) => {
           setIsSubmitting(true);
 
           try {
-            // Build clean payload (exclude computed fields)
-            const cleanedData: Partial<T> = {};
-            const computedSet = new Set(computedFields as string[]);
+            // Build clean payload (exclude readonly/computed fields)
+            const cleanedData: Record<string, unknown> = {};
+            const readonlySet = new Set(readonlyFieldNames);
 
             Object.keys(data).forEach((key) => {
-              if (!computedSet.has(key) && (data as any)[key] !== undefined) {
-                (cleanedData as any)[key] = (data as any)[key];
+              if (!readonlySet.has(key) && (data as any)[key] !== undefined) {
+                cleanedData[key] = (data as any)[key];
               }
             });
 
             // Save via activity.update() then activity.draftEnd()
-            await activityRef.update(cleanedData);
-            await activityRef.draftEnd(cleanedData);
+            await activityRef.update(activity_instance_id, cleanedData as any);
+            await activityRef.draftEnd(activity_instance_id, cleanedData as any);
 
-            await onSuccess?.(data, event);
+            await onSuccess?.(data as AllActivityFields<A>, event);
           } catch (error) {
             onError?.(toError(error), event);
           } finally {
@@ -293,11 +294,11 @@ export function useActivityForm<
         },
         (errors, event) => {
           onError?.(errors, event);
-        }
+        },
       );
     },
-    [rhf, activityRef, computedFields]
-  );
+    [rhf, activityRef, readonlyFieldNames],
+  ) as UseActivityFormReturn<A>["handleSubmit"];
 
   // ============================================================
   // HANDLE COMPLETE — activity.complete()
@@ -306,21 +307,21 @@ export function useActivityForm<
   const handleComplete = useCallback(
     (
       onSuccess?: (
-        data: T,
-        e?: React.BaseSyntheticEvent
+        data: AllActivityFields<A>,
+        e?: React.BaseSyntheticEvent,
       ) => void | Promise<void>,
       onError?: (
-        error: import("react-hook-form").FieldErrors<T> | Error,
-        e?: React.BaseSyntheticEvent
-      ) => void | Promise<void>
+        error: any,
+        e?: React.BaseSyntheticEvent,
+      ) => void | Promise<void>,
     ) => {
       return rhf.handleSubmit(
         async (data, event) => {
           setIsSubmitting(true);
 
           try {
-            await activityRef.complete();
-            await onSuccess?.(data, event);
+            await activityRef.complete(activity_instance_id);
+            await onSuccess?.(data as AllActivityFields<A>, event);
           } catch (error) {
             onError?.(toError(error), event);
           } finally {
@@ -329,44 +330,15 @@ export function useActivityForm<
         },
         (errors, event) => {
           onError?.(errors, event);
-        }
+        },
       );
     },
-    [rhf, activityRef]
-  );
+    [rhf, activityRef],
+  ) as UseActivityFormReturn<A>["handleComplete"];
 
   // ============================================================
-  // FIELD HELPERS
+  // CLEAR ERRORS
   // ============================================================
-
-  const getField = useCallback(
-    <K extends keyof T>(name: K): ActivityFieldConfig | null => {
-      return fieldConfigs[name as string] || null;
-    },
-    [fieldConfigs]
-  );
-
-  const getFields = useCallback((): Record<keyof T, ActivityFieldConfig> => {
-    const typed: Record<keyof T, ActivityFieldConfig> = {} as any;
-    Object.entries(fieldConfigs).forEach(([key, cfg]) => {
-      (typed as any)[key] = cfg;
-    });
-    return typed;
-  }, [fieldConfigs]);
-
-  const isFieldRequired = useCallback(
-    <K extends keyof T>(name: K): boolean => {
-      return fieldConfigs[name as string]?.required ?? false;
-    },
-    [fieldConfigs]
-  );
-
-  const isFieldComputed = useCallback(
-    <K extends keyof T>(name: K): boolean => {
-      return fieldConfigs[name as string]?.computed ?? false;
-    },
-    [fieldConfigs]
-  );
 
   const clearErrors = useCallback((): void => {
     rhf.clearErrors();
@@ -379,16 +351,25 @@ export function useActivityForm<
   const hasError = !!loadError;
 
   return {
+    // Item proxy
+    item,
+
+    // Activity reference
+    activity,
+
     // Form methods
     register,
     handleSubmit,
     handleComplete,
     watch: rhf.watch as any,
-    setValue: rhf.setValue,
-    reset: rhf.reset,
+    setValue: rhf.setValue as any,
+    getValues: rhf.getValues as any,
+    reset: rhf.reset as any,
+    trigger: rhf.trigger as any,
+    control: rhf.control as any,
 
     // Flattened form state
-    errors: rhf.formState.errors,
+    errors: rhf.formState.errors as any,
     isValid: rhf.formState.isValid,
     isDirty: rhf.formState.isDirty,
     isSubmitting: rhf.formState.isSubmitting || isSubmitting,
@@ -398,15 +379,6 @@ export function useActivityForm<
     isLoading,
     loadError,
     hasError,
-
-    // Field info
-    fieldConfigs,
-    computedFields,
-    requiredFields,
-    getField,
-    getFields,
-    isFieldRequired,
-    isFieldComputed,
 
     // Operations
     clearErrors,

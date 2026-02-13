@@ -1,129 +1,81 @@
 // ============================================================
 // TYPE DEFINITIONS FOR useActivityForm HOOK
 // ============================================================
+// BDO-aligned types for the Activity pattern.
+// Reuses shared types from useForm where identical.
 
 import type {
-  UseFormRegister,
+  UseFormWatch,
+  UseFormSetValue,
+  UseFormGetValues,
+  UseFormReset,
+  UseFormTrigger,
+  Control,
   FieldErrors,
-  Path,
-  PathValue,
-  RegisterOptions,
-  SetValueConfig,
 } from "react-hook-form";
 
+import type { Activity } from "../../Activity";
+
+// Reuse shared types from useForm — identical interfaces, no duplication
 import type {
-  ExpressionTreeType,
-  FormFieldTypeType,
-  SelectOptionType,
-  FormModeType,
   HandleSubmitType,
+  FormItemType,
+  FormRegisterType,
+  EditableFormFieldAccessorType,
+  ReadonlyFormFieldAccessorType,
 } from "../../../components/hooks/useForm/types";
 
-// ============================================================
-// ACTIVITY INPUT FIELD DEFINITIONS
-// ============================================================
-
-/**
- * Activity Input field definition — matches the JSON structure
- * in workflow BP definitions (e.g., EMPLOYEE_INPUT.Input)
- */
-export interface ActivityInputFieldDefinition {
-  Name: string;
-  Type: "String" | "Number" | "Date" | "DateTime" | "Boolean" | "Reference";
-  Constraint?: {
-    Required?: boolean;
-    Length?: number;
-    IntegerPart?: number;
-    Enum?: string[];
-  };
-  Formula?: {
-    Expression: string;
-    ExpressionTree: ExpressionTreeType;
-  };
-  View?: {
-    DataObject: { Id: string; Type: string };
-    Fields: Record<string, { Type: string }>;
-    Filter?: any;
-    Sort?: any;
-    Search?: string[];
-  };
-}
-
-/**
- * Map of field ID to definition (the Input object from Activity JSON)
- */
-export type ActivityInputFields = Record<string, ActivityInputFieldDefinition>;
+// Re-export for consumers who import from this module
+export type {
+  HandleSubmitType,
+  FormItemType,
+  FormRegisterType,
+  EditableFormFieldAccessorType,
+  ReadonlyFormFieldAccessorType,
+};
 
 // ============================================================
-// PROCESSED FIELD CONFIG
+// GENERIC EXTRACTION HELPERS
 // ============================================================
 
-/**
- * Processed field configuration for rendering — parallel to
- * FormFieldConfigType from useForm but adapted for activity fields.
- */
-export interface ActivityFieldConfig {
-  /** Field name/identifier */
-  name: string;
+/** Extract TEntity from an Activity instance */
+export type ExtractActivityEntity<A> =
+  A extends Activity<infer E, any, any> ? E : never;
 
-  /** Field input type */
-  type: FormFieldTypeType;
+/** Extract TEditable from an Activity instance */
+export type ExtractActivityEditable<A> =
+  A extends Activity<any, infer E, any> ? E : never;
 
-  /** Display label */
-  label: string;
+/** Extract TReadonly from an Activity instance */
+export type ExtractActivityReadonly<A> =
+  A extends Activity<any, any, infer R> ? R : never;
 
-  /** Whether field is required */
-  required: boolean;
-
-  /** Whether field is computed (read-only, auto-calculated via Formula) */
-  computed: boolean;
-
-  /** Default value */
-  defaultValue?: any;
-
-  /** Select options (populated from Constraint.Enum) */
-  options?: SelectOptionType[];
-
-  /** react-hook-form validation rules */
-  validation: any;
-
-  /** Maximum length constraint */
-  maxLength?: number;
-
-  /** Original Activity Input field definition */
-  _raw: ActivityInputFieldDefinition;
-}
+/** All accessible fields (editable + readonly) */
+export type AllActivityFields<A> =
+  ExtractActivityEditable<A> & ExtractActivityReadonly<A>;
 
 // ============================================================
 // HOOK OPTIONS
 // ============================================================
 
 /**
- * useActivityForm hook options
+ * useActivityForm hook options.
+ *
+ * The Activity instance already carries businessProcessId, activityId, and field definitions.
+ * Options only contain runtime configuration.
  */
-export interface UseActivityFormOptions<
-  T extends Record<string, any> = Record<string, any>,
-> {
-  /** Business Process identifier */
-  bp_id: string;
-
-  /** Task identifier within the BP */
-  task_id: string;
-
-  /** Task instance identifier */
-  task_instance_id: string;
-
-  /** Activity Input field definitions — the Input object from the Activity JSON */
-  fields: ActivityInputFields;
+export interface UseActivityFormOptions<A extends Activity<any, any, any>> {
+  /** Activity instance identifier */
+  activity_instance_id: string;
 
   /** Default form values */
-  defaultValues?: Partial<T>;
+  defaultValues?: Partial<ExtractActivityEditable<A>>;
 
   /**
    * Validation mode — controls when validation runs
    * @default "onBlur"
    */
-  mode?: FormModeType;
+  mode?: "onBlur" | "onChange" | "onSubmit" | "onTouched" | "all";
 
   /**
    * Whether to enable activity.read() on mount
@@ -139,54 +91,46 @@ export interface UseActivityFormOptions<
 /**
  * useActivityForm hook return type — mirrors useForm return structure
  */
-export interface UseActivityFormReturn<
-  T extends Record<string, any> = Record<string, any>,
-> {
-  // ============================================================
-  // FORM METHODS
-  // ============================================================
+export interface UseActivityFormReturn<A extends Activity<any, any, any>> {
+  /** Item proxy with typed field accessors */
+  item: FormItemType<ExtractActivityEditable<A>, ExtractActivityReadonly<A>>;
 
-  /** Register field for validation and form handling */
-  register: <K extends Path<T>>(
-    name: K,
-    options?: RegisterOptions<T, K>
-  ) => ReturnType<UseFormRegister<T>>;
+  /** The Activity instance */
+  activity: A;
 
-  /**
-   * Handle form submission — calls activity.update() + activity.draftEnd()
-   */
-  handleSubmit: HandleSubmitType<T>;
+  /** Smart register with auto-disable for readonly fields */
+  register: FormRegisterType<ExtractActivityEditable<A>, ExtractActivityReadonly<A>>;
 
-  /**
-   * Handle form completion — calls activity.complete()
-   */
-  handleComplete: HandleSubmitType<T>;
+  /** Handle form submission — calls activity.update() + activity.draftEnd() */
+  handleSubmit: HandleSubmitType<AllActivityFields<A>>;
+
+  /** Handle form completion — calls activity.complete() */
+  handleComplete: HandleSubmitType<AllActivityFields<A>>;
 
   /** Watch field values */
-  watch: <K extends Path<T> | readonly Path<T>[]>(
-    name?: K
-  ) => K extends Path<T>
-    ? PathValue<T, K>
-    : K extends readonly Path<T>[]
-      ? PathValue<T, K[number]>[]
-      : T;
+  watch: UseFormWatch<AllActivityFields<A>>;
 
   /** Set field value programmatically */
-  setValue: <K extends Path<T>>(
-    name: K,
-    value: PathValue<T, K>,
-    options?: SetValueConfig
-  ) => void;
+  setValue: UseFormSetValue<ExtractActivityEditable<A>>;
+
+  /** Get current field values */
+  getValues: UseFormGetValues<AllActivityFields<A>>;
 
   /** Reset form to default values */
-  reset: (values?: T) => void;
+  reset: UseFormReset<AllActivityFields<A>>;
+
+  /** Trigger validation for specific fields or all fields */
+  trigger: UseFormTrigger<AllActivityFields<A>>;
+
+  /** RHF control object (for Controller components) */
+  control: Control<AllActivityFields<A>>;
 
   // ============================================================
   // FLATTENED FORM STATE
   // ============================================================
 
   /** Form validation errors */
-  errors: FieldErrors<T>;
+  errors: FieldErrors<AllActivityFields<A>>;
 
   /** Form is valid */
   isValid: boolean;
@@ -212,31 +156,6 @@ export interface UseActivityFormReturn<
 
   /** Any error active */
   hasError: boolean;
-
-  // ============================================================
-  // FIELD INFORMATION
-  // ============================================================
-
-  /** All processed field configs by name */
-  fieldConfigs: Record<string, ActivityFieldConfig>;
-
-  /** Computed field names */
-  computedFields: Array<keyof T>;
-
-  /** Required field names */
-  requiredFields: Array<keyof T>;
-
-  /** Get a single field config */
-  getField: <K extends keyof T>(name: K) => ActivityFieldConfig | null;
-
-  /** Get all field configs */
-  getFields: () => Record<keyof T, ActivityFieldConfig>;
-
-  /** Check if a field is required */
-  isFieldRequired: <K extends keyof T>(name: K) => boolean;
-
-  /** Check if a field is computed */
-  isFieldComputed: <K extends keyof T>(name: K) => boolean;
 
   // ============================================================
   // OPERATIONS

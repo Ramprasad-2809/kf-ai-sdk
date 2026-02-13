@@ -1,11 +1,20 @@
 export { Workflow } from './client';
-export type { ActivityOperations, TaskOperations, ActivityProgressType } from './types';
+export { Activity } from './Activity';
+export { ActivityInstance } from './ActivityInstance';
+export type {
+  ActivityInstanceType,
+  EditableFieldAccessor,
+  ReadonlyFieldAccessor,
+} from './ActivityInstance';
+export type {
+  ActivityInstanceFieldsType,
+  ActivityOperations,
+  ActivityProgressType,
+  WorkflowStartResponseType,
+} from './types';
 
 export { useActivityForm } from './components/useActivityForm';
 export type {
   UseActivityFormOptions,
   UseActivityFormReturn,
-  ActivityInputFieldDefinition,
-  ActivityInputFields,
-  ActivityFieldConfig,
 } from './components/useActivityForm';
