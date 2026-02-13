@@ -211,9 +211,9 @@ export const FormOperation = {
  * });
  */
 export const InteractionMode = {
-  /** Real-time server-side validation and computation on every field blur */
+  /** Real-time server-side validation and computation on field blur/change */
   Interactive: "interactive",
-  /** Draft only for computed field dependencies */
+  /** No server interaction during editing — submit only */
   NonInteractive: "non-interactive",
 } as const;
 
@@ -268,6 +268,12 @@ export const BdoFieldType = {
   Object: "Object",
   /** Activity flow field */
   ActivityFlow: "ActivityFlow",
+  /** Multi-line text field */
+  TextArea: "TextArea",
+  /** Secret/password field */
+  Secret: "Secret",
+  /** User reference field */
+  User: "User",
 } as const;
 
 /**

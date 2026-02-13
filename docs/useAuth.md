@@ -64,12 +64,18 @@ Wrap your app with `AuthProvider` and use `useAuth` in components.
 ```tsx
 import { useAuth, AuthProvider } from "@ram_28/kf-ai-sdk/auth";
 
-// 1. Wrap app with AuthProvider
+// 1. Wrap app with AuthProvider inside QueryClientProvider
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+const queryClient = new QueryClient();
+
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
 

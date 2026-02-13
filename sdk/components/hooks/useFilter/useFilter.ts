@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 import type {
   ConditionType,
   ConditionGroupType,
@@ -12,21 +12,19 @@ import { isConditionGroup } from "./types";
 // HELPER FUNCTIONS
 // ============================================================
 
-let idCounter = 0;
-
 /**
  * Generate a unique ID for conditions and groups
  * Uses timestamp + random component + counter to prevent collisions
  */
-const generateId = (): string => {
+const createGenerateId = (counterRef: { current: number }) => (): string => {
   const random = Math.random().toString(36).substring(2, 9);
-  return `filter_${Date.now()}_${random}_${++idCounter}`;
+  return `filter_${Date.now()}_${random}_${++counterRef.current}`;
 };
 
 /**
  * Ensure an item has an id
  */
-const ensureId = <T extends ConditionType | ConditionGroupType>(item: T): T => {
+const ensureId = <T extends ConditionType | ConditionGroupType>(item: T, generateId: () => string): T => {
   if (!item.id) {
     return { ...item, id: generateId() };
   }
@@ -37,14 +35,15 @@ const ensureId = <T extends ConditionType | ConditionGroupType>(item: T): T => {
  * Deep clone and ensure all items have ids
  */
 const cloneWithIds = (
-  items: Array<ConditionType | ConditionGroupType>
+  items: Array<ConditionType | ConditionGroupType>,
+  generateId: () => string
 ): Array<ConditionType | ConditionGroupType> => {
   return items.map((item) => {
-    const withId = ensureId(item);
+    const withId = ensureId(item, generateId);
     if (isConditionGroup(withId)) {
       return {
         ...withId,
-        Condition: cloneWithIds(withId.Condition),
+        Condition: cloneWithIds(withId.Condition, generateId),
       };
     }
     return withId;
@@ -87,26 +86,6 @@ const findById = (
     }
   }
   return undefined;
-};
-
-/**
- * Find a parent group by child id
- */
-const findParentById = (
-  items: Array<ConditionType | ConditionGroupType>,
-  childId: string,
-  parent: ConditionGroupType | null = null
-): ConditionGroupType | null => {
-  for (const item of items) {
-    if (item.id === childId) {
-      return parent;
-    }
-    if (isConditionGroup(item)) {
-      const found = findParentById(item.Condition, childId, item);
-      if (found !== null) return found;
-    }
-  }
-  return null;
 };
 
 /**
@@ -181,9 +160,13 @@ const addToParent = (
 // ============================================================
 
 export function useFilter<T = any>(options: UseFilterOptionsType<T> = {}): UseFilterReturnType<T> {
+  // Instance-scoped ID counter (avoids module-level mutable state for SSR safety)
+  const idCounterRef = useRef(0);
+  const generateId = useMemo(() => createGenerateId(idCounterRef), []);
+
   // Initialize items with ids
   const [items, setItems] = useState<Array<ConditionType<T> | ConditionGroupType<T>>>(() =>
-    cloneWithIds(options.conditions || []) as Array<ConditionType<T> | ConditionGroupType<T>>
+    cloneWithIds(options.conditions || [], generateId) as Array<ConditionType<T> | ConditionGroupType<T>>
   );
 
   const [operator, setOperatorState] = useState<ConditionGroupOperatorType>(

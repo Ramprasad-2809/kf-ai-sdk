@@ -1,4 +1,16 @@
-import type { CurrencyValueType, JSONValueType } from '../types/base-fields';
+/** Currency value format - supports both object and string representations */
+type CurrencyValueType =
+  | { value: number; currency: string }
+  | string;
+
+/** Valid JSON value types */
+type JSONValueType =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: JSONValueType }
+  | JSONValueType[];
 
 /**
  * Data formatting utilities for display and conversion

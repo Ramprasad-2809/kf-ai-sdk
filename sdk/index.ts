@@ -67,19 +67,19 @@ export type {
 // Base field types
 export type {
   StringFieldType,
+  TextFieldType,
   TextAreaFieldType,
   NumberFieldType,
-  LongFieldType,
   BooleanFieldType,
   DateFieldType,
   DateTimeFieldType,
-  CurrencyFieldType,
   SelectFieldType,
   ArrayFieldType,
-  JSONFieldType,
   ReferenceFieldType,
   ExtractReferenceType,
   ExtractFetchFieldType,
+  UserFieldType,
+  FileFieldType,
 } from './types/base-fields';
 
 // ============================================================

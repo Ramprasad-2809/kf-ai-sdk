@@ -1,10 +1,10 @@
 # Table SDK API
 
-This Table SDK API proivdes the React-hooks and apis to build Table and any List like component when building the Pages.
+This Table SDK API provides the React-hooks and apis to build Table and any List like component when building the Pages.
 
-Here is the complete exmaple of building table with state management with data fetching, sorting, filtering, search, and pagination.
+Here is the complete example of building table with state management with data fetching, sorting, filtering, search, and pagination.
 
-You SHOULD only use this API to build Table, List, Galllary, any other list like component.
+You SHOULD only use this API to build Table, List, Gallery, any other list like component.
 
 ## Imports
 
@@ -237,9 +237,9 @@ function ProductsTable() {
   const product = useMemo(() => new BuyerProduct(), []);
 
   const columns: ColumnDefinitionType<BuyerProductFieldType>[] = [
-    { fieldId: product.Title.meta.id, label: product.Title.meta.label },
-    { fieldId: product.Price.meta.id, label: product.Price.meta.label },
-    { fieldId: product.Category.meta.id, label: product.Category.meta.label },
+    { fieldId: product.Title.id, label: product.Title.label },
+    { fieldId: product.Price.id, label: product.Price.label },
+    { fieldId: product.Category.id, label: product.Category.label },
   ];
 
   const table = useTable<BuyerProductFieldType>({
@@ -299,17 +299,17 @@ function MyItemsTable() {
   const { user } = useAuth();
 
   const columns: ColumnDefinitionType<BuyerProductFieldType>[] = [
-    { fieldId: product.Title.meta.id, label: product.Title.meta.label, enableSorting: true },
-    { fieldId: product.Price.meta.id, label: product.Price.meta.label, enableSorting: true },
-    { fieldId: product.Category.meta.id, label: product.Category.meta.label, enableSorting: true },
-    { fieldId: product.Stock.meta.id, label: product.Stock.meta.label, enableSorting: true },
+    { fieldId: product.Title.id, label: product.Title.label, enableSorting: true },
+    { fieldId: product.Price.id, label: product.Price.label, enableSorting: true },
+    { fieldId: product.Category.id, label: product.Category.label, enableSorting: true },
+    { fieldId: product.Stock.id, label: product.Stock.label, enableSorting: true },
   ];
 
   const tableOptions: UseTableOptionsType<BuyerProductFieldType> = {
     source: product.meta._id,
     columns,
     initialState: {
-      sort: [{ [product.Title.meta.id]: "ASC" }],
+      sort: [{ [product.Title.id]: "ASC" }],
       pagination: { pageNo: 1, pageSize: 10 },
       filter: {
         conditions: [
@@ -414,7 +414,7 @@ function ProductsWithStatusFilter() {
     if (status !== "all") {
       table.filter.addCondition({
         Operator: ConditionOperator.EQ,
-        LHSField: product.IsActive.meta.id,
+        LHSField: product.IsActive.id,
         RHSValue: status === "active",
         RHSType: RHSType.Constant,
       });
@@ -471,7 +471,7 @@ function ProductsWithMultipleFilters() {
     // Apply category filter
     if (category !== "all") {
       table.filter.addCondition({
-        LHSField: product.Category.meta.id,
+        LHSField: product.Category.id,
         Operator: ConditionOperator.EQ,
         RHSValue: category,
         RHSType: RHSType.Constant,
@@ -486,7 +486,7 @@ function ProductsWithMultipleFilters() {
           // "$200 & Above" - use GTE
           table.filter.addCondition({
             Operator: ConditionOperator.GTE,
-            LHSField: product.Price.meta.id,
+            LHSField: product.Price.id,
             RHSValue: range.min,
             RHSType: RHSType.Constant,
           });
@@ -494,14 +494,14 @@ function ProductsWithMultipleFilters() {
           // "Under $25" - use LT
           table.filter.addCondition({
             Operator: ConditionOperator.LT,
-            LHSField: product.Price.meta.id,
+            LHSField: product.Price.id,
             RHSValue: range.max,
             RHSType: RHSType.Constant,
           });
         } else {
           // Range like "$25 to $50" - use Between
           table.filter.addCondition({
-            LHSField: product.Price.meta.id,
+            LHSField: product.Price.id,
             Operator: ConditionOperator.Between,
             RHSValue: [range.min, range.max],
             RHSType: RHSType.Constant,
@@ -567,9 +567,9 @@ function SortableTable() {
   const product = useMemo(() => new BuyerProduct(), []);
 
   const columns: ColumnDefinitionType<BuyerProductFieldType>[] = [
-    { fieldId: product.Title.meta.id, label: product.Title.meta.label, enableSorting: true },
-    { fieldId: product.Price.meta.id, label: product.Price.meta.label, enableSorting: true },
-    { fieldId: product.Category.meta.id, label: product.Category.meta.label, enableSorting: true },
+    { fieldId: product.Title.id, label: product.Title.label, enableSorting: true },
+    { fieldId: product.Price.id, label: product.Price.label, enableSorting: true },
+    { fieldId: product.Category.id, label: product.Category.label, enableSorting: true },
   ];
 
   const table = useTable<BuyerProductFieldType>({
@@ -628,7 +628,7 @@ function TableWithSortDropdown() {
     source: product.meta._id,
     columns,
     initialState: {
-      sort: [{ [product.Title.meta.id]: "ASC" }],
+      sort: [{ [product.Title.id]: "ASC" }],
     },
   });
 
@@ -636,17 +636,17 @@ function TableWithSortDropdown() {
     setSelectedSort(value);
     switch (value) {
       case "price-asc":
-        table.sort.set(product.Price.meta.id, "asc");
+        table.sort.set(product.Price.id, "asc");
         break;
       case "price-desc":
-        table.sort.set(product.Price.meta.id, "desc");
+        table.sort.set(product.Price.id, "desc");
         break;
       case "newest":
         table.sort.set("_created_at", "desc");  // System field
         break;
       case "featured":
       default:
-        table.sort.set(product.Title.meta.id, "asc");
+        table.sort.set(product.Title.id, "asc");
         break;
     }
   };
@@ -880,7 +880,7 @@ function SearchableTable() {
           type="text"
           placeholder="Search by name..."
           value={table.search.query}
-          onChange={(e) => table.search.set(product.Title.meta.id, e.target.value)}
+          onChange={(e) => table.search.set(product.Title.id, e.target.value)}
         />
         {table.search.query && (
           <button onClick={table.search.clear}>Clear</button>
@@ -905,7 +905,7 @@ import type { BuyerProductFieldType } from "../bdo/buyer/Product";
 
 function SearchableTableWithFieldSelector() {
   const product = useMemo(() => new BuyerProduct(), []);
-  const [searchField, setSearchField] = useState<string>(product.Title.meta.id);
+  const [searchField, setSearchField] = useState<string>(product.Title.id);
 
   const table = useTable<BuyerProductFieldType>({
     source: product.meta._id,
@@ -925,9 +925,9 @@ function SearchableTableWithFieldSelector() {
             }
           }}
         >
-          <option value={product.Title.meta.id}>{product.Title.meta.label}</option>
-          <option value={product.Category.meta.id}>{product.Category.meta.label}</option>
-          <option value={product.Description.meta.id}>{product.Description.meta.label}</option>
+          <option value={product.Title.id}>{product.Title.label}</option>
+          <option value={product.Category.id}>{product.Category.label}</option>
+          <option value={product.Description.id}>{product.Description.label}</option>
         </select>
         <input
           type="text"
@@ -970,17 +970,17 @@ function ProductListPage() {
   const [selectedSort, setSelectedSort] = useState("featured");
 
   const columns: ColumnDefinitionType<BuyerProductFieldType>[] = [
-    { fieldId: product.Title.meta.id, label: product.Title.meta.label, enableSorting: true },
-    { fieldId: product.Price.meta.id, label: product.Price.meta.label, enableSorting: true },
-    { fieldId: product.Category.meta.id, label: product.Category.meta.label, enableSorting: true },
-    { fieldId: product.Stock.meta.id, label: product.Stock.meta.label, enableSorting: true },
+    { fieldId: product.Title.id, label: product.Title.label, enableSorting: true },
+    { fieldId: product.Price.id, label: product.Price.label, enableSorting: true },
+    { fieldId: product.Category.id, label: product.Category.label, enableSorting: true },
+    { fieldId: product.Stock.id, label: product.Stock.label, enableSorting: true },
   ];
 
   const tableOptions: UseTableOptionsType<BuyerProductFieldType> = {
     source: product.meta._id,
     columns,
     initialState: {
-      sort: [{ [product.Title.meta.id]: "ASC" }],
+      sort: [{ [product.Title.id]: "ASC" }],
       pagination: { pageNo: 1, pageSize: 10 },
     },
   };
@@ -993,7 +993,7 @@ function ProductListPage() {
     table.filter.clearAllConditions();
     if (category !== "all") {
       table.filter.addCondition({
-        LHSField: product.Category.meta.id,
+        LHSField: product.Category.id,
         Operator: ConditionOperator.EQ,
         RHSValue: category,
         RHSType: RHSType.Constant,
@@ -1005,16 +1005,16 @@ function ProductListPage() {
     setSelectedSort(value);
     switch (value) {
       case "price-asc":
-        table.sort.set(product.Price.meta.id, "asc");
+        table.sort.set(product.Price.id, "asc");
         break;
       case "price-desc":
-        table.sort.set(product.Price.meta.id, "desc");
+        table.sort.set(product.Price.id, "desc");
         break;
       case "newest":
         table.sort.set("_created_at", "desc");  // System field
         break;
       default:
-        table.sort.set(product.Title.meta.id, "asc");
+        table.sort.set(product.Title.id, "asc");
         break;
     }
   };
@@ -1040,7 +1040,7 @@ function ProductListPage() {
           type="text"
           placeholder="Search by name..."
           value={table.search.query}
-          onChange={(e) => table.search.set(product.Title.meta.id, e.target.value)}
+          onChange={(e) => table.search.set(product.Title.id, e.target.value)}
         />
 
         <select

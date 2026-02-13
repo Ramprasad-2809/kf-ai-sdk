@@ -4,35 +4,44 @@
 // ============================================================
 
 import type { ReferenceFieldType } from "../../types/base-fields";
-import type { ReferenceFieldConfigType, ValidationResultType, ReferenceFieldMetaType } from "../core/types";
+import type { ReferenceFieldMetaType as ReferenceFieldMetaRawType, ValidationResultType } from "../core/types";
 import { api } from "../../api/client";
 import { BaseField } from "./BaseField";
 
 /**
- * Field definition for reference/lookup fields
+ * Field definition for reference/lookup fields.
+ * Config is derived from View.DataObject in the raw meta.
  *
  * @template TRef - The type of the referenced record
  *
  * @example
  * ```typescript
- * readonly SupplierInfo = new ReferenceField<SupplierType>({
- *   id: "SupplierInfo",
- *   label: "Supplier",
- *   referenceBdo: "BDO_Supplier",
- *   referenceFields: ["_id", "SupplierName", "Email"]
+ * readonly SupplierInfo = new ReferenceField<SupplierRefType>({
+ *   _id: "SupplierInfo", Name: "Supplier", Type: "Reference",
+ *   View: {
+ *     DataObject: { Type: "BO", Id: "BDO_Supplier" },
+ *     Fields: ["_id", "SupplierName", "Email"],
+ *   },
  * });
  * ```
  */
 export class ReferenceField<TRef = unknown> extends BaseField<
   ReferenceFieldType<TRef>
 > {
-  protected readonly referenceBdo: string;
-  protected readonly referenceFields: readonly string[];
+  constructor(meta: ReferenceFieldMetaRawType) {
+    super(meta);
+  }
 
-  constructor(config: ReferenceFieldConfigType<TRef>) {
-    super(config);
-    this.referenceBdo = config.referenceBdo;
-    this.referenceFields = config.referenceFields ?? ["_id"];
+  get referenceBdo(): string {
+    return (this._meta as ReferenceFieldMetaRawType).View?.DataObject?.Id ?? "";
+  }
+
+  get referenceFields(): readonly string[] {
+    return (this._meta as ReferenceFieldMetaRawType).View?.Fields ?? ["_id"];
+  }
+
+  get searchFields(): readonly string[] {
+    return (this._meta as ReferenceFieldMetaRawType).View?.Search ?? [];
   }
 
   validate(value: ReferenceFieldType<TRef> | undefined): ValidationResultType {
@@ -68,20 +77,5 @@ export class ReferenceField<TRef = unknown> extends BaseField<
       );
     }
     return api(this._parentBoId).fetchField<TRef>(instanceId ?? "new", this.id);
-  }
-
-  /**
-   * Get field metadata including reference info
-   */
-  override get meta(): ReferenceFieldMetaType {
-    return {
-      id: this.id,
-      label: this.label,
-      isEditable: this.editable,
-      reference: {
-        bdo: this.referenceBdo,
-        fields: [...this.referenceFields],
-      },
-    };
   }
 }

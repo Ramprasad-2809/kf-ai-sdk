@@ -30,7 +30,9 @@ export interface ResourceClientType<T = any> {
   get(id: string): Promise<T>;
 
   /** Create new record */
-  create(data: Partial<T> & { _id?: string }): Promise<CreateUpdateResponseType>;
+  create(
+    data: Partial<T> & { _id?: string },
+  ): Promise<CreateUpdateResponseType>;
 
   /** Update existing record */
   update(id: string, data: Partial<T>): Promise<CreateUpdateResponseType>;
@@ -72,7 +74,7 @@ export interface ResourceClientType<T = any> {
    * Used in interactive mode for create operations
    */
   draftInteraction(
-    data: Partial<T> & { _id?: string }
+    data: Partial<T> & { _id?: string },
   ): Promise<DraftResponseType & { _id: string }>;
 
   // ============================================================
@@ -111,7 +113,7 @@ export interface ResourceClientType<T = any> {
    */
   fetchField<TResult = FetchFieldOptionType>(
     instanceId: string,
-    fieldId: string
+    fieldId: string,
   ): Promise<TResult[]>;
 }
 
@@ -167,19 +169,22 @@ export function getApiBaseUrl(): string {
  * @param basePath - URL path segment (e.g., "/api/app/user" or "/api/app/process/leave_bp/vendor_ado")
  * @returns Resource client with CRUD operations matching API spec
  */
-export function createResourceClient<T = any>(basePath: string): ResourceClientType<T> {
+export function createResourceClient<T = any>(
+  basePath: string,
+): ResourceClientType<T> {
   const baseUrl = apiConfig.baseUrl;
-  const defaultHeaders = apiConfig.headers;
 
   return {
     async get(id: string): Promise<T> {
       const response = await fetch(`${baseUrl}${basePath}/${id}/read`, {
         method: "GET",
-        headers: defaultHeaders,
+        headers: getDefaultHeaders(),
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to get ${basePath} ${id}: ${response.statusText}`);
+        throw new Error(
+          `Failed to get ${basePath} ${id}: ${response.statusText}`,
+        );
       }
 
       const responseData: ReadResponseType<T> = await response.json();
@@ -187,11 +192,11 @@ export function createResourceClient<T = any>(basePath: string): ResourceClientT
     },
 
     async create(
-      data: Partial<T> & { _id?: string }
+      data: Partial<T> & { _id?: string },
     ): Promise<CreateUpdateResponseType> {
       const response = await fetch(`${baseUrl}${basePath}/create`, {
         method: "POST",
-        headers: defaultHeaders,
+        headers: getDefaultHeaders(),
         body: JSON.stringify(data),
       });
 
@@ -202,16 +207,19 @@ export function createResourceClient<T = any>(basePath: string): ResourceClientT
       return response.json();
     },
 
-    async update(id: string, data: Partial<T>): Promise<CreateUpdateResponseType> {
+    async update(
+      id: string,
+      data: Partial<T>,
+    ): Promise<CreateUpdateResponseType> {
       const response = await fetch(`${baseUrl}${basePath}/${id}/update`, {
         method: "POST",
-        headers: defaultHeaders,
+        headers: getDefaultHeaders(),
         body: JSON.stringify(data),
       });
 
       if (!response.ok) {
         throw new Error(
-          `Failed to update ${basePath} ${id}: ${response.statusText}`
+          `Failed to update ${basePath} ${id}: ${response.statusText}`,
         );
       }
 
@@ -221,12 +229,12 @@ export function createResourceClient<T = any>(basePath: string): ResourceClientT
     async delete(id: string): Promise<DeleteResponseType> {
       const response = await fetch(`${baseUrl}${basePath}/${id}/delete`, {
         method: "DELETE",
-        headers: defaultHeaders,
+        headers: getDefaultHeaders(),
       });
 
       if (!response.ok) {
         throw new Error(
-          `Failed to delete ${basePath} ${id}: ${response.statusText}`
+          `Failed to delete ${basePath} ${id}: ${response.statusText}`,
         );
       }
 
@@ -241,7 +249,7 @@ export function createResourceClient<T = any>(basePath: string): ResourceClientT
 
       const response = await fetch(`${baseUrl}${basePath}/list`, {
         method: "POST",
-        headers: defaultHeaders,
+        headers: getDefaultHeaders(),
         body: JSON.stringify(requestBody),
       });
 
@@ -264,7 +272,7 @@ export function createResourceClient<T = any>(basePath: string): ResourceClientT
 
       const response = await fetch(`${baseUrl}${basePath}/metric`, {
         method: "POST",
-        headers: defaultHeaders,
+        headers: getDefaultHeaders(),
         body: JSON.stringify(requestBody),
       });
 
@@ -285,13 +293,13 @@ export function createResourceClient<T = any>(basePath: string): ResourceClientT
     async draft(data: Partial<T>): Promise<DraftResponseType> {
       const response = await fetch(`${baseUrl}${basePath}/draft`, {
         method: "POST",
-        headers: defaultHeaders,
+        headers: getDefaultHeaders(),
         body: JSON.stringify(data),
       });
 
       if (!response.ok) {
         throw new Error(
-          `Failed to create draft for ${basePath}: ${response.statusText}`
+          `Failed to create draft for ${basePath}: ${response.statusText}`,
         );
       }
 
@@ -300,17 +308,17 @@ export function createResourceClient<T = any>(basePath: string): ResourceClientT
 
     async draftUpdate(
       id: string,
-      data: Partial<T>
+      data: Partial<T>,
     ): Promise<CreateUpdateResponseType> {
       const response = await fetch(`${baseUrl}${basePath}/${id}/draft`, {
         method: "POST",
-        headers: defaultHeaders,
+        headers: getDefaultHeaders(),
         body: JSON.stringify(data),
       });
 
       if (!response.ok) {
         throw new Error(
-          `Failed to update draft for ${basePath} ${id}: ${response.statusText}`
+          `Failed to update draft for ${basePath} ${id}: ${response.statusText}`,
         );
       }
 
@@ -320,13 +328,13 @@ export function createResourceClient<T = any>(basePath: string): ResourceClientT
     async draftPatch(id: string, data: Partial<T>): Promise<DraftResponseType> {
       const response = await fetch(`${baseUrl}${basePath}/${id}/draft`, {
         method: "PATCH",
-        headers: defaultHeaders,
+        headers: getDefaultHeaders(),
         body: JSON.stringify(data),
       });
 
       if (!response.ok) {
         throw new Error(
-          `Failed to patch draft for ${basePath} ${id}: ${response.statusText}`
+          `Failed to patch draft for ${basePath} ${id}: ${response.statusText}`,
         );
       }
 
@@ -334,17 +342,17 @@ export function createResourceClient<T = any>(basePath: string): ResourceClientT
     },
 
     async draftInteraction(
-      data: Partial<T> & { _id?: string }
+      data: Partial<T> & { _id?: string },
     ): Promise<DraftResponseType & { _id: string }> {
       const response = await fetch(`${baseUrl}${basePath}/draft`, {
         method: "PATCH",
-        headers: defaultHeaders,
+        headers: getDefaultHeaders(),
         body: JSON.stringify(data),
       });
 
       if (!response.ok) {
         throw new Error(
-          `Failed to create interactive draft for ${basePath}: ${response.statusText}`
+          `Failed to create interactive draft for ${basePath}: ${response.statusText}`,
         );
       }
 
@@ -362,7 +370,7 @@ export function createResourceClient<T = any>(basePath: string): ResourceClientT
     // ============================================================
 
     async metric(
-      options: Omit<MetricOptionsType, "Type">
+      options: Omit<MetricOptionsType, "Type">,
     ): Promise<MetricResponseType> {
       const requestBody: MetricOptionsType = {
         Type: "Metric",
@@ -371,20 +379,22 @@ export function createResourceClient<T = any>(basePath: string): ResourceClientT
 
       const response = await fetch(`${baseUrl}${basePath}/metric`, {
         method: "POST",
-        headers: defaultHeaders,
+        headers: getDefaultHeaders(),
         body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
         throw new Error(
-          `Failed to get metrics for ${basePath}: ${response.statusText}`
+          `Failed to get metrics for ${basePath}: ${response.statusText}`,
         );
       }
 
       return response.json();
     },
 
-    async pivot(options: Omit<PivotOptionsType, "Type">): Promise<PivotResponseType> {
+    async pivot(
+      options: Omit<PivotOptionsType, "Type">,
+    ): Promise<PivotResponseType> {
       const requestBody: PivotOptionsType = {
         Type: "Pivot",
         ...options,
@@ -392,13 +402,13 @@ export function createResourceClient<T = any>(basePath: string): ResourceClientT
 
       const response = await fetch(`${baseUrl}${basePath}/pivot`, {
         method: "POST",
-        headers: defaultHeaders,
+        headers: getDefaultHeaders(),
         body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
         throw new Error(
-          `Failed to get pivot data for ${basePath}: ${response.statusText}`
+          `Failed to get pivot data for ${basePath}: ${response.statusText}`,
         );
       }
 
@@ -412,12 +422,12 @@ export function createResourceClient<T = any>(basePath: string): ResourceClientT
     async fields(): Promise<FieldsResponseType> {
       const response = await fetch(`${baseUrl}${basePath}/fields`, {
         method: "GET",
-        headers: defaultHeaders,
+        headers: getDefaultHeaders(),
       });
 
       if (!response.ok) {
         throw new Error(
-          `Failed to get fields for ${basePath}: ${response.statusText}`
+          `Failed to get fields for ${basePath}: ${response.statusText}`,
         );
       }
 
@@ -426,19 +436,19 @@ export function createResourceClient<T = any>(basePath: string): ResourceClientT
 
     async fetchField<TResult = FetchFieldOptionType>(
       instanceId: string,
-      fieldId: string
+      fieldId: string,
     ): Promise<TResult[]> {
       const response = await fetch(
         `${baseUrl}${basePath}/${instanceId}/field/${fieldId}/fetch`,
         {
           method: "GET",
-          headers: defaultHeaders,
-        }
+          headers: getDefaultHeaders(),
+        },
       );
 
       if (!response.ok) {
         throw new Error(
-          `Failed to fetch field ${fieldId} for ${basePath}: ${response.statusText}`
+          `Failed to fetch field ${fieldId} for ${basePath}: ${response.statusText}`,
         );
       }
 

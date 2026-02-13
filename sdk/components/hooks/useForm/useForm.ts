@@ -10,6 +10,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { createResolver } from "./createResolver";
 import { createItemProxy } from "./createItemProxy";
+import { useDraftInteraction } from "./useDraftInteraction";
 import { getBdoSchema } from "../../../api/metadata";
 import type { BaseBdo } from "../../../bdo";
 import type {
@@ -17,6 +18,9 @@ import type {
   UseFormReturnType,
   HandleSubmitType,
   AllFieldsType,
+  CreatableBdo,
+  UpdatableBdo,
+  InteractiveCreatableBdo,
 } from "./types";
 
 /**
@@ -30,33 +34,8 @@ import type {
  * - Full access to all RHF methods and state
  * - Smart register: auto-disables readonly fields
  * - Payload filtering: handleSubmit auto-filters to editable fields only
- *
- * @example
- * ```tsx
- * const product = new SellerProduct();
- *
- * // Create mode
- * const { register, handleSubmit, item, errors } = useForm({
- *   bdo: product,
- *   defaultValues: { Title: "", Price: 0 },
- * });
- *
- * // Edit mode
- * const { register, handleSubmit, item, isLoading } = useForm({
- *   bdo: product,
- *   recordId: "product_123",
- * });
- *
- * // In JSX - readonly fields auto-disabled!
- * <form onSubmit={handleSubmit(
- *   (result) => toast.success("Saved!"),
- *   (error) => toast.error(error.message)
- * )}>
- *   <input {...register("Title")} />
- *   <input {...register("ASIN")} />  {// auto disabled: true for readonly }
- *   {errors.Title && <span>{errors.Title.message}</span>}
- * </form>
- * ```
+ * - Constraint validation: auto-validates required, length, etc. from field meta
+ * - Interactive draft mode: real-time server-side computation on field blur/change
  */
 export function useForm<B extends BaseBdo<any, any, any>>(
   options: UseFormOptionsType<B>,
@@ -67,8 +46,29 @@ export function useForm<B extends BaseBdo<any, any, any>>(
     operation: explicitOperation,
     defaultValues,
     mode = "onBlur",
-    enableDraft: _enableDraft = false,
+    enableDraft,
+    enableConstraintValidation,
+    enableExpressionValidation,
   } = options;
+
+  // ============================================================
+  // INTERACTION MODE RESOLUTION
+  // ============================================================
+
+  const explicitInteractionMode = (options as any).interactionMode as
+    | "interactive"
+    | "non-interactive"
+    | undefined;
+
+  const interactionMode =
+    explicitInteractionMode ??
+    (enableDraft === true
+      ? "interactive"
+      : enableDraft === false
+        ? "non-interactive"
+        : "interactive");
+
+  const isInteractive = interactionMode === "interactive";
 
   // Infer operation from recordId if not explicitly provided
   const operation = explicitOperation ?? (recordId ? "update" : "create");
@@ -77,7 +77,10 @@ export function useForm<B extends BaseBdo<any, any, any>>(
   // RESOLVER (memoized)
   // ============================================================
 
-  const resolver = useMemo(() => createResolver(bdo), [bdo]);
+  const resolver = useMemo(
+    () => createResolver(bdo, { enableConstraintValidation }),
+    [bdo, enableConstraintValidation],
+  );
 
   // ============================================================
   // RECORD FETCHING (Edit Mode)
@@ -86,12 +89,14 @@ export function useForm<B extends BaseBdo<any, any, any>>(
   const {
     data: record,
     isLoading: isLoadingRecord,
+    isFetching: isFetchingRecord,
     error: recordError,
   } = useQuery({
     queryKey: ["form-record", bdo.meta._id, recordId],
     queryFn: async () => {
       // bdo.get returns ItemWithData - extract raw data via toJSON
-      const item = await (bdo as any).get(recordId!);
+      // Safe: update operation requires UpdatableBdo (enforced by UseFormOptionsType)
+      const item = await (bdo as unknown as UpdatableBdo).get(recordId!);
       return item.toJSON();
     },
     enabled: operation === "update" && !!recordId,
@@ -107,6 +112,7 @@ export function useForm<B extends BaseBdo<any, any, any>>(
     queryFn: () => getBdoSchema(bdo.meta._id),
     staleTime: 30 * 60 * 1000, // Cache for 30 minutes
     gcTime: 60 * 60 * 1000, // Keep in cache for 1 hour
+    enabled: enableExpressionValidation !== false,
   });
 
   // Load metadata into bdo when schema is fetched
@@ -131,6 +137,31 @@ export function useForm<B extends BaseBdo<any, any, any>>(
   });
 
   // ============================================================
+  // FIELD DEFINITIONS
+  // ============================================================
+
+  const fields = bdo.getFields();
+
+  // ============================================================
+  // DRAFT INTERACTION
+  // ============================================================
+
+  const {
+    draftId,
+    isInitializingDraft,
+    isInteracting,
+    interactionError,
+    triggerInteraction,
+    commitDraft,
+  } = useDraftInteraction({
+    bdo: bdo as unknown as InteractiveCreatableBdo,
+    form,
+    mode,
+    fields,
+    enabled: isInteractive && operation === "create",
+  });
+
+  // ============================================================
   // ITEM PROXY
   // ============================================================
 
@@ -141,24 +172,55 @@ export function useForm<B extends BaseBdo<any, any, any>>(
   );
 
   // ============================================================
-  // SMART REGISTER (auto-disables readonly fields)
+  // SMART REGISTER (auto-disables readonly fields + interaction trigger)
   // ============================================================
-
-  const fields = bdo.getFields();
 
   const smartRegister = useCallback(
     (name: string, registerOptions?: RegisterOptions) => {
       const rhfResult = form.register(name as any, registerOptions);
 
       // If field is readonly, add disabled: true
-      if (!fields[name]?.meta.isEditable) {
+      if (fields[name]?.readOnly) {
         return { ...rhfResult, disabled: true };
+      }
+
+      // In interactive mode, wrap onBlur for blur-triggered interaction
+      if (
+        isInteractive &&
+        (mode === "onBlur" || mode === "onTouched" || mode === "all")
+      ) {
+        const originalOnBlur = rhfResult.onBlur;
+        return {
+          ...rhfResult,
+          onBlur: async (e: React.FocusEvent) => {
+            await originalOnBlur(e); // RHF validation first
+            triggerInteraction(); // then server interaction
+          },
+        };
       }
 
       return rhfResult;
     },
-    [form, fields],
+    [form, fields, isInteractive, mode, triggerInteraction],
   );
+
+  // ============================================================
+  // WATCH SUBSCRIPTION (for onChange/all mode interaction)
+  // ============================================================
+
+  useEffect(() => {
+    if (!isInteractive || (mode !== "onChange" && mode !== "all")) return;
+
+    const subscription = form.watch((_value, { type }) => {
+      // RHF fires with type: "change" for user input,
+      // type: undefined for programmatic setValue — prevents re-trigger loops
+      if (type === "change") {
+        triggerInteraction(); // debounced inside useDraftInteraction
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [isInteractive, mode, form, triggerInteraction]);
 
   // ============================================================
   // CUSTOM HANDLE SUBMIT (with API call + payload filtering)
@@ -170,22 +232,36 @@ export function useForm<B extends BaseBdo<any, any, any>>(
         // onValid - validation passed, make API call
         async (data, e) => {
           try {
-            // Filter payload to only editable fields
             const filteredData: Record<string, unknown> = {};
-            for (const [key, value] of Object.entries(data)) {
-              if (fields[key]?.meta.isEditable) {
-                filteredData[key] = value;
-              }
-            }
-
             let result: unknown;
 
-            if (operation === "create") {
-              // Create mode - call create with filtered data
-              result = await (bdo as any).create(filteredData);
+            if (isInteractive && operation === "create") {
+              // Interactive create - send only dirty, non-readonly fields
+              // (record already exists from init, so only send changes)
+              const dirtyFields = form.formState.dirtyFields;
+              for (const [key, value] of Object.entries(data)) {
+                if (fields[key] && !fields[key].readOnly && dirtyFields[key]) {
+                  filteredData[key] = value;
+                }
+              }
+              result = await commitDraft(filteredData);
+            } else if (operation === "create") {
+              // Non-interactive create - send all known, non-readonly fields
+              for (const [key, value] of Object.entries(data)) {
+                if (fields[key] && !fields[key].readOnly) {
+                  filteredData[key] = value;
+                }
+              }
+              result = await (bdo as unknown as CreatableBdo).create(filteredData);
             } else {
-              // Update mode - call update with recordId and filtered data
-              result = await (bdo as any).update(recordId!, filteredData);
+              // Update (always non-interactive) - send only dirty, non-readonly fields
+              const dirtyFields = form.formState.dirtyFields;
+              for (const [key, value] of Object.entries(data)) {
+                if (fields[key] && !fields[key].readOnly && dirtyFields[key]) {
+                  filteredData[key] = value;
+                }
+              }
+              result = await (bdo as unknown as UpdatableBdo).update(recordId!, filteredData);
             }
 
             // Success callback
@@ -201,18 +277,8 @@ export function useForm<B extends BaseBdo<any, any, any>>(
         },
       );
     },
-    [form, bdo, operation, recordId],
+    [form, bdo, operation, recordId, fields, isInteractive, commitDraft],
   );
-
-  // ============================================================
-  // DRAFT API INTEGRATION (Optional - Future Enhancement)
-  // ============================================================
-
-  // TODO: Implement draft API integration when enableDraft is true
-  // This would:
-  // 1. Create draft on mount (for create mode)
-  // 2. Call draftPatch on blur for computed field updates
-  // 3. Track draftId state
 
   // ============================================================
   // RETURN
@@ -251,10 +317,16 @@ export function useForm<B extends BaseBdo<any, any, any>>(
     dirtyFields: form.formState.dirtyFields as any,
 
     // Loading states
-    isLoading: isLoadingRecord,
-    isFetching: isLoadingRecord,
+    isLoading: isLoadingRecord || isInitializingDraft,
+    isFetching: isFetchingRecord,
 
     // Error
     loadError: recordError as Error | null,
+
+    // Draft / Interactive mode
+    draftId,
+    isInitializingDraft,
+    isInteracting,
+    interactionError,
   };
 }

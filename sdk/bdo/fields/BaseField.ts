@@ -3,48 +3,38 @@
 // Abstract base class for all field types
 // ============================================================
 
-import type { FieldConfigType, ValidationResultType, FieldMetaType } from "../core/types";
+import type { BaseFieldMetaType, ValidationResultType } from "../core/types";
 
 /**
- * Abstract base class for all field definitions
+ * Abstract base class for all field definitions.
+ * Stores the raw backend meta JSON and exposes convenience getters.
  *
  * @template T - The TypeScript type of the field value
- *
- * @example
- * ```typescript
- * class CustomField extends BaseField<MyType> {
- *   validate(value: MyType | undefined): ValidationResult {
- *     // Custom validation logic
- *   }
- * }
- * ```
  */
 export abstract class BaseField<T> {
-  protected readonly id: string;
-  protected readonly label: string;
-  protected readonly editable: boolean;
+  /** Full raw backend meta */
+  protected readonly _meta: BaseFieldMetaType;
   protected _parentBoId?: string;
 
-  constructor(config: FieldConfigType) {
-    this.id = config.id;
-    this.label = config.label;
-    this.editable = config.editable ?? true;
+  constructor(meta: BaseFieldMetaType) {
+    this._meta = meta;
   }
+
+  // === Convenience getters (transform backend naming → SDK naming) ===
+
+  get id(): string { return this._meta._id; }
+  get label(): string { return this._meta.Name || this._meta._id; }
+  get readOnly(): boolean { return this._meta.ReadOnly ?? false; }
+  get required(): boolean { return this._meta.Constraint?.Required ?? this._meta.Required ?? false; }
+  get defaultValue(): unknown { return this._meta.DefaultValue ?? this._meta.Constraint?.DefaultValue; }
+  get primaryKey(): boolean { return this._meta.Constraint?.PrimaryKey ?? false; }
+
+  /** Full raw meta (the exact JSON passed to constructor) */
+  get meta(): BaseFieldMetaType { return this._meta; }
 
   /**
    * Validate a value for this field
    * Override in subclasses for custom validation
    */
   abstract validate(value: T | undefined): ValidationResultType;
-
-  /**
-   * Get field metadata (id, label, and field-specific info)
-   */
-  get meta(): FieldMetaType {
-    return {
-      id: this.id,
-      label: this.label,
-      isEditable: this.editable,
-    };
-  }
 }

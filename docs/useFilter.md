@@ -217,7 +217,7 @@ function SimpleFilter() {
   const addCategoryFilter = () => {
     filter.addCondition({
       Operator: ConditionOperator.EQ,
-      LHSField: product.Category.meta.id,
+      LHSField: product.Category.id,
       RHSValue: "Electronics",
       RHSType: RHSType.Constant,
     });
@@ -260,7 +260,7 @@ function TypeSafeFilter() {
   const addCategoryFilter = () => {
     filter.addCondition({
       Operator: ConditionOperator.EQ,
-      LHSField: product.Category.meta.id, // Type-safe via BDO field
+      LHSField: product.Category.id, // Type-safe via BDO field
       RHSValue: "Electronics",
       RHSType: RHSType.Constant,
     });
@@ -306,13 +306,13 @@ function FilterWithInitialState() {
     conditions: [
       {
         Operator: ConditionOperator.EQ,
-        LHSField: product.Category.meta.id,
+        LHSField: product.Category.id,
         RHSValue: "Electronics",
         RHSType: RHSType.Constant,
       },
       {
         Operator: ConditionOperator.GT,
-        LHSField: product.Price.meta.id,
+        LHSField: product.Price.id,
         RHSValue: 100,
         RHSType: RHSType.Constant,
       },
@@ -346,7 +346,7 @@ function EqualityFilters() {
   const filterByStatus = (status: string) => {
     filter.addCondition({
       Operator: ConditionOperator.EQ,
-      LHSField: product.Status.meta.id,
+      LHSField: product.Status.id,
       RHSValue: status,
       RHSType: RHSType.Constant,
     });
@@ -356,7 +356,7 @@ function EqualityFilters() {
   const excludeStatus = (status: string) => {
     filter.addCondition({
       Operator: ConditionOperator.NE,
-      LHSField: product.Status.meta.id,
+      LHSField: product.Status.id,
       RHSValue: status,
       RHSType: RHSType.Constant,
     });
@@ -390,7 +390,7 @@ function ComparisonFilters() {
   const filterByMinPrice = (minPrice: number) => {
     filter.addCondition({
       Operator: ConditionOperator.GT,
-      LHSField: product.Price.meta.id,
+      LHSField: product.Price.id,
       RHSValue: minPrice,
       RHSType: RHSType.Constant,
     });
@@ -400,7 +400,7 @@ function ComparisonFilters() {
   const filterLowStock = (threshold: number) => {
     filter.addCondition({
       Operator: ConditionOperator.LTE,
-      LHSField: product.Stock.meta.id,
+      LHSField: product.Stock.id,
       RHSValue: threshold,
       RHSType: RHSType.Constant,
     });
@@ -446,7 +446,7 @@ function RangeFilters() {
   const filterPriceRange = (min: number, max: number) => {
     filter.addCondition({
       Operator: ConditionOperator.Between,
-      LHSField: product.Price.meta.id,
+      LHSField: product.Price.id,
       RHSValue: [min, max],
       RHSType: RHSType.Constant,
     });
@@ -456,7 +456,7 @@ function RangeFilters() {
   const filterDateRange = (startDate: string, endDate: string) => {
     filter.addCondition({
       Operator: ConditionOperator.Between,
-      LHSField: order.OrderDate.meta.id,
+      LHSField: order.OrderDate.id,
       RHSValue: [startDate, endDate],
       RHSType: RHSType.Constant,
     });
@@ -466,7 +466,7 @@ function RangeFilters() {
   const excludePriceRange = (min: number, max: number) => {
     filter.addCondition({
       Operator: ConditionOperator.NotBetween,
-      LHSField: product.Price.meta.id,
+      LHSField: product.Price.id,
       RHSValue: [min, max],
       RHSType: RHSType.Constant,
     });
@@ -500,7 +500,7 @@ function ListFilters() {
   const filterByCategories = (categories: string[]) => {
     filter.addCondition({
       Operator: ConditionOperator.IN,
-      LHSField: product.Category.meta.id,
+      LHSField: product.Category.id,
       RHSValue: categories,
       RHSType: RHSType.Constant,
     });
@@ -510,7 +510,7 @@ function ListFilters() {
   const excludeCategories = (categories: string[]) => {
     filter.addCondition({
       Operator: ConditionOperator.NIN,
-      LHSField: product.Category.meta.id,
+      LHSField: product.Category.id,
       RHSValue: categories,
       RHSType: RHSType.Constant,
     });
@@ -546,7 +546,7 @@ function TextFilters() {
   const filterByKeyword = (keyword: string) => {
     filter.addCondition({
       Operator: ConditionOperator.Contains,
-      LHSField: product.Title.meta.id,
+      LHSField: product.Title.id,
       RHSValue: keyword,
       RHSType: RHSType.Constant,
     });
@@ -556,7 +556,7 @@ function TextFilters() {
   const excludeKeyword = (keyword: string) => {
     filter.addCondition({
       Operator: ConditionOperator.NotContains,
-      LHSField: product.Description.meta.id,
+      LHSField: product.Description.id,
       RHSValue: keyword,
       RHSType: RHSType.Constant,
     });
@@ -594,7 +594,7 @@ function EmptyFilters() {
   const filterUnassigned = () => {
     filter.addCondition({
       Operator: ConditionOperator.Empty,
-      LHSField: task.AssignedTo.meta.id,
+      LHSField: task.AssignedTo.id,
       RHSValue: null,
       RHSType: RHSType.Constant,
     });
@@ -604,7 +604,7 @@ function EmptyFilters() {
   const filterAssigned = () => {
     filter.addCondition({
       Operator: ConditionOperator.NotEmpty,
-      LHSField: task.AssignedTo.meta.id,
+      LHSField: task.AssignedTo.id,
       RHSValue: null,
       RHSType: RHSType.Constant,
     });
@@ -644,19 +644,19 @@ function AndFilter() {
     // Category AND Price AND InStock - all must be true
     filter.addCondition({
       Operator: ConditionOperator.EQ,
-      LHSField: product.Category.meta.id,
+      LHSField: product.Category.id,
       RHSValue: "Electronics",
       RHSType: RHSType.Constant,
     });
     filter.addCondition({
       Operator: ConditionOperator.LTE,
-      LHSField: product.Price.meta.id,
+      LHSField: product.Price.id,
       RHSValue: 500,
       RHSType: RHSType.Constant,
     });
     filter.addCondition({
       Operator: ConditionOperator.GT,
-      LHSField: product.Stock.meta.id,
+      LHSField: product.Stock.id,
       RHSValue: 0,
       RHSType: RHSType.Constant,
     });
@@ -692,13 +692,13 @@ function OrFilter() {
     // High priority OR Overdue - either can match
     filter.addCondition({
       Operator: ConditionOperator.EQ,
-      LHSField: task.Priority.meta.id,
+      LHSField: task.Priority.id,
       RHSValue: "High",
       RHSType: RHSType.Constant,
     });
     filter.addCondition({
       Operator: ConditionOperator.LT,
-      LHSField: task.DueDate.meta.id,
+      LHSField: task.DueDate.id,
       RHSValue: new Date().toISOString(),
       RHSType: RHSType.Constant,
     });
@@ -730,7 +730,7 @@ function NestedFilter() {
     // Root level condition
     filter.addCondition({
       Operator: ConditionOperator.EQ,
-      LHSField: product.Category.meta.id,
+      LHSField: product.Category.id,
       RHSValue: "Electronics",
       RHSType: RHSType.Constant,
     });
@@ -742,7 +742,7 @@ function NestedFilter() {
     filter.addCondition(
       {
         Operator: ConditionOperator.LT,
-        LHSField: product.Price.meta.id,
+        LHSField: product.Price.id,
         RHSValue: 100,
         RHSType: RHSType.Constant,
       },
@@ -752,7 +752,7 @@ function NestedFilter() {
     filter.addCondition(
       {
         Operator: ConditionOperator.EQ,
-        LHSField: product.OnSale.meta.id,
+        LHSField: product.OnSale.id,
         RHSValue: true,
         RHSType: RHSType.Constant,
       },
@@ -775,7 +775,7 @@ function DeepNestedFilter() {
   const filter = useFilter();
 
   // Build: (A AND B) OR (C AND D)
-  // Generic example - for real usage, use bdo.field.meta.id for LHSField
+  // Generic example - for real usage, use bdo.field.id for LHSField
   const buildFilter = () => {
     filter.clearAllConditions();
     filter.setRootOperator(GroupOperator.Or);
@@ -918,7 +918,7 @@ function EditableFilter() {
   const addFilter = () => {
     const id = filter.addCondition({
       Operator: ConditionOperator.GT,
-      LHSField: product.Price.meta.id,
+      LHSField: product.Price.id,
       RHSValue: 50,
       RHSType: RHSType.Constant,
     });
@@ -976,7 +976,7 @@ function ToggleableGroupOperator() {
   const filter = useFilter();
   const [groupId, setGroupId] = useState<string | null>(null);
 
-  // Generic example - for real usage, use bdo.field.meta.id for LHSField
+  // Generic example - for real usage, use bdo.field.id for LHSField
   const createGroup = () => {
     const id = filter.addConditionGroup(GroupOperator.And);
     filter.addCondition(
@@ -1048,7 +1048,7 @@ function FilterWithApi() {
         onClick={() =>
           filter.addCondition({
             Operator: ConditionOperator.EQ,
-            LHSField: product.Status.meta.id,
+            LHSField: product.Status.id,
             RHSValue: "Active",
             RHSType: RHSType.Constant,
           })
@@ -1080,13 +1080,13 @@ function FilterWithInitialState() {
   const savedFilters: Array<ConditionType | ConditionGroupType> = [
     {
       Operator: ConditionOperator.EQ,
-      LHSField: product.Status.meta.id,
+      LHSField: product.Status.id,
       RHSValue: "Active",
       RHSType: RHSType.Constant,
     },
     {
       Operator: ConditionOperator.GT,
-      LHSField: product.Price.meta.id,
+      LHSField: product.Price.id,
       RHSValue: 100,
       RHSType: RHSType.Constant,
     },
@@ -1119,7 +1119,7 @@ import { ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
 
 filter.addCondition({
   Operator: ConditionOperator.EQ,
-  LHSField: product.Status.meta.id,
+  LHSField: product.Status.id,
   RHSValue: "Active",
   RHSType: RHSType.Constant,
 });
@@ -1148,19 +1148,19 @@ import { ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
 
 filter.addCondition({
   Operator: ConditionOperator.EQ,
-  LHSField: product.Category.meta.id,
+  LHSField: product.Category.id,
   RHSValue: "Electronics",
   RHSType: RHSType.Constant,
 });
 filter.addCondition({
   Operator: ConditionOperator.GT,
-  LHSField: product.Price.meta.id,
+  LHSField: product.Price.id,
   RHSValue: 100,
   RHSType: RHSType.Constant,
 });
 filter.addCondition({
   Operator: ConditionOperator.LTE,
-  LHSField: product.Stock.meta.id,
+  LHSField: product.Stock.id,
   RHSValue: 50,
   RHSType: RHSType.Constant,
 });
@@ -1203,7 +1203,7 @@ import { ConditionOperator, GroupOperator, RHSType } from "@ram_28/kf-ai-sdk/fil
 // Category = "Electronics" AND (Price < 100 OR OnSale = true)
 filter.addCondition({
   Operator: ConditionOperator.EQ,
-  LHSField: product.Category.meta.id,
+  LHSField: product.Category.id,
   RHSValue: "Electronics",
   RHSType: RHSType.Constant,
 });
@@ -1211,7 +1211,7 @@ const orGroupId = filter.addConditionGroup(GroupOperator.Or);
 filter.addCondition(
   {
     Operator: ConditionOperator.LT,
-    LHSField: product.Price.meta.id,
+    LHSField: product.Price.id,
     RHSValue: 100,
     RHSType: RHSType.Constant,
   },
@@ -1220,7 +1220,7 @@ filter.addCondition(
 filter.addCondition(
   {
     Operator: ConditionOperator.EQ,
-    LHSField: product.OnSale.meta.id,
+    LHSField: product.OnSale.id,
     RHSValue: true,
     RHSType: RHSType.Constant,
   },
@@ -1268,7 +1268,7 @@ import { ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
 
 filter.addCondition({
   Operator: ConditionOperator.Between,
-  LHSField: product.Price.meta.id,
+  LHSField: product.Price.id,
   RHSValue: [50, 200],
   RHSType: RHSType.Constant,
 });
@@ -1297,7 +1297,7 @@ import { ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
 
 filter.addCondition({
   Operator: ConditionOperator.IN,
-  LHSField: product.Category.meta.id,
+  LHSField: product.Category.id,
   RHSValue: ["Electronics", "Computers", "Accessories"],
   RHSType: RHSType.Constant,
 });

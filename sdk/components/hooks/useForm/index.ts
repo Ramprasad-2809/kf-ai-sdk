@@ -12,4 +12,8 @@ export type {
   ExtractEditableType,
   ExtractReadonlyType,
   AllFieldsType,
+  CreatableBdo,
+  UpdatableBdo,
+  FormBdo,
+  InteractiveCreatableBdo,
 } from "./types";

@@ -5,45 +5,24 @@
 
 // Core classes
 export { BaseBdo } from "./bdo/core/BaseBdo";
-export type { SystemFields } from "./bdo/core/BaseBdo";
 
 // Field classes
 export {
+  BaseField,
   StringField,
   NumberField,
   BooleanField,
   DateTimeField,
+  DateField,
+  TextField,
+  TextAreaField,
   SelectField,
   ReferenceField,
   ArrayField,
+  ObjectField,
+  UserField,
+  FileField,
 } from "./bdo/fields";
-
-// Re-export types for consumer convenience
-export type {
-  StringFieldType,
-  NumberFieldType,
-  BooleanFieldType,
-  DateFieldType,
-  DateTimeFieldType,
-  ReferenceFieldType,
-  ArrayFieldType,
-  SystemFieldsType,
-  UserRefType,
-} from "./types/base-fields";
-
-// BDO-specific types
-export type {
-  BdoMetaType,
-  ValidationResultType,
-  SelectOptionType,
-  FieldConfigType,
-  SelectFieldConfigType,
-  ReferenceFieldConfigType,
-  FieldMetaType,
-} from "./bdo/core/types";
-
-// ItemType
-export type { ItemType } from "./bdo/core/Item";
 
 // Constants
 export { SystemField } from "./types/constants";

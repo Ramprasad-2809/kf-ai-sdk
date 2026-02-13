@@ -4,7 +4,7 @@
 // ============================================================
 
 import type { BooleanFieldType } from "../../types/base-fields";
-import type { FieldConfigType, ValidationResultType } from "../core/types";
+import type { BooleanFieldMetaType, ValidationResultType } from "../core/types";
 import { BaseField } from "./BaseField";
 
 /**
@@ -13,14 +13,13 @@ import { BaseField } from "./BaseField";
  * @example
  * ```typescript
  * readonly IsActive = new BooleanField({
- *   id: "IsActive",
- *   label: "Is Active"
+ *   _id: "IsActive", Name: "Is Active", Type: "Boolean",
  * });
  * ```
  */
 export class BooleanField extends BaseField<BooleanFieldType> {
-  constructor(config: FieldConfigType) {
-    super(config);
+  constructor(meta: BooleanFieldMetaType) {
+    super(meta);
   }
 
   validate(value: BooleanFieldType | undefined): ValidationResultType {

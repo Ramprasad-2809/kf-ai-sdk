@@ -6,14 +6,14 @@ API integration, and type-safe field handling.
 ## Imports
 
 ```typescript
-import { useForm, ValidationMode, FormOperation } from "@ram_28/kf-ai-sdk/form";
+import { useForm } from "@ram_28/kf-ai-sdk/form";
+import { ValidationMode, FormOperation } from "@ram_28/kf-ai-sdk/form";
 import type {
   UseFormOptionsType,
   UseFormReturnType,
   FormItemType,
   FormRegisterType,
   HandleSubmitType,
-  FormOperationType,
   ValidationModeType,
   EditableFormFieldAccessorType,
   ReadonlyFormFieldAccessorType,
@@ -28,27 +28,42 @@ import { ConditionOperator, GroupOperator, RHSType } from "@ram_28/kf-ai-sdk/fil
 ### UseFormOptionsType
 
 ```typescript
-interface UseFormOptionsType<B extends BaseBdo<any, any, any>> {
-  // Required: The BDO instance to use
+// Create mode — no recordId
+interface UseFormCreateOptionsType<B extends BaseBdo<any, any, any>> {
   bdo: B;
-
-  // For edit mode - fetches existing record automatically
-  recordId?: string;
-
-  // Explicit operation (auto-inferred from recordId if not provided)
-  // Use FormOperation.Create or FormOperation.Update
-  operation?: FormOperationType;
-
-  // Initial form values (for create mode)
   defaultValues?: Partial<EditableFieldType>;
-
-  // Validation timing (default: ValidationMode.OnBlur)
-  // Use ValidationMode constant for type-safety
   mode?: ValidationModeType;
-
-  // Enable draft API for computed fields (default: false)
   enableDraft?: boolean;
+  enableConstraintValidation?: boolean;  // default: true
+  enableExpressionValidation?: boolean;  // default: true
 }
+
+// Edit mode — recordId required
+interface UseFormEditOptionsType<B extends BaseBdo<any, any, any>> {
+  bdo: B;
+  recordId: string;
+  mode?: ValidationModeType;
+  enableDraft?: boolean;
+  enableConstraintValidation?: boolean;  // default: true
+  enableExpressionValidation?: boolean;  // default: true
+}
+
+// Explicit operation mode
+interface UseFormExplicitOptionsType<B extends BaseBdo<any, any, any>> {
+  bdo: B;
+  operation: "create" | "update";
+  recordId?: string;
+  defaultValues?: Partial<EditableFieldType>;
+  mode?: ValidationModeType;
+  enableDraft?: boolean;
+  enableConstraintValidation?: boolean;  // default: true
+  enableExpressionValidation?: boolean;  // default: true
+}
+
+type UseFormOptionsType<B extends BaseBdo<any, any, any>> =
+  | UseFormCreateOptionsType<B>
+  | UseFormEditOptionsType<B>
+  | UseFormExplicitOptionsType<B>;
 ```
 
 ### UseFormReturnType
@@ -64,7 +79,7 @@ interface UseFormReturnType<B extends BaseBdo<any, any, any>> {
 
   // BDO reference and operation info
   bdo: B;
-  operation: FormOperationType;  // FormOperation.Create or FormOperation.Update
+  operation: "create" | "update";
   recordId?: string;
 
   // Smart register (auto-disables readonly fields)
@@ -101,7 +116,7 @@ interface UseFormReturnType<B extends BaseBdo<any, any, any>> {
   // ============================================================
 
   isLoading: boolean;      // Fetching record data
-  isFetching: boolean;     // Same as isLoading
+  isFetching: boolean;     // True during any background refetch
   loadError: Error | null; // Schema/record fetch error
 
   // ============================================================
@@ -137,7 +152,11 @@ type FormItemType<TEditable, TReadonly> = {
 ```typescript
 // For editable fields
 interface EditableFormFieldAccessorType<T> {
-  readonly meta: FieldMetaType;
+  readonly label: string;
+  readonly required: boolean;
+  readonly readOnly: false;
+  readonly defaultValue: unknown;
+  readonly meta: BaseFieldMetaType;
   get(): T | undefined;
   set(value: T): void;
   validate(): ValidationResultType;
@@ -145,7 +164,11 @@ interface EditableFormFieldAccessorType<T> {
 
 // For readonly fields (no set method)
 interface ReadonlyFormFieldAccessorType<T> {
-  readonly meta: FieldMetaType;
+  readonly label: string;
+  readonly required: boolean;
+  readonly readOnly: true;
+  readonly defaultValue: unknown;
+  readonly meta: BaseFieldMetaType;
   get(): T | undefined;
   validate(): ValidationResultType;
 }
@@ -159,7 +182,8 @@ interface ReadonlyFormFieldAccessorType<T> {
 
 ```tsx
 import { useMemo } from "react";
-import { useForm, ValidationMode } from "@ram_28/kf-ai-sdk/form";
+import { useForm } from "@ram_28/kf-ai-sdk/form";
+import { ValidationMode } from "@ram_28/kf-ai-sdk/form";
 import type {
   UseFormOptionsType,
   UseFormReturnType,
@@ -226,16 +250,16 @@ function CreateProductForm() {
 
   return (
     <form onSubmit={handleSubmit(onSuccess, onError)}>
-      {/* Use field.meta.id for register */}
+      {/* Use field.id for register */}
       <div>
-        <label>{product.Title.meta.label}</label>
-        <input {...register(product.Title.meta.id)} />
+        <label>{product.Title.label}</label>
+        <input {...register(product.Title.id)} />
         {errors.Title && <span>{errors.Title.message}</span>}
       </div>
 
       <div>
-        <label>{product.Price.meta.label}</label>
-        <input type="number" {...register(product.Price.meta.id)} />
+        <label>{product.Price.label}</label>
+        <input type="number" {...register(product.Price.id)} />
         {errors.Price && <span>{errors.Price.message}</span>}
       </div>
 
@@ -251,7 +275,8 @@ function CreateProductForm() {
 
 ```tsx
 import { useMemo } from "react";
-import { useForm, ValidationMode } from "@ram_28/kf-ai-sdk/form";
+import { useForm } from "@ram_28/kf-ai-sdk/form";
+import { ValidationMode } from "@ram_28/kf-ai-sdk/form";
 import type {
   UseFormOptionsType,
   UseFormReturnType,
@@ -314,15 +339,15 @@ function EditProductForm({ productId, onClose }: EditProductFormProps) {
     <form onSubmit={handleSubmit(onSuccess, onError)}>
       {/* Readonly fields are auto-disabled */}
       <div>
-        <label>{product.ASIN.meta.label}</label>
-        <input {...register(product.ASIN.meta.id)} />
+        <label>{product.ASIN.label}</label>
+        <input {...register(product.ASIN.id)} />
         {/* This input is automatically disabled: true for readonly fields */}
       </div>
 
       {/* Editable fields */}
       <div>
-        <label>{product.Title.meta.label}</label>
-        <input {...register(product.Title.meta.id)} />
+        <label>{product.Title.label}</label>
+        <input {...register(product.Title.id)} />
         {errors.Title && <span>{errors.Title.message}</span>}
       </div>
 
@@ -344,26 +369,26 @@ The `register` function extends React Hook Form's standard register with automat
 
 ```typescript
 // For editable fields - standard result
-register(product.Title.meta.id)
+register(product.Title.id)
 // => UseFormRegisterReturn
 
 // For readonly fields - includes disabled: true
-register(product.ASIN.meta.id)
+register(product.ASIN.id)
 // => UseFormRegisterReturn & { disabled: true }
 ```
 
 ### Usage
 
 ```tsx
-// Always use field.meta.id (not hardcoded strings)
-<input {...register(product.Title.meta.id)} />
-<input {...register(product.Price.meta.id)} />
+// Always use field.id (not hardcoded strings)
+<input {...register(product.Title.id)} />
+<input {...register(product.Price.id)} />
 
 // Readonly fields are auto-disabled
-<input {...register(product.ASIN.meta.id)} />  // disabled: true added automatically
+<input {...register(product.ASIN.id)} />  // disabled: true added automatically
 
 // With additional options
-<input {...register(product.Email.meta.id, { required: true })} />
+<input {...register(product.Email.id, { required: true })} />
 ```
 
 ---
@@ -426,10 +451,10 @@ const title = item.Title.get();
 // Set field value (editable fields only)
 item.Title.set("New Title");
 
-// Access field metadata
-item.Title.meta.id        // "Title"
-item.Title.meta.label     // "Product Title"
-item.Title.meta.isEditable // true
+// Access field properties
+item.Title.id             // "Title"
+item.Title.label          // "Product Title"
+item.Title.readOnly       // false
 
 // Validate single field
 const result = item.Title.validate();
@@ -451,19 +476,23 @@ const isValid = await item.validate();
 // Readonly fields don't have set() method
 item.ASIN.get()           // Works
 item.ASIN.set("...")      // TypeScript error - method doesn't exist
-item.ASIN.meta.isEditable // false
+item.ASIN.readOnly        // true
 ```
 
 ---
 
 ## Validation
 
-useForm provides two-phase validation:
+useForm provides three-phase validation:
 
 ### Phase 1: Type Validation
 From field classes (StringField, NumberField, etc.)
 
-### Phase 2: Expression Validation
+### Phase 2: Constraint Validation
+From field meta constraints (required, string length, number integerPart/fractionPart).
+Controlled by the `enableConstraintValidation` option (default: `true`).
+
+### Phase 3: Expression Validation
 From backend schema rules (automatically fetched)
 
 ### Validation Timing
@@ -493,14 +522,14 @@ useForm({
 
 ```tsx
 import { useMemo, useState } from "react";
-import { useForm, ValidationMode, FormOperation } from "@ram_28/kf-ai-sdk/form";
+import { useForm } from "@ram_28/kf-ai-sdk/form";
+import { ValidationMode, FormOperation } from "@ram_28/kf-ai-sdk/form";
 import type {
   UseFormOptionsType,
   UseFormReturnType,
   FormItemType,
   FormRegisterType,
   HandleSubmitType,
-  FormOperationType,
 } from "@ram_28/kf-ai-sdk/form/types";
 import type { FieldErrors, UseFormWatch, UseFormSetValue } from "react-hook-form";
 import type { CreateUpdateResponseType } from "@ram_28/kf-ai-sdk/api/types";
@@ -557,7 +586,7 @@ function ProductForm({ productId, onSuccess }: ProductFormProps) {
     loadError: Error | null;
     watch: UseFormWatch<AllFieldsType>;
     setValue: UseFormSetValue<SellerProductEditableFieldType>;
-    operation: FormOperationType;
+    operation: "create" | "update";
   } = useForm(formOptions);
 
   // Loading state
@@ -585,7 +614,7 @@ function ProductForm({ productId, onSuccess }: ProductFormProps) {
   };
 
   // Watch for dynamic behavior
-  const currentPrice = watch(product.Price.meta.id);
+  const currentPrice = watch(product.Price.id);
 
   return (
     <form onSubmit={handleSubmit(onFormSuccess, onFormError)}>
@@ -598,16 +627,16 @@ function ProductForm({ productId, onSuccess }: ProductFormProps) {
       {/* Readonly field (auto-disabled) */}
       {operation === FormOperation.Update && (
         <div className="field">
-          <label>{product.ASIN.meta.label}</label>
-          <input {...register(product.ASIN.meta.id)} />
+          <label>{product.ASIN.label}</label>
+          <input {...register(product.ASIN.id)} />
         </div>
       )}
 
       {/* Title */}
       <div className="field">
-        <label>{product.Title.meta.label}</label>
+        <label>{product.Title.label}</label>
         <input
-          {...register(product.Title.meta.id)}
+          {...register(product.Title.id)}
           placeholder="Enter product title"
         />
         {errors.Title && (
@@ -617,8 +646,8 @@ function ProductForm({ productId, onSuccess }: ProductFormProps) {
 
       {/* Description */}
       <div className="field">
-        <label>{product.Description.meta.label}</label>
-        <textarea {...register(product.Description.meta.id)} rows={4} />
+        <label>{product.Description.label}</label>
+        <textarea {...register(product.Description.id)} rows={4} />
         {errors.Description && (
           <span className="error">{errors.Description.message}</span>
         )}
@@ -626,11 +655,11 @@ function ProductForm({ productId, onSuccess }: ProductFormProps) {
 
       {/* Price */}
       <div className="field">
-        <label>{product.Price.meta.label}</label>
+        <label>{product.Price.label}</label>
         <input
           type="number"
           step="0.01"
-          {...register(product.Price.meta.id)}
+          {...register(product.Price.id)}
         />
         {errors.Price && (
           <span className="error">{errors.Price.message}</span>
@@ -642,10 +671,10 @@ function ProductForm({ productId, onSuccess }: ProductFormProps) {
 
       {/* Stock */}
       <div className="field">
-        <label>{product.Stock.meta.label}</label>
+        <label>{product.Stock.label}</label>
         <input
           type="number"
-          {...register(product.Stock.meta.id)}
+          {...register(product.Stock.id)}
         />
         {errors.Stock && (
           <span className="error">{errors.Stock.message}</span>
@@ -654,10 +683,10 @@ function ProductForm({ productId, onSuccess }: ProductFormProps) {
 
       {/* Category (using setValue for select) */}
       <div className="field">
-        <label>{product.Category.meta.label}</label>
+        <label>{product.Category.label}</label>
         <select
-          value={watch(product.Category.meta.id) || ""}
-          onChange={(e) => setValue(product.Category.meta.id, e.target.value)}
+          value={watch(product.Category.id) || ""}
+          onChange={(e) => setValue(product.Category.id, e.target.value)}
         >
           <option value="">Select category</option>
           <option value="Electronics">Electronics</option>

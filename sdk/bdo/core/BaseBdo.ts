@@ -13,21 +13,18 @@ import type {
   PivotResponseType,
   DraftResponseType,
 } from "../../types/common";
-import type { StringFieldType, SystemFields, UserRefType } from "../../types/base-fields";
+import type { SystemFields } from "../../types/base-fields";
 import { api } from "../../api/client";
 import { Item, type ItemType } from "./Item";
 import { BaseField } from "../fields/BaseField";
 import { StringField } from "../fields/StringField";
 import { DateTimeField } from "../fields/DateTimeField";
-import { ReferenceField } from "../fields/ReferenceField";
+import { UserField } from "../fields/UserField";
 import type { ValidationResultType, BdoMetaType } from "./types";
 import { ExpressionEngine, type BDOMetadata } from "../expressions";
 
 // Re-export SystemFields type for consumers
 export type { SystemFields } from "../../types/base-fields";
-
-// System BDO ID for user references
-const USER_BO_ID = "SYS_User";
 
 /**
  * Abstract base class for Business Data Objects
@@ -38,18 +35,6 @@ const USER_BO_ID = "SYS_User";
  * @template TEntity - The full entity type with all fields
  * @template TEditable - Fields that this role can create/update (defaults to TEntity without system fields)
  * @template TReadonly - Fields that this role can only read (defaults to empty)
- *
- * @example
- * ```typescript
- * class AdminProduct extends BaseBdo<ProductType> {
- *   readonly meta = { _id: "BDO_Product", name: "Product" };
- *
- *   // Re-expose only methods this role can use
- *   public async get(id: StringFieldType) { return super.get(id); }
- *   public async list(options?: ListOptionsType) { return super.list(options); }
- *   // create, update, delete NOT exposed - TypeScript error if called
- * }
- * ```
  */
 export abstract class BaseBdo<
   TEntity extends Record<string, unknown>,
@@ -65,23 +50,13 @@ export abstract class BaseBdo<
   // SYSTEM FIELDS (inherited by all BDOs)
   // ============================================================
 
-  readonly _id = new StringField({ id: "_id", label: "ID" });
-  readonly _created_at = new DateTimeField({ id: "_created_at", label: "Created At" });
-  readonly _modified_at = new DateTimeField({ id: "_modified_at", label: "Modified At" });
-  readonly _created_by = new ReferenceField<UserRefType>({
-    id: "_created_by",
-    label: "Created By",
-    referenceBdo: USER_BO_ID,
-    referenceFields: ["_id", "username"],
-  });
-  readonly _modified_by = new ReferenceField<UserRefType>({
-    id: "_modified_by",
-    label: "Modified By",
-    referenceBdo: USER_BO_ID,
-    referenceFields: ["_id", "username"],
-  });
-  readonly _version = new StringField({ id: "_version", label: "Version" });
-  readonly _m_version = new StringField({ id: "_m_version", label: "Metadata Version" });
+  readonly _id = new StringField({ _id: "_id", Name: "ID", Type: "String", ReadOnly: true });
+  readonly _created_at = new DateTimeField({ _id: "_created_at", Name: "Created At", Type: "DateTime", ReadOnly: true });
+  readonly _modified_at = new DateTimeField({ _id: "_modified_at", Name: "Modified At", Type: "DateTime", ReadOnly: true });
+  readonly _created_by = new UserField({ _id: "_created_by", Name: "Created By", Type: "User", ReadOnly: true });
+  readonly _modified_by = new UserField({ _id: "_modified_by", Name: "Modified By", Type: "User", ReadOnly: true });
+  readonly _version = new StringField({ _id: "_version", Name: "Version", Type: "String", ReadOnly: true });
+  readonly _m_version = new StringField({ _id: "_m_version", Name: "Metadata Version", Type: "String", ReadOnly: true });
 
   // ============================================================
   // FIELD DEFINITIONS (auto-discovered)
@@ -190,7 +165,7 @@ export abstract class BaseBdo<
   /**
    * Get a single record by ID
    */
-  protected async get(id: StringFieldType): Promise<ItemType<TEditable, TReadonly>> {
+  protected async get(id: string): Promise<ItemType<TEditable, TReadonly>> {
     const data = await api<TEditable & TReadonly>(this.meta._id).get(id);
     return new Item<TEditable & TReadonly>(this, data as Partial<TEditable & TReadonly>) as ItemType<TEditable, TReadonly>;
   }
@@ -237,7 +212,7 @@ export abstract class BaseBdo<
    * Update an existing record
    */
   protected async update(
-    id: StringFieldType,
+    id: string,
     data: Partial<TEditable>
   ): Promise<CreateUpdateResponseType> {
     return api<TEntity>(this.meta._id).update(id, data as Partial<TEntity>);
@@ -250,7 +225,7 @@ export abstract class BaseBdo<
   /**
    * Delete a record by ID
    */
-  protected async delete(id: StringFieldType): Promise<DeleteResponseType> {
+  protected async delete(id: string): Promise<DeleteResponseType> {
     return api<TEntity>(this.meta._id).delete(id);
   }
 
@@ -284,10 +259,20 @@ export abstract class BaseBdo<
   }
 
   /**
+   * Commit an update draft - finalize changes on an existing record
+   */
+  protected async draftUpdate(
+    id: string,
+    data: Partial<TEditable>
+  ): Promise<CreateUpdateResponseType> {
+    return api<TEntity>(this.meta._id).draftUpdate(id, data as Partial<TEntity>);
+  }
+
+  /**
    * Patch an existing draft - compute fields during editing
    */
   protected async draftPatch(
-    id: StringFieldType,
+    id: string,
     data: Partial<TEditable>
   ): Promise<DraftResponseType> {
     return api<TEntity>(this.meta._id).draftPatch(id, data as Partial<TEntity>);

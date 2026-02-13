@@ -76,6 +76,14 @@ export function useTable<T = any>(
   });
 
   // ============================================================
+  // RESET PAGINATION ON FILTER CHANGE
+  // ============================================================
+
+  useEffect(() => {
+    setPagination((prev) => ({ ...prev, pageNo: 1 }));
+  }, [filter.payload]);
+
+  // ============================================================
   // API OPTIONS BUILDER
   // ============================================================
 
@@ -173,7 +181,7 @@ export function useTable<T = any>(
       }
     },
     staleTime: 0,
-    gcTime: 0,
+    gcTime: 30 * 1000,
   });
 
   // Count query for accurate total items
@@ -196,7 +204,7 @@ export function useTable<T = any>(
       }
     },
     staleTime: 0,
-    gcTime: 0,
+    gcTime: 30 * 1000,
   });
 
   // ============================================================

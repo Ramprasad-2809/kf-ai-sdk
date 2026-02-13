@@ -81,20 +81,6 @@ export interface MetadataItemType {
  *
  * @param options - Optional list options (filters, sorting, pagination)
  * @returns Promise resolving to list of metadata items
- *
- * @example
- * ```typescript
- * // List all metadata
- * const all = await listMetadata();
- *
- * // List with filters
- * const businessObjects = await listMetadata({
- *   Filter: {
- *     Operator: "AND",
- *     Condition: [{ LhsField: "Kind", Operator: "eq", RhsValue: "BusinessObject" }]
- *   }
- * });
- * ```
  */
 export async function listMetadata(
   options?: ListOptionsType
@@ -131,18 +117,34 @@ export async function listMetadata(
 }
 
 /**
- * Field metadata structure
+ * Field metadata structure — matches new Constraint/View/Property backend shape
  */
 export interface FieldMetadataType {
   Id: string;
   Name: string;
   Type: string;
+  ReadOnly?: boolean;
   Required?: boolean;
-  Unique?: boolean;
-  Computed?: boolean;
-  Values?: {
-    Mode: "Static" | "Dynamic";
-    Items?: Array<{ Value: string; Label: string }>;
+  Constraint?: {
+    Required?: boolean;
+    Enum?: string[];
+    Length?: number;
+    IntegerPart?: number;
+    FractionPart?: number;
+    PrimaryKey?: boolean;
+    DefaultValue?: unknown;
+    Precision?: "Second" | "Millisecond";
+    Format?: "Plain" | "Markdown";
   };
+  View?: {
+    DataObject?: { Type: string; Id: string };
+    Fields?: Record<string, { Type: string }>;
+    Search?: string[];
+    Filter?: Record<string, unknown>;
+    Sort?: unknown[];
+    BusinessEntity?: string;
+  };
+  Property?: FieldMetadataType | Record<string, FieldMetadataType>;
+  DefaultValue?: unknown;
   [key: string]: any;
 }
