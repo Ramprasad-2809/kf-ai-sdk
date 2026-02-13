@@ -6,7 +6,7 @@
 // adapted for Activity.
 
 import type { UseFormReturn, Path, FieldValues } from "react-hook-form";
-import type { FieldMetaType } from "../../../bdo/core/types";
+import type { BaseFieldMetaType } from "../../../bdo/core/types";
 import type { BaseField } from "../../../bdo/fields/BaseField";
 import type {
   FormItemType,
@@ -56,12 +56,12 @@ export function createActivityItemProxy<A extends Activity<any, any, any>>(
 
         // Field accessor
         const bdoField = fields[prop] as BaseField<unknown> | undefined;
-        const fieldMeta: FieldMetaType = bdoField?.meta ?? {
-          id: prop,
-          label: prop,
-          isEditable: true,
+        const fieldMeta: BaseFieldMetaType = bdoField?.meta ?? {
+          _id: prop,
+          Name: prop,
+          Type: "String",
         };
-        const isEditable = fieldMeta.isEditable;
+        const isReadOnly = bdoField?.readOnly ?? false;
 
         // Base validate function
         const validate = () => {
@@ -72,8 +72,12 @@ export function createActivityItemProxy<A extends Activity<any, any, any>>(
         };
 
         // Only add set() for editable fields
-        if (isEditable) {
+        if (!isReadOnly) {
           const accessor: EditableFormFieldAccessorType<unknown> = {
+            label: bdoField?.label ?? prop,
+            required: bdoField?.required ?? false,
+            readOnly: false,
+            defaultValue: bdoField?.defaultValue,
             meta: fieldMeta,
             get: () => form.getValues(prop as Path<FieldValues>),
             set: (value: unknown) => {
@@ -89,6 +93,10 @@ export function createActivityItemProxy<A extends Activity<any, any, any>>(
         }
 
         const accessor: ReadonlyFormFieldAccessorType<unknown> = {
+          label: bdoField?.label ?? prop,
+          required: bdoField?.required ?? false,
+          readOnly: true,
+          defaultValue: bdoField?.defaultValue,
           meta: fieldMeta,
           get: () => form.getValues(prop as Path<FieldValues>),
           validate,

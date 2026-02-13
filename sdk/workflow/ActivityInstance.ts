@@ -19,7 +19,7 @@
 //   instance.complete()     // complete      -> ops.complete()
 //   instance.progress()     // get progress  -> ops.progress()
 
-import type { ValidationResultType, FieldMetaType } from "../bdo/core/types";
+import type { ValidationResultType, BaseFieldMetaType } from "../bdo/core/types";
 import type { BaseField } from "../bdo/fields/BaseField";
 import type { ActivityOperations, ActivityProgressType } from "./types";
 import type { CreateUpdateResponseType } from "../types/common";
@@ -32,7 +32,11 @@ import type { CreateUpdateResponseType } from "../types/common";
  * Editable field accessor — has get(), set(), validate(), meta
  */
 export interface EditableFieldAccessor<T> {
-  readonly meta: FieldMetaType;
+  readonly label: string;
+  readonly required: boolean;
+  readonly readOnly: boolean;
+  readonly defaultValue: unknown;
+  readonly meta: BaseFieldMetaType;
   get(): T | undefined;
   set(value: T): void;
   validate(): ValidationResultType;
@@ -42,7 +46,11 @@ export interface EditableFieldAccessor<T> {
  * Readonly field accessor — has get(), validate(), meta (NO set)
  */
 export interface ReadonlyFieldAccessor<T> {
-  readonly meta: FieldMetaType;
+  readonly label: string;
+  readonly required: boolean;
+  readonly readOnly: boolean;
+  readonly defaultValue: unknown;
+  readonly meta: BaseFieldMetaType;
   get(): T | undefined;
   validate(): ValidationResultType;
 }
@@ -179,12 +187,12 @@ export class ActivityInstance<
     }
 
     const fieldDef = this._fields[fieldId];
-    const meta: FieldMetaType = fieldDef?.meta ?? {
-      id: fieldId,
-      label: fieldId,
-      isEditable: true,
+    const meta: BaseFieldMetaType = fieldDef?.meta ?? {
+      _id: fieldId,
+      Name: fieldId,
+      Type: "String",
     };
-    const isEditable = meta.isEditable;
+    const isReadOnly = fieldDef?.readOnly ?? false;
 
     const validate = (): ValidationResultType => {
       if (fieldDef) {
@@ -195,8 +203,12 @@ export class ActivityInstance<
 
     let accessor: EditableFieldAccessor<unknown> | ReadonlyFieldAccessor<unknown>;
 
-    if (isEditable) {
+    if (!isReadOnly) {
       accessor = {
+        label: fieldDef?.label ?? fieldId,
+        required: fieldDef?.required ?? false,
+        readOnly: false,
+        defaultValue: fieldDef?.defaultValue,
         meta,
         get: () => this._data[fieldId],
         set: (value: unknown) => {
@@ -206,6 +218,10 @@ export class ActivityInstance<
       };
     } else {
       accessor = {
+        label: fieldDef?.label ?? fieldId,
+        required: fieldDef?.required ?? false,
+        readOnly: true,
+        defaultValue: fieldDef?.defaultValue,
         meta,
         get: () => this._data[fieldId],
         validate,

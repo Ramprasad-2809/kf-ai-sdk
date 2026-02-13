@@ -36,7 +36,7 @@ export function createActivityResolver<A extends Activity<any, any, any>>(
       if (!field) continue;
 
       // Skip validation for readonly fields
-      if (!field.meta.isEditable) continue;
+      if (field.readOnly) continue;
 
       const value = values[fieldName];
 
