@@ -30,7 +30,9 @@ export interface ResourceClientType<T = any> {
   get(id: string): Promise<T>;
 
   /** Create new record */
-  create(data: Partial<T> & { _id?: string }): Promise<CreateUpdateResponseType>;
+  create(
+    data: Partial<T> & { _id?: string },
+  ): Promise<CreateUpdateResponseType>;
 
   /** Update existing record */
   update(id: string, data: Partial<T>): Promise<CreateUpdateResponseType>;
@@ -72,7 +74,7 @@ export interface ResourceClientType<T = any> {
    * Used in interactive mode for create operations
    */
   draftInteraction(
-    data: Partial<T> & { _id?: string }
+    data: Partial<T> & { _id?: string },
   ): Promise<DraftResponseType & { _id: string }>;
 
   // ============================================================
@@ -111,7 +113,7 @@ export interface ResourceClientType<T = any> {
    */
   fetchField<TResult = FetchFieldOptionType>(
     instanceId: string,
-    fieldId: string
+    fieldId: string,
   ): Promise<TResult[]>;
 }
 
@@ -162,30 +164,27 @@ export function getApiBaseUrl(): string {
 }
 
 /**
- * Parse error response body and throw an Error with the server's message.
- */
-async function throwApiError(response: Response, context: string): Promise<never> {
-  let errorBody: any;
-  try { errorBody = await response.json(); } catch {}
-  const message = errorBody?.error || errorBody?.message || response.statusText;
-  throw new Error(`${context}: ${message}`);
-}
-
-/**
- * Create a resource client for the specified Business Object
- * @param bo_id - Business Object identifier (e.g., "user", "leave", "vendor")
+ * Create a resource client for a given base path.
+ * This is the shared implementation used by both `api()` and workflow owner methods.
+ * @param basePath - URL path segment (e.g., "/api/app/user" or "/api/app/process/leave_bp/vendor_ado")
  * @returns Resource client with CRUD operations matching API spec
  */
-export function api<T = any>(bo_id: string): ResourceClientType<T> {
+export function createResourceClient<T = any>(
+  basePath: string,
+): ResourceClientType<T> {
+  const baseUrl = apiConfig.baseUrl;
+
   return {
     async get(id: string): Promise<T> {
-      const response = await fetch(`${getApiBaseUrl()}/api/app/${bo_id}/${id}/read`, {
+      const response = await fetch(`${baseUrl}${basePath}/${id}/read`, {
         method: "GET",
         headers: getDefaultHeaders(),
       });
 
       if (!response.ok) {
-        await throwApiError(response, `Failed to get ${bo_id} ${id}`);
+        throw new Error(
+          `Failed to get ${basePath} ${id}: ${response.statusText}`,
+        );
       }
 
       const responseData: ReadResponseType<T> = await response.json();
@@ -193,43 +192,50 @@ export function api<T = any>(bo_id: string): ResourceClientType<T> {
     },
 
     async create(
-      data: Partial<T> & { _id?: string }
+      data: Partial<T> & { _id?: string },
     ): Promise<CreateUpdateResponseType> {
-      const response = await fetch(`${getApiBaseUrl()}/api/app/${bo_id}/create`, {
+      const response = await fetch(`${baseUrl}${basePath}/create`, {
         method: "POST",
         headers: getDefaultHeaders(),
         body: JSON.stringify(data),
       });
 
       if (!response.ok) {
-        await throwApiError(response, `Failed to create ${bo_id}`);
+        throw new Error(`Failed to create ${basePath}: ${response.statusText}`);
       }
 
       return response.json();
     },
 
-    async update(id: string, data: Partial<T>): Promise<CreateUpdateResponseType> {
-      const response = await fetch(`${getApiBaseUrl()}/api/app/${bo_id}/${id}/update`, {
+    async update(
+      id: string,
+      data: Partial<T>,
+    ): Promise<CreateUpdateResponseType> {
+      const response = await fetch(`${baseUrl}${basePath}/${id}/update`, {
         method: "POST",
         headers: getDefaultHeaders(),
         body: JSON.stringify(data),
       });
 
       if (!response.ok) {
-        await throwApiError(response, `Failed to update ${bo_id} ${id}`);
+        throw new Error(
+          `Failed to update ${basePath} ${id}: ${response.statusText}`,
+        );
       }
 
       return response.json();
     },
 
     async delete(id: string): Promise<DeleteResponseType> {
-      const response = await fetch(`${getApiBaseUrl()}/api/app/${bo_id}/${id}/delete`, {
+      const response = await fetch(`${baseUrl}${basePath}/${id}/delete`, {
         method: "DELETE",
         headers: getDefaultHeaders(),
       });
 
       if (!response.ok) {
-        await throwApiError(response, `Failed to delete ${bo_id} ${id}`);
+        throw new Error(
+          `Failed to delete ${basePath} ${id}: ${response.statusText}`,
+        );
       }
 
       return response.json();
@@ -241,14 +247,14 @@ export function api<T = any>(bo_id: string): ResourceClientType<T> {
         ...options,
       };
 
-      const response = await fetch(`${getApiBaseUrl()}/api/app/${bo_id}/list`, {
+      const response = await fetch(`${baseUrl}${basePath}/list`, {
         method: "POST",
         headers: getDefaultHeaders(),
         body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
-        await throwApiError(response, `Failed to list ${bo_id}`);
+        throw new Error(`Failed to list ${basePath}: ${response.statusText}`);
       }
 
       const responseData: ListResponseType<T> = await response.json();
@@ -264,14 +270,14 @@ export function api<T = any>(bo_id: string): ResourceClientType<T> {
         ...(options?.Filter && { Filter: options.Filter }),
       };
 
-      const response = await fetch(`${getApiBaseUrl()}/api/app/${bo_id}/metric`, {
+      const response = await fetch(`${baseUrl}${basePath}/metric`, {
         method: "POST",
         headers: getDefaultHeaders(),
         body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
-        await throwApiError(response, `Failed to count ${bo_id}`);
+        throw new Error(`Failed to count ${basePath}: ${response.statusText}`);
       }
 
       const result = await response.json();
@@ -285,14 +291,16 @@ export function api<T = any>(bo_id: string): ResourceClientType<T> {
     // ============================================================
 
     async draft(data: Partial<T>): Promise<DraftResponseType> {
-      const response = await fetch(`${getApiBaseUrl()}/api/app/${bo_id}/draft`, {
+      const response = await fetch(`${baseUrl}${basePath}/draft`, {
         method: "POST",
         headers: getDefaultHeaders(),
         body: JSON.stringify(data),
       });
 
       if (!response.ok) {
-        await throwApiError(response, `Failed to create draft for ${bo_id}`);
+        throw new Error(
+          `Failed to create draft for ${basePath}: ${response.statusText}`,
+        );
       }
 
       return response.json();
@@ -300,46 +308,52 @@ export function api<T = any>(bo_id: string): ResourceClientType<T> {
 
     async draftUpdate(
       id: string,
-      data: Partial<T>
+      data: Partial<T>,
     ): Promise<CreateUpdateResponseType> {
-      const response = await fetch(`${getApiBaseUrl()}/api/app/${bo_id}/${id}/draft`, {
+      const response = await fetch(`${baseUrl}${basePath}/${id}/draft`, {
         method: "POST",
         headers: getDefaultHeaders(),
         body: JSON.stringify(data),
       });
 
       if (!response.ok) {
-        await throwApiError(response, `Failed to update draft for ${bo_id} ${id}`);
+        throw new Error(
+          `Failed to update draft for ${basePath} ${id}: ${response.statusText}`,
+        );
       }
 
       return response.json();
     },
 
     async draftPatch(id: string, data: Partial<T>): Promise<DraftResponseType> {
-      const response = await fetch(`${getApiBaseUrl()}/api/app/${bo_id}/${id}/draft`, {
+      const response = await fetch(`${baseUrl}${basePath}/${id}/draft`, {
         method: "PATCH",
         headers: getDefaultHeaders(),
         body: JSON.stringify(data),
       });
 
       if (!response.ok) {
-        await throwApiError(response, `Failed to patch draft for ${bo_id} ${id}`);
+        throw new Error(
+          `Failed to patch draft for ${basePath} ${id}: ${response.statusText}`,
+        );
       }
 
       return response.json();
     },
 
     async draftInteraction(
-      data: Partial<T> & { _id?: string }
+      data: Partial<T> & { _id?: string },
     ): Promise<DraftResponseType & { _id: string }> {
-      const response = await fetch(`${getApiBaseUrl()}/api/app/${bo_id}/draft`, {
+      const response = await fetch(`${baseUrl}${basePath}/draft`, {
         method: "PATCH",
         headers: getDefaultHeaders(),
         body: JSON.stringify(data),
       });
 
       if (!response.ok) {
-        await throwApiError(response, `Failed to create interactive draft for ${bo_id}`);
+        throw new Error(
+          `Failed to create interactive draft for ${basePath}: ${response.statusText}`,
+        );
       }
 
       const json = await response.json();
@@ -356,40 +370,46 @@ export function api<T = any>(bo_id: string): ResourceClientType<T> {
     // ============================================================
 
     async metric(
-      options: Omit<MetricOptionsType, "Type">
+      options: Omit<MetricOptionsType, "Type">,
     ): Promise<MetricResponseType> {
       const requestBody: MetricOptionsType = {
         Type: "Metric",
         ...options,
       };
 
-      const response = await fetch(`${getApiBaseUrl()}/api/app/${bo_id}/metric`, {
+      const response = await fetch(`${baseUrl}${basePath}/metric`, {
         method: "POST",
         headers: getDefaultHeaders(),
         body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
-        await throwApiError(response, `Failed to get metrics for ${bo_id}`);
+        throw new Error(
+          `Failed to get metrics for ${basePath}: ${response.statusText}`,
+        );
       }
 
       return response.json();
     },
 
-    async pivot(options: Omit<PivotOptionsType, "Type">): Promise<PivotResponseType> {
+    async pivot(
+      options: Omit<PivotOptionsType, "Type">,
+    ): Promise<PivotResponseType> {
       const requestBody: PivotOptionsType = {
         Type: "Pivot",
         ...options,
       };
 
-      const response = await fetch(`${getApiBaseUrl()}/api/app/${bo_id}/pivot`, {
+      const response = await fetch(`${baseUrl}${basePath}/pivot`, {
         method: "POST",
         headers: getDefaultHeaders(),
         body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
-        await throwApiError(response, `Failed to get pivot data for ${bo_id}`);
+        throw new Error(
+          `Failed to get pivot data for ${basePath}: ${response.statusText}`,
+        );
       }
 
       return response.json();
@@ -400,13 +420,15 @@ export function api<T = any>(bo_id: string): ResourceClientType<T> {
     // ============================================================
 
     async fields(): Promise<FieldsResponseType> {
-      const response = await fetch(`${getApiBaseUrl()}/api/app/${bo_id}/fields`, {
+      const response = await fetch(`${baseUrl}${basePath}/fields`, {
         method: "GET",
         headers: getDefaultHeaders(),
       });
 
       if (!response.ok) {
-        await throwApiError(response, `Failed to get fields for ${bo_id}`);
+        throw new Error(
+          `Failed to get fields for ${basePath}: ${response.statusText}`,
+        );
       }
 
       return response.json();
@@ -414,22 +436,33 @@ export function api<T = any>(bo_id: string): ResourceClientType<T> {
 
     async fetchField<TResult = FetchFieldOptionType>(
       instanceId: string,
-      fieldId: string
+      fieldId: string,
     ): Promise<TResult[]> {
       const response = await fetch(
-        `${getApiBaseUrl()}/api/app/${bo_id}/${instanceId}/field/${fieldId}/fetch`,
+        `${baseUrl}${basePath}/${instanceId}/field/${fieldId}/fetch`,
         {
           method: "GET",
           headers: getDefaultHeaders(),
-        }
+        },
       );
 
       if (!response.ok) {
-        await throwApiError(response, `Failed to fetch field ${fieldId} for ${bo_id}`);
+        throw new Error(
+          `Failed to fetch field ${fieldId} for ${basePath}: ${response.statusText}`,
+        );
       }
 
       const responseData: { Data: TResult[] } = await response.json();
       return responseData.Data;
     },
   };
+}
+
+/**
+ * Create a resource client for the specified Business Object
+ * @param bo_id - Business Object identifier (e.g., "user", "leave", "vendor")
+ * @returns Resource client with CRUD operations matching API spec
+ */
+export function api<T = any>(bo_id: string): ResourceClientType<T> {
+  return createResourceClient<T>(`/api/app/${bo_id}`);
 }
