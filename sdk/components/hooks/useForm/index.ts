@@ -15,4 +15,5 @@ export type {
   CreatableBdo,
   UpdatableBdo,
   FormBdo,
+  InteractiveCreatableBdo,
 } from "./types";

@@ -55,6 +55,12 @@ export interface UpdatableBdo<TEditable = any> extends BaseBdoShape {
 /** BDO that supports both create and update */
 export type FormBdo<TEditable = any> = CreatableBdo<TEditable> & UpdatableBdo<TEditable>;
 
+/** BDO that supports interactive create (draft interaction during create) */
+export interface InteractiveCreatableBdo<TEditable = any> extends CreatableBdo<TEditable> {
+  draftInteraction(data: Partial<TEditable>): Promise<any>;
+  draft(data: Partial<TEditable>): Promise<any>;
+}
+
 // ============================================================
 // HANDLE SUBMIT TYPE
 // ============================================================
@@ -92,6 +98,8 @@ interface UseFormCreateOptionsType<B extends BaseBdo<any, any, any>> {
   recordId?: undefined;
   defaultValues?: Partial<ExtractEditableType<B>>;
   mode?: "onBlur" | "onChange" | "onSubmit" | "onTouched" | "all";
+  interactionMode?: "interactive" | "non-interactive";
+  /** @deprecated Use interactionMode instead */
   enableDraft?: boolean;
   enableConstraintValidation?: boolean;
   enableExpressionValidation?: boolean;
@@ -104,6 +112,8 @@ interface UseFormUpdateOptionsType<B extends BaseBdo<any, any, any>> {
   recordId: string;
   defaultValues?: Partial<ExtractEditableType<B>>;
   mode?: "onBlur" | "onChange" | "onSubmit" | "onTouched" | "all";
+  interactionMode?: "interactive" | "non-interactive";
+  /** @deprecated Use interactionMode instead */
   enableDraft?: boolean;
   enableConstraintValidation?: boolean;
   enableExpressionValidation?: boolean;
@@ -116,6 +126,8 @@ interface UseFormAutoOptionsType<B extends BaseBdo<any, any, any>> {
   recordId?: string;
   defaultValues?: Partial<ExtractEditableType<B>>;
   mode?: "onBlur" | "onChange" | "onSubmit" | "onTouched" | "all";
+  interactionMode?: "interactive" | "non-interactive";
+  /** @deprecated Use interactionMode instead */
   enableDraft?: boolean;
   enableConstraintValidation?: boolean;
   enableExpressionValidation?: boolean;
@@ -223,7 +235,9 @@ export interface UseFormReturnType<B extends BaseBdo<any, any, any>> {
   // Error
   loadError: Error | null;
 
-  // Draft (optional)
-  draftId?: string;
-  isCreatingDraft?: boolean;
+  // Draft / Interactive mode
+  draftId: string | undefined;
+  isInitializingDraft: boolean;
+  isInteracting: boolean;
+  interactionError: Error | null;
 }

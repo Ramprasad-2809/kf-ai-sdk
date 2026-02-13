@@ -259,6 +259,16 @@ export abstract class BaseBdo<
   }
 
   /**
+   * Commit an update draft - finalize changes on an existing record
+   */
+  protected async draftUpdate(
+    id: string,
+    data: Partial<TEditable>
+  ): Promise<CreateUpdateResponseType> {
+    return api<TEntity>(this.meta._id).draftUpdate(id, data as Partial<TEntity>);
+  }
+
+  /**
    * Patch an existing draft - compute fields during editing
    */
   protected async draftPatch(

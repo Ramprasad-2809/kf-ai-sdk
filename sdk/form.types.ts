@@ -14,4 +14,5 @@ export type {
   ExtractEditableType,
   ExtractReadonlyType,
   AllFieldsType,
+  InteractiveCreatableBdo,
 } from "./components/hooks/useForm";
