@@ -80,6 +80,8 @@ export function createActivityItemProxy<A extends Activity<any, any, any>>(
             defaultValue: bdoField?.defaultValue,
             meta: fieldMeta,
             get: () => form.getValues(prop as Path<FieldValues>),
+            getOrDefault: (fallback: unknown) =>
+              form.getValues(prop as Path<FieldValues>) ?? fallback,
             set: (value: unknown) => {
               form.setValue(prop as Path<FieldValues>, value as any, {
                 shouldDirty: true,
@@ -99,6 +101,8 @@ export function createActivityItemProxy<A extends Activity<any, any, any>>(
           defaultValue: bdoField?.defaultValue,
           meta: fieldMeta,
           get: () => form.getValues(prop as Path<FieldValues>),
+          getOrDefault: (fallback: unknown) =>
+            form.getValues(prop as Path<FieldValues>) ?? fallback,
           validate,
         };
         return accessor;
