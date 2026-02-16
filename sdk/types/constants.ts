@@ -211,9 +211,9 @@ export const FormOperation = {
  * });
  */
 export const InteractionMode = {
-  /** Real-time server-side validation and computation on field blur/change */
+  /** Real-time server-side validation and computation on every field blur */
   Interactive: "interactive",
-  /** No server interaction during editing — submit only */
+  /** Draft only for computed field dependencies */
   NonInteractive: "non-interactive",
 } as const;
 
@@ -250,8 +250,10 @@ export const ValidationMode = {
  * BDO field types from schema
  */
 export const BdoFieldType = {
-  /** Text field */
+  /** Single-line text field */
   String: "String",
+  /** Multi-line text field */
+  Text: "Text",
   /** Numeric field */
   Number: "Number",
   /** Boolean field */
@@ -262,18 +264,16 @@ export const BdoFieldType = {
   DateTime: "DateTime",
   /** Reference to another BDO */
   Reference: "Reference",
+  /** User reference field */
+  User: "User",
+  /** Secret/password field */
+  Secrets: "Secrets",
+  /** Activity flow field */
+  ActivityFlow: "ActivityFlow",
   /** Array field */
   Array: "Array",
   /** Object field */
   Object: "Object",
-  /** Activity flow field */
-  ActivityFlow: "ActivityFlow",
-  /** Multi-line text field */
-  TextArea: "TextArea",
-  /** Secret/password field */
-  Secret: "Secret",
-  /** User reference field */
-  User: "User",
 } as const;
 
 /**

@@ -18,7 +18,7 @@ interface SearchState<T> {
 
 interface SortingState<T> {
   field: keyof T | null;
-  direction: "asc" | "desc" | null;
+  direction: "ASC" | "DESC" | null;
 }
 
 interface PaginationState {
@@ -53,7 +53,8 @@ export function useTable<T = any>(
     if (sortConfig && sortConfig.length > 0) {
       const firstSort = sortConfig[0];
       const field = Object.keys(firstSort)[0] as keyof T;
-      const direction = firstSort[field as string]?.toLowerCase() as "asc" | "desc";
+      const raw = firstSort[field as string]?.toUpperCase() as "ASC" | "DESC";
+      const direction = raw === "ASC" || raw === "DESC" ? raw : "ASC";
       return { field, direction };
     }
     return { field: null, direction: null };
@@ -142,7 +143,7 @@ export function useTable<T = any>(
     if (sorting.field && sorting.direction) {
       opts.Sort = [
         {
-          [String(sorting.field)]: sorting.direction === "asc" ? "ASC" : "DESC",
+          [String(sorting.field)]: sorting.direction,
         },
       ];
     }
@@ -225,13 +226,13 @@ export function useTable<T = any>(
   const toggleSort = useCallback((field: keyof T) => {
     setSorting((prev) => {
       if (prev.field === field) {
-        if (prev.direction === "asc") {
-          return { field, direction: "desc" };
-        } else if (prev.direction === "desc") {
+        if (prev.direction === "ASC") {
+          return { field, direction: "DESC" };
+        } else if (prev.direction === "DESC") {
           return { field: null, direction: null };
         }
       }
-      return { field, direction: "asc" };
+      return { field, direction: "ASC" };
     });
   }, []);
 
@@ -240,7 +241,7 @@ export function useTable<T = any>(
   }, []);
 
   const setSort = useCallback(
-    (field: keyof T | null, direction: "asc" | "desc" | null) => {
+    (field: keyof T | null, direction: "ASC" | "DESC" | null) => {
       setSorting({ field, direction });
     },
     []

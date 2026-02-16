@@ -61,15 +61,20 @@ interface WorkflowStartResponseType {
 
 ```typescript
 interface ActivityProgressType {
-  Stage?: string;
-  Progress?: number;
-  [key: string]: any;
+  ActivityId: string;
+  ActivityInstanceId: string;
+  ActivityType: string;
+  AssignedTo: { Type: string; _id: string }[];
+  CompletedAt: string | null;
+  CompletedBy: { _id: string; _name: string } | null;
+  Status: "COMPLETED" | "IN_PROGRESS";
+  _name: string;
 }
 ```
 
 ### ActivityInstanceFieldsType
 
-System fields present on every activity instance. Returned alongside activity-specific fields from `getInstanceList()`.
+System fields present on every activity instance. Returned alongside activity-specific fields from `getInProgressList()` and `getCompletedList()`.
 
 ```typescript
 type ActivityInstanceFieldsType = {
@@ -84,7 +89,7 @@ type ActivityInstanceFieldsType = {
 
 ```typescript
 interface UseActivityFormOptions<A extends Activity<any, any, any>> {
-  /** Activity instance identifier (from wf.start() or getInstanceList()) */
+  /** Activity instance identifier (from wf.start() or getInProgressList()) */
   activity_instance_id: string;
 
   /** Default form values */
@@ -209,28 +214,50 @@ export class SimpleLeaveProcess {
 
 ---
 
+## Workflow Class
+
+### start()
+
+Start a new workflow instance.
+
+```typescript
+const wf = new SimpleLeaveProcess();
+const { activityId, activityInstanceId } = await wf.start();
+```
+
+### progress()
+
+Get global progress across the entire business process. Returns a list of progress entries for each stage/activity.
+
+```typescript
+const wf = new SimpleLeaveProcess();
+const progressList = await wf.progress();
+// progressList: ActivityProgressType[]
+for (const entry of progressList) {
+  console.log(entry._name, entry.Status, entry.CompletedAt);
+}
+```
+
+**Endpoint:** `GET /api/app/process/{bp_id}/progress`
+
+---
+
 ## Activity Class
 
-Each Activity class provides methods to query and access activity instances.
+Each Activity class provides methods to query and access activity instances. List and metric operations are split by status (`inprogress` / `completed`).
 
 ```typescript
 const activity = wf.employeeInputActivity();
 ```
 
-### getInstanceList(options?)
+### getInProgressList(options?)
 
-List activity instances with optional filtering and pagination.
+List in-progress activity instances with optional filtering and pagination.
 
 ```typescript
-const result = await activity.getInstanceList({
+const result = await activity.getInProgressList({
   Page: 1,
   PageSize: 20,
-  Filter: {
-    Operator: "And",
-    Condition: [
-      { LHSField: "Status", Operator: "EQ", RHSValue: "InProgress", RHSType: "Constant" },
-    ],
-  },
 });
 
 for (const item of result.Data) {
@@ -238,12 +265,37 @@ for (const item of result.Data) {
 }
 ```
 
-### instanceMetrics(options)
+### getCompletedList(options?)
 
-Get aggregated metrics for activity instances.
+List completed activity instances with optional filtering and pagination.
 
 ```typescript
-const metrics = await activity.instanceMetrics({
+const result = await activity.getCompletedList({
+  Page: 1,
+  PageSize: 20,
+});
+
+for (const item of result.Data) {
+  console.log(item._id, item.CompletedAt, item.StartDate);
+}
+```
+
+### inProgressMetrics(options)
+
+Get aggregated metrics for in-progress activity instances.
+
+```typescript
+const metrics = await activity.inProgressMetrics({
+  Metric: [{ Field: "Status", Function: "Count" }],
+});
+```
+
+### completedMetrics(options)
+
+Get aggregated metrics for completed activity instances.
+
+```typescript
+const metrics = await activity.completedMetrics({
   Metric: [{ Field: "Status", Function: "Count" }],
 });
 ```
@@ -271,7 +323,7 @@ instance.validate();                   // validate all fields
 await instance.update({ StartDate: "2026-03-01" });  // update fields
 await instance.save({ StartDate: "2026-03-01" });    // save and commit
 await instance.complete();                            // complete the activity
-const progress = await instance.progress();           // get progress
+const progress = await instance.progress();           // get progress (ActivityProgressType[])
 ```
 
 ---
@@ -284,7 +336,7 @@ React hook for building forms bound to workflow activity input fields. Integrate
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `activity_instance_id` | `string` | *required* | Activity instance ID (from `wf.start()` or `getInstanceList()`) |
+| `activity_instance_id` | `string` | *required* | Activity instance ID (from `wf.start()` or `getInProgressList()`) |
 | `defaultValues` | `Partial<Editable>` | `{}` | Initial form values |
 | `mode` | `"onBlur" \| "onChange" \| "onSubmit" \| "onTouched" \| "all"` | `"onBlur"` | Validation timing |
 | `enabled` | `boolean` | `true` | Whether to load activity data on mount |
@@ -350,6 +402,9 @@ import type { WorkflowStartResponseType } from "@ram_28/kf-ai-sdk/workflow";
 
 const wf = new SimpleLeaveProcess();
 const { activityId, activityInstanceId }: WorkflowStartResponseType = await wf.start();
+
+// Check global progress at any time
+const progress = await wf.progress();
 ```
 
 ### Step 2 — React component with useActivityForm
@@ -505,13 +560,7 @@ import { SimpleLeaveProcess } from "@/bdo/workflows/SimpleLeaveProcess";
 const wf = new SimpleLeaveProcess();
 const activity = wf.managerApprovalActivity();
 
-const result = await activity.getInstanceList({
-  Filter: {
-    Operator: "And",
-    Condition: [
-      { LHSField: "Status", Operator: "EQ", RHSValue: "InProgress", RHSType: "Constant" },
-    ],
-  },
+const result = await activity.getInProgressList({
   Page: 1,
   PageSize: 20,
 });
@@ -628,7 +677,7 @@ await instance.save({ StartDate: "2026-03-01", EndDate: "2026-03-05" });
 // Complete activity
 await instance.complete();
 
-// Check progress
+// Check progress (returns ActivityProgressType[])
 const progress = await instance.progress();
 ```
 
@@ -636,36 +685,24 @@ const progress = await instance.progress();
 
 ## Filtering Reference
 
+Status filtering is built into the method names (`getInProgressList` / `getCompletedList`), so you no longer need a Status filter condition.
+
 ### In-progress items
 
 ```typescript
-const result = await activity.getInstanceList({
-  Filter: {
-    Operator: "And",
-    Condition: [
-      { LHSField: "Status", Operator: "EQ", RHSValue: "InProgress", RHSType: "Constant" },
-    ],
-  },
-});
+const result = await activity.getInProgressList();
 ```
 
 ### Completed items
 
 ```typescript
-const result = await activity.getInstanceList({
-  Filter: {
-    Operator: "And",
-    Condition: [
-      { LHSField: "Status", Operator: "EQ", RHSValue: "Completed", RHSType: "Constant" },
-    ],
-  },
-});
+const result = await activity.getCompletedList();
 ```
 
-### Assigned to a specific user
+### Assigned to a specific user (in-progress)
 
 ```typescript
-const result = await activity.getInstanceList({
+const result = await activity.getInProgressList({
   Filter: {
     Operator: "And",
     Condition: [
@@ -675,18 +712,25 @@ const result = await activity.getInstanceList({
 });
 ```
 
-### Combined: In-progress + assigned to user
+### Assigned to a specific user (completed)
 
 ```typescript
-const result = await activity.getInstanceList({
+const result = await activity.getCompletedList({
   Filter: {
     Operator: "And",
     Condition: [
-      { LHSField: "Status", Operator: "EQ", RHSValue: "InProgress", RHSType: "Constant" },
       { LHSField: "AssignedTo._id", Operator: "EQ", RHSValue: userId, RHSType: "Constant" },
     ],
   },
 });
+```
+
+### Global process progress
+
+```typescript
+const wf = new SimpleLeaveProcess();
+const progressList = await wf.progress();
+// Returns ActivityProgressType[] — one entry per activity in the process
 ```
 
 ---
