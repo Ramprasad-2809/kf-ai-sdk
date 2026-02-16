@@ -65,10 +65,10 @@ export interface UseTableReturnType<T> {
   // Sorting (Flat Access)
   sort: {
     field: keyof T | null;
-    direction: "asc" | "desc" | null;
+    direction: "ASC" | "DESC" | null;
     toggle: (field: keyof T) => void;
     clear: () => void;
-    set: (field: keyof T, direction: "asc" | "desc") => void;
+    set: (field: keyof T, direction: "ASC" | "DESC") => void;
   };
 
   // Filter (Simplified chainable API)

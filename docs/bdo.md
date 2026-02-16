@@ -740,3 +740,66 @@ suppliers.forEach((sup) => {
   console.log(`${sup._id}: ${sup.SupplierName}`);
 });
 ```
+
+---
+
+## Common Mistakes
+
+### 1. Guessing field names instead of reading BDO files
+
+ALWAYS read the BDO `.ts` files (`src/bdo/{role}/*.ts`) BEFORE writing page code. Use the exact field names from the class — NEVER guess or invent field names.
+
+```typescript
+// ❌ WRONG — guessing field names that don't exist
+bdo.used        // TS2339: Property 'used' does not exist
+bdo.remaining   // TS2339: Property 'remaining' does not exist
+bdo.meta_title  // TS2339: actual field might be 'seo_title'
+bdo.tags        // TS2339: no such field exists
+
+// ✅ CORRECT — read the BDO file first, use exact names
+// Check src/bdo/employee/LeaveBalance.ts for actual fields
+bdo.UsedLeaves     // matches the actual field in the BDO class
+bdo.RemainingDays  // matches the actual field in the BDO class
+```
+
+### 2. Inventing BDO classes that don't exist
+
+Check `src/bdo/{role}/index.ts` to see which BDO classes actually exist before importing.
+
+```typescript
+// ❌ WRONG — ShippingAddress BDO doesn't exist
+import { customerShippingAddress } from "@/bdo/customer/ShippingAddress";
+
+// ✅ CORRECT — check index.ts first. shipping_address might just be a StringField on Order
+import { customerOrder } from "@/bdo/customer/Order";
+```
+
+### 3. Calling protected methods
+
+All `BaseBdo` methods are `protected` by default. Only the methods the role has permission for are re-exposed as `public` in the generated class. Read the BDO file to see which methods are available.
+
+```typescript
+// ❌ WRONG — if delete is not in the role's BDO class
+await bdo.delete(id);  // TS2445: Property 'delete' is protected
+
+// ✅ CORRECT — use api() for methods not exposed on the BDO class
+import { api } from "@ram_28/kf-ai-sdk/api";
+await api(bdo.meta._id).delete(id);
+
+// ✅ CORRECT — for create/update, prefer useForm
+const { handleSubmit } = useForm({ bdo });
+```
+
+### 4. Not handling `.get()` return type
+
+`ItemType` field `.get()` returns `T | undefined`. Always handle the undefined case.
+
+```typescript
+// ❌ WRONG — might be undefined
+const title: string = item.Title.get();
+
+// ✅ CORRECT — provide fallback
+const title = item.Title.get() ?? "";
+const price = item.Price.get() ?? 0;
+const active = item.IsActive.get() ?? false;
+```

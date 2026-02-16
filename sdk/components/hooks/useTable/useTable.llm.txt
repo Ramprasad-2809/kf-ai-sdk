@@ -90,10 +90,10 @@ const table = useTable<ProductType>({
 | Property | Type | Description |
 |----------|------|-------------|
 | `sort.field` | `keyof T \| null` | Current sort field |
-| `sort.direction` | `"asc" \| "desc" \| null` | Current sort direction |
-| `sort.toggle` | `(field: keyof T) => void` | Toggle sort (triggers API call, cycles: asc -> desc -> none) |
+| `sort.direction` | `"ASC" \| "DESC" \| null` | Current sort direction |
+| `sort.toggle` | `(field: keyof T) => void` | Toggle sort (triggers API call, cycles: ASC -> DESC -> none) |
 | `sort.clear` | `() => void` | Clear sorting (triggers API call) |
-| `sort.set` | `(field: keyof T, direction: "asc" \| "desc") => void` | Set specific sort (triggers API call) |
+| `sort.set` | `(field: keyof T, direction: "ASC" \| "DESC") => void` | Set specific sort (triggers API call) |
 
 #### Filtering (Advanced)
 | Property | Type | Description |
@@ -265,16 +265,16 @@ const handlePriceChange = (rangeLabel: string) => {
 const handleSortChange = (value: string) => {
   switch (value) {
     case "price-asc":
-      table.sort.set("Price", "asc");
+      table.sort.set("Price", "ASC");
       break;
     case "price-desc":
-      table.sort.set("Price", "desc");
+      table.sort.set("Price", "DESC");
       break;
     case "newest":
-      table.sort.set("_created_at", "desc");
+      table.sort.set("_created_at", "DESC");
       break;
     default:
-      table.sort.set("Title", "asc");
+      table.sort.set("Title", "ASC");
       break;
   }
 };

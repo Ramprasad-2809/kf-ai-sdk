@@ -736,3 +736,62 @@ ValidationMode.All       // "all"
 FormOperation.Create     // "create"
 FormOperation.Update     // "update"
 ```
+
+---
+
+## Common Mistakes
+
+### 1. Passing FieldType instead of BDO instance
+
+`useForm` takes a BDO class **instance**, NOT a FieldType. The hook infers all types from the BDO class.
+
+```typescript
+// ❌ WRONG — FieldType as generic causes register/watch to return `never`
+useForm<ProductFieldType>({ ... });
+
+// ❌ WRONG — passing FieldType as bdo
+useForm({ bdo: ProductFieldType });
+
+// ✅ CORRECT — pass a BDO class instance
+const product = useMemo(() => new SellerProduct(), []);
+useForm({ bdo: product, mode: ValidationMode.OnBlur });
+```
+
+### 2. Wrong handleSubmit onSuccess type
+
+```typescript
+// ❌ WRONG — these types cause errors
+const onSuccess = (data: unknown) => { ... };
+const onSuccess = (data: Partial<EditableFieldType>) => { ... };
+
+// ✅ CORRECT — CreateUpdateResponseType = { _id: string }
+import type { CreateUpdateResponseType } from "@ram_28/kf-ai-sdk/api/types";
+const onSuccess = (data: CreateUpdateResponseType): void => {
+  console.log("Saved:", data._id);
+};
+```
+
+### 3. Using register() for boolean fields
+
+Boolean fields need watch/setValue pattern because HTML checkboxes don't work with register().
+
+```typescript
+// ❌ WRONG — register doesn't work correctly with checkboxes
+<input type="checkbox" {...register(bdo.IsActive.id)} />
+
+// ✅ CORRECT — use watch + setValue
+<Checkbox
+  checked={Boolean(watch(bdo.IsActive.id))}
+  onCheckedChange={(v) => setValue(bdo.IsActive.id, v as boolean)}
+/>
+```
+
+### 4. Wrong default values for date fields
+
+```typescript
+// ❌ WRONG — empty string causes type errors
+defaultValues: { StartDate: "" }
+
+// ✅ CORRECT — use undefined for date fields
+defaultValues: { StartDate: undefined }
+```

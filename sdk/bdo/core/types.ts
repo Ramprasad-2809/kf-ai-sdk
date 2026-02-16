@@ -155,6 +155,7 @@ export interface BaseFieldAccessorType<T> {
   readonly defaultValue: unknown;
   readonly meta: BaseFieldMetaType;
   get(): T | undefined;
+  getOrDefault(fallback: T): T;
   validate(): ValidationResultType;
 }
 

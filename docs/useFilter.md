@@ -1320,3 +1320,70 @@ Produces:
 ```
 
 > **Note:** The `RHSType` field defaults to `"Constant"` and is automatically added to the payload. Other possible values are `"BOField"` (reference another field) and `"AppVariable"` (reference an application variable).
+
+---
+
+## Common Mistakes
+
+### 1. Inventing RHSType values
+
+Only three RHSType values exist. Any other string causes TS2322.
+
+```typescript
+// ❌ WRONG — these values don't exist
+{ RHSType: "Value" }
+{ RHSType: "Literal" }
+{ RHSType: "Field" }
+
+// ✅ CORRECT — only these three values
+{ RHSType: RHSType.Constant }    // "Constant"
+{ RHSType: RHSType.BOField }     // "BOField"
+{ RHSType: RHSType.AppVariable } // "AppVariable"
+```
+
+### 2. Accessing `filter.conditions` instead of `filter.items`
+
+`UseFilterReturnType` does NOT have a `conditions` property. The conditions array is called `items`.
+
+```typescript
+// ❌ WRONG — conditions does NOT exist on UseFilterReturnType
+filter.conditions
+filter.conditions.length
+
+// ✅ CORRECT — use items
+filter.items
+filter.items.length
+filter.hasConditions  // boolean shortcut
+```
+
+### 3. Mixing hook init format with API format
+
+`UseFilterOptionsType` (for hook initialization) uses lowercase. `FilterType` (for API calls) uses uppercase. NEVER mix them.
+
+```typescript
+// Hook initialization (UseFilterOptionsType) — lowercase, plural
+useTable({
+  initialState: {
+    filter: { conditions: [...], operator: "And" }
+  }
+});
+
+// API calls (FilterType) — uppercase, singular
+bdo.list({
+  Filter: { Operator: "And", Condition: [...] }
+});
+```
+
+### 4. Using `as const` on Operator values
+
+```typescript
+// ❌ WRONG — as const causes TypeScript narrowing errors in arrays
+const conditions = [
+  { Operator: ConditionOperator.EQ as const, ... }
+];
+
+// ✅ CORRECT — type the array instead
+const conditions: Omit<ConditionType, "id">[] = [
+  { Operator: ConditionOperator.EQ, ... }
+];
+```

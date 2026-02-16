@@ -16,7 +16,7 @@ export interface BuildListOptionsParams<T = any> {
   /** Sort configuration */
   sort?: {
     field: keyof T | null;
-    direction: "asc" | "desc" | null;
+    direction: "ASC" | "DESC" | null;
   };
   /** Sort array in API format */
   sortArray?: SortType;
@@ -63,8 +63,7 @@ export function buildListOptions<T = any>(
   if (params.sort?.field && params.sort?.direction) {
     opts.Sort = [
       {
-        [String(params.sort.field)]:
-          params.sort.direction === "asc" ? "ASC" : "DESC",
+        [String(params.sort.field)]: params.sort.direction,
       },
     ];
   } else if (params.sortArray) {

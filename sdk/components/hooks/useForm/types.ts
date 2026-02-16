@@ -14,6 +14,7 @@ import type { BaseBdo } from "../../../bdo";
 import type { BaseFieldMetaType, BdoMetaType, ValidationResultType } from "../../../bdo/core/types";
 import type { BaseField } from "../../../bdo/fields/BaseField";
 import type { SystemFieldsType } from "../../../types/base-fields";
+import type { CreateUpdateResponseType } from "../../../types/common";
 
 // ============================================================
 // GENERIC EXTRACTION HELPERS
@@ -55,12 +56,6 @@ export interface UpdatableBdo<TEditable = any> extends BaseBdoShape {
 /** BDO that supports both create and update */
 export type FormBdo<TEditable = any> = CreatableBdo<TEditable> & UpdatableBdo<TEditable>;
 
-/** BDO that supports interactive create (draft interaction during create) */
-export interface InteractiveCreatableBdo<TEditable = any> extends CreatableBdo<TEditable> {
-  draftInteraction(data: Partial<TEditable>): Promise<any>;
-  draft(data: Partial<TEditable>): Promise<any>;
-}
-
 // ============================================================
 // HANDLE SUBMIT TYPE
 // ============================================================
@@ -98,8 +93,6 @@ interface UseFormCreateOptionsType<B extends BaseBdo<any, any, any>> {
   recordId?: undefined;
   defaultValues?: Partial<ExtractEditableType<B>>;
   mode?: "onBlur" | "onChange" | "onSubmit" | "onTouched" | "all";
-  interactionMode?: "interactive" | "non-interactive";
-  /** @deprecated Use interactionMode instead */
   enableDraft?: boolean;
   enableConstraintValidation?: boolean;
   enableExpressionValidation?: boolean;
@@ -112,8 +105,6 @@ interface UseFormUpdateOptionsType<B extends BaseBdo<any, any, any>> {
   recordId: string;
   defaultValues?: Partial<ExtractEditableType<B>>;
   mode?: "onBlur" | "onChange" | "onSubmit" | "onTouched" | "all";
-  interactionMode?: "interactive" | "non-interactive";
-  /** @deprecated Use interactionMode instead */
   enableDraft?: boolean;
   enableConstraintValidation?: boolean;
   enableExpressionValidation?: boolean;
@@ -126,8 +117,6 @@ interface UseFormAutoOptionsType<B extends BaseBdo<any, any, any>> {
   recordId?: string;
   defaultValues?: Partial<ExtractEditableType<B>>;
   mode?: "onBlur" | "onChange" | "onSubmit" | "onTouched" | "all";
-  interactionMode?: "interactive" | "non-interactive";
-  /** @deprecated Use interactionMode instead */
   enableDraft?: boolean;
   enableConstraintValidation?: boolean;
   enableExpressionValidation?: boolean;
@@ -144,6 +133,7 @@ export interface EditableFormFieldAccessorType<T> {
   readonly defaultValue: unknown;
   readonly meta: BaseFieldMetaType;
   get(): T | undefined;
+  getOrDefault(fallback: T): T;
   set(value: T): void;
   validate(): ValidationResultType;
 }
@@ -155,6 +145,7 @@ export interface ReadonlyFormFieldAccessorType<T> {
   readonly defaultValue: unknown;
   readonly meta: BaseFieldMetaType;
   get(): T | undefined;
+  getOrDefault(fallback: T): T;
   validate(): ValidationResultType;
 }
 
@@ -209,7 +200,7 @@ export interface UseFormReturnType<B extends BaseBdo<any, any, any>> {
   register: FormRegisterType<ExtractEditableType<B>, ExtractReadonlyType<B>>;
 
   // Custom handleSubmit (handles API call + auto-filters payload)
-  handleSubmit: HandleSubmitType;
+  handleSubmit: HandleSubmitType<CreateUpdateResponseType>;
 
   // RHF methods
   watch: UseFormWatch<AllFieldsType<B>>;
@@ -235,9 +226,7 @@ export interface UseFormReturnType<B extends BaseBdo<any, any, any>> {
   // Error
   loadError: Error | null;
 
-  // Draft / Interactive mode
-  draftId: string | undefined;
-  isInitializingDraft: boolean;
-  isInteracting: boolean;
-  interactionError: Error | null;
+  // Draft (optional)
+  draftId?: string;
+  isCreatingDraft?: boolean;
 }

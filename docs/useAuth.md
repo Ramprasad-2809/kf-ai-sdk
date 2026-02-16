@@ -121,3 +121,30 @@ function AppContent() {
 | `hasAnyRole`      | `(roles: string[]) => boolean`               | Check if user has any of the roles                               |
 | `refreshSession`  | `() => Promise<SessionResponseType \| null>` | Manually refresh session                                         |
 | `clearError`      | `() => void`                                 | Clear the current error state                                    |
+
+---
+
+## Common Mistakes
+
+### 1. Wrong user name property
+
+```typescript
+// ❌ WRONG — `name` does not exist on UserDetailsType
+user?.name
+
+// ✅ CORRECT — use _name (underscore prefix)
+user?._name
+```
+
+### 2. Not casting unknown properties
+
+All properties except `_id`, `_name`, and `Role` are typed as `unknown` via the index signature.
+
+```typescript
+// ❌ WRONG — Email is typed as unknown, can't render directly in JSX
+<p>{user?.Email}</p>
+
+// ✅ CORRECT — cast to string when rendering
+<p>{String(user?.Email)}</p>
+<p>{user?.Email as string}</p>
+```

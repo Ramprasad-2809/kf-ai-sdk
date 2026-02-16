@@ -142,17 +142,17 @@ interface UseTableReturnType<T> {
     field: keyof T | null;
 
     // Current sort direction, null if no sort active
-    direction: "asc" | "desc" | null;
+    direction: "ASC" | "DESC" | null;
 
     // Toggle sort on a field (triggers API call)
-    // Cycles: none → asc → desc → none
+    // Cycles: none → ASC → DESC → none
     toggle: (field: keyof T) => void;
 
     // Clear sorting (triggers API call)
     clear: () => void;
 
     // Set explicit sort field and direction (triggers API call)
-    set: (field: keyof T, direction: "asc" | "desc") => void;
+    set: (field: keyof T, direction: "ASC" | "DESC") => void;
   };
 
   // ============================================================
@@ -345,7 +345,7 @@ function MyItemsTable() {
               >
                 {col.label}
                 {table.sort.field === col.fieldId && (
-                  <span>{table.sort.direction === "asc" ? " ↑" : " ↓"}</span>
+                  <span>{table.sort.direction === "ASC" ? " ↑" : " ↓"}</span>
                 )}
               </th>
             ))}
@@ -591,7 +591,7 @@ function SortableTable() {
             >
               {col.label}
               {table.sort.field === col.fieldId && (
-                <span>{table.sort.direction === "asc" ? " ↑" : " ↓"}</span>
+                <span>{table.sort.direction === "ASC" ? " ↑" : " ↓"}</span>
               )}
             </th>
           ))}
@@ -636,17 +636,17 @@ function TableWithSortDropdown() {
     setSelectedSort(value);
     switch (value) {
       case "price-asc":
-        table.sort.set(product.Price.id, "asc");
+        table.sort.set(product.Price.id, "ASC");
         break;
       case "price-desc":
-        table.sort.set(product.Price.id, "desc");
+        table.sort.set(product.Price.id, "DESC");
         break;
       case "newest":
-        table.sort.set("_created_at", "desc");  // System field
+        table.sort.set("_created_at", "DESC");  // System field
         break;
       case "featured":
       default:
-        table.sort.set(product.Title.id, "asc");
+        table.sort.set(product.Title.id, "ASC");
         break;
     }
   };
@@ -1005,16 +1005,16 @@ function ProductListPage() {
     setSelectedSort(value);
     switch (value) {
       case "price-asc":
-        table.sort.set(product.Price.id, "asc");
+        table.sort.set(product.Price.id, "ASC");
         break;
       case "price-desc":
-        table.sort.set(product.Price.id, "desc");
+        table.sort.set(product.Price.id, "DESC");
         break;
       case "newest":
-        table.sort.set("_created_at", "desc");  // System field
+        table.sort.set("_created_at", "DESC");  // System field
         break;
       default:
-        table.sort.set(product.Title.id, "asc");
+        table.sort.set(product.Title.id, "ASC");
         break;
     }
   };
@@ -1114,4 +1114,97 @@ function ProductListPage() {
     </div>
   );
 }
+```
+
+---
+
+## Common Mistakes
+
+### 1. Passing `bdo` instead of `source`
+
+`useTable` takes `source` (a BO_ID string), NOT `bdo` (a BDO instance). Don't confuse with `useForm({ bdo })`.
+
+```typescript
+// ❌ WRONG — bdo is NOT a valid property
+useTable({ bdo, columns });
+useTable({ bdo: product, columns });
+
+// ✅ CORRECT — pass the BO_ID string via source
+useTable({ source: product.meta._id, columns });
+```
+
+### 2. Wrong initialState property names
+
+This is NOT react-table. Don't use react-table naming conventions.
+
+```typescript
+// ❌ WRONG — sorting and pageIndex don't exist
+initialState: { sorting: [...], pagination: { pageIndex: 0, pageSize: 10 } }
+
+// ✅ CORRECT — use sort and pageNo
+initialState: { sort: [{ [bdo.Title.id]: "ASC" }], pagination: { pageNo: 1, pageSize: 10 } }
+```
+
+### 3. Wrong sort direction type
+
+Sort direction must be the string literal `"ASC"` or `"DESC"` — nothing else.
+
+```typescript
+// ❌ WRONG — booleans, lowercase, or arbitrary strings
+sort.set(bdo.Title.id, true);
+sort.set(bdo.Title.id, "asc");
+sort.set(bdo.Title.id, "ascending");
+
+// ✅ CORRECT — uppercase string literals only
+sort.set(bdo.Title.id, "ASC");
+sort.set(bdo.Title.id, "DESC");
+```
+
+### 4. Calling `.get()` on table rows
+
+Table `rows` are **plain objects**, NOT `ItemType`. `.get()` is only for `ItemType` returned by `bdo.get()`, `bdo.create()`, or `useForm` item proxy.
+
+```typescript
+// ❌ WRONG — rows are plain objects, not ItemType
+table.rows.map(row => row.Title.get());
+
+// ✅ CORRECT — access properties directly
+table.rows.map(row => row.Title);
+table.rows.map(row => row[bdo.Title.id]);
+```
+
+### 5. Using entity-level FieldType as generic
+
+Entity-level types (from `@/bdo/entities/`) exclude `SystemFieldsType`, so `row._id` won't work.
+
+```typescript
+// ❌ WRONG — ProductFieldType excludes _id, _created_at, etc.
+import type { ProductFieldType } from "@/bdo/entities/Product";
+useTable<ProductFieldType>({ ... });
+
+// ✅ CORRECT — role-specific type includes SystemFieldsType
+import type { BuyerProductFieldType } from "@/bdo/buyer/Product";
+useTable<BuyerProductFieldType>({ ... });
+```
+
+### 6. Using `header` instead of `label` in columns
+
+```typescript
+// ❌ WRONG
+{ fieldId: bdo.Title.id, header: "Title" }
+
+// ✅ CORRECT
+{ fieldId: bdo.Title.id, label: "Title" }
+```
+
+### 7. Accessing `data` or `columns` on the return type
+
+```typescript
+// ❌ WRONG — these properties don't exist
+table.data
+table.columns
+
+// ✅ CORRECT
+table.rows       // current page data
+table.totalItems // total matching records
 ```

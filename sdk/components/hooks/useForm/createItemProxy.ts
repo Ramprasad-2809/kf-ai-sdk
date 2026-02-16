@@ -91,6 +91,12 @@ export function createItemProxy<B extends BaseBdo<any, any, any>>(
       };
 
       // Only add set() for non-readOnly fields
+      // Shared getOrDefault helper
+      const getOrDefault = (fallback: unknown) => {
+        const value = form.getValues(prop as Path<FieldValues>);
+        return value !== undefined && value !== null ? value : fallback;
+      };
+
       if (!isReadOnly) {
         const accessor: EditableFormFieldAccessorType<unknown> = {
           label: bdoField?.label ?? prop,
@@ -99,6 +105,7 @@ export function createItemProxy<B extends BaseBdo<any, any, any>>(
           defaultValue: bdoField?.defaultValue,
           meta: fieldMeta,
           get: () => form.getValues(prop as Path<FieldValues>),
+          getOrDefault,
           set: (value: unknown) => {
             form.setValue(prop as Path<FieldValues>, value as any, {
               shouldDirty: true,
@@ -119,6 +126,7 @@ export function createItemProxy<B extends BaseBdo<any, any, any>>(
         defaultValue: bdoField?.defaultValue,
         meta: fieldMeta,
         get: () => form.getValues(prop as Path<FieldValues>),
+        getOrDefault,
         validate,
       };
       accessorCache.set(prop, accessor);

@@ -198,6 +198,12 @@ export class Item<T extends Record<string, unknown>> {
       return { valid: true, errors: [] };
     };
 
+    // Shared getOrDefault helper
+    const getOrDefault = (fallback: unknown) => {
+      const value = this._data[fieldId as keyof T];
+      return value !== undefined && value !== null ? value : fallback;
+    };
+
     // Create accessor — only add set() for non-readOnly fields
     let accessor: FieldAccessorType<unknown>;
 
@@ -209,6 +215,7 @@ export class Item<T extends Record<string, unknown>> {
         defaultValue: fieldDef?.defaultValue,
         meta,
         get: () => this._data[fieldId as keyof T],
+        getOrDefault,
         set: (value: unknown) => {
           this._data[fieldId as keyof T] = value as T[keyof T];
         },
@@ -222,6 +229,7 @@ export class Item<T extends Record<string, unknown>> {
         defaultValue: fieldDef?.defaultValue,
         meta,
         get: () => this._data[fieldId as keyof T],
+        getOrDefault,
         validate,
       };
     }
