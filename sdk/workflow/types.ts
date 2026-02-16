@@ -28,12 +28,19 @@ export interface WorkflowStartResponseType {
 }
 
 /**
- * Response from the activity progress endpoint
+ * Response from the activity progress endpoint.
+ * Both global (Workflow.progress()) and instance-level (ActivityInstance.progress())
+ * return ActivityProgressType[].
  */
 export interface ActivityProgressType {
-  Stage?: string;
-  Progress?: number;
-  [key: string]: any;
+  ActivityId: string;
+  ActivityInstanceId: string;
+  ActivityType: string;
+  AssignedTo: { Type: string; _id: string }[];
+  CompletedAt: string | null;
+  CompletedBy: { _id: string; _name: string } | null;
+  Status: "COMPLETED" | "IN_PROGRESS";
+  _name: string;
 }
 
 /**
@@ -56,11 +63,17 @@ export type ActivityInstanceFieldsType = {
 export interface ActivityOperations<T> {
   // ── List-level ──────────────────────────────────────────────
 
-  /** List activity instances (POST .../list) */
-  list(options?: ListOptionsType): Promise<ListResponseType<ActivityInstanceFieldsType & T>>;
+  /** List in-progress activity instances (POST .../inprogress/list) */
+  inProgressList(options?: ListOptionsType): Promise<ListResponseType<ActivityInstanceFieldsType & T>>;
 
-  /** Get activity metrics (POST .../metric) */
-  metric(options: Omit<MetricOptionsType, "Type">): Promise<MetricResponseType>;
+  /** List completed activity instances (POST .../completed/list) */
+  completedList(options?: ListOptionsType): Promise<ListResponseType<ActivityInstanceFieldsType & T>>;
+
+  /** Get in-progress activity metrics (POST .../inprogress/metric) */
+  inProgressMetric(options: Omit<MetricOptionsType, "Type">): Promise<MetricResponseType>;
+
+  /** Get completed activity metrics (POST .../completed/metric) */
+  completedMetric(options: Omit<MetricOptionsType, "Type">): Promise<MetricResponseType>;
 
   // ── Instance-level ──────────────────────────────────────────
 
@@ -80,5 +93,5 @@ export interface ActivityOperations<T> {
   complete(instanceId: string): Promise<CreateUpdateResponseType>;
 
   /** Get activity progress (GET .../progress) */
-  progress(instanceId: string): Promise<ActivityProgressType>;
+  progress(instanceId: string): Promise<ActivityProgressType[]>;
 }

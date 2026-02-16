@@ -172,7 +172,7 @@ export class ActivityInstance<
   /**
    * Get activity progress — calls ActivityOperations.progress()
    */
-  async progress(): Promise<ActivityProgressType> {
+  async progress(): Promise<ActivityProgressType[]> {
     return this._ops.progress(this._id);
   }
 

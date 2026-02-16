@@ -10,9 +10,11 @@
 //   - Typed field instances as class properties
 //
 // Methods:
-//   activity.getInstanceList(options)  // list activity instances
-//   activity.instanceMetrics(options)  // get aggregated metrics
-//   activity.getInstance(instanceId)   // get typed ActivityInstance
+//   activity.getInProgressList(options)   // list in-progress activity instances
+//   activity.getCompletedList(options)    // list completed activity instances
+//   activity.inProgressMetrics(options)   // get in-progress aggregated metrics
+//   activity.completedMetrics(options)    // get completed aggregated metrics
+//   activity.getInstance(instanceId)      // get typed ActivityInstance
 
 import { Workflow } from "./client";
 import { createActivityInstance } from "./ActivityInstance";
@@ -58,7 +60,8 @@ import { BaseField } from "../bdo/fields/BaseField";
  * }
  *
  * const activity = new EmployeeInputActivity();
- * const items = await activity.getInstanceList({ Page: 1, PageSize: 10 });
+ * const inProgress = await activity.getInProgressList({ Page: 1, PageSize: 10 });
+ * const completed = await activity.getCompletedList({ Page: 1, PageSize: 10 });
  * const instance = await activity.getInstance("inst_123");
  * instance.StartDate.get();  // typed value
  * instance.StartDate.set("2026-03-01");
@@ -122,21 +125,39 @@ export abstract class Activity<
   // ============================================================
 
   /**
-   * List activity instances with optional filtering/pagination.
+   * List in-progress activity instances with optional filtering/pagination.
    */
-  async getInstanceList(
+  async getInProgressList(
     options?: ListOptionsType,
   ): Promise<ListResponseType<ActivityInstanceFieldsType & TEntity>> {
-    return this._ops().list(options);
+    return this._ops().inProgressList(options);
   }
 
   /**
-   * Get aggregated metrics for activity instances.
+   * List completed activity instances with optional filtering/pagination.
    */
-  async instanceMetrics(
+  async getCompletedList(
+    options?: ListOptionsType,
+  ): Promise<ListResponseType<ActivityInstanceFieldsType & TEntity>> {
+    return this._ops().completedList(options);
+  }
+
+  /**
+   * Get aggregated metrics for in-progress activity instances.
+   */
+  async inProgressMetrics(
     options: Omit<MetricOptionsType, "Type">,
   ): Promise<MetricResponseType> {
-    return this._ops().metric(options);
+    return this._ops().inProgressMetric(options);
+  }
+
+  /**
+   * Get aggregated metrics for completed activity instances.
+   */
+  async completedMetrics(
+    options: Omit<MetricOptionsType, "Type">,
+  ): Promise<MetricResponseType> {
+    return this._ops().completedMetric(options);
   }
 
   /**
