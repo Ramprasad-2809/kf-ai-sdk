@@ -117,8 +117,8 @@ export function useForm<B extends BaseBdo<any, any, any>>(
 
   // Load metadata into bdo when schema is fetched
   useEffect(() => {
-    if (schema?.BOBlob) {
-      bdo.loadMetadata(schema.BOBlob);
+    if (schema?.BDOBlob) {
+      bdo.loadMetadata(schema.BDOBlob);
     }
   }, [schema, bdo]);
 
@@ -166,8 +166,7 @@ export function useForm<B extends BaseBdo<any, any, any>>(
   // ============================================================
 
   const item = useMemo(
-    () =>
-      createItemProxy(bdo, form as RHFUseFormReturn<FieldValues>),
+    () => createItemProxy(bdo, form as RHFUseFormReturn<FieldValues>),
     [bdo, form],
   );
 
@@ -252,7 +251,9 @@ export function useForm<B extends BaseBdo<any, any, any>>(
                   filteredData[key] = value;
                 }
               }
-              result = await (bdo as unknown as CreatableBdo).create(filteredData);
+              result = await (bdo as unknown as CreatableBdo).create(
+                filteredData,
+              );
             } else {
               // Update (always non-interactive) - send only dirty, non-readonly fields
               const dirtyFields = form.formState.dirtyFields;
@@ -261,7 +262,10 @@ export function useForm<B extends BaseBdo<any, any, any>>(
                   filteredData[key] = value;
                 }
               }
-              result = await (bdo as unknown as UpdatableBdo).update(recordId!, filteredData);
+              result = await (bdo as unknown as UpdatableBdo).update(
+                recordId!,
+                filteredData,
+              );
             }
 
             // Success callback

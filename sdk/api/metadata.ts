@@ -43,7 +43,7 @@ export async function getBdoSchema(metaId: string): Promise<BackendSchemaType> {
 
     if (!response.ok) {
       throw new Error(
-        `Failed to fetch schema for ${metaId}: ${response.statusText}`
+        `Failed to fetch schema for ${metaId}: ${response.statusText}`,
       );
     }
 
@@ -58,7 +58,7 @@ export async function getBdoSchema(metaId: string): Promise<BackendSchemaType> {
   } catch (error) {
     console.error(`Schema fetch error for ${metaId}:`, error);
     throw new Error(
-      `Failed to load BDO schema: ${error instanceof Error ? error.message : "Unknown error"}`
+      `Failed to load BDO schema: ${error instanceof Error ? error.message : "Unknown error"}`,
     );
   }
 }
@@ -83,7 +83,7 @@ export interface MetadataItemType {
  * @returns Promise resolving to list of metadata items
  */
 export async function listMetadata(
-  options?: ListOptionsType
+  options?: ListOptionsType,
 ): Promise<ListResponseType<MetadataItemType>> {
   try {
     const baseUrl = getApiBaseUrl();
@@ -111,7 +111,7 @@ export async function listMetadata(
   } catch (error) {
     console.error("Metadata list error:", error);
     throw new Error(
-      `Failed to list metadata: ${error instanceof Error ? error.message : "Unknown error"}`
+      `Failed to list metadata: ${error instanceof Error ? error.message : "Unknown error"}`,
     );
   }
 }
