@@ -62,7 +62,7 @@ export function useActivityForm<
   const readonlyFieldNames = useMemo<string[]>(
     () =>
       Object.keys(fields).filter(
-        (k) => !fields[k].meta.isEditable,
+        (k) => fields[k].readOnly,
       ),
     [fields],
   );
@@ -208,7 +208,7 @@ export function useActivityForm<
   const register = useCallback(
     (name: string, registerOptions?: any) => {
       const field = fields[name];
-      const isReadonly = field ? !field.meta.isEditable : false;
+      const isReadonly = field ? field.readOnly : false;
 
       const originalOnBlur = registerOptions?.onBlur;
 
