@@ -86,3 +86,7 @@ package-lock.json
 
 # Package tarballs
 *.tgz
+
+# Claude Code local settings (not shared)
+.claude/settings.local.json
+CLAUDE.local.md

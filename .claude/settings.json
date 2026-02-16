@@ -1,0 +1,51 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm run build:*)",
+      "Bash(pnpm run typecheck:*)",
+      "Bash(pnpm run lint:*)",
+      "Bash(pnpm run lint\\:fix:*)",
+      "Bash(pnpm run format:*)",
+      "Bash(pnpm run format\\:check:*)",
+      "Bash(pnpm run test:*)",
+      "Bash(pnpm run test\\:watch:*)",
+      "Bash(pnpm run dev:*)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm add:*)",
+      "Bash(npx prettier --write:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git branch:*)"
+    ],
+    "deny": [
+      "Bash(pnpm publish:*)",
+      "Bash(npm publish:*)",
+      "Edit(file_path:dist/*)",
+      "Write(file_path:dist/*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx prettier --write $CLAUDE_FILE_PATH 2>/dev/null || true"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '\\n--- Pre-finish reminder ---\\nRun: pnpm run typecheck && pnpm run lint && pnpm run build'"
+          }
+        ]
+      }
+    ]
+  }
+}
