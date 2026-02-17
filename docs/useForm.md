@@ -174,6 +174,63 @@ interface ReadonlyFormFieldAccessorType<T> {
 }
 ```
 
+### File & Image Value Types
+
+```typescript
+// Metadata for an uploaded file or image
+interface FileType {
+  _id: string;
+  _name: string;
+  FileName: string;
+  FileExtension: string;
+  Size: number;
+  ContentType: string;
+}
+
+type ImageFieldType = FileType | null;  // Single image, nullable
+type FileFieldType = FileType[];        // Array of files
+
+// Request a thumbnail or preview variant from the backend
+type AttachmentViewType = "thumbnail" | "preview";
+```
+
+### File & Image Accessor Types
+
+Image and File fields extend the base accessor with attachment operations.
+Editable accessors get `upload` and `deleteAttachment`; readonly accessors only get download.
+
+```typescript
+// Editable Image — single file
+interface EditableImageFieldAccessorType
+  extends EditableFormFieldAccessorType<ImageFieldType> {
+  upload(file: File): Promise<FileType>;
+  getDownloadUrl(viewType?: AttachmentViewType): Promise<FileDownloadResponseType>;
+  deleteAttachment(): Promise<void>;
+}
+
+// Readonly Image — download only
+interface ReadonlyImageFieldAccessorType
+  extends ReadonlyFormFieldAccessorType<ImageFieldType> {
+  getDownloadUrl(viewType?: AttachmentViewType): Promise<FileDownloadResponseType>;
+}
+
+// Editable File — multi-file
+interface EditableFileFieldAccessorType
+  extends EditableFormFieldAccessorType<FileFieldType> {
+  upload(files: File[]): Promise<FileType[]>;
+  getDownloadUrl(attachmentId: string, viewType?: AttachmentViewType): Promise<FileDownloadResponseType>;
+  getDownloadUrls(viewType?: AttachmentViewType): Promise<FileDownloadResponseType[]>;
+  deleteAttachment(attachmentId: string): Promise<void>;
+}
+
+// Readonly File — download only
+interface ReadonlyFileFieldAccessorType
+  extends ReadonlyFormFieldAccessorType<FileFieldType> {
+  getDownloadUrl(attachmentId: string, viewType?: AttachmentViewType): Promise<FileDownloadResponseType>;
+  getDownloadUrls(viewType?: AttachmentViewType): Promise<FileDownloadResponseType[]>;
+}
+```
+
 ---
 
 ## Basic Example
@@ -717,6 +774,123 @@ function ProductForm({ productId, onSuccess }: ProductFormProps) {
   );
 }
 ```
+
+---
+
+## File & Image Attachments in Forms
+
+Image and File fields get attachment methods on the `item` accessor automatically.
+`upload()` updates local field state only — the form's `handleSubmit` persists everything to the backend.
+`deleteAttachment()` is atomic — it removes the file from storage and the backend record immediately.
+
+```tsx
+// Assuming SellerProduct BDO has:
+//   readonly ProductImage = new ImageField({ _id: "ProductImage", Name: "Product Image", Type: "Image" });
+//   readonly Attachments = new FileField({ _id: "Attachments", Name: "Attachments", Type: "File" });
+
+function ProductFormWithAttachments({ productId }: { productId?: string }) {
+  const product = useMemo(() => new SellerProduct(), []);
+
+  const { register, handleSubmit, item, errors, isSubmitting, watch } = useForm({
+    bdo: product,
+    recordId: productId,
+    mode: ValidationMode.OnBlur,
+  });
+
+  // --- Image field (single file) ---
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Uploads to storage, sets local value (FileType)
+    // Validates extension client-side before uploading
+    const metadata = await item.ProductImage.upload(file);
+    console.log("Uploaded image:", metadata.FileName);
+  };
+
+  const handleImageDelete = async () => {
+    // Atomic — deletes from storage + backend immediately
+    await item.ProductImage.deleteAttachment();
+  };
+
+  const handleImagePreview = async () => {
+    // Get a thumbnail URL (backend-generated variant)
+    const { DownloadUrl } = await item.ProductImage.getDownloadUrl("thumbnail");
+    window.open(DownloadUrl);
+  };
+
+  // --- File field (multi-file) ---
+
+  const handleFilesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+
+    // Uploads all files in parallel, appends to existing array
+    const uploaded = await item.Attachments.upload(files);
+    console.log(`Uploaded ${uploaded.length} files`);
+  };
+
+  const handleFileDelete = async (attachmentId: string) => {
+    // Removes single file from storage + backend + local array
+    await item.Attachments.deleteAttachment(attachmentId);
+  };
+
+  const handleFileDownload = async (attachmentId: string) => {
+    const { DownloadUrl } = await item.Attachments.getDownloadUrl(attachmentId);
+    window.open(DownloadUrl);
+  };
+
+  // Current field values
+  const currentImage = item.ProductImage.get();         // FileType | null
+  const currentFiles = item.Attachments.get() ?? [];    // FileType[]
+
+  return (
+    <form onSubmit={handleSubmit((data) => console.log("Saved:", data._id))}>
+      {/* ... other fields with register() ... */}
+
+      {/* Image field */}
+      <div className="field">
+        <label>{product.ProductImage.label}</label>
+        {currentImage ? (
+          <div>
+            <span>{currentImage.FileName}</span>
+            <button type="button" onClick={handleImagePreview}>Preview</button>
+            <button type="button" onClick={handleImageDelete}>Remove</button>
+          </div>
+        ) : (
+          <input type="file" accept="image/*" onChange={handleImageUpload} />
+        )}
+      </div>
+
+      {/* File field */}
+      <div className="field">
+        <label>{product.Attachments.label}</label>
+        <input type="file" multiple onChange={handleFilesUpload} />
+        <ul>
+          {currentFiles.map((file) => (
+            <li key={file._id}>
+              {file.FileName} ({file.Size} bytes)
+              <button type="button" onClick={() => handleFileDownload(file._id)}>Download</button>
+              <button type="button" onClick={() => handleFileDelete(file._id)}>Delete</button>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <button type="submit" disabled={isSubmitting}>
+        {isSubmitting ? "Saving..." : "Save"}
+      </button>
+    </form>
+  );
+}
+```
+
+**Key points:**
+- `upload()` validates file extensions client-side (throws on unsupported types)
+- Image upload replaces the current value; File upload appends to the array
+- `getDownloadUrl("thumbnail")` / `getDownloadUrl("preview")` request backend-generated variants
+- Readonly Image/File fields only have `getDownloadUrl` — no `upload` or `deleteAttachment`
 
 ---
 

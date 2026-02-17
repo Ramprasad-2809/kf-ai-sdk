@@ -10,7 +10,7 @@ export function validateConstraints(field: BaseField<unknown>, value: unknown): 
   const errors: string[] = [];
 
   // Required
-  if (field.required && (value === undefined || value === null || value === "")) {
+  if (field.required && (value === undefined || value === null || value === "" || (Array.isArray(value) && value.length === 0))) {
     errors.push(`${field.label} is required`);
     return { valid: false, errors };
   }

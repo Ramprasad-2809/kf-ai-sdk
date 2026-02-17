@@ -16,6 +16,10 @@ import type {
   DraftResponseType,
   FieldsResponseType,
   FetchFieldOptionType,
+  FileUploadRequestType,
+  FileUploadResponseType,
+  FileDownloadResponseType,
+  AttachmentViewType,
 } from "../types/common";
 
 /**
@@ -115,6 +119,51 @@ export interface ResourceClientType<T = any> {
     instanceId: string,
     fieldId: string,
   ): Promise<TResult[]>;
+
+  // ============================================================
+  // ATTACHMENT OPERATIONS
+  // ============================================================
+
+  /**
+   * Get signed upload URLs for file attachments
+   * POST /{bo_id}/{instance_id}/field/{field_id}/attachment/upload
+   */
+  getUploadUrl(
+    instanceId: string,
+    fieldId: string,
+    files: FileUploadRequestType[],
+  ): Promise<FileUploadResponseType[]>;
+
+  /**
+   * Get signed download URL for a single attachment
+   * GET /{bo_id}/{instance_id}/field/{field_id}/attachment/{attachment_id}/read
+   */
+  getDownloadUrl(
+    instanceId: string,
+    fieldId: string,
+    attachmentId: string,
+    viewType?: AttachmentViewType,
+  ): Promise<FileDownloadResponseType>;
+
+  /**
+   * Get signed download URLs for all attachments on a field
+   * GET /{bo_id}/{instance_id}/field/{field_id}/attachment/read
+   */
+  getDownloadUrls(
+    instanceId: string,
+    fieldId: string,
+    viewType?: AttachmentViewType,
+  ): Promise<FileDownloadResponseType[]>;
+
+  /**
+   * Delete an attachment
+   * DELETE /{bo_id}/{instance_id}/field/{field_id}/attachment/{attachment_id}/delete
+   */
+  deleteAttachment(
+    instanceId: string,
+    fieldId: string,
+    attachmentId: string,
+  ): Promise<void>;
 }
 
 /**
@@ -454,6 +503,102 @@ export function createResourceClient<T = any>(
 
       const responseData: { Data: TResult[] } = await response.json();
       return responseData.Data;
+    },
+
+    // ============================================================
+    // ATTACHMENT OPERATIONS
+    // ============================================================
+
+    async getUploadUrl(
+      instanceId: string,
+      fieldId: string,
+      files: FileUploadRequestType[],
+    ): Promise<FileUploadResponseType[]> {
+      const response = await fetch(
+        `${baseUrl}${basePath}/${instanceId}/field/${fieldId}/attachment/upload`,
+        {
+          method: "POST",
+          headers: getDefaultHeaders(),
+          body: JSON.stringify(files),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to get upload URL for ${basePath}/${fieldId}: ${response.statusText}`,
+        );
+      }
+
+      const responseData: { Data: FileUploadResponseType[] } =
+        await response.json();
+      return responseData.Data;
+    },
+
+    async getDownloadUrl(
+      instanceId: string,
+      fieldId: string,
+      attachmentId: string,
+      viewType?: AttachmentViewType,
+    ): Promise<FileDownloadResponseType> {
+      let url = `${baseUrl}${basePath}/${instanceId}/field/${fieldId}/attachment/${attachmentId}/read`;
+      if (viewType) url += `?view_type=${viewType}`;
+      const response = await fetch(url, {
+        method: "GET",
+        headers: getDefaultHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to get download URL for ${basePath}/${fieldId}/${attachmentId}: ${response.statusText}`,
+        );
+      }
+
+      const responseData: { Data: FileDownloadResponseType } =
+        await response.json();
+      return responseData.Data;
+    },
+
+    async getDownloadUrls(
+      instanceId: string,
+      fieldId: string,
+      viewType?: AttachmentViewType,
+    ): Promise<FileDownloadResponseType[]> {
+      let url = `${baseUrl}${basePath}/${instanceId}/field/${fieldId}/attachment/read`;
+      if (viewType) url += `?view_type=${viewType}`;
+      const response = await fetch(url, {
+        method: "GET",
+        headers: getDefaultHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to get download URLs for ${basePath}/${fieldId}: ${response.statusText}`,
+        );
+      }
+
+      const responseData: { Data: FileDownloadResponseType[] } =
+        await response.json();
+      return responseData.Data;
+    },
+
+    async deleteAttachment(
+      instanceId: string,
+      fieldId: string,
+      attachmentId: string,
+    ): Promise<void> {
+      const response = await fetch(
+        `${baseUrl}${basePath}/${instanceId}/field/${fieldId}/attachment/${attachmentId}/delete`,
+        {
+          method: "DELETE",
+          headers: getDefaultHeaders(),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to delete attachment ${attachmentId} for ${basePath}/${fieldId}: ${response.statusText}`,
+        );
+      }
     },
   };
 }

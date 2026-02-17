@@ -15,4 +15,5 @@ export { ObjectField } from "./ObjectField";
 export { TextField } from "./TextField";
 export { UserField } from "./UserField";
 export { FileField } from "./FileField";
+export { ImageField } from "./ImageField";
 export { TextAreaField } from "./TextAreaField";

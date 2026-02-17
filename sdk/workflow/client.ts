@@ -7,9 +7,7 @@ import {
   getDefaultHeaders,
 } from "../api/client";
 import type {
-  ListOptionsType,
   ListResponseType,
-  MetricOptionsType,
   MetricResponseType,
   ReadResponseType,
   DraftResponseType,
@@ -30,7 +28,7 @@ import type {
  * const wf = new Workflow<LeaveType>("SimpleLeaveProcess");
  *
  * // Start workflow
- * const { activityId, activityInstanceId } = await wf.start();
+ * const { BPInstanceId, ActivityId, _id } = await wf.start();
  *
  * // Get activity operations
  * const act = wf.activity("EMPLOYEE_INPUT");
@@ -41,14 +39,14 @@ import type {
  * await act.draftEnd("inst_123", data);
  * await act.complete("inst_123");
  *
- * // List operations (by status)
- * await act.inProgressList({ Page: 1, PageSize: 10 });
- * await act.completedList({ Page: 1, PageSize: 10 });
- * await act.inProgressMetric({ Metric: [...] });
- * await act.completedMetric({ Metric: [...] });
+ * // List operations (by status — filtering/pagination handled server-side)
+ * await act.inProgressList();
+ * await act.completedList();
+ * await act.inProgressMetric();
+ * await act.completedMetric();
  *
- * // Global process progress
- * const progress = await wf.progress();
+ * // Process progress (requires instance_id)
+ * const progress = await wf.progress("bp_inst_123");
  * ```
  */
 export class Workflow<T = any> {
@@ -74,16 +72,19 @@ export class Workflow<T = any> {
       throw new Error(`Failed to start process: ${response.statusText}`);
     }
 
-    return response.json();
+    const responseData = await response.json();
+    return responseData.Data;
   }
 
   /**
-   * Get global progress across the entire business process.
+   * Get progress for a specific process instance.
    * Returns a list of progress entries for each stage/activity.
+   *
+   * @param instance_id - The business process instance ID (from start().BPInstanceId)
    */
-  async progress(): Promise<ActivityProgressType[]> {
+  async progress(instance_id: string): Promise<ActivityProgressType[]> {
     const response = await fetch(
-      `${getApiBaseUrl()}/api/app/process/${this.bp_id}/progress`,
+      `${getApiBaseUrl()}/api/app/process/${this.bp_id}/${instance_id}/progress`,
       {
         method: "GET",
         headers: getDefaultHeaders(),
@@ -94,7 +95,8 @@ export class Workflow<T = any> {
       throw new Error(`Failed to get process progress: ${response.statusText}`);
     }
 
-    return response.json();
+    const responseData = await response.json();
+    return responseData.Data;
   }
 
   /**
@@ -107,16 +109,10 @@ export class Workflow<T = any> {
     return {
       // ── List-level ────────────────────────────────────────────
 
-      async inProgressList(options?: ListOptionsType): Promise<ListResponseType<ActivityInstanceFieldsType & T>> {
-        const requestBody: ListOptionsType = {
-          Type: "List",
-          ...options,
-        };
-
+      async inProgressList(): Promise<ListResponseType<ActivityInstanceFieldsType & T>> {
         const response = await fetch(`${getApiBaseUrl()}${base}/inprogress/list`, {
-          method: "POST",
+          method: "GET",
           headers: getDefaultHeaders(),
-          body: JSON.stringify(requestBody),
         });
 
         if (!response.ok) {
@@ -126,16 +122,10 @@ export class Workflow<T = any> {
         return response.json();
       },
 
-      async completedList(options?: ListOptionsType): Promise<ListResponseType<ActivityInstanceFieldsType & T>> {
-        const requestBody: ListOptionsType = {
-          Type: "List",
-          ...options,
-        };
-
+      async completedList(): Promise<ListResponseType<ActivityInstanceFieldsType & T>> {
         const response = await fetch(`${getApiBaseUrl()}${base}/completed/list`, {
-          method: "POST",
+          method: "GET",
           headers: getDefaultHeaders(),
-          body: JSON.stringify(requestBody),
         });
 
         if (!response.ok) {
@@ -145,16 +135,10 @@ export class Workflow<T = any> {
         return response.json();
       },
 
-      async inProgressMetric(options: Omit<MetricOptionsType, "Type">): Promise<MetricResponseType> {
-        const requestBody: MetricOptionsType = {
-          Type: "Metric",
-          ...options,
-        };
-
+      async inProgressMetric(): Promise<MetricResponseType> {
         const response = await fetch(`${getApiBaseUrl()}${base}/inprogress/metric`, {
-          method: "POST",
+          method: "GET",
           headers: getDefaultHeaders(),
-          body: JSON.stringify(requestBody),
         });
 
         if (!response.ok) {
@@ -164,16 +148,10 @@ export class Workflow<T = any> {
         return response.json();
       },
 
-      async completedMetric(options: Omit<MetricOptionsType, "Type">): Promise<MetricResponseType> {
-        const requestBody: MetricOptionsType = {
-          Type: "Metric",
-          ...options,
-        };
-
+      async completedMetric(): Promise<MetricResponseType> {
         const response = await fetch(`${getApiBaseUrl()}${base}/completed/metric`, {
-          method: "POST",
+          method: "GET",
           headers: getDefaultHeaders(),
-          body: JSON.stringify(requestBody),
         });
 
         if (!response.ok) {

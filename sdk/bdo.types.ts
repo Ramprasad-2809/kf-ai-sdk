@@ -23,10 +23,15 @@ export type {
   ArrayFieldMetaType,
   ObjectFieldMetaType,
   FileFieldMetaType,
+  ImageFieldMetaType,
   BaseFieldAccessorType,
   EditableFieldAccessorType,
   ReadonlyFieldAccessorType,
   FieldAccessorType,
+  EditableImageFieldAccessorType,
+  ReadonlyImageFieldAccessorType,
+  EditableFileFieldAccessorType,
+  ReadonlyFileFieldAccessorType,
 } from "./bdo/core/types";
 
 // Re-export SDK field types
@@ -43,6 +48,8 @@ export type {
   ArrayFieldType,
   ObjectFieldType,
   UserFieldType,
+  FileType,
+  ImageFieldType,
   FileFieldType,
   SystemFieldsType,
   UserRefType,

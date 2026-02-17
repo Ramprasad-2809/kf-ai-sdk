@@ -1,6 +1,6 @@
 // ============================================================
 // FILE FIELD
-// Field for file attachments
+// Field for file attachments (array of files)
 // ============================================================
 
 import type { FileFieldType } from "../../types/base-fields";
@@ -12,8 +12,8 @@ import { BaseField } from "./BaseField";
  *
  * @example
  * ```typescript
- * readonly Attachment = new FileField({
- *   _id: "Attachment", Name: "Attachment", Type: "File",
+ * readonly Attachments = new FileField({
+ *   _id: "Attachments", Name: "Attachments", Type: "File",
  * });
  * ```
  */
@@ -27,11 +27,20 @@ export class FileField extends BaseField<FileFieldType> {
       return { valid: true, errors: [] };
     }
 
-    if (typeof value !== "object" || Array.isArray(value)) {
+    if (!Array.isArray(value)) {
       return {
         valid: false,
-        errors: [`${this.label} must be a valid file object`],
+        errors: [`${this.label} must be an array of file objects`],
       };
+    }
+
+    for (const item of value) {
+      if (!item || typeof item !== "object" || !item._id) {
+        return {
+          valid: false,
+          errors: [`Each file in ${this.label} must have an _id`],
+        };
+      }
     }
 
     return { valid: true, errors: [] };

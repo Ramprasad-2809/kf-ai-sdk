@@ -290,6 +290,51 @@ export interface FetchFieldResponseType {
 }
 
 // ============================================================
+// ATTACHMENT/FILE OPERATION TYPES
+// ============================================================
+
+/**
+ * Request body for getting upload URLs for file attachments
+ */
+export interface FileUploadRequestType {
+  FileName: string;
+  Size: number;
+  FileExtension: string;
+}
+
+/**
+ * Response from upload URL endpoint — file metadata + signed upload URL
+ */
+export interface FileUploadResponseType {
+  _id: string;
+  _name: string;
+  FileName: string;
+  FileExtension: string;
+  Size: number;
+  ContentType: string;
+  UploadUrl: { URL: string; Method: string };
+}
+
+/**
+ * Response from download URL endpoint — file metadata + signed download URL
+ */
+export interface FileDownloadResponseType {
+  _id: string;
+  _name: string;
+  FileName: string;
+  FileExtension: string;
+  Size: number;
+  ContentType: string;
+  DownloadUrl: string;
+}
+
+/**
+ * View type for attachment download — requests a variant of the file
+ * Backend generates thumbnails/previews for image attachments
+ */
+export type AttachmentViewType = "thumbnail" | "preview";
+
+// ============================================================
 // SHARED COMPONENT TYPES
 // ============================================================
 

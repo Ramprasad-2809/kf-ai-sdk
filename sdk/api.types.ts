@@ -54,4 +54,9 @@ export type {
   FieldsResponseType,
   FetchFieldOptionType,
   FetchFieldResponseType,
+
+  // Attachment types
+  FileUploadRequestType,
+  FileUploadResponseType,
+  FileDownloadResponseType,
 } from './types/common';

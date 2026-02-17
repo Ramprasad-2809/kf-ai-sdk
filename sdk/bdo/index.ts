@@ -32,7 +32,12 @@ export type {
   ArrayFieldMetaType,
   ObjectFieldMetaType,
   FileFieldMetaType,
+  ImageFieldMetaType,
   BaseFieldAccessorType,
+  EditableImageFieldAccessorType,
+  ReadonlyImageFieldAccessorType,
+  EditableFileFieldAccessorType,
+  ReadonlyFileFieldAccessorType,
 } from "./core/types";
 
 // Field classes
@@ -51,4 +56,5 @@ export {
   ObjectField,
   UserField,
   FileField,
+  ImageField,
 } from "./fields";

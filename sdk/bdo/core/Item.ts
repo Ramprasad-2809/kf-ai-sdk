@@ -9,8 +9,27 @@ import type {
   EditableFieldAccessorType,
   ReadonlyFieldAccessorType,
   FieldAccessorType,
+  EditableImageFieldAccessorType,
+  ReadonlyImageFieldAccessorType,
+  EditableFileFieldAccessorType,
+  ReadonlyFileFieldAccessorType,
 } from "./types";
 import type { BaseField } from "../fields/BaseField";
+import type {
+  FileType,
+  ImageFieldType,
+  FileFieldType,
+} from "../../types/base-fields";
+import type {
+  FileUploadRequestType,
+  FileDownloadResponseType,
+  AttachmentViewType,
+} from "../../types/common";
+import {
+  validateFileExtension,
+  extractFileExtension,
+} from "../fields/attachment-constants";
+import { api } from "../../api/client";
 
 /**
  * Interface for BDO that Item needs
@@ -23,23 +42,44 @@ interface BdoLike {
     value: unknown,
     allValues: Record<string, unknown>
   ): ValidationResultType;
+  getBoId(): string;
 }
 
 // Re-export accessor types for convenience
 export type { EditableFieldAccessorType, ReadonlyFieldAccessorType, FieldAccessorType, BaseFieldMetaType };
 
 /**
+ * Resolve editable accessor type — specialized for File/Image fields
+ */
+type ResolveEditableAccessor<T> =
+  [T] extends [ImageFieldType]
+    ? EditableImageFieldAccessorType
+    : [T] extends [FileFieldType]
+      ? EditableFileFieldAccessorType
+      : EditableFieldAccessorType<T>;
+
+/**
+ * Resolve readonly accessor type — specialized for File/Image fields
+ */
+type ResolveReadonlyAccessor<T> =
+  [T] extends [ImageFieldType]
+    ? ReadonlyImageFieldAccessorType
+    : [T] extends [FileFieldType]
+      ? ReadonlyFileFieldAccessorType
+      : ReadonlyFieldAccessorType<T>;
+
+/**
  * Create editable accessor type for each field in TEditable
  */
 type EditableAccessors<T> = {
-  [K in keyof T as K extends "_id" ? never : K]: EditableFieldAccessorType<T[K]>;
+  [K in keyof T as K extends "_id" ? never : K]: ResolveEditableAccessor<T[K]>;
 };
 
 /**
  * Create readonly accessor type for each field in TReadonly
  */
 type ReadonlyAccessors<T> = {
-  [K in keyof T as K extends "_id" ? never : K]: ReadonlyFieldAccessorType<T[K]>;
+  [K in keyof T as K extends "_id" ? never : K]: ResolveReadonlyAccessor<T[K]>;
 };
 
 /**
@@ -90,7 +130,8 @@ export class Item<T extends Record<string, unknown>> {
           prop === "_bdo" ||
           prop === "_data" ||
           prop === "_accessorCache" ||
-          prop === "_getAccessor"
+          prop === "_getAccessor" ||
+          prop === "_requireInstanceId"
         ) {
           return Reflect.get(target, prop, receiver);
         }
@@ -153,6 +194,20 @@ export class Item<T extends Record<string, unknown>> {
         return undefined;
       },
     }) as Item<T>;
+  }
+
+  /**
+   * Require instanceId or throw.
+   * TODO: Support create flow via draftInteraction to get temp _id
+   */
+  private _requireInstanceId(): string {
+    const id = this._data._id as string | undefined;
+    if (!id) {
+      throw new Error(
+        "Cannot perform attachment operation: item has no _id. Save the item first.",
+      );
+    }
+    return id;
   }
 
   /**
@@ -232,6 +287,179 @@ export class Item<T extends Record<string, unknown>> {
         getOrDefault,
         validate,
       };
+    }
+
+    // Enrich File/Image field accessors with attachment methods
+    if (meta.Type === "Image" || meta.Type === "File") {
+      const boId = this._bdo.getBoId();
+      const acc = accessor as unknown as Record<string, unknown>;
+
+      if (meta.Type === "Image") {
+        // Image field — single file
+
+        // getDownloadUrl — always available (editable + readonly)
+        acc.getDownloadUrl = async (
+          viewType?: AttachmentViewType,
+        ): Promise<FileDownloadResponseType> => {
+          const instanceId = this._requireInstanceId();
+          const value = this._data[fieldId as keyof T] as
+            | FileType
+            | null
+            | undefined;
+          if (!value?._id) {
+            throw new Error(`${fieldId} has no image to download`);
+          }
+          return api(boId).getDownloadUrl(
+            instanceId,
+            fieldId,
+            value._id,
+            viewType,
+          );
+        };
+
+        // upload + deleteAttachment — editable only
+        if (!isReadOnly) {
+          /**
+           * Upload to storage and update local field value.
+           * Does NOT persist to backend — call save()/update() after uploading.
+           */
+          acc.upload = async (file: File): Promise<FileType> => {
+            validateFileExtension(file.name, "Image");
+            const instanceId = this._requireInstanceId();
+            const request: FileUploadRequestType = {
+              FileName: file.name,
+              Size: file.size,
+              FileExtension: extractFileExtension(file.name),
+            };
+            const [uploadInfo] = await api(boId).getUploadUrl(
+              instanceId,
+              fieldId,
+              [request],
+            );
+
+            await fetch(uploadInfo.UploadUrl.URL, {
+              method: "PUT",
+              headers: { "Content-Type": uploadInfo.ContentType },
+              body: file,
+            });
+
+            const metadata: FileType = {
+              _id: uploadInfo._id,
+              _name: uploadInfo._name,
+              FileName: uploadInfo.FileName,
+              FileExtension: uploadInfo.FileExtension,
+              Size: uploadInfo.Size,
+              ContentType: uploadInfo.ContentType,
+            };
+
+            this._data[fieldId as keyof T] = metadata as T[keyof T];
+            return metadata;
+          };
+
+          acc.deleteAttachment = async (): Promise<void> => {
+            const instanceId = this._requireInstanceId();
+            const value = this._data[fieldId as keyof T] as
+              | FileType
+              | null
+              | undefined;
+            if (!value?._id) {
+              throw new Error(`${fieldId} has no image to delete`);
+            }
+            await api(boId).deleteAttachment(instanceId, fieldId, value._id);
+            this._data[fieldId as keyof T] = null as T[keyof T];
+          };
+        }
+      } else {
+        // File field — multi-file
+
+        // getDownloadUrl + getDownloadUrls — always available (editable + readonly)
+        acc.getDownloadUrl = async (
+          attachmentId: string,
+          viewType?: AttachmentViewType,
+        ): Promise<FileDownloadResponseType> => {
+          const instanceId = this._requireInstanceId();
+          return api(boId).getDownloadUrl(
+            instanceId,
+            fieldId,
+            attachmentId,
+            viewType,
+          );
+        };
+
+        acc.getDownloadUrls = async (
+          viewType?: AttachmentViewType,
+        ): Promise<FileDownloadResponseType[]> => {
+          const instanceId = this._requireInstanceId();
+          return api(boId).getDownloadUrls(instanceId, fieldId, viewType);
+        };
+
+        // upload + deleteAttachment — editable only
+        if (!isReadOnly) {
+          /**
+           * Upload to storage and update local field value.
+           * Does NOT persist to backend — call save()/update() after uploading.
+           * (deleteAttachment is atomic — backend handles storage + DB in one call)
+           */
+          acc.upload = async (files: File[]): Promise<FileType[]> => {
+            for (const file of files) {
+              validateFileExtension(file.name, "File");
+            }
+            const instanceId = this._requireInstanceId();
+            const requests: FileUploadRequestType[] = files.map((file) => ({
+              FileName: file.name,
+              Size: file.size,
+              FileExtension: extractFileExtension(file.name),
+            }));
+            const uploadInfos = await api(boId).getUploadUrl(
+              instanceId,
+              fieldId,
+              requests,
+            );
+
+            const uploaded: FileType[] = await Promise.all(
+              files.map(async (file, i) => {
+                await fetch(uploadInfos[i].UploadUrl.URL, {
+                  method: "PUT",
+                  headers: { "Content-Type": uploadInfos[i].ContentType },
+                  body: file,
+                });
+                return {
+                  _id: uploadInfos[i]._id,
+                  _name: uploadInfos[i]._name,
+                  FileName: uploadInfos[i].FileName,
+                  FileExtension: uploadInfos[i].FileExtension,
+                  Size: uploadInfos[i].Size,
+                  ContentType: uploadInfos[i].ContentType,
+                };
+              }),
+            );
+
+            const current =
+              (this._data[fieldId as keyof T] as FileType[] | undefined) ?? [];
+            this._data[fieldId as keyof T] = [
+              ...current,
+              ...uploaded,
+            ] as T[keyof T];
+            return uploaded;
+          };
+
+          acc.deleteAttachment = async (
+            attachmentId: string,
+          ): Promise<void> => {
+            const instanceId = this._requireInstanceId();
+            await api(boId).deleteAttachment(
+              instanceId,
+              fieldId,
+              attachmentId,
+            );
+            const current =
+              (this._data[fieldId as keyof T] as FileType[] | undefined) ?? [];
+            this._data[fieldId as keyof T] = current.filter(
+              (f) => f._id !== attachmentId,
+            ) as T[keyof T];
+          };
+        }
+      }
     }
 
     // Cache and return

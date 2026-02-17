@@ -274,6 +274,10 @@ export const BdoFieldType = {
   Array: "Array",
   /** Object field */
   Object: "Object",
+  /** File attachment field */
+  File: "File",
+  /** Image attachment field */
+  Image: "Image",
 } as const;
 
 /**
@@ -300,6 +304,10 @@ export const FormInputType = {
   Textarea: "textarea",
   /** Reference field */
   Reference: "reference",
+  /** File attachment */
+  File: "file",
+  /** Image attachment */
+  Image: "image",
 } as const;
 
 /**

@@ -27,6 +27,7 @@ import {
   StringField,
   NumberField,
   BooleanField,
+  DateField,
   DateTimeField,
   SelectField,
   ReferenceField,
@@ -52,8 +53,9 @@ import type {
 
 ```typescript
 interface WorkflowStartResponseType {
-  activityId: string;          // First activity ID in the workflow
-  activityInstanceId: string;  // Instance ID for the started activity
+  BPInstanceId: string;  // Business process instance ID
+  ActivityId: string;    // First activity ID in the workflow
+  _id: string;           // Activity instance ID
 }
 ```
 
@@ -170,17 +172,13 @@ export class EmployeeInputActivity extends Activity<
     activityId: "EMPLOYEE_INPUT",
   };
 
-  readonly StartDate = new DateTimeField({ id: "StartDate", label: "Start Date" });
-  readonly EndDate = new DateTimeField({ id: "EndDate", label: "End Date" });
+  readonly StartDate = new DateField({ "_id": "StartDate", "Name": "Start Date", "Type": "Date" });
+  readonly EndDate = new DateField({ "_id": "EndDate", "Name": "End Date", "Type": "Date" });
   readonly LeaveType = new SelectField<"PTO" | "Sick" | "Parental">({
-    id: "LeaveType", label: "Leave Type",
-    options: [
-      { value: "PTO", label: "PTO" },
-      { value: "Sick", label: "Sick" },
-      { value: "Parental", label: "Parental" },
-    ],
+    "_id": "LeaveType", "Name": "Leave Type", "Type": "String",
+    "Constraint": { "Enum": ["PTO", "Sick", "Parental"] },
   });
-  readonly LeaveDays = new NumberField({ id: "LeaveDays", label: "Leave Days", editable: false });
+  readonly LeaveDays = new NumberField({ "_id": "LeaveDays", "Name": "Leave Days", "Type": "Number", "ReadOnly": true });
 }
 
 export type ManagerApprovalEntityType = {
@@ -198,14 +196,15 @@ export class ManagerApprovalActivity extends Activity<
     activityId: "MANAGER_APPROVAL",
   };
 
-  readonly ManagerApproved = new BooleanField({ id: "ManagerApproved", label: "Manager Approved" });
-  readonly ManagerReason = new StringField({ id: "ManagerReason", label: "Manager's Reason" });
+  readonly ManagerApproved = new BooleanField({ "_id": "ManagerApproved", "Name": "Manager Approved", "Type": "Boolean" });
+  readonly ManagerReason = new StringField({ "_id": "ManagerReason", "Name": "Manager's Reason", "Type": "String" });
 }
 
 // --- Workflow class ---
 
 export class SimpleLeaveProcess {
   async start(): Promise<WorkflowStartResponseType>;
+  async progress(instance_id: string): Promise<ActivityProgressType[]>;
 
   employeeInputActivity(): EmployeeInputActivity;
   managerApprovalActivity(): ManagerApprovalActivity;
@@ -222,23 +221,24 @@ Start a new workflow instance.
 
 ```typescript
 const wf = new SimpleLeaveProcess();
-const { activityId, activityInstanceId } = await wf.start();
+const { BPInstanceId, ActivityId, _id } = await wf.start();
 ```
 
-### progress()
+### progress(instance_id)
 
-Get global progress across the entire business process. Returns a list of progress entries for each stage/activity.
+Get progress for a specific process instance. Returns a list of progress entries for each stage/activity.
 
 ```typescript
 const wf = new SimpleLeaveProcess();
-const progressList = await wf.progress();
+const { BPInstanceId } = await wf.start();
+const progressList = await wf.progress(BPInstanceId);
 // progressList: ActivityProgressType[]
 for (const entry of progressList) {
   console.log(entry._name, entry.Status, entry.CompletedAt);
 }
 ```
 
-**Endpoint:** `GET /api/app/process/{bp_id}/progress`
+**Endpoint:** `GET /api/app/process/{bp_id}/{instance_id}/progress`
 
 ---
 
@@ -250,54 +250,44 @@ Each Activity class provides methods to query and access activity instances. Lis
 const activity = wf.employeeInputActivity();
 ```
 
-### getInProgressList(options?)
+### getInProgressList()
 
-List in-progress activity instances with optional filtering and pagination.
+List in-progress activity instances. Filtering and pagination are handled server-side automatically.
 
 ```typescript
-const result = await activity.getInProgressList({
-  Page: 1,
-  PageSize: 20,
-});
+const result = await activity.getInProgressList();
 
 for (const item of result.Data) {
   console.log(item._id, item.Status, item.StartDate);
 }
 ```
 
-### getCompletedList(options?)
+### getCompletedList()
 
-List completed activity instances with optional filtering and pagination.
+List completed activity instances. Filtering and pagination are handled server-side automatically.
 
 ```typescript
-const result = await activity.getCompletedList({
-  Page: 1,
-  PageSize: 20,
-});
+const result = await activity.getCompletedList();
 
 for (const item of result.Data) {
   console.log(item._id, item.CompletedAt, item.StartDate);
 }
 ```
 
-### inProgressMetrics(options)
+### inProgressMetrics()
 
 Get aggregated metrics for in-progress activity instances.
 
 ```typescript
-const metrics = await activity.inProgressMetrics({
-  Metric: [{ Field: "Status", Function: "Count" }],
-});
+const metrics = await activity.inProgressMetrics();
 ```
 
-### completedMetrics(options)
+### completedMetrics()
 
 Get aggregated metrics for completed activity instances.
 
 ```typescript
-const metrics = await activity.completedMetrics({
-  Metric: [{ Field: "Status", Function: "Count" }],
-});
+const metrics = await activity.completedMetrics();
 ```
 
 ### getInstance(instanceId)
@@ -311,7 +301,7 @@ const instance = await activity.getInstance("inst_abc123");
 instance._id;                          // "inst_abc123"
 instance.StartDate.get();              // read value (typed)
 instance.StartDate.set("2026-03-01");  // set value (editable fields only)
-instance.StartDate.meta;               // { id: "StartDate", label: "Start Date", ... }
+instance.StartDate.meta;               // { _id: "StartDate", Name: "Start Date", Type: "Date" }
 instance.LeaveDays.get();              // read computed/readonly field
 // instance.LeaveDays.set(...)         // NOT available — readonly, no set()
 
@@ -401,10 +391,10 @@ import { SimpleLeaveProcess } from "@/bdo/workflows/SimpleLeaveProcess";
 import type { WorkflowStartResponseType } from "@ram_28/kf-ai-sdk/workflow";
 
 const wf = new SimpleLeaveProcess();
-const { activityId, activityInstanceId }: WorkflowStartResponseType = await wf.start();
+const { BPInstanceId, ActivityId, _id }: WorkflowStartResponseType = await wf.start();
 
-// Check global progress at any time
-const progress = await wf.progress();
+// Check progress at any time
+const progress = await wf.progress(BPInstanceId);
 ```
 
 ### Step 2 — React component with useActivityForm
@@ -532,7 +522,7 @@ function LeaveRequestPage() {
   const startLeaveRequest = async () => {
     const wf = new SimpleLeaveProcess();
     const result: WorkflowStartResponseType = await wf.start();
-    setInstanceId(result.activityInstanceId);
+    setInstanceId(result._id);
   };
 
   if (!instanceId) {
@@ -560,10 +550,7 @@ import { SimpleLeaveProcess } from "@/bdo/workflows/SimpleLeaveProcess";
 const wf = new SimpleLeaveProcess();
 const activity = wf.managerApprovalActivity();
 
-const result = await activity.getInProgressList({
-  Page: 1,
-  PageSize: 20,
-});
+const result = await activity.getInProgressList();
 
 for (const item of result.Data) {
   console.log(item._id, item.Status, item.AssignedTo.username);
@@ -685,7 +672,7 @@ const progress = await instance.progress();
 
 ## Filtering Reference
 
-Status filtering is built into the method names (`getInProgressList` / `getCompletedList`), so you no longer need a Status filter condition.
+Status filtering is built into the method names (`getInProgressList` / `getCompletedList`). All filtering (by current user, activity status, and activity ID) and pagination are handled server-side automatically — no client-side options are needed.
 
 ### In-progress items
 
@@ -699,37 +686,12 @@ const result = await activity.getInProgressList();
 const result = await activity.getCompletedList();
 ```
 
-### Assigned to a specific user (in-progress)
-
-```typescript
-const result = await activity.getInProgressList({
-  Filter: {
-    Operator: "And",
-    Condition: [
-      { LHSField: "AssignedTo._id", Operator: "EQ", RHSValue: userId, RHSType: "Constant" },
-    ],
-  },
-});
-```
-
-### Assigned to a specific user (completed)
-
-```typescript
-const result = await activity.getCompletedList({
-  Filter: {
-    Operator: "And",
-    Condition: [
-      { LHSField: "AssignedTo._id", Operator: "EQ", RHSValue: userId, RHSType: "Constant" },
-    ],
-  },
-});
-```
-
-### Global process progress
+### Process progress
 
 ```typescript
 const wf = new SimpleLeaveProcess();
-const progressList = await wf.progress();
+const { BPInstanceId } = await wf.start();
+const progressList = await wf.progress(BPInstanceId);
 // Returns ActivityProgressType[] — one entry per activity in the process
 ```
 
