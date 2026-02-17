@@ -277,7 +277,7 @@ interface ConditionType {
   Operator: ConditionOperatorType;
   LHSField: string;
   RHSValue: any;
-  RHSType?: "Constant" | "BOField" | "AppVariable";
+  RHSType?: "Constant" | "BDOField" | "AppVariable";
 }
 ```
 

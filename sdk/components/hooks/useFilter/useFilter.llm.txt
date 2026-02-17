@@ -28,7 +28,7 @@ import type {
 
 ```typescript
 const filter = useFilter({
-  initialOperator: "And",
+  operator: "And",
 });
 
 // Add a condition at root level
@@ -77,8 +77,8 @@ table.filter.clearAllConditions();
 
 | Property | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `initialConditions` | `Array<ConditionType \| ConditionGroupType>` | No | `[]` | Initial filter conditions |
-| `initialOperator` | `ConditionGroupOperatorType` | No | `"And"` | Initial root operator |
+| `conditions` | `Array<ConditionType \| ConditionGroupType>` | No | `[]` | Filter conditions |
+| `operator` | `ConditionGroupOperatorType` | No | `"And"` | Operator for combining conditions |
 
 ## Return Value
 
@@ -126,7 +126,7 @@ interface ConditionType {
   Operator: ConditionOperatorType;
   LHSField: string;               // Field name to filter on
   RHSValue: any;                  // Value to compare against
-  RHSType?: FilterRHSTypeType;    // "Constant" | "BOField" | "AppVariable"
+  RHSType?: FilterRHSTypeType;    // "Constant" | "BDOField" | "AppVariable"
 }
 ```
 
@@ -271,6 +271,18 @@ const buildComplexFilter = () => {
 };
 ```
 
+### Field-to-Field Comparison (BDOField)
+
+```typescript
+// Filter where Quantity exceeds Stock (field vs field)
+filter.addCondition({
+  Operator: "GT",
+  LHSField: "Quantity",
+  RHSValue: "Stock",
+  RHSType: "BDOField",
+});
+```
+
 ### Toggle Root Operator
 
 ```typescript
@@ -355,6 +367,63 @@ table.filter.clearAllConditions();
 table.filter.hasConditions;
 table.filter.payload;
 ```
+
+## Filtering Reference & User Fields
+
+Reference and User fields store `{ _id, _name, ... }` objects. Key rules:
+
+- **Default targets `_id`**: Pass string ID as `RHSValue`, backend auto-compares against `_id`
+- **Dot notation for nested paths**: Use `"FieldName._name"` in `LHSField` to filter by `_name` or other sub-fields
+- **Supported operators**: `EQ`, `NE`, `IN`, `NIN`, `Empty`, `NotEmpty`
+- **Contains/NotContains**: Only with dot notation (e.g., `"Vendor._name"`)
+- **GT/GTE/LT/LTE/Between**: NOT supported — raises backend error
+
+### Examples
+
+```typescript
+// Filter by reference ID
+filter.addCondition({
+  Operator: "EQ",
+  LHSField: "ProductInfo",    // field name, NOT "ProductInfo._id"
+  RHSValue: "PROD_001",       // string ID directly
+  RHSType: "Constant",
+});
+
+// Filter by multiple IDs
+filter.addCondition({
+  Operator: "IN",
+  LHSField: "ProductInfo",
+  RHSValue: ["PROD_001", "PROD_002"],
+  RHSType: "Constant",
+});
+
+// Search by reference name (dot notation)
+filter.addCondition({
+  Operator: "Contains",
+  LHSField: "ProductInfo._name",   // dot notation for nested path
+  RHSValue: "Widget",
+  RHSType: "Constant",
+});
+
+// Filter system user field
+filter.addCondition({
+  Operator: "EQ",
+  LHSField: "_created_by",
+  RHSValue: "USR_001",
+  RHSType: "Constant",
+});
+```
+
+### RHSValue Formats
+
+| Format | Example | When to use |
+|--------|---------|-------------|
+| String ID | `"PROD_001"` | Simplest — use when you have the ID |
+| Object | `{ _id: "PROD_001", _name: "Widget" }` | Backend extracts `_id` automatically |
+| Array of IDs | `["PROD_001", "PROD_002"]` | With IN/NIN operators |
+| Array of objects | `[{ _id: "PROD_001" }]` | With IN/NIN — backend extracts each `_id` |
+
+Prefer passing string IDs directly for simplicity.
 
 ## Key Behaviors
 

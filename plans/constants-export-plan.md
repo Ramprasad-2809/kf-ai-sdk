@@ -60,7 +60,7 @@ All type unions in `sdk/types/common.ts` and other files are only available as T
 | Constant | Value | Description |
 |----------|-------|-------------|
 | `Constant` | `"Constant"` | Literal constant value |
-| `BOField` | `"BOField"` | Reference another field |
+| `BDOField` | `"BDOField"` | Reference another BDO field |
 | `AppVariable` | `"AppVariable"` | Reference app variable |
 
 ---
