@@ -10,10 +10,10 @@
 //   - Typed field instances as class properties
 //
 // Methods:
-//   activity.getInProgressList(options)   // list in-progress activity instances
-//   activity.getCompletedList(options)    // list completed activity instances
-//   activity.inProgressMetrics(options)   // get in-progress aggregated metrics
-//   activity.completedMetrics(options)    // get completed aggregated metrics
+//   activity.getInProgressList()          // list in-progress activity instances
+//   activity.getCompletedList()           // list completed activity instances
+//   activity.inProgressMetrics()          // get in-progress aggregated metrics
+//   activity.completedMetrics()           // get completed aggregated metrics
 //   activity.getInstance(instanceId)      // get typed ActivityInstance
 
 import { Workflow } from "./client";
@@ -21,9 +21,7 @@ import { createActivityInstance } from "./ActivityInstance";
 import type { ActivityInstanceType } from "./ActivityInstance";
 import type { ActivityInstanceFieldsType, ActivityOperations } from "./types";
 import type {
-  ListOptionsType,
   ListResponseType,
-  MetricOptionsType,
   MetricResponseType,
 } from "../types/common";
 import { BaseField } from "../bdo/fields/BaseField";
@@ -60,8 +58,8 @@ import { BaseField } from "../bdo/fields/BaseField";
  * }
  *
  * const activity = new EmployeeInputActivity();
- * const inProgress = await activity.getInProgressList({ Page: 1, PageSize: 10 });
- * const completed = await activity.getCompletedList({ Page: 1, PageSize: 10 });
+ * const inProgress = await activity.getInProgressList();
+ * const completed = await activity.getCompletedList();
  * const instance = await activity.getInstance("inst_123");
  * instance.StartDate.get();  // typed value
  * instance.StartDate.set("2026-03-01");
@@ -125,39 +123,33 @@ export abstract class Activity<
   // ============================================================
 
   /**
-   * List in-progress activity instances with optional filtering/pagination.
+   * List in-progress activity instances.
+   * Filtering and pagination are handled server-side.
    */
-  async getInProgressList(
-    options?: ListOptionsType,
-  ): Promise<ListResponseType<ActivityInstanceFieldsType & TEntity>> {
-    return this._ops().inProgressList(options);
+  async getInProgressList(): Promise<ListResponseType<ActivityInstanceFieldsType & TEntity>> {
+    return this._ops().inProgressList();
   }
 
   /**
-   * List completed activity instances with optional filtering/pagination.
+   * List completed activity instances.
+   * Filtering and pagination are handled server-side.
    */
-  async getCompletedList(
-    options?: ListOptionsType,
-  ): Promise<ListResponseType<ActivityInstanceFieldsType & TEntity>> {
-    return this._ops().completedList(options);
+  async getCompletedList(): Promise<ListResponseType<ActivityInstanceFieldsType & TEntity>> {
+    return this._ops().completedList();
   }
 
   /**
    * Get aggregated metrics for in-progress activity instances.
    */
-  async inProgressMetrics(
-    options: Omit<MetricOptionsType, "Type">,
-  ): Promise<MetricResponseType> {
-    return this._ops().inProgressMetric(options);
+  async inProgressMetrics(): Promise<MetricResponseType> {
+    return this._ops().inProgressMetric();
   }
 
   /**
    * Get aggregated metrics for completed activity instances.
    */
-  async completedMetrics(
-    options: Omit<MetricOptionsType, "Type">,
-  ): Promise<MetricResponseType> {
-    return this._ops().completedMetric(options);
+  async completedMetrics(): Promise<MetricResponseType> {
+    return this._ops().completedMetric();
   }
 
   /**
