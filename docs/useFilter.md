@@ -59,7 +59,7 @@ GroupOperator.Not  // "Not"
 
 // RHS types
 RHSType.Constant    // "Constant"
-RHSType.BOField     // "BOField"
+RHSType.BDOField    // "BDOField"
 RHSType.AppVariable // "AppVariable"
 ```
 
@@ -103,7 +103,7 @@ interface ConditionType<T = any> {
   RHSValue: any;
 
   // Value type (default: "Constant")
-  RHSType?: "Constant" | "BOField" | "AppVariable";
+  RHSType?: "Constant" | "BDOField" | "AppVariable";
 }
 
 // Condition group (can contain conditions or nested groups)
@@ -198,8 +198,9 @@ interface UseFilterReturnType<T = any> {
 | Between, NotBetween   | number, date, currency |
 | IN, NIN               | All types              |
 | Empty, NotEmpty       | All types              |
-| Contains, NotContains | string only            |
-| MinLength, MaxLength  | string only            |
+| Contains, NotContains | string, reference/user (with dot notation) |
+| MinLength, MaxLength  | string, array          |
+| Length                 | array                  |
 
 ## Basic Example
 
@@ -618,6 +619,174 @@ function EmptyFilters() {
   );
 }
 ```
+
+---
+
+## Filtering Reference & User Fields
+
+Reference and User fields are stored as JSON objects (`{ _id, _name, ... }`). The backend automatically targets the `_id` sub-field when filtering these fields. User and Reference fields behave identically for filtering.
+
+### Supported Operators
+
+| Operator | Supported | Notes |
+| --- | --- | --- |
+| EQ, NE | Yes | Compares against `_id` by default |
+| IN, NIN | Yes | List of IDs |
+| Empty, NotEmpty | Yes | Checks if field is null/unset |
+| Contains, NotContains | Only with dot notation | e.g., `"Vendor._name"` |
+| GT, GTE, LT, LTE, Between | No | Raises backend error |
+
+### Filter by ID (Default)
+
+When filtering a Reference or User field, pass the `_id` string directly as `RHSValue`. The backend automatically compares against the `_id` sub-field.
+
+```tsx
+import { useMemo } from "react";
+import { useFilter, ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
+import { AdminCartItem } from "../bdo/admin/CartItem";
+
+function ReferenceFilter() {
+  const cartItem = useMemo(() => new AdminCartItem(), []);
+  const filter = useFilter();
+
+  // Filter cart items by a specific product ID
+  const filterByProduct = (productId: string) => {
+    filter.addCondition({
+      Operator: ConditionOperator.EQ,
+      LHSField: cartItem.ProductInfo.id,
+      RHSValue: productId,
+      RHSType: RHSType.Constant,
+    });
+  };
+
+  // Filter by multiple product IDs
+  const filterByProducts = (productIds: string[]) => {
+    filter.addCondition({
+      Operator: ConditionOperator.IN,
+      LHSField: cartItem.ProductInfo.id,
+      RHSValue: productIds,
+      RHSType: RHSType.Constant,
+    });
+  };
+
+  // Filter unassigned items (reference is empty)
+  const filterUnlinked = () => {
+    filter.addCondition({
+      Operator: ConditionOperator.Empty,
+      LHSField: cartItem.ProductInfo.id,
+      RHSValue: null,
+      RHSType: RHSType.Constant,
+    });
+  };
+
+  return (
+    <div>
+      <button onClick={() => filterByProduct("PROD_001")}>
+        Filter by Product
+      </button>
+      <button onClick={() => filterByProducts(["PROD_001", "PROD_002"])}>
+        Filter by Multiple
+      </button>
+      <button onClick={filterUnlinked}>Unlinked Items</button>
+    </div>
+  );
+}
+```
+
+### Filter by Name (Dot Notation)
+
+Use dot notation in `LHSField` to filter on a nested sub-field like `_name`. This skips the default `_id` targeting and compares against the specified path.
+
+```tsx
+import { useMemo } from "react";
+import { useFilter, ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
+import { AdminCartItem } from "../bdo/admin/CartItem";
+
+function ReferenceNameFilter() {
+  const cartItem = useMemo(() => new AdminCartItem(), []);
+  const filter = useFilter();
+
+  // Search product name within the reference field
+  const searchProductName = (name: string) => {
+    filter.addCondition({
+      Operator: ConditionOperator.Contains,
+      LHSField: `${cartItem.ProductInfo.id}._name`,
+      RHSValue: name,
+      RHSType: RHSType.Constant,
+    });
+  };
+
+  return (
+    <input
+      placeholder="Search by product name..."
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          searchProductName((e.target as HTMLInputElement).value);
+        }
+      }}
+    />
+  );
+}
+```
+
+### Filter System User Fields
+
+System fields `_created_by` and `_modified_by` are User fields. Filter them the same way.
+
+```tsx
+import { useFilter, ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
+
+function UserFieldFilter() {
+  const filter = useFilter();
+
+  // Filter by creator (using user's _id)
+  const filterByCreator = (userId: string) => {
+    filter.addCondition({
+      Operator: ConditionOperator.EQ,
+      LHSField: "_created_by",
+      RHSValue: userId,
+      RHSType: RHSType.Constant,
+    });
+  };
+
+  // Search by creator name
+  const searchByCreatorName = (name: string) => {
+    filter.addCondition({
+      Operator: ConditionOperator.Contains,
+      LHSField: "_created_by._name",
+      RHSValue: name,
+      RHSType: RHSType.Constant,
+    });
+  };
+
+  return (
+    <div>
+      <button onClick={() => filterByCreator("USR_001")}>My Items</button>
+      <input
+        placeholder="Search by creator..."
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            searchByCreatorName((e.target as HTMLInputElement).value);
+          }
+        }}
+      />
+    </div>
+  );
+}
+```
+
+### RHSValue Formats
+
+The backend accepts multiple `RHSValue` formats for Reference/User fields:
+
+| Format | Example | When to use |
+| --- | --- | --- |
+| String ID | `"PROD_001"` | Simplest — use when you have the ID |
+| Object with `_id` | `{ _id: "PROD_001", _name: "Widget" }` | Backend extracts `_id` automatically |
+| Array of IDs | `["PROD_001", "PROD_002"]` | With `IN` / `NIN` operators |
+| Array of objects | `[{ _id: "PROD_001" }, { _id: "PROD_002" }]` | With `IN` / `NIN` — backend extracts each `_id` |
+
+> **Tip:** Prefer passing the string ID directly. Passing the full object works but adds unnecessary payload size.
 
 ---
 
@@ -1319,7 +1488,93 @@ Produces:
 }
 ```
 
-> **Note:** The `RHSType` field defaults to `"Constant"` and is automatically added to the payload. Other possible values are `"BOField"` (reference another field) and `"AppVariable"` (reference an application variable).
+> **Note:** The `RHSType` field defaults to `"Constant"` and is automatically added to the payload. Other possible values are `"BDOField"` (reference another BDO field) and `"AppVariable"` (reference an application variable).
+
+### Reference Field (EQ)
+
+```tsx
+import { ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
+
+filter.addCondition({
+  Operator: ConditionOperator.EQ,
+  LHSField: cartItem.ProductInfo.id,
+  RHSValue: "PROD_001",
+  RHSType: RHSType.Constant,
+});
+```
+
+Produces:
+
+```json
+{
+  "Operator": "And",
+  "Condition": [
+    {
+      "Operator": "EQ",
+      "LHSField": "ProductInfo",
+      "RHSValue": "PROD_001",
+      "RHSType": "Constant"
+    }
+  ]
+}
+```
+
+### Reference Field Nested Path (Contains)
+
+```tsx
+filter.addCondition({
+  Operator: ConditionOperator.Contains,
+  LHSField: `${cartItem.ProductInfo.id}._name`,
+  RHSValue: "Widget",
+  RHSType: RHSType.Constant,
+});
+```
+
+Produces:
+
+```json
+{
+  "Operator": "And",
+  "Condition": [
+    {
+      "Operator": "Contains",
+      "LHSField": "ProductInfo._name",
+      "RHSValue": "Widget",
+      "RHSType": "Constant"
+    }
+  ]
+}
+```
+
+### Field-to-Field Comparison (BDOField)
+
+Use `RHSType.BDOField` to compare one field against another field instead of a constant value.
+
+```tsx
+// Filter where Quantity exceeds Stock (field vs field)
+filter.addCondition({
+  Operator: ConditionOperator.GT,
+  LHSField: cartItem.Quantity.id,
+  RHSValue: cartItem.Stock.id,
+  RHSType: RHSType.BDOField,
+});
+```
+
+Produces:
+
+```json
+{
+  "Operator": "And",
+  "Condition": [
+    {
+      "Operator": "GT",
+      "LHSField": "Quantity",
+      "RHSValue": "Stock",
+      "RHSType": "BDOField"
+    }
+  ]
+}
+```
 
 ---
 
@@ -1337,7 +1592,7 @@ Only three RHSType values exist. Any other string causes TS2322.
 
 // ✅ CORRECT — only these three values
 { RHSType: RHSType.Constant }    // "Constant"
-{ RHSType: RHSType.BOField }     // "BOField"
+{ RHSType: RHSType.BDOField }    // "BDOField"
 { RHSType: RHSType.AppVariable } // "AppVariable"
 ```
 
@@ -1386,4 +1641,22 @@ const conditions = [
 const conditions: Omit<ConditionType, "id">[] = [
   { Operator: ConditionOperator.EQ, ... }
 ];
+```
+
+### 5. Filtering Reference/User fields without _id
+
+The backend automatically targets `_id` when you filter a Reference or User field by name. Do NOT manually append `._id` unless you specifically want to bypass the backend's auto-extraction.
+
+```typescript
+// ❌ WRONG — unnecessary, and disables auto-extraction of _id from objects
+{ LHSField: "ProductInfo._id", Operator: "EQ", RHSValue: { _id: "P1", _name: "Widget" } }
+
+// ✅ CORRECT — backend auto-targets _id
+{ LHSField: "ProductInfo", Operator: "EQ", RHSValue: "P1" }
+
+// ✅ CORRECT — backend extracts _id from the object
+{ LHSField: "ProductInfo", Operator: "EQ", RHSValue: { _id: "P1", _name: "Widget" } }
+
+// ✅ CORRECT — dot notation for filtering by _name
+{ LHSField: "ProductInfo._name", Operator: "Contains", RHSValue: "Widget" }
 ```

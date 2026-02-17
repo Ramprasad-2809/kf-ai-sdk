@@ -56,6 +56,8 @@ export const ConditionOperator = {
   MinLength: "MinLength",
   /** Maximum string length */
   MaxLength: "MaxLength",
+  /** Exact length (array) */
+  Length: "Length",
 } as const;
 
 /**
@@ -90,13 +92,13 @@ export const GroupOperator = {
  * { RHSType: RHSType.Constant, RHSValue: 100 }
  *
  * // Compare against another field
- * { RHSType: RHSType.BOField, RHSValue: "otherField" }
+ * { RHSType: RHSType.BDOField, RHSValue: "otherField" }
  */
 export const RHSType = {
   /** Literal constant value */
   Constant: "Constant",
-  /** Reference another field */
-  BOField: "BOField",
+  /** Reference another BDO field */
+  BDOField: "BDOField",
   /** Reference app variable */
   AppVariable: "AppVariable",
 } as const;
