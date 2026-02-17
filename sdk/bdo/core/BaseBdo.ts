@@ -12,6 +12,10 @@ import type {
   PivotOptionsType,
   PivotResponseType,
   DraftResponseType,
+  FileUploadRequestType,
+  FileUploadResponseType,
+  FileDownloadResponseType,
+  AttachmentViewType,
 } from "../../types/common";
 import type { SystemFields } from "../../types/base-fields";
 import { api } from "../../api/client";
@@ -61,6 +65,13 @@ export abstract class BaseBdo<
   // ============================================================
   // FIELD DEFINITIONS (auto-discovered)
   // ============================================================
+
+  /**
+   * Get the Business Object ID for API calls
+   */
+  getBoId(): string {
+    return this.meta._id;
+  }
 
   /**
    * Whether fields have been bound to this BDO
@@ -298,5 +309,54 @@ export abstract class BaseBdo<
     options: Omit<PivotOptionsType, "Type">
   ): Promise<PivotResponseType> {
     return api<TEntity>(this.meta._id).pivot(options);
+  }
+
+  // ============================================================
+  // ATTACHMENT OPERATIONS
+  // ============================================================
+
+  /**
+   * Get signed upload URLs for file/image attachments
+   */
+  protected async getUploadUrl(
+    instanceId: string,
+    fieldId: string,
+    files: FileUploadRequestType[],
+  ): Promise<FileUploadResponseType[]> {
+    return api<TEntity>(this.meta._id).getUploadUrl(instanceId, fieldId, files);
+  }
+
+  /**
+   * Get signed download URL for a single attachment
+   */
+  protected async getDownloadUrl(
+    instanceId: string,
+    fieldId: string,
+    attachmentId: string,
+    viewType?: AttachmentViewType,
+  ): Promise<FileDownloadResponseType> {
+    return api<TEntity>(this.meta._id).getDownloadUrl(instanceId, fieldId, attachmentId, viewType);
+  }
+
+  /**
+   * Get signed download URLs for all attachments on a field
+   */
+  protected async getDownloadUrls(
+    instanceId: string,
+    fieldId: string,
+    viewType?: AttachmentViewType,
+  ): Promise<FileDownloadResponseType[]> {
+    return api<TEntity>(this.meta._id).getDownloadUrls(instanceId, fieldId, viewType);
+  }
+
+  /**
+   * Delete an attachment
+   */
+  protected async deleteAttachment(
+    instanceId: string,
+    fieldId: string,
+    attachmentId: string,
+  ): Promise<void> {
+    return api<TEntity>(this.meta._id).deleteAttachment(instanceId, fieldId, attachmentId);
   }
 }

@@ -172,10 +172,28 @@ export type SelectFieldType<T extends string | number = string> = T;
 export type UserFieldType = { _id: string; _name: string };
 
 /**
- * File field for file attachments
- * Resolves to: Record<string, unknown>
+ * Metadata for an individual uploaded file/image attachment
  */
-export type FileFieldType = Record<string, unknown>;
+export interface FileType {
+  _id: string;
+  _name: string;
+  FileName: string;
+  FileExtension: string;
+  Size: number;
+  ContentType: string;
+}
+
+/**
+ * Image field for single image attachments (nullable)
+ * Resolves to: FileType | null
+ */
+export type ImageFieldType = FileType | null;
+
+/**
+ * File field for file attachments (array of files)
+ * Resolves to: FileType[]
+ */
+export type FileFieldType = FileType[];
 
 // ============================================================
 // CONTAINER AND UTILITY TYPES

@@ -58,6 +58,10 @@ export type {
   DraftResponseType,
   // Fields types
   FieldsResponseType,
+  // Attachment types
+  FileUploadRequestType,
+  FileUploadResponseType,
+  FileDownloadResponseType,
 } from "../types/common";
 
 // Re-export date types from base-fields

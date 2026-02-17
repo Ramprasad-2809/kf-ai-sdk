@@ -142,6 +142,11 @@ export interface FileFieldMetaType extends BaseFieldMetaType {
   Constraint?: BaseConstraintType;
 }
 
+export interface ImageFieldMetaType extends BaseFieldMetaType {
+  Type: "Image";
+  Constraint?: BaseConstraintType;
+}
+
 // ============================================================
 // RUNTIME ACCESSOR TYPES
 // These represent what item.Title looks like at runtime
@@ -169,6 +174,64 @@ export type ReadonlyFieldAccessorType<T> = BaseFieldAccessorType<T>;
 
 /** Union of editable or readonly accessor */
 export type FieldAccessorType<T> = EditableFieldAccessorType<T> | ReadonlyFieldAccessorType<T>;
+
+// ============================================================
+// FILE/IMAGE FIELD ACCESSOR TYPES
+// ============================================================
+
+import type {
+  FileType,
+  ImageFieldType,
+  FileFieldType,
+} from "../../types/base-fields";
+import type {
+  FileDownloadResponseType,
+  AttachmentViewType,
+} from "../../types/common";
+
+/** Editable Image field accessor — adds upload, download, delete */
+export interface EditableImageFieldAccessorType
+  extends EditableFieldAccessorType<ImageFieldType> {
+  upload(file: File): Promise<FileType>;
+  getDownloadUrl(
+    viewType?: AttachmentViewType,
+  ): Promise<FileDownloadResponseType>;
+  deleteAttachment(): Promise<void>;
+}
+
+/** Readonly Image field accessor — download only */
+export interface ReadonlyImageFieldAccessorType
+  extends ReadonlyFieldAccessorType<ImageFieldType> {
+  getDownloadUrl(
+    viewType?: AttachmentViewType,
+  ): Promise<FileDownloadResponseType>;
+}
+
+/** Editable File field accessor — adds upload, download, delete */
+export interface EditableFileFieldAccessorType
+  extends EditableFieldAccessorType<FileFieldType> {
+  upload(files: File[]): Promise<FileType[]>;
+  getDownloadUrl(
+    attachmentId: string,
+    viewType?: AttachmentViewType,
+  ): Promise<FileDownloadResponseType>;
+  getDownloadUrls(
+    viewType?: AttachmentViewType,
+  ): Promise<FileDownloadResponseType[]>;
+  deleteAttachment(attachmentId: string): Promise<void>;
+}
+
+/** Readonly File field accessor — download only */
+export interface ReadonlyFileFieldAccessorType
+  extends ReadonlyFieldAccessorType<FileFieldType> {
+  getDownloadUrl(
+    attachmentId: string,
+    viewType?: AttachmentViewType,
+  ): Promise<FileDownloadResponseType>;
+  getDownloadUrls(
+    viewType?: AttachmentViewType,
+  ): Promise<FileDownloadResponseType[]>;
+}
 
 // ============================================================
 // SELECT FIELD OPTIONS

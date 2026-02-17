@@ -22,6 +22,7 @@ export {
   ObjectField,
   UserField,
   FileField,
+  ImageField,
 } from "./bdo/fields";
 
 // Constants
