@@ -98,6 +98,8 @@ export function useForm<B extends BaseBdo<any, any, any>>(
   useEffect(() => {
     if (schema?.BDOBlob) {
       bdo.loadMetadata(schema.BDOBlob);
+    } else if (schema?.MetaBlob) {
+      bdo.loadMetadata(schema.MetaBlob);
     }
   }, [schema, bdo]);
 
