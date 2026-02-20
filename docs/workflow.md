@@ -13,7 +13,7 @@ import {
   useActivityForm,
   useActivityTable,
   ActivityTableStatus,
-} from "@ram_28/kf-ai-sdk/workflow";
+} from '@ram_28/kf-ai-sdk/workflow';
 
 // Type-only exports
 import type {
@@ -25,7 +25,7 @@ import type {
   UseActivityTableOptionsType,
   UseActivityTableReturnType,
   ActivityRowType,
-} from "@ram_28/kf-ai-sdk/workflow";
+} from '@ram_28/kf-ai-sdk/workflow';
 
 // Field classes (for defining Activity fields)
 import {
@@ -36,7 +36,7 @@ import {
   DateTimeField,
   SelectField,
   ReferenceField,
-} from "@ram_28/kf-ai-sdk/bdo/fields";
+} from '@ram_28/kf-ai-sdk/bdo/fields';
 
 // Field types (for entity type definitions)
 import type {
@@ -47,7 +47,7 @@ import type {
   DateTimeFieldType,
   SelectFieldType,
   ReferenceFieldType,
-} from "@ram_28/kf-ai-sdk/types";
+} from '@ram_28/kf-ai-sdk/types';
 ```
 
 ---
@@ -92,66 +92,11 @@ type ActivityInstanceFieldsType = {
 };
 ```
 
-### ActivityTableStatus (constant)
+### Activity Table Types
 
-```typescript
-const ActivityTableStatus = {
-  InProgress: 'inprogress',
-  Completed: 'completed',
-} as const;
+See the dedicated [useActivityTable documentation](./useActivityTable.md) for `ActivityTableStatus`, `ActivityRowType`, `UseActivityTableOptionsType`, and `UseActivityTableReturnType`.
 
-type ActivityTableStatusType =
-  (typeof ActivityTableStatus)[keyof typeof ActivityTableStatus];
-```
-
-### ActivityRowType\<A\>
-
-Row type for activity table data. Combines activity instance system fields with entity-specific fields.
-
-```typescript
-type ActivityRowType<A extends Activity<any, any, any>> =
-  ActivityInstanceFieldsType & ExtractActivityEntity<A>;
-```
-
-Concrete example — for `ManagerApprovalActivity` with `{ ManagerApproved: boolean, ManagerReason: string }`:
-
-```typescript
-// ActivityRowType<ManagerApprovalActivity> resolves to:
-{
-  // System fields (from ActivityInstanceFieldsType)
-  _id: string;
-  Status: "InProgress" | "Completed";
-  AssignedTo: UserFieldType;
-  CompletedAt: string;
-
-  // Entity fields (from ManagerApprovalEntityType)
-  ManagerApproved: boolean;
-  ManagerReason: string;
-}
-```
-
-### UseActivityTableOptionsType\<A\>
-
-```typescript
-interface UseActivityTableOptionsType<A extends Activity<any, any, any>> {
-  status: ActivityTableStatusType;
-  onError?: (error: Error) => void;
-  onSuccess?: (data: ActivityRowType<A>[]) => void;
-}
-```
-
-### UseActivityTableReturnType\<A\>
-
-```typescript
-interface UseActivityTableReturnType<A extends Activity<any, any, any>> {
-  rows: ActivityRowType<A>[];
-  totalItems: number;
-  isLoading: boolean;
-  isFetching: boolean;
-  error: Error | null;
-  refetch: () => Promise<ListResponseType<ActivityRowType<A>>>;
-}
-```
+**Key change:** Entity fields are now nested under `ADO` instead of being flattened at the top level. Access entity fields as `row.ADO.FieldName`.
 
 ### UseActivityFormOptions\<A\>
 
@@ -316,44 +261,55 @@ Each Activity class provides methods to query and access activity instances. Lis
 const activity = wf.employeeInputActivity();
 ```
 
-### getInProgressList()
+### getInProgressList(options?)
 
-List in-progress activity instances. Filtering and pagination are handled server-side automatically.
+List in-progress activity instances. Accepts optional `ListOptionsType` payload for server-side filtering, sorting, and pagination.
 
 ```typescript
+// No options — returns all in-progress items (default pagination)
 const result = await activity.getInProgressList();
 
 for (const item of result.Data) {
-  console.log(item._id, item.Status, item.StartDate);
+  console.log(item._id, item.Status, item.ADO.StartDate);
 }
+
+// With options — server-side filter, sort, and pagination
+const filtered = await activity.getInProgressList({
+  Filter: { Operator: 'And', Condition: [{ LHSField: 'Status', Operator: 'EQ', RHSValue: 'InProgress', RHSType: 'Constant' }] },
+  Sort: [{ '_created_at': 'DESC' }],
+  Page: 1,
+  PageSize: 10,
+});
 ```
 
-### getCompletedList()
+### getCompletedList(options?)
 
-List completed activity instances. Filtering and pagination are handled server-side automatically.
+List completed activity instances. Same options as `getInProgressList`.
 
 ```typescript
 const result = await activity.getCompletedList();
 
 for (const item of result.Data) {
-  console.log(item._id, item.CompletedAt, item.StartDate);
+  console.log(item._id, item.CompletedAt, item.ADO.StartDate);
 }
 ```
 
-### inProgressMetrics()
+### inProgressMetrics(options?)
 
-Get aggregated metrics for in-progress activity instances.
+Get count of in-progress activity instances. Returns `CountResponseType` (`{ Count: number }`).
 
 ```typescript
-const metrics = await activity.inProgressMetrics();
+const { Count } = await activity.inProgressMetrics();
+console.log('In-progress count:', Count);
 ```
 
-### completedMetrics()
+### completedMetrics(options?)
 
-Get aggregated metrics for completed activity instances.
+Get count of completed activity instances. Returns `CountResponseType` (`{ Count: number }`).
 
 ```typescript
-const metrics = await activity.completedMetrics();
+const { Count } = await activity.completedMetrics();
+console.log('Completed count:', Count);
 ```
 
 ### getInstance(instanceId)
@@ -450,35 +406,9 @@ User clicks Complete
 
 ## useActivityTable Hook
 
-React hook for listing workflow activity instances. Fetches data from
-`getInProgressList()` or `getCompletedList()` and the corresponding
-metrics endpoint.
+See the dedicated [useActivityTable documentation](./useActivityTable.md) for the full API reference, type definitions, and examples.
 
-### Signature
-
-```typescript
-useActivityTable(activity: A, options: UseActivityTableOptionsType<A>)
-  : UseActivityTableReturnType<A>
-```
-
-### Options
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `status` | `ActivityTableStatusType` | *required* | `ActivityTableStatus.InProgress` or `ActivityTableStatus.Completed` |
-| `onError` | `(error: Error) => void` | — | Error callback |
-| `onSuccess` | `(data: ActivityRowType<A>[]) => void` | — | Success callback |
-
-### Return Value
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `rows` | `ActivityRowType<A>[]` | Activity instance records (system + entity fields) |
-| `totalItems` | `number` | Total count (from metrics endpoint) |
-| `isLoading` | `boolean` | Initial load in progress |
-| `isFetching` | `boolean` | Any fetch in progress (including refetch) |
-| `error` | `Error \| null` | Fetch error |
-| `refetch` | `() => Promise<...>` | Refetch both list and metrics |
+`useActivityTable` now wraps the base `useTable` hook, providing the same search, sort, filter, and pagination capabilities as BDO tables. Entity fields are accessed via `row.ADO.FieldName`.
 
 ---
 
@@ -645,16 +575,19 @@ function LeaveRequestPage() {
 ### Step 1 — List in-progress items with useActivityTable
 
 ```tsx
-import { useMemo, useState } from "react";
-import { useActivityTable, ActivityTableStatus } from "@ram_28/kf-ai-sdk/workflow";
-import { SimpleLeaveProcess, ManagerApprovalActivity } from "@/bdo/workflows/SimpleLeaveProcess";
+import { useMemo, useState } from 'react';
+import { useActivityTable, ActivityTableStatus } from '@ram_28/kf-ai-sdk/workflow';
+import { SimpleLeaveProcess, ManagerApprovalActivity } from '@/bdo/workflows/SimpleLeaveProcess';
 
 function ManagerApprovalPage() {
   const activity = useMemo(() => new SimpleLeaveProcess().managerApprovalActivity(), []);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const { rows, totalItems, isLoading, error, refetch } = useActivityTable(activity, {
+  const { rows, totalItems, isLoading, error, pagination, refetch } = useActivityTable(activity, {
     status: ActivityTableStatus.InProgress,
+    initialState: {
+      pagination: { pageNo: 1, pageSize: 10 },
+    },
   });
 
   if (isLoading) return <div>Loading...</div>;
@@ -681,6 +614,8 @@ function ManagerApprovalPage() {
             <th>ID</th>
             <th>Status</th>
             <th>Assigned To</th>
+            <th>Approved</th>
+            <th>Reason</th>
             <th>Action</th>
           </tr>
         </thead>
@@ -690,6 +625,8 @@ function ManagerApprovalPage() {
               <td>{row._id}</td>
               <td>{row.Status}</td>
               <td>{row.AssignedTo._name}</td>
+              <td>{row.ADO.ManagerApproved ? 'Yes' : 'No'}</td>
+              <td>{row.ADO.ManagerReason}</td>
               <td>
                 <button onClick={() => setSelectedId(row._id)}>Review</button>
               </td>
@@ -697,6 +634,11 @@ function ManagerApprovalPage() {
           ))}
         </tbody>
       </table>
+      <div>
+        <button onClick={pagination.goToPrevious} disabled={!pagination.canGoPrevious}>Previous</button>
+        <span>Page {pagination.pageNo} of {pagination.totalPages}</span>
+        <button onClick={pagination.goToNext} disabled={!pagination.canGoNext}>Next</button>
+      </div>
     </div>
   );
 }
@@ -817,18 +759,31 @@ const progress = await instance.progress();
 
 ## Filtering Reference
 
-Status filtering is built into the method names (`getInProgressList` / `getCompletedList`). All filtering (by current user, activity status, and activity ID) and pagination are handled server-side automatically — no client-side options are needed.
+Status filtering is built into the method names (`getInProgressList` / `getCompletedList`). Internal filters (ActivityId, Status, AssignedTo) are **always applied** by the backend. Frontend filters passed via `ListOptionsType` are AND-merged with the internal filters.
+
+All four list/metric endpoints now use **POST** with an optional `ListOptionsType` body (same shape as BDO list API: `{ Filter, Sort, Page, PageSize }`).
 
 ### In-progress items
 
 ```typescript
+// No options — returns all (default pagination)
 const result = await activity.getInProgressList();
+
+// With filter + pagination
+const result = await activity.getInProgressList({
+  Sort: [{ '_created_at': 'DESC' }],
+  Page: 1,
+  PageSize: 25,
+});
 ```
 
 ### Completed items
 
 ```typescript
-const result = await activity.getCompletedList();
+const result = await activity.getCompletedList({
+  Page: 1,
+  PageSize: 25,
+});
 ```
 
 ### Process progress

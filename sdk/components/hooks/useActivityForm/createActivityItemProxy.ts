@@ -5,19 +5,19 @@
 // Follows the same pattern as createItemProxy for BaseBdo,
 // adapted for Activity.
 
-import type { UseFormReturn, Path, FieldValues } from "react-hook-form";
-import type { BaseFieldMetaType } from "../../../bdo/core/types";
-import type { BaseField } from "../../../bdo/fields/BaseField";
+import type { UseFormReturn, Path, FieldValues } from 'react-hook-form';
+import type { BaseFieldMetaType } from '../../../bdo/core/types';
+import type { BaseField } from '../../../bdo/fields/BaseField';
 import type {
   FormItemType,
   EditableFormFieldAccessorType,
   ReadonlyFormFieldAccessorType,
-} from "../../../components/hooks/useForm/types";
-import type { Activity } from "../../Activity";
+} from '../useForm/types';
+import type { Activity } from '../../../workflow/Activity';
 import type {
   ExtractActivityEditable,
   ExtractActivityReadonly,
-} from "./types";
+} from './types';
 
 /**
  * Creates a Proxy-based Item that delegates to RHF for state management.
@@ -40,17 +40,17 @@ export function createActivityItemProxy<A extends Activity<any, any, any>>(
     {
       get(_, prop: string | symbol) {
         // Handle symbol properties (e.g., Symbol.toStringTag)
-        if (typeof prop === "symbol") {
+        if (typeof prop === 'symbol') {
           return undefined;
         }
 
         // toJSON returns all form values as plain object
-        if (prop === "toJSON") {
+        if (prop === 'toJSON') {
           return () => form.getValues();
         }
 
         // validate triggers RHF validation for all fields
-        if (prop === "validate") {
+        if (prop === 'validate') {
           return () => form.trigger();
         }
 
@@ -59,14 +59,16 @@ export function createActivityItemProxy<A extends Activity<any, any, any>>(
         const fieldMeta: BaseFieldMetaType = bdoField?.meta ?? {
           _id: prop,
           Name: prop,
-          Type: "String",
+          Type: 'String',
         };
         const isReadOnly = bdoField?.readOnly ?? false;
 
         // Base validate function
         const validate = () => {
           if (bdoField) {
-            return bdoField.validate(form.getValues(prop as Path<FieldValues>));
+            return bdoField.validate(
+              form.getValues(prop as Path<FieldValues>),
+            );
           }
           return { valid: true, errors: [] };
         };
@@ -109,20 +111,20 @@ export function createActivityItemProxy<A extends Activity<any, any, any>>(
       },
 
       has(_, prop) {
-        if (typeof prop === "symbol") return false;
-        if (prop === "toJSON" || prop === "validate") return true;
+        if (typeof prop === 'symbol') return false;
+        if (prop === 'toJSON' || prop === 'validate') return true;
         return prop in fields;
       },
 
       ownKeys(_) {
-        return [...Object.keys(fields), "toJSON", "validate"];
+        return [...Object.keys(fields), 'toJSON', 'validate'];
       },
 
       getOwnPropertyDescriptor(_, prop) {
-        if (typeof prop === "symbol") return undefined;
+        if (typeof prop === 'symbol') return undefined;
         return {
           configurable: true,
-          enumerable: prop !== "toJSON" && prop !== "validate",
+          enumerable: prop !== 'toJSON' && prop !== 'validate',
         };
       },
     },

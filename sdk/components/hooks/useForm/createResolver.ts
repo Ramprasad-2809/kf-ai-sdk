@@ -88,7 +88,12 @@ export function createResolver<B extends BaseBdo<any, any, any>>(
       const field = fields[fieldName];
       if (!field) continue;
 
-      const value = values[fieldName];
+      let value = values[fieldName];
+
+      // Coerce string values from HTML inputs to the expected type
+      if (typeof value === "string" && field.meta.Type === "Number") {
+        value = value === "" ? undefined : Number(value);
+      }
 
       // 1. Type validation (existing)
       const typeResult: ValidationResultType = (

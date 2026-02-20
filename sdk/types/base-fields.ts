@@ -93,16 +93,16 @@ type Second = number;
 
 /**
  * DateTime field (date and time)
- * API Request Format: "YYYY-MM-DD HH:MM:SS"
+ * API Request Format: "YYYY-MM-DDTHH:MM:SSZ"
+ * API Response Format: "YYYY-MM-DDTHH:MM:SSZ" (always UTC)
  * Use this for created_at, updated_at, event timestamps
  *
  * @example
- * // Response from API:
- * "2026-01-23T01:21:33"
+ * "2026-01-23T01:21:33Z"
  */
 
 export type DateTimeFieldType =
-  `${Year}-${Month}-${Day}T${Hour}:${Minute}:${Second}`;
+  `${Year}-${Month}-${Day}T${Hour}:${Minute}:${Second}Z`;
 
 // ============================================================
 // COMPLEX FIELD TYPES

@@ -12,9 +12,9 @@ import type {
   UseFormTrigger,
   Control,
   FieldErrors,
-} from "react-hook-form";
+} from 'react-hook-form';
 
-import type { Activity } from "../../Activity";
+import type { Activity } from '../../../workflow/Activity';
 
 // Reuse shared types from useForm — identical interfaces, no duplication
 import type {
@@ -23,7 +23,7 @@ import type {
   FormRegisterType,
   EditableFormFieldAccessorType,
   ReadonlyFormFieldAccessorType,
-} from "../../../components/hooks/useForm/types";
+} from '../useForm/types';
 
 // Re-export for consumers who import from this module
 export type {
@@ -75,7 +75,7 @@ export interface UseActivityFormOptions<A extends Activity<any, any, any>> {
    * Validation mode — controls when validation runs
    * @default "onBlur"
    */
-  mode?: "onBlur" | "onChange" | "onSubmit" | "onTouched" | "all";
+  mode?: 'onBlur' | 'onChange' | 'onSubmit' | 'onTouched' | 'all';
 
   /**
    * Whether to enable activity.read() on mount
@@ -99,12 +99,15 @@ export interface UseActivityFormReturn<A extends Activity<any, any, any>> {
   activity: A;
 
   /** Smart register with auto-disable for readonly fields */
-  register: FormRegisterType<ExtractActivityEditable<A>, ExtractActivityReadonly<A>>;
+  register: FormRegisterType<
+    ExtractActivityEditable<A>,
+    ExtractActivityReadonly<A>
+  >;
 
-  /** Handle form submission — calls activity.update() + activity.draftEnd() */
+  /** Handle form submission — calls activity.update() */
   handleSubmit: HandleSubmitType<AllActivityFields<A>>;
 
-  /** Handle form completion — calls activity.complete() */
+  /** Handle form completion — calls activity.update() + activity.complete() */
   handleComplete: HandleSubmitType<AllActivityFields<A>>;
 
   /** Watch field values */
@@ -148,14 +151,24 @@ export interface UseActivityFormReturn<A extends Activity<any, any, any>> {
   // LOADING STATES
   // ============================================================
 
-  /** True during activity.read() */
+  /** True during activity.read() or metadata fetch */
   isLoading: boolean;
+
+  /** True while BP metadata and context schemas are loading */
+  isMetadataLoading: boolean;
 
   /** Schema/data load error */
   loadError: Error | null;
 
   /** Any error active */
   hasError: boolean;
+
+  // ============================================================
+  // METADATA (optional — for consumers that need raw metadata)
+  // ============================================================
+
+  /** Raw BP metadata (BDOBlob) — available after metadata fetch completes */
+  bpMetadata: Record<string, unknown> | null;
 
   // ============================================================
   // OPERATIONS

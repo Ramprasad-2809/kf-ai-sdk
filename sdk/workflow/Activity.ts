@@ -22,7 +22,8 @@ import type { ActivityInstanceType } from "./ActivityInstance";
 import type { ActivityInstanceFieldsType, ActivityOperations } from "./types";
 import type {
   ListResponseType,
-  MetricResponseType,
+  ListOptionsType,
+  CountResponseType,
 } from "../types/common";
 import { BaseField } from "../bdo/fields/BaseField";
 
@@ -124,32 +125,32 @@ export abstract class Activity<
 
   /**
    * List in-progress activity instances.
-   * Filtering and pagination are handled server-side.
+   * Accepts optional filter/sort/pagination options.
    */
-  async getInProgressList(): Promise<ListResponseType<ActivityInstanceFieldsType & TEntity>> {
-    return this._ops().inProgressList();
+  async getInProgressList(options?: ListOptionsType): Promise<ListResponseType<ActivityInstanceFieldsType & TEntity>> {
+    return this._ops().inProgressList(options);
   }
 
   /**
    * List completed activity instances.
-   * Filtering and pagination are handled server-side.
+   * Accepts optional filter/sort/pagination options.
    */
-  async getCompletedList(): Promise<ListResponseType<ActivityInstanceFieldsType & TEntity>> {
-    return this._ops().completedList();
+  async getCompletedList(options?: ListOptionsType): Promise<ListResponseType<ActivityInstanceFieldsType & TEntity>> {
+    return this._ops().completedList(options);
   }
 
   /**
-   * Get aggregated metrics for in-progress activity instances.
+   * Get count of in-progress activity instances.
    */
-  async inProgressMetrics(): Promise<MetricResponseType> {
-    return this._ops().inProgressMetric();
+  async inProgressMetrics(options?: ListOptionsType): Promise<CountResponseType> {
+    return this._ops().inProgressMetric(options);
   }
 
   /**
-   * Get aggregated metrics for completed activity instances.
+   * Get count of completed activity instances.
    */
-  async completedMetrics(): Promise<MetricResponseType> {
-    return this._ops().completedMetric();
+  async completedMetrics(options?: ListOptionsType): Promise<CountResponseType> {
+    return this._ops().completedMetric(options);
   }
 
   /**

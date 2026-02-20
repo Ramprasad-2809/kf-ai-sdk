@@ -5,6 +5,7 @@
 
 import type { UserFieldType } from "../../types/base-fields";
 import type { UserFieldMetaType, ValidationResultType } from "../core/types";
+import { api } from "../../api/client";
 import { BaseField } from "./BaseField";
 
 /**
@@ -48,5 +49,17 @@ export class UserField extends BaseField<UserFieldType> {
     }
 
     return { valid: true, errors: [] };
+  }
+
+  /**
+   * Fetch available users from the backend, returned as UserFieldType[]
+   */
+  async fetchOptions(instanceId: string): Promise<UserFieldType[]> {
+    if (!this._parentBoId) {
+      throw new Error(
+        `Field ${this.id} not bound to a BDO. Cannot fetch options.`
+      );
+    }
+    return api(this._parentBoId).fetchField<UserFieldType>(instanceId, this.id);
   }
 }

@@ -57,14 +57,14 @@ export class SelectField<T extends string | number = string> extends BaseField<T
   /**
    * Fetch dynamic options from the backend, returned as typed SelectOption[]
    */
-  async fetchOptions(instanceId?: string): Promise<SelectOptionType<T>[]> {
+  async fetchOptions(instanceId: string): Promise<SelectOptionType<T>[]> {
     if (!this._parentBoId) {
       throw new Error(
         `Field ${this.id} not bound to a BDO. Cannot fetch options.`
       );
     }
     const response = await api(this._parentBoId).fetchField<FetchFieldOptionType>(
-      instanceId ?? "new",
+      instanceId,
       this.id
     );
     return response.map((item) => ({

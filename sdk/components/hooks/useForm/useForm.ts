@@ -13,14 +13,50 @@ import { createItemProxy } from "./createItemProxy";
 import { getBdoSchema } from "../../../api/metadata";
 import type { BaseBdo } from "../../../bdo";
 import type { CreateUpdateResponseType } from "../../../types/common";
+import type { BaseField } from "../../../bdo/fields/BaseField";
 import type {
   UseFormOptionsType,
   UseFormReturnType,
   HandleSubmitType,
   AllFieldsType,
-  CreatableBdo,
   UpdatableBdo,
 } from "./types";
+
+/** Coerce form value to match field's expected type (HTML inputs return strings) */
+function coerceFieldValue(field: BaseField<unknown>, value: unknown): unknown {
+  const type = field.meta.Type;
+  if (typeof value === "string" && type === "Number") {
+    return value === "" ? undefined : Number(value);
+  }
+  // Date/DateTime: empty string → undefined (don't send to backend)
+  if (typeof value === "string" && value === "" && (type === "Date" || type === "DateTime")) {
+    return undefined;
+  }
+  // DateTime: normalize to HH:MM:SS and ensure Z suffix for API request format
+  if (typeof value === "string" && value !== "" && type === "DateTime") {
+    let normalized = value;
+    if (normalized.endsWith("Z")) normalized = normalized.slice(0, -1);
+    // HTML datetime-local may omit seconds (e.g. "2026-02-18T15:12")
+    const timePart = normalized.split("T")[1] || "";
+    if ((timePart.match(/:/g) || []).length === 1) {
+      normalized += ":00";
+    }
+    return normalized + "Z";
+  }
+  return value;
+}
+
+/** Strip trailing Z from DateTime response values for HTML datetime-local inputs */
+function coerceRecordForForm(bdo: BaseBdo<any, any, any>, data: Record<string, unknown>): Record<string, unknown> {
+  const fields = bdo.getFields();
+  const result = { ...data };
+  for (const [key, value] of Object.entries(result)) {
+    if (typeof value === "string" && fields[key]?.meta.Type === "DateTime" && value.endsWith("Z")) {
+      result[key] = value.slice(0, -1);
+    }
+  }
+  return result;
+}
 
 /**
  * A form hook that integrates with React Hook Form.
@@ -76,10 +112,29 @@ export function useForm<B extends BaseBdo<any, any, any>>(
       // bdo.get returns ItemWithData - extract raw data via toJSON
       // Safe: update operation requires UpdatableBdo (enforced by UseFormOptionsType)
       const item = await (bdo as unknown as UpdatableBdo).get(recordId!);
-      return item.toJSON();
+      // Strip Z from DateTime values so HTML datetime-local inputs display correctly
+      return coerceRecordForForm(bdo, item.toJSON() as Record<string, unknown>);
     },
     enabled: operation === "update" && !!recordId,
     staleTime: 0, // Always fetch fresh data for forms
+  });
+
+  // ============================================================
+  // DRAFT CREATION (Create Mode - Interactive)
+  // ============================================================
+
+  const {
+    data: draftData,
+    isLoading: isCreatingDraft,
+  } = useQuery({
+    queryKey: ["form-draft", bdo.meta._id],
+    queryFn: async () => {
+      const result = await (bdo as unknown as { draftInteraction(data: Record<string, unknown>): Promise<{ _id: string }> }).draftInteraction({});
+      return result;
+    },
+    enabled: operation === "create",
+    staleTime: Infinity,
+    gcTime: 0, // Clean up when form unmounts so next open creates a new draft
   });
 
   // ============================================================
@@ -116,6 +171,13 @@ export function useForm<B extends BaseBdo<any, any, any>>(
     values:
       operation === "update" && record ? (record as FieldValues) : undefined,
   });
+
+  // Set draft _id into form values when it arrives
+  useEffect(() => {
+    if (draftData?._id) {
+      form.setValue("_id" as any, draftData._id);
+    }
+  }, [draftData, form]);
 
   // ============================================================
   // ITEM PROXY
@@ -162,7 +224,7 @@ export function useForm<B extends BaseBdo<any, any, any>>(
               // Create mode - send all known, non-readonly fields
               for (const [key, value] of Object.entries(data)) {
                 if (fields[key] && !fields[key].readOnly) {
-                  filteredData[key] = value;
+                  filteredData[key] = coerceFieldValue(fields[key], value);
                 }
               }
             } else {
@@ -170,7 +232,7 @@ export function useForm<B extends BaseBdo<any, any, any>>(
               const dirtyFields = form.formState.dirtyFields;
               for (const [key, value] of Object.entries(data)) {
                 if (fields[key] && !fields[key].readOnly && dirtyFields[key]) {
-                  filteredData[key] = value;
+                  filteredData[key] = coerceFieldValue(fields[key], value);
                 }
               }
             }
@@ -178,8 +240,9 @@ export function useForm<B extends BaseBdo<any, any, any>>(
             let result: unknown;
 
             if (operation === "create") {
-              // Safe: create operation requires CreatableBdo (enforced by UseFormOptionsType)
-              result = await (bdo as unknown as CreatableBdo).create(
+              // Interactive create: commit draft via POST /<bdo_id>/draft
+              filteredData._id = draftData?._id;
+              result = await (bdo as unknown as { draft(data: Record<string, unknown>): Promise<unknown> }).draft(
                 filteredData,
               );
             } else {
@@ -243,7 +306,7 @@ export function useForm<B extends BaseBdo<any, any, any>>(
     dirtyFields: form.formState.dirtyFields as any,
 
     // Loading states
-    isLoading: isLoadingRecord,
+    isLoading: isLoadingRecord || isCreatingDraft,
     isFetching: isFetchingRecord,
 
     // Error

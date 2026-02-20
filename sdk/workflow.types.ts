@@ -15,4 +15,4 @@ export type {
   UseActivityTableReturnType,
   ActivityTableStatusType,
   ActivityRowType,
-} from './workflow/components/useActivityTable/types';
+} from './components/hooks/useActivityTable/types';

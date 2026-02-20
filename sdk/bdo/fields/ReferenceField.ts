@@ -70,12 +70,12 @@ export class ReferenceField<TRef = unknown> extends BaseField<
   /**
    * Fetch referenced records from the backend, returned as typed TRef[]
    */
-  async fetchOptions(instanceId?: string): Promise<TRef[]> {
+  async fetchOptions(instanceId: string): Promise<TRef[]> {
     if (!this._parentBoId) {
       throw new Error(
         `Field ${this.id} not bound to a BDO. Cannot fetch options.`
       );
     }
-    return api(this._parentBoId).fetchField<TRef>(instanceId ?? "new", this.id);
+    return api(this._parentBoId).fetchField<TRef>(instanceId, this.id);
   }
 }

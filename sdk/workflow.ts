@@ -17,16 +17,17 @@ export type {
   ActivityProgressType,
   WorkflowStartResponseType,
 } from './workflow/types';
+export { createFieldFromMeta, buildFieldsFromInput } from './workflow/createFieldFromMeta';
 
-export { useActivityForm } from './workflow/components/useActivityForm';
+export { useActivityForm } from './components/hooks/useActivityForm';
 export type {
   UseActivityFormOptions,
   UseActivityFormReturn,
-} from './workflow/components/useActivityForm';
+} from './components/hooks/useActivityForm';
 
-export { useActivityTable, ActivityTableStatus } from './workflow/components/useActivityTable';
+export { useActivityTable, ActivityTableStatus } from './components/hooks/useActivityTable';
 export type {
   UseActivityTableOptionsType,
   UseActivityTableReturnType,
   ActivityRowType,
-} from './workflow/components/useActivityTable';
+} from './components/hooks/useActivityTable';
