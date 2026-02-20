@@ -11,8 +11,6 @@ import {
   Activity,
   ActivityInstance,
   useActivityForm,
-  useActivityTable,
-  ActivityTableStatus,
 } from "@ram_28/kf-ai-sdk/workflow";
 
 // Type-only exports
@@ -22,9 +20,6 @@ import type {
   WorkflowStartResponseType,
   UseActivityFormOptions,
   UseActivityFormReturn,
-  UseActivityTableOptionsType,
-  UseActivityTableReturnType,
-  ActivityRowType,
 } from "@ram_28/kf-ai-sdk/workflow";
 
 // Field classes (for defining Activity fields)
@@ -87,70 +82,9 @@ System fields present on every activity instance. Returned alongside activity-sp
 type ActivityInstanceFieldsType = {
   _id: StringFieldType;
   Status: SelectFieldType<"InProgress" | "Completed">;
-  AssignedTo: UserFieldType;
+  AssignedTo: ReferenceFieldType<{ _id: StringFieldType; username: StringFieldType }>;
   CompletedAt: DateTimeFieldType;
 };
-```
-
-### ActivityTableStatus (constant)
-
-```typescript
-const ActivityTableStatus = {
-  InProgress: 'inprogress',
-  Completed: 'completed',
-} as const;
-
-type ActivityTableStatusType =
-  (typeof ActivityTableStatus)[keyof typeof ActivityTableStatus];
-```
-
-### ActivityRowType\<A\>
-
-Row type for activity table data. Combines activity instance system fields with entity-specific fields.
-
-```typescript
-type ActivityRowType<A extends Activity<any, any, any>> =
-  ActivityInstanceFieldsType & ExtractActivityEntity<A>;
-```
-
-Concrete example — for `ManagerApprovalActivity` with `{ ManagerApproved: boolean, ManagerReason: string }`:
-
-```typescript
-// ActivityRowType<ManagerApprovalActivity> resolves to:
-{
-  // System fields (from ActivityInstanceFieldsType)
-  _id: string;
-  Status: "InProgress" | "Completed";
-  AssignedTo: UserFieldType;
-  CompletedAt: string;
-
-  // Entity fields (from ManagerApprovalEntityType)
-  ManagerApproved: boolean;
-  ManagerReason: string;
-}
-```
-
-### UseActivityTableOptionsType\<A\>
-
-```typescript
-interface UseActivityTableOptionsType<A extends Activity<any, any, any>> {
-  status: ActivityTableStatusType;
-  onError?: (error: Error) => void;
-  onSuccess?: (data: ActivityRowType<A>[]) => void;
-}
-```
-
-### UseActivityTableReturnType\<A\>
-
-```typescript
-interface UseActivityTableReturnType<A extends Activity<any, any, any>> {
-  rows: ActivityRowType<A>[];
-  totalItems: number;
-  isLoading: boolean;
-  isFetching: boolean;
-  error: Error | null;
-  refetch: () => Promise<ListResponseType<ActivityRowType<A>>>;
-}
 ```
 
 ### UseActivityFormOptions\<A\>
@@ -448,40 +382,6 @@ User clicks Complete
 
 ---
 
-## useActivityTable Hook
-
-React hook for listing workflow activity instances. Fetches data from
-`getInProgressList()` or `getCompletedList()` and the corresponding
-metrics endpoint.
-
-### Signature
-
-```typescript
-useActivityTable(activity: A, options: UseActivityTableOptionsType<A>)
-  : UseActivityTableReturnType<A>
-```
-
-### Options
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `status` | `ActivityTableStatusType` | *required* | `ActivityTableStatus.InProgress` or `ActivityTableStatus.Completed` |
-| `onError` | `(error: Error) => void` | — | Error callback |
-| `onSuccess` | `(data: ActivityRowType<A>[]) => void` | — | Success callback |
-
-### Return Value
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `rows` | `ActivityRowType<A>[]` | Activity instance records (system + entity fields) |
-| `totalItems` | `number` | Total count (from metrics endpoint) |
-| `isLoading` | `boolean` | Initial load in progress |
-| `isFetching` | `boolean` | Any fetch in progress (including refetch) |
-| `error` | `Error \| null` | Fetch error |
-| `refetch` | `() => Promise<...>` | Refetch both list and metrics |
-
----
-
 ## Use Case: Employee Creating Leave
 
 ### Step 1 — Start the workflow
@@ -642,63 +542,18 @@ function LeaveRequestPage() {
 
 ## Use Case: Manager Approving Leave
 
-### Step 1 — List in-progress items with useActivityTable
+### Step 1 — List in-progress items
 
-```tsx
-import { useMemo, useState } from "react";
-import { useActivityTable, ActivityTableStatus } from "@ram_28/kf-ai-sdk/workflow";
-import { SimpleLeaveProcess, ManagerApprovalActivity } from "@/bdo/workflows/SimpleLeaveProcess";
+```typescript
+import { SimpleLeaveProcess } from "@/bdo/workflows/SimpleLeaveProcess";
 
-function ManagerApprovalPage() {
-  const activity = useMemo(() => new SimpleLeaveProcess().managerApprovalActivity(), []);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+const wf = new SimpleLeaveProcess();
+const activity = wf.managerApprovalActivity();
 
-  const { rows, totalItems, isLoading, error, refetch } = useActivityTable(activity, {
-    status: ActivityTableStatus.InProgress,
-  });
+const result = await activity.getInProgressList();
 
-  if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error.message}</div>;
-
-  if (selectedId) {
-    return (
-      <ApprovalForm
-        activityInstanceId={selectedId}
-        onComplete={() => {
-          setSelectedId(null);
-          refetch();
-        }}
-      />
-    );
-  }
-
-  return (
-    <div>
-      <h2>Pending Approvals ({totalItems})</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Status</th>
-            <th>Assigned To</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row._id}>
-              <td>{row._id}</td>
-              <td>{row.Status}</td>
-              <td>{row.AssignedTo._name}</td>
-              <td>
-                <button onClick={() => setSelectedId(row._id)}>Review</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+for (const item of result.Data) {
+  console.log(item._id, item.Status, item.AssignedTo.username);
 }
 ```
 
@@ -848,7 +703,7 @@ const progressList = await wf.progress(BPInstanceId);
 |-------|------|-------------|
 | `_id` | `StringFieldType` | Unique activity instance identifier |
 | `Status` | `SelectFieldType<"InProgress" \| "Completed">` | Current status |
-| `AssignedTo` | `UserFieldType` | Assigned user (has `._id` and `._name`) |
+| `AssignedTo` | `ReferenceFieldType<UserRefType>` | Assigned user (has `._id` and `.username`) |
 | `CompletedAt` | `DateTimeFieldType` | Completion timestamp (`"YYYY-MM-DDTHH:MM:SS"`) |
 
 ---

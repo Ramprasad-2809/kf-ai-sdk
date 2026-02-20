@@ -5,6 +5,7 @@
 
 import type { UserFieldType } from "../../types/base-fields";
 import type { UserFieldMetaType, ValidationResultType } from "../core/types";
+import { api } from "../../api/client";
 import { BaseField } from "./BaseField";
 
 /**
@@ -25,6 +26,19 @@ export class UserField extends BaseField<UserFieldType> {
   /** Business entity ID for user lookup */
   get businessEntity(): string | undefined {
     return (this._meta as UserFieldMetaType).View?.BusinessEntity;
+  }
+
+  /**
+   * Fetch user records from the backend via the fetchField API.
+   * Requires the field to be bound to a parent BDO.
+   */
+  async fetchOptions(instanceId: string): Promise<UserFieldType[]> {
+    if (!this._parentBoId) {
+      throw new Error(
+        `Field ${this.id} not bound to a BDO. Cannot fetch options.`
+      );
+    }
+    return api(this._parentBoId).fetchField<UserFieldType>(instanceId, this.id);
   }
 
   validate(value: UserFieldType | undefined): ValidationResultType {

@@ -1,150 +1,88 @@
 # Auth SDK API
 
-This Auth SDK API provides necessary React-hooks and Components to build the
-authentication and state management with session handling.
-
-Here is the example how to use this API:
+React hook for authentication and session management.
 
 ## Imports
 
 ```typescript
 import { useAuth, AuthProvider } from "@ram_28/kf-ai-sdk/auth";
-import type {
-  UseAuthReturnType,
-  UserDetailsType,
-  AuthStatusType,
-} from "@ram_28/kf-ai-sdk/auth/types";
+import type { UseAuthReturnType, UserDetailsType, AuthStatusType } from "@ram_28/kf-ai-sdk/auth/types";
 ```
-
-## Type Definitions
-
-```typescript
-// User details from session
-interface UserDetailsType {
-  _id: string;
-  _name: string;
-  Role: string;
-  [key: string]: unknown;
-}
-
-// Authentication status
-type AuthStatusType = "loading" | "authenticated" | "unauthenticated";
-
-// Hook return type
-interface UseAuthReturnType {
-  // User state
-  user: UserDetailsType | null;
-  staticBaseUrl: string | null;
-  buildId: string | null;
-
-  // Auth status
-  status: AuthStatusType;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  error: Error | null;
-
-  // Auth actions
-  login: (provider?: string, options?: { callbackUrl?: string }) => void;
-  logout: (options?: { redirectUrl?: string }) => Promise<void>;
-  refreshSession: () => Promise<SessionResponseType | null>;
-
-  // Role checks
-  hasRole: (role: string) => boolean;
-  hasAnyRole: (roles: string[]) => boolean;
-
-  // Error handling
-  clearError: () => void;
-}
-```
-
-## Usage Example
-
-Wrap your app with `AuthProvider` and use `useAuth` in components.
-
-```tsx
-import { useAuth, AuthProvider } from "@ram_28/kf-ai-sdk/auth";
-
-// 1. Wrap app with AuthProvider inside QueryClientProvider
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-
-const queryClient = new QueryClient();
-
-function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
-    </QueryClientProvider>
-  );
-}
-
-// 2. Use useAuth in components
-function AppContent() {
-  const auth: UseAuthReturnType = useAuth();
-
-  if (auth.isLoading) return <div>Loading...</div>;
-
-  if (!auth.isAuthenticated) {
-    return (
-      <div>
-        <h1>Welcome</h1>
-        <button onClick={() => auth.login()}>Login with Google</button>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <h1>Hello, {auth.user?._name}</h1>
-      <p>Role: {auth.user?.Role}</p>
-      <button onClick={() => auth.logout()}>Sign Out</button>
-    </div>
-  );
-}
-```
-
-## useAuth Properties
-
-| Property          | Type                                         | Description                                                      |
-| ----------------- | -------------------------------------------- | ---------------------------------------------------------------- |
-| `user`            | `UserDetailsType \| null`                    | Current authenticated user details                               |
-| `isAuthenticated` | `boolean`                                    | Whether user is logged in                                        |
-| `isLoading`       | `boolean`                                    | Whether auth state is being determined                           |
-| `status`          | `AuthStatusType`                             | Full status: `"loading"`, `"authenticated"`, `"unauthenticated"` |
-| `error`           | `Error \| null`                              | Last authentication error                                        |
-| `staticBaseUrl`   | `string \| null`                             | Base URL for static assets from session                          |
-| `buildId`         | `string \| null`                             | Current build identifier from session                            |
-| `login`           | `(provider?, options?) => void`              | Start login flow                                                 |
-| `logout`          | `(options?) => Promise<void>`                | Sign out user                                                    |
-| `hasRole`         | `(role: string) => boolean`                  | Check if user has specific role                                  |
-| `hasAnyRole`      | `(roles: string[]) => boolean`               | Check if user has any of the roles                               |
-| `refreshSession`  | `() => Promise<SessionResponseType \| null>` | Manually refresh session                                         |
-| `clearError`      | `() => void`                                 | Clear the current error state                                    |
 
 ---
 
-## Common Mistakes
+## Common Mistakes (READ FIRST)
 
 ### 1. Wrong user name property
 
 ```typescript
-// ❌ WRONG — `name` does not exist on UserDetailsType
+// ❌ WRONG — `name` does not exist
 user?.name
 
-// ✅ CORRECT — use _name (underscore prefix)
+// ✅ CORRECT — underscore prefix
 user?._name
 ```
 
 ### 2. Not casting unknown properties
 
-All properties except `_id`, `_name`, and `Role` are typed as `unknown` via the index signature.
+All properties except `_id`, `_name`, and `Role` are typed as `unknown`.
 
 ```typescript
-// ❌ WRONG — Email is typed as unknown, can't render directly in JSX
+// ❌ WRONG — Email is unknown, can't render in JSX
 <p>{user?.Email}</p>
 
-// ✅ CORRECT — cast to string when rendering
-<p>{String(user?.Email)}</p>
-<p>{user?.Email as string}</p>
+// ✅ CORRECT
+<p>{String(user?.Email ?? "")}</p>
+```
+
+---
+
+## Type Definitions
+
+```typescript
+interface UserDetailsType {
+  _id: string;
+  _name: string;
+  Role: string;
+  [key: string]: unknown;  // Other properties are unknown — cast when rendering
+}
+
+type AuthStatusType = "loading" | "authenticated" | "unauthenticated";
+
+interface UseAuthReturnType {
+  user: UserDetailsType | null;
+  status: AuthStatusType;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  error: Error | null;
+  login: (provider?: string, options?: { callbackUrl?: string }) => void;
+  logout: (options?: { redirectUrl?: string }) => Promise<void>;
+  hasRole: (role: string) => boolean;
+  hasAnyRole: (roles: string[]) => boolean;
+  refreshSession: () => Promise<any>;
+  clearError: () => void;
+  staticBaseUrl: string | null;
+  buildId: string | null;
+}
+```
+
+## Usage
+
+```tsx
+import { useAuth } from "@ram_28/kf-ai-sdk/auth";
+
+function AppContent() {
+  const { user, isAuthenticated, isLoading, login, logout } = useAuth();
+
+  if (isLoading) return <div>Loading...</div>;
+  if (!isAuthenticated) return <button onClick={() => login()}>Login</button>;
+
+  return (
+    <div>
+      <h1>Hello, {user?._name}</h1>
+      <p>Role: {user?.Role}</p>
+      <button onClick={() => logout()}>Sign Out</button>
+    </div>
+  );
+}
 ```

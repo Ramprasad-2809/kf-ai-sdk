@@ -27,7 +27,8 @@ export class NumberField extends BaseField<NumberFieldType> {
   get fractionPart(): number | undefined { return (this._meta as NumberFieldMetaType).Constraint?.FractionPart; }
 
   validate(value: NumberFieldType | undefined): ValidationResultType {
-    if (value !== undefined && value !== null && (typeof value !== "number" || isNaN(value))) {
+    if (value == null || value === ("" as any)) return { valid: true, errors: [] };
+    if (typeof value !== "number" || isNaN(value)) {
       return {
         valid: false,
         errors: [`${this.label} must be a valid number`],

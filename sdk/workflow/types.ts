@@ -13,8 +13,9 @@ import type {
   StringFieldType,
   SelectFieldType,
   DateTimeFieldType,
-  UserFieldType,
+  ReferenceFieldType,
 } from "../types/base-fields";
+import type { UserRefType } from "../types/base-fields";
 
 /**
  * Response from Workflow.start()
@@ -48,7 +49,7 @@ export interface ActivityProgressType {
 export type ActivityInstanceFieldsType = {
   _id: StringFieldType;
   Status: SelectFieldType<"InProgress" | "Completed">;
-  AssignedTo: UserFieldType;
+  AssignedTo: ReferenceFieldType<UserRefType>;
   CompletedAt: DateTimeFieldType;
 };
 
