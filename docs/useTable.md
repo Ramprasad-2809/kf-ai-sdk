@@ -1,1210 +1,369 @@
 # Table SDK API
 
-This Table SDK API provides the React-hooks and apis to build Table and any List like component when building the Pages.
-
-Here is the complete example of building table with state management with data fetching, sorting, filtering, search, and pagination.
-
-You SHOULD only use this API to build Table, List, Gallery, any other list like component.
+React hook for tables, lists, and galleries with sorting, filtering, search, and pagination.
 
 ## Imports
 
 ```typescript
 import { useTable } from "@ram_28/kf-ai-sdk/table";
-import type {
-  UseTableOptionsType,
-  UseTableReturnType,
-  ColumnDefinitionType,
-  PaginationStateType,
-} from "@ram_28/kf-ai-sdk/table/types";
+import type { UseTableOptionsType, UseTableReturnType, ColumnDefinitionType, PaginationStateType } from "@ram_28/kf-ai-sdk/table/types";
+import { ConditionOperator, GroupOperator, FilterValueSource } from "@ram_28/kf-ai-sdk/filter";
 ```
 
-## Type Definitions
+---
 
-### UseTableOptionsType
+## Common Mistakes (READ FIRST)
+
+### 1. Missing `as keyof FieldType` cast on column fieldId (TS2322)
+
+`ColumnDefinitionType<T>.fieldId` is typed as `keyof T`, but `bdo.field.id` returns `string`. MUST cast.
 
 ```typescript
-// Hook options for initializing the table
-interface UseTableOptionsType<T> {
-  // Business Object ID (required)
-  // Example: "BDO_Product", "BDO_Order"
-  source: string;
+// ❌ WRONG — string not assignable to keyof (TS2322)
+const columns: ColumnDefinitionType<AdminProductFieldType>[] = [
+  { fieldId: bdo.product_name.id, label: "Product" },
+];
 
-  // Column configurations (required)
-  // Defines which fields to display and their behavior
-  columns: ColumnDefinitionType<T>[];
-
-  // Initial state for the table (optional)
-  initialState?: {
-    // Initial sort configuration
-    // Format: [{ "fieldName": "ASC" }] or [{ "fieldName": "DESC" }]
-    sort?: SortType;
-
-    // Initial pagination
-    // Defaults: { pageNo: 1, pageSize: 10 }
-    pagination?: PaginationStateType;
-
-    // Initial filter conditions
-    // See useFilter docs for full options
-    filter?: UseFilterOptionsType<T>;
-  };
-
-  // Called when data fetch fails
-  onError?: (error: Error) => void;
-
-  // Called with fetched data after successful load
-  onSuccess?: (data: T[]) => void;
-}
+// ✅ CORRECT — cast each fieldId
+const columns: ColumnDefinitionType<AdminProductFieldType>[] = [
+  { fieldId: bdo.product_name.id as keyof AdminProductFieldType, label: "Product" },
+  { fieldId: bdo.unit_price.id as keyof AdminProductFieldType, label: "Price" },
+  { fieldId: bdo.status.id as keyof AdminProductFieldType, label: "Status" },
+];
 ```
 
-### ColumnDefinitionType
+### 2. Passing `bdo` instead of `source`
+
+`useTable` takes `source` (a BO_ID string), NOT `bdo` (a BDO instance).
 
 ```typescript
-// Column configuration for table display
-interface ColumnDefinitionType<T> {
-  // Field name from the data type (required)
-  fieldId: keyof T;
-
-  // Display label for column header
-  // Defaults to fieldId if not provided
-  label?: string;
-
-  // Enable sorting for this column
-  // When true, column header is clickable to toggle sort
-  enableSorting?: boolean;
-
-  // Enable filtering for this column
-  // When true, column can be used in filter conditions
-  enableFiltering?: boolean;
-
-  // Custom value transformer for display
-  // Receives raw value and full row, returns rendered content
-  transform?: (value: any, row: T) => React.ReactNode;
-}
-```
-
-### UseTableReturnType
-
-```typescript
-// Hook return type with all table state and methods
-interface UseTableReturnType<T> {
-  // ============================================================
-  // DATA
-  // ============================================================
-
-  // Current page data (array of records)
-  rows: T[];
-
-  // Total matching records across all pages
-  totalItems: number;
-
-  // ============================================================
-  // LOADING STATES
-  // ============================================================
-
-  // True during initial load
-  isLoading: boolean;
-
-  // True during background refetch
-  isFetching: boolean;
-
-  // ============================================================
-  // ERROR HANDLING
-  // ============================================================
-
-  // Current error state, null when no error
-  error: Error | null;
-
-  // ============================================================
-  // SEARCH (field-based search using filter conditions)
-  // ============================================================
-
-  search: {
-    // Current search query string
-    query: string;
-
-    // Field being searched, null if no search active
-    field: keyof T | null;
-
-    // Set search field and query (triggers API call, 300ms debounced)
-    // Internally creates a Contains filter condition
-    set: (field: keyof T, query: string) => void;
-
-    // Clear search and reset to empty string (triggers API call)
-    clear: () => void;
-  };
-
-  // ============================================================
-  // SORT (single column sorting)
-  // ============================================================
-
-  sort: {
-    // Currently sorted field, null if no sort active
-    field: keyof T | null;
-
-    // Current sort direction, null if no sort active
-    direction: "ASC" | "DESC" | null;
-
-    // Toggle sort on a field (triggers API call)
-    // Cycles: none → ASC → DESC → none
-    toggle: (field: keyof T) => void;
-
-    // Clear sorting (triggers API call)
-    clear: () => void;
-
-    // Set explicit sort field and direction (triggers API call)
-    set: (field: keyof T, direction: "ASC" | "DESC") => void;
-  };
-
-  // ============================================================
-  // FILTER (see useFilter docs for full API)
-  // ============================================================
-
-  // Full useFilter return type
-  // Includes addCondition, removeCondition, clearAllConditions, etc.
-  filter: UseFilterReturnType<T>;
-
-  // ============================================================
-  // PAGINATION (1-indexed pages)
-  // ============================================================
-
-  pagination: {
-    // Current page number (1-indexed, starts at 1)
-    pageNo: number;
-
-    // Number of items per page
-    pageSize: number;
-
-    // Total number of pages
-    totalPages: number;
-
-    // Total matching records (same as top-level totalItems)
-    totalItems: number;
-
-    // True if there's a next page available
-    canGoNext: boolean;
-
-    // True if there's a previous page available
-    canGoPrevious: boolean;
-
-    // Navigate to next page
-    goToNext: () => void;
-
-    // Navigate to previous page
-    goToPrevious: () => void;
-
-    // Navigate to specific page number (1-indexed)
-    goToPage: (page: number) => void;
-
-    // Change items per page (resets to page 1)
-    setPageSize: (size: number) => void;
-  };
-
-  // ============================================================
-  // OPERATIONS
-  // ============================================================
-
-  // Manually trigger data refetch
-  // Returns promise with the list response
-  refetch: () => Promise<ListResponseType<T>>;
-}
-```
-
-### PaginationStateType
-
-```typescript
-// Pagination state for initial configuration
-interface PaginationStateType {
-  // Page number (1-indexed)
-  pageNo: number;
-
-  // Number of items per page
-  pageSize: number;
-}
-```
-
-## Basic Example
-
-A minimal table displaying data with loading and error states.
-
-```tsx
-import { useMemo } from "react";
-import { useTable } from "@ram_28/kf-ai-sdk/table";
-import type { ColumnDefinitionType } from "@ram_28/kf-ai-sdk/table/types";
-import { BuyerProduct } from "../bdo/buyer/Product";
-import type { BuyerProductFieldType } from "../bdo/buyer/Product";
-
-function ProductsTable() {
-  const product = useMemo(() => new BuyerProduct(), []);
-
-  const columns: ColumnDefinitionType<BuyerProductFieldType>[] = [
-    { fieldId: product.Title.id, label: product.Title.label },
-    { fieldId: product.Price.id, label: product.Price.label },
-    { fieldId: product.Category.id, label: product.Category.label },
-  ];
-
-  const table = useTable<BuyerProductFieldType>({
-    source: product.meta._id,
-    columns,
-  });
-
-  if (table.isLoading) return <div>Loading...</div>;
-  if (table.error) return <div>Error: {table.error.message}</div>;
-
-  return (
-    <table>
-      <thead>
-        <tr>
-          {columns.map((col) => (
-            <th key={String(col.fieldId)}>{col.label}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {table.rows.map((row) => (
-          <tr key={row._id}>
-            <td>{row.Title}</td>
-            <td>${row.Price}</td>
-            <td>{row.Category}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
-```
-
----
-
-## Initial State
-
-### Table with Initial Configuration
-
-Set default pagination, sorting, and filters when the table loads.
-
-```tsx
-import { useMemo } from "react";
-import { useTable } from "@ram_28/kf-ai-sdk/table";
-import { useAuth } from "@ram_28/kf-ai-sdk/auth";
-import { ConditionOperator, RHSType, GroupOperator } from "@ram_28/kf-ai-sdk/filter";
-import type {
-  UseTableOptionsType,
-  UseTableReturnType,
-  ColumnDefinitionType,
-} from "@ram_28/kf-ai-sdk/table/types";
-import { BuyerProduct } from "../bdo/buyer/Product";
-import type { BuyerProductFieldType } from "../bdo/buyer/Product";
-
-function MyItemsTable() {
-  const product = useMemo(() => new BuyerProduct(), []);
-  const { user } = useAuth();
-
-  const columns: ColumnDefinitionType<BuyerProductFieldType>[] = [
-    { fieldId: product.Title.id, label: product.Title.label, enableSorting: true },
-    { fieldId: product.Price.id, label: product.Price.label, enableSorting: true },
-    { fieldId: product.Category.id, label: product.Category.label, enableSorting: true },
-    { fieldId: product.Stock.id, label: product.Stock.label, enableSorting: true },
-  ];
-
-  const tableOptions: UseTableOptionsType<BuyerProductFieldType> = {
-    source: product.meta._id,
-    columns,
-    initialState: {
-      sort: [{ [product.Title.id]: "ASC" }],
-      pagination: { pageNo: 1, pageSize: 10 },
-      filter: {
-        conditions: [
-          {
-            Operator: ConditionOperator.EQ,
-            LHSField: "_created_by",  // System field
-            RHSValue: user._id,
-            RHSType: RHSType.Constant,
-          },
-        ],
-        operator: GroupOperator.And,
-      },
-    },
-  };
-
-  const table: UseTableReturnType<BuyerProductFieldType> =
-    useTable<BuyerProductFieldType>(tableOptions);
-
-  if (table.isLoading) return <div>Loading...</div>;
-
-  return (
-    <div>
-      <table>
-        <thead>
-          <tr>
-            {columns.map((col) => (
-              <th
-                key={String(col.fieldId)}
-                onClick={() =>
-                  col.enableSorting && table.sort.toggle(col.fieldId)
-                }
-                style={{ cursor: col.enableSorting ? "pointer" : "default" }}
-              >
-                {col.label}
-                {table.sort.field === col.fieldId && (
-                  <span>{table.sort.direction === "ASC" ? " ↑" : " ↓"}</span>
-                )}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {table.rows.map((row) => (
-            <tr key={row._id}>
-              <td>{row.Title}</td>
-              <td>${row.Price}</td>
-              <td>{row.Category}</td>
-              <td>{row.Stock}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      <div className="pagination">
-        <button
-          onClick={table.pagination.goToPrevious}
-          disabled={!table.pagination.canGoPrevious}
-        >
-          Previous
-        </button>
-        <span>
-          Page {table.pagination.pageNo} of {table.pagination.totalPages}
-        </span>
-        <button
-          onClick={table.pagination.goToNext}
-          disabled={!table.pagination.canGoNext}
-        >
-          Next
-        </button>
-      </div>
-    </div>
-  );
-}
-```
-
----
-
-## Filter
-
-### Status Filter
-
-Dropdown-based status filtering.
-
-```tsx
-import { useMemo } from "react";
-import { ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
-import { BuyerProduct } from "../bdo/buyer/Product";
-import type { BuyerProductFieldType } from "../bdo/buyer/Product";
-
-function ProductsWithStatusFilter() {
-  const product = useMemo(() => new BuyerProduct(), []);
-
-  const table = useTable<BuyerProductFieldType>({
-    source: product.meta._id,
-    columns,
-  });
-
-  const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const status = e.target.value;
-    table.filter.clearAllConditions();
-
-    if (status !== "all") {
-      table.filter.addCondition({
-        Operator: ConditionOperator.EQ,
-        LHSField: product.IsActive.id,
-        RHSValue: status === "active",
-        RHSType: RHSType.Constant,
-      });
-    }
-  };
-
-  return (
-    <div>
-      <select onChange={handleStatusChange} defaultValue="all">
-        <option value="all">All Products</option>
-        <option value="active">Active</option>
-        <option value="inactive">Inactive</option>
-      </select>
-      {/* table rendering */}
-    </div>
-  );
-}
-```
-
-### Multiple Filters Combined
-
-Apply category and price range filters together.
-
-```tsx
-import { useMemo, useState } from "react";
-import { ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
-import { BuyerProduct } from "../bdo/buyer/Product";
-import type { BuyerProductFieldType } from "../bdo/buyer/Product";
-
-const PRICE_RANGES = [
-  { label: "Under $25", min: 0, max: 25 },
-  { label: "$25 to $50", min: 25, max: 50 },
-  { label: "$50 to $100", min: 50, max: 100 },
-  { label: "$100 to $200", min: 100, max: 200 },
-  { label: "$200 & Above", min: 200, max: null },
-] as const;
-
-function ProductsWithMultipleFilters() {
-  const product = useMemo(() => new BuyerProduct(), []);
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedPriceRange, setSelectedPriceRange] = useState<string | null>(
-    null,
-  );
-
-  const table = useTable<BuyerProductFieldType>({
-    source: product.meta._id,
-    columns,
-  });
-
-  // Helper to apply all active filters
-  const applyFilters = (category: string, priceRange: string | null) => {
-    table.filter.clearAllConditions();
-
-    // Apply category filter
-    if (category !== "all") {
-      table.filter.addCondition({
-        LHSField: product.Category.id,
-        Operator: ConditionOperator.EQ,
-        RHSValue: category,
-        RHSType: RHSType.Constant,
-      });
-    }
-
-    // Apply price filter
-    if (priceRange) {
-      const range = PRICE_RANGES.find((r) => r.label === priceRange);
-      if (range) {
-        if (range.max === null) {
-          // "$200 & Above" - use GTE
-          table.filter.addCondition({
-            Operator: ConditionOperator.GTE,
-            LHSField: product.Price.id,
-            RHSValue: range.min,
-            RHSType: RHSType.Constant,
-          });
-        } else if (range.min === 0) {
-          // "Under $25" - use LT
-          table.filter.addCondition({
-            Operator: ConditionOperator.LT,
-            LHSField: product.Price.id,
-            RHSValue: range.max,
-            RHSType: RHSType.Constant,
-          });
-        } else {
-          // Range like "$25 to $50" - use Between
-          table.filter.addCondition({
-            LHSField: product.Price.id,
-            Operator: ConditionOperator.Between,
-            RHSValue: [range.min, range.max],
-            RHSType: RHSType.Constant,
-          });
-        }
-      }
-    }
-  };
-
-  const handleCategoryChange = (category: string) => {
-    setSelectedCategory(category);
-    applyFilters(category, selectedPriceRange);
-  };
-
-  const handlePriceChange = (priceRange: string | null) => {
-    setSelectedPriceRange(priceRange);
-    applyFilters(selectedCategory, priceRange);
-  };
-
-  return (
-    <div>
-      <select
-        value={selectedCategory}
-        onChange={(e) => handleCategoryChange(e.target.value)}
-      >
-        <option value="all">All Categories</option>
-        <option value="Electronics">Electronics</option>
-        <option value="Books">Books</option>
-      </select>
-
-      <select
-        value={selectedPriceRange || ""}
-        onChange={(e) => handlePriceChange(e.target.value || null)}
-      >
-        <option value="">Any Price</option>
-        {PRICE_RANGES.map((range) => (
-          <option key={range.label} value={range.label}>
-            {range.label}
-          </option>
-        ))}
-      </select>
-
-      {/* table rendering */}
-    </div>
-  );
-}
-```
-
----
-
-## Sort
-
-### Column Sort Toggle
-
-Click column headers to toggle sort direction.
-
-```tsx
-import { useMemo } from "react";
-import { BuyerProduct } from "../bdo/buyer/Product";
-import type { BuyerProductFieldType } from "../bdo/buyer/Product";
-
-function SortableTable() {
-  const product = useMemo(() => new BuyerProduct(), []);
-
-  const columns: ColumnDefinitionType<BuyerProductFieldType>[] = [
-    { fieldId: product.Title.id, label: product.Title.label, enableSorting: true },
-    { fieldId: product.Price.id, label: product.Price.label, enableSorting: true },
-    { fieldId: product.Category.id, label: product.Category.label, enableSorting: true },
-  ];
-
-  const table = useTable<BuyerProductFieldType>({
-    source: product.meta._id,
-    columns,
-  });
-
-  return (
-    <table>
-      <thead>
-        <tr>
-          {columns.map((col) => (
-            <th
-              key={String(col.fieldId)}
-              onClick={() =>
-                col.enableSorting && table.sort.toggle(col.fieldId)
-              }
-              style={{ cursor: col.enableSorting ? "pointer" : "default" }}
-            >
-              {col.label}
-              {table.sort.field === col.fieldId && (
-                <span>{table.sort.direction === "ASC" ? " ↑" : " ↓"}</span>
-              )}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {table.rows.map((row) => (
-          <tr key={row._id}>
-            <td>{row.Title}</td>
-            <td>${row.Price}</td>
-            <td>{row.Category}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
-```
-
-### Sort Dropdown
-
-Allow users to select sort order from a dropdown.
-
-```tsx
-import { useMemo, useState } from "react";
-import { BuyerProduct } from "../bdo/buyer/Product";
-import type { BuyerProductFieldType } from "../bdo/buyer/Product";
-
-function TableWithSortDropdown() {
-  const product = useMemo(() => new BuyerProduct(), []);
-  const [selectedSort, setSelectedSort] = useState("featured");
-
-  const table = useTable<BuyerProductFieldType>({
-    source: product.meta._id,
-    columns,
-    initialState: {
-      sort: [{ [product.Title.id]: "ASC" }],
-    },
-  });
-
-  const handleSortChange = (value: string) => {
-    setSelectedSort(value);
-    switch (value) {
-      case "price-asc":
-        table.sort.set(product.Price.id, "ASC");
-        break;
-      case "price-desc":
-        table.sort.set(product.Price.id, "DESC");
-        break;
-      case "newest":
-        table.sort.set("_created_at", "DESC");  // System field
-        break;
-      case "featured":
-      default:
-        table.sort.set(product.Title.id, "ASC");
-        break;
-    }
-  };
-
-  return (
-    <div>
-      <select
-        value={selectedSort}
-        onChange={(e) => handleSortChange(e.target.value)}
-      >
-        <option value="featured">Featured</option>
-        <option value="price-asc">Price: Low to High</option>
-        <option value="price-desc">Price: High to Low</option>
-        <option value="newest">Newest Arrivals</option>
-      </select>
-      {/* table rendering */}
-    </div>
-  );
-}
-```
-
----
-
-## Pagination
-
-### Basic Pagination Controls
-
-Navigate between pages with previous/next buttons.
-
-```tsx
-import { useMemo } from "react";
-import { BuyerProduct } from "../bdo/buyer/Product";
-import type { BuyerProductFieldType } from "../bdo/buyer/Product";
-
-function PaginatedTable() {
-  const product = useMemo(() => new BuyerProduct(), []);
-
-  const table = useTable<BuyerProductFieldType>({
-    source: product.meta._id,
-    columns,
-    initialState: {
-      pagination: { pageNo: 1, pageSize: 10 },
-    },
-  });
-
-  return (
-    <div>
-      {/* table rendering */}
-
-      <div className="pagination">
-        <button
-          onClick={table.pagination.goToPrevious}
-          disabled={!table.pagination.canGoPrevious}
-        >
-          Previous
-        </button>
-
-        <span>
-          Page {table.pagination.pageNo} of {table.pagination.totalPages}
-        </span>
-
-        <button
-          onClick={table.pagination.goToNext}
-          disabled={!table.pagination.canGoNext}
-        >
-          Next
-        </button>
-      </div>
-
-      <p>{table.pagination.totalItems} total items</p>
-    </div>
-  );
-}
-```
-
-### Page Size Selector
-
-Allow users to change the number of items per page.
-
-```tsx
-import { useMemo } from "react";
-import { BuyerProduct } from "../bdo/buyer/Product";
-import type { BuyerProductFieldType } from "../bdo/buyer/Product";
-
-function TableWithPageSize() {
-  const product = useMemo(() => new BuyerProduct(), []);
-
-  const table = useTable<BuyerProductFieldType>({
-    source: product.meta._id,
-    columns,
-  });
-
-  return (
-    <div>
-      {/* table rendering */}
-
-      <div className="pagination">
-        <button
-          onClick={table.pagination.goToPrevious}
-          disabled={!table.pagination.canGoPrevious}
-        >
-          Previous
-        </button>
-
-        <span>
-          Page {table.pagination.pageNo} of {table.pagination.totalPages}
-        </span>
-
-        <button
-          onClick={table.pagination.goToNext}
-          disabled={!table.pagination.canGoNext}
-        >
-          Next
-        </button>
-
-        <select
-          value={table.pagination.pageSize}
-          onChange={(e) => table.pagination.setPageSize(Number(e.target.value))}
-        >
-          <option value={10}>10 per page</option>
-          <option value={25}>25 per page</option>
-          <option value={50}>50 per page</option>
-          <option value={100}>100 per page</option>
-        </select>
-      </div>
-    </div>
-  );
-}
-```
-
-### Jump to Page
-
-Allow users to navigate directly to a specific page.
-
-```tsx
-import { useMemo, useState } from "react";
-import { BuyerProduct } from "../bdo/buyer/Product";
-import type { BuyerProductFieldType } from "../bdo/buyer/Product";
-
-function TableWithPageJump() {
-  const product = useMemo(() => new BuyerProduct(), []);
-  const [pageInput, setPageInput] = useState("");
-
-  const table = useTable<BuyerProductFieldType>({
-    source: product.meta._id,
-    columns,
-  });
-
-  const handlePageJump = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      const page = parseInt(pageInput, 10);
-      if (page >= 1 && page <= table.pagination.totalPages) {
-        table.pagination.goToPage(page);
-        setPageInput("");
-      }
-    }
-  };
-
-  return (
-    <div>
-      {/* table rendering */}
-
-      <div className="pagination">
-        <button
-          onClick={table.pagination.goToPrevious}
-          disabled={!table.pagination.canGoPrevious}
-        >
-          Previous
-        </button>
-
-        <span>
-          Page {table.pagination.pageNo} of {table.pagination.totalPages}
-        </span>
-
-        <button
-          onClick={table.pagination.goToNext}
-          disabled={!table.pagination.canGoNext}
-        >
-          Next
-        </button>
-
-        <input
-          type="number"
-          min={1}
-          max={table.pagination.totalPages}
-          placeholder="Go to page"
-          value={pageInput}
-          onChange={(e) => setPageInput(e.target.value)}
-          onKeyDown={handlePageJump}
-        />
-      </div>
-    </div>
-  );
-}
-```
-
----
-
-## Search
-
-Search by field with filter-based implementation. The search internally creates a `Contains` filter condition for the specified field.
-
-### API
-
-- `search.query: string` - Current search query string
-- `search.field: keyof T | null` - Field being searched
-- `search.set(field, query)` - Set search field and query (triggers API call, 300ms debounced)
-- `search.clear()` - Clear search (triggers API call)
-
-### Basic Search
-
-Add search functionality to filter results by a specific field. The search has built-in debouncing (300ms).
-
-```tsx
-import { useMemo } from "react";
-import { BuyerProduct } from "../bdo/buyer/Product";
-import type { BuyerProductFieldType } from "../bdo/buyer/Product";
-
-function SearchableTable() {
-  const product = useMemo(() => new BuyerProduct(), []);
-
-  const table = useTable<BuyerProductFieldType>({
-    source: product.meta._id,
-    columns,
-  });
-
-  return (
-    <div>
-      <div className="search-bar">
-        <input
-          type="text"
-          placeholder="Search by name..."
-          value={table.search.query}
-          onChange={(e) => table.search.set(product.Title.id, e.target.value)}
-        />
-        {table.search.query && (
-          <button onClick={table.search.clear}>Clear</button>
-        )}
-        {table.isFetching && <span>Searching...</span>}
-      </div>
-
-      {/* table rendering */}
-    </div>
-  );
-}
-```
-
-### Search with Field Selector
-
-Allow users to choose which field to search:
-
-```tsx
-import { useMemo, useState } from "react";
-import { BuyerProduct } from "../bdo/buyer/Product";
-import type { BuyerProductFieldType } from "../bdo/buyer/Product";
-
-function SearchableTableWithFieldSelector() {
-  const product = useMemo(() => new BuyerProduct(), []);
-  const [searchField, setSearchField] = useState<string>(product.Title.id);
-
-  const table = useTable<BuyerProductFieldType>({
-    source: product.meta._id,
-    columns,
-  });
-
-  return (
-    <div>
-      <div className="search-bar">
-        <select
-          value={searchField}
-          onChange={(e) => {
-            setSearchField(e.target.value);
-            // Re-apply search with new field if there's an existing query
-            if (table.search.query) {
-              table.search.set(e.target.value, table.search.query);
-            }
-          }}
-        >
-          <option value={product.Title.id}>{product.Title.label}</option>
-          <option value={product.Category.id}>{product.Category.label}</option>
-          <option value={product.Description.id}>{product.Description.label}</option>
-        </select>
-        <input
-          type="text"
-          placeholder={`Search by ${searchField}...`}
-          value={table.search.query}
-          onChange={(e) => table.search.set(searchField, e.target.value)}
-        />
-        {table.search.query && (
-          <button onClick={table.search.clear}>Clear</button>
-        )}
-      </div>
-
-      {/* table rendering */}
-    </div>
-  );
-}
-```
-
----
-
-## Complete Example
-
-A full-featured product listing page with filters, search, sort, and pagination.
-
-```tsx
-import { useMemo, useState } from "react";
-import { useTable } from "@ram_28/kf-ai-sdk/table";
-import { ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
-import type {
-  UseTableOptionsType,
-  UseTableReturnType,
-  ColumnDefinitionType,
-} from "@ram_28/kf-ai-sdk/table/types";
-import { BuyerProduct } from "../bdo/buyer/Product";
-import type { BuyerProductFieldType } from "../bdo/buyer/Product";
-
-function ProductListPage() {
-  const product = useMemo(() => new BuyerProduct(), []);
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedSort, setSelectedSort] = useState("featured");
-
-  const columns: ColumnDefinitionType<BuyerProductFieldType>[] = [
-    { fieldId: product.Title.id, label: product.Title.label, enableSorting: true },
-    { fieldId: product.Price.id, label: product.Price.label, enableSorting: true },
-    { fieldId: product.Category.id, label: product.Category.label, enableSorting: true },
-    { fieldId: product.Stock.id, label: product.Stock.label, enableSorting: true },
-  ];
-
-  const tableOptions: UseTableOptionsType<BuyerProductFieldType> = {
-    source: product.meta._id,
-    columns,
-    initialState: {
-      sort: [{ [product.Title.id]: "ASC" }],
-      pagination: { pageNo: 1, pageSize: 10 },
-    },
-  };
-
-  const table: UseTableReturnType<BuyerProductFieldType> =
-    useTable<BuyerProductFieldType>(tableOptions);
-
-  const handleCategoryChange = (category: string) => {
-    setSelectedCategory(category);
-    table.filter.clearAllConditions();
-    if (category !== "all") {
-      table.filter.addCondition({
-        LHSField: product.Category.id,
-        Operator: ConditionOperator.EQ,
-        RHSValue: category,
-        RHSType: RHSType.Constant,
-      });
-    }
-  };
-
-  const handleSortChange = (value: string) => {
-    setSelectedSort(value);
-    switch (value) {
-      case "price-asc":
-        table.sort.set(product.Price.id, "ASC");
-        break;
-      case "price-desc":
-        table.sort.set(product.Price.id, "DESC");
-        break;
-      case "newest":
-        table.sort.set("_created_at", "DESC");  // System field
-        break;
-      default:
-        table.sort.set(product.Title.id, "ASC");
-        break;
-    }
-  };
-
-  if (table.error) {
-    return (
-      <div>
-        <p>Error: {table.error.message}</p>
-        <button onClick={() => table.refetch()}>Try Again</button>
-      </div>
-    );
-  }
-
-  if (table.isLoading) {
-    return <div>Loading...</div>;
-  }
-
-  return (
-    <div>
-      {/* Controls */}
-      <div className="controls">
-        <input
-          type="text"
-          placeholder="Search by name..."
-          value={table.search.query}
-          onChange={(e) => table.search.set(product.Title.id, e.target.value)}
-        />
-
-        <select
-          value={selectedCategory}
-          onChange={(e) => handleCategoryChange(e.target.value)}
-        >
-          <option value="all">All Categories</option>
-          <option value="Electronics">Electronics</option>
-          <option value="Books">Books</option>
-        </select>
-
-        <select
-          value={selectedSort}
-          onChange={(e) => handleSortChange(e.target.value)}
-        >
-          <option value="featured">Featured</option>
-          <option value="price-asc">Price: Low to High</option>
-          <option value="price-desc">Price: High to Low</option>
-          <option value="newest">Newest</option>
-        </select>
-      </div>
-
-      {/* Results count */}
-      <p>{table.totalItems} results found</p>
-
-      {/* Product grid */}
-      {table.rows.length === 0 ? (
-        <div>
-          <p>No products found</p>
-          <button
-            onClick={() => {
-              table.search.clear();
-              table.filter.clearAllConditions();
-              setSelectedCategory("all");
-            }}
-          >
-            Clear Filters
-          </button>
-        </div>
-      ) : (
-        <div className="product-grid">
-          {table.rows.map((row) => (
-            <div key={row._id} className="product-card">
-              <h3>{row.Title}</h3>
-              <p>${row.Price}</p>
-              <p>{row.Category}</p>
-              <p>{row.Stock > 0 ? "In Stock" : "Out of Stock"}</p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Pagination */}
-      <div className="pagination">
-        <button
-          onClick={table.pagination.goToPrevious}
-          disabled={!table.pagination.canGoPrevious}
-        >
-          Previous
-        </button>
-        <span>
-          Page {table.pagination.pageNo} of {table.pagination.totalPages}
-        </span>
-        <button
-          onClick={table.pagination.goToNext}
-          disabled={!table.pagination.canGoNext}
-        >
-          Next
-        </button>
-      </div>
-    </div>
-  );
-}
-```
-
----
-
-## Common Mistakes
-
-### 1. Passing `bdo` instead of `source`
-
-`useTable` takes `source` (a BO_ID string), NOT `bdo` (a BDO instance). Don't confuse with `useForm({ bdo })`.
-
-```typescript
-// ❌ WRONG — bdo is NOT a valid property
-useTable({ bdo, columns });
+// ❌ WRONG
 useTable({ bdo: product, columns });
 
-// ✅ CORRECT — pass the BO_ID string via source
+// ✅ CORRECT
 useTable({ source: product.meta._id, columns });
 ```
 
-### 2. Wrong initialState property names
+### 3. Calling `.get()` on table rows
 
-This is NOT react-table. Don't use react-table naming conventions.
+Table `rows` are **plain objects**, NOT `ItemType`. Access fields directly.
 
 ```typescript
-// ❌ WRONG — sorting and pageIndex don't exist
+// ❌ WRONG — rows are plain objects
+table.rows.map(row => row.product_name.get());
+
+// ✅ CORRECT — access directly
+table.rows.map(row => row.product_name);
+table.rows.map(row => String(row.product_name ?? ""));
+```
+
+### 4. Using entity-level FieldType as generic
+
+Entity types exclude `SystemFieldsType` — `row._id` won't work. Use role-specific type.
+
+```typescript
+// ❌ WRONG — ProductType excludes _id
+import type { ProductType } from "@/bdo/entities/Product";
+useTable<ProductType>({ ... });
+
+// ✅ CORRECT — role type includes SystemFieldsType
+import type { AdminProductFieldType } from "@/bdo/admin/Product";
+useTable<AdminProductFieldType>({ ... });
+```
+
+### 5. Wrong initialState property names
+
+```typescript
+// ❌ WRONG — react-table naming
 initialState: { sorting: [...], pagination: { pageIndex: 0, pageSize: 10 } }
 
-// ✅ CORRECT — use sort and pageNo
-initialState: { sort: [{ [bdo.Title.id]: "ASC" }], pagination: { pageNo: 1, pageSize: 10 } }
-```
-
-### 3. Wrong sort direction type
-
-Sort direction must be the string literal `"ASC"` or `"DESC"` — nothing else.
-
-```typescript
-// ❌ WRONG — booleans, lowercase, or arbitrary strings
-sort.set(bdo.Title.id, true);
-sort.set(bdo.Title.id, "asc");
-sort.set(bdo.Title.id, "ascending");
-
-// ✅ CORRECT — uppercase string literals only
-sort.set(bdo.Title.id, "ASC");
-sort.set(bdo.Title.id, "DESC");
-```
-
-### 4. Calling `.get()` on table rows
-
-Table `rows` are **plain objects**, NOT `ItemType`. `.get()` is only for `ItemType` returned by `bdo.get()`, `bdo.create()`, or `useForm` item proxy.
-
-```typescript
-// ❌ WRONG — rows are plain objects, not ItemType
-table.rows.map(row => row.Title.get());
-
-// ✅ CORRECT — access properties directly
-table.rows.map(row => row.Title);
-table.rows.map(row => row[bdo.Title.id]);
-```
-
-### 5. Using entity-level FieldType as generic
-
-Entity-level types (from `@/bdo/entities/`) exclude `SystemFieldsType`, so `row._id` won't work.
-
-```typescript
-// ❌ WRONG — ProductFieldType excludes _id, _created_at, etc.
-import type { ProductFieldType } from "@/bdo/entities/Product";
-useTable<ProductFieldType>({ ... });
-
-// ✅ CORRECT — role-specific type includes SystemFieldsType
-import type { BuyerProductFieldType } from "@/bdo/buyer/Product";
-useTable<BuyerProductFieldType>({ ... });
+// ✅ CORRECT — use sort (not sorting), pageNo (not pageIndex), 1-indexed
+initialState: { sort: [{ [bdo.product_name.id]: "ASC" }], pagination: { pageNo: 1, pageSize: 10 } }
 ```
 
 ### 6. Using `header` instead of `label` in columns
 
 ```typescript
 // ❌ WRONG
-{ fieldId: bdo.Title.id, header: "Title" }
+{ fieldId: bdo.product_name.id as keyof T, header: "Product" }
 
 // ✅ CORRECT
-{ fieldId: bdo.Title.id, label: "Title" }
+{ fieldId: bdo.product_name.id as keyof T, label: "Product" }
 ```
 
-### 7. Accessing `data` or `columns` on the return type
+### 7. Using `useMemo` for filter side effects instead of `useEffect`
+
+```tsx
+// ❌ WRONG — side effects in useMemo cause infinite re-render
+useMemo(() => { table.filter.clearAllConditions(); table.filter.addCondition({...}); }, [status]);
+
+// ✅ CORRECT — use useEffect
+useEffect(() => { table.filter.clearAllConditions(); table.filter.addCondition({...}); }, [status]);
+```
+
+### 8. Rendering Reference/Image/File values in table columns
+
+Table rows are plain objects. Reference values are objects `{ _id, _name }` — render `_name`. Image/File values are `FileType | null` / `FileType[]`.
+
+```tsx
+// ❌ WRONG — renders [object Object] for reference field
+<td>{row.category}</td>
+
+// ❌ WRONG — renders [object Object] for image field
+<td>{row.product_image}</td>
+
+// ✅ CORRECT — reference: access _name
+<td>{(row.category as any)?._name ?? "—"}</td>
+
+// ✅ CORRECT — file array: show count or names
+<td>{Array.isArray(row.attachments) ? `${(row.attachments as any[]).length} files` : "—"}</td>
+
+// ✅ BEST — use transform in column definition
+{ fieldId: bdo.category.id as keyof T, label: "Category", transform: (val) => (val as any)?._name ?? "—" }
+```
+
+### 9. Displaying images from ImageField in tables/cards/grids (NEVER use src="#")
+
+Use the pre-built `ImageThumbnail` component from `@/components/ui/image-thumbnail`. It handles the server proxy URL, error fallback, and placeholder automatically. NEVER build image URLs manually or use `src="#"`.
+
+```tsx
+import { ImageThumbnail } from "@/components/ui/image-thumbnail";
+
+// ❌ WRONG — src="#" shows broken image, NEVER do this
+<img src="#" alt="product" />
+
+// ❌ WRONG — FileName is just the filename string, NOT a URL
+<img src={(row.product_image as any)?.FileName} />
+
+// ✅ CORRECT — use ImageThumbnail in table cell
+<td>
+  <ImageThumbnail boId={bdo.meta._id} instanceId={row._id} fieldId={bdo.product_image.id} value={row[bdo.product_image.id]} />
+</td>
+
+// ✅ CORRECT — use ImageThumbnail in product card/grid
+<ImageThumbnail
+  boId={bdo.meta._id}
+  instanceId={row._id}
+  fieldId={bdo.product_image.id}
+  value={row[bdo.product_image.id]}
+  imgClassName="w-full h-full object-cover rounded-lg"
+  alt={String(row.product_name ?? "")}
+/>
+
+// ✅ CORRECT — use ImageThumbnail in detail page (with bdo.get() ItemType)
+<ImageThumbnail
+  boId={bdo.meta._id}
+  instanceId={item._id}
+  fieldId={bdo.product_image.id}
+  value={item.product_image.get()}
+  imgClassName="w-48 h-48 object-cover rounded-xl"
+/>
+
+// ✅ CORRECT — use in column transform
+{
+  fieldId: bdo.product_image.id as keyof T,
+  label: "Image",
+  transform: (val, row) => (
+    <ImageThumbnail boId={bdo.meta._id} instanceId={row._id} fieldId={bdo.product_image.id} value={val} />
+  ),
+}
+```
+
+**Key rules:**
+- ALWAYS use `<ImageThumbnail>` for displaying images outside forms — it builds the correct server proxy URL internally
+- NEVER hardcode `src="#"` or use `FileName` as a URL
+- For forms (upload/edit), use `<ImageUpload>` instead
+
+### 10. Displaying files from FileField in tables/cards/grids
+
+Use the pre-built `FilePreview` component from `@/components/ui/file-preview`. It shows file names with download links, and inline thumbnails for image files.
+
+```tsx
+import { FilePreview } from "@/components/ui/file-preview";
+
+// ❌ WRONG — renders [object Object] or meaningless text
+<td>{row.attachments}</td>
+<td>{JSON.stringify(row.attachments)}</td>
+
+// ✅ CORRECT — use FilePreview in table cell
+<td>
+  <FilePreview boId={bdo.meta._id} instanceId={row._id} fieldId={bdo.attachments.id} value={row[bdo.attachments.id]} />
+</td>
+
+// ✅ CORRECT — use in column transform
+{
+  fieldId: bdo.attachments.id as keyof T,
+  label: "Files",
+  transform: (val, row) => (
+    <FilePreview boId={bdo.meta._id} instanceId={row._id} fieldId={bdo.attachments.id} value={val} />
+  ),
+}
+```
+
+**Key rules:**
+- ALWAYS use `<FilePreview>` for displaying files outside forms
+- For forms (upload/edit), use `<FileUpload>` instead
+
+---
+
+## Complete Table Example
+
+```tsx
+import { useMemo, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useTable } from "@ram_28/kf-ai-sdk/table";
+import type { ColumnDefinitionType } from "@ram_28/kf-ai-sdk/table/types";
+import { ConditionOperator, FilterValueSource } from "@ram_28/kf-ai-sdk/filter";
+import { AdminProduct } from "@/bdo/admin/Product";
+import type { AdminProductFieldType } from "@/bdo/admin/Product";
+import { toast } from "sonner";
+
+export default function ProductList() {
+  const navigate = useNavigate();
+  const bdo = useMemo(() => new AdminProduct(), []);
+
+  // Columns — MUST cast fieldId as keyof FieldType
+  const columns: ColumnDefinitionType<AdminProductFieldType>[] = [
+    { fieldId: bdo.product_name.id as keyof AdminProductFieldType, label: bdo.product_name.label, enableSorting: true },
+    { fieldId: bdo.unit_price.id as keyof AdminProductFieldType, label: bdo.unit_price.label, enableSorting: true },
+    { fieldId: bdo.status.id as keyof AdminProductFieldType, label: bdo.status.label },
+    { fieldId: bdo.category.id as keyof AdminProductFieldType, label: bdo.category.label,
+      transform: (val) => (val as any)?._name ?? "—" },
+  ];
+
+  const table = useTable<AdminProductFieldType>({
+    source: bdo.meta._id,
+    columns,
+    initialState: {
+      sort: [{ [bdo.product_name.id]: "ASC" }],
+      pagination: { pageNo: 1, pageSize: 10 },
+    },
+  });
+
+  // Status filter — useEffect for side effects, NOT useMemo
+  const [statusFilter, setStatusFilter] = useState("all");
+  useEffect(() => {
+    table.filter.clearAllConditions();
+    if (statusFilter !== "all") {
+      table.filter.addCondition({
+        Operator: ConditionOperator.EQ,
+        LHSField: bdo.status.id,
+        RHSValue: statusFilter,
+        RHSType: FilterValueSource.Constant,
+      });
+    }
+  }, [statusFilter]);
+
+  if (table.isLoading) return <div>Loading...</div>;
+  if (table.error) return <div>Error: {table.error.message}</div>;
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this item?")) return;
+    try {
+      await bdo.delete(id);
+      toast.success("Deleted");
+      table.refetch();
+    } catch (e) { toast.error("Failed to delete"); }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Search */}
+      <input
+        type="text"
+        placeholder="Search..."
+        value={table.search.query}
+        onChange={(e) => table.search.set(bdo.product_name.id as keyof AdminProductFieldType, e.target.value)}
+      />
+
+      {/* Status filter dropdown */}
+      <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+        <option value="all">All</option>
+        <option value="Active">Active</option>
+        <option value="Discontinued">Discontinued</option>
+      </select>
+
+      {/* Table */}
+      <table>
+        <thead>
+          <tr>
+            {columns.map((col) => (
+              <th key={String(col.fieldId)} onClick={() => col.enableSorting && table.sort.toggle(col.fieldId)}>
+                {col.label}
+                {table.sort.field === col.fieldId && (table.sort.direction === "ASC" ? " ↑" : " ↓")}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {table.rows.map((row) => (
+            <tr key={row._id} onClick={() => navigate(`/products/${row._id}`)}>
+              <td>{String(row.product_name ?? "")}</td>
+              <td>${Number(row.unit_price ?? 0).toFixed(2)}</td>
+              <td>{String(row.status ?? "")}</td>
+              <td>{(row.category as any)?._name ?? "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {/* Pagination */}
+      <div className="flex items-center gap-4">
+        <button onClick={table.pagination.goToPrevious} disabled={!table.pagination.canGoPrevious}>Previous</button>
+        <span>Page {table.pagination.pageNo} of {table.pagination.totalPages}</span>
+        <button onClick={table.pagination.goToNext} disabled={!table.pagination.canGoNext}>Next</button>
+        <span>{table.pagination.totalItems} total</span>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## Type Definitions
+
+### ColumnDefinitionType
 
 ```typescript
-// ❌ WRONG — these properties don't exist
-table.data
-table.columns
+interface ColumnDefinitionType<T> {
+  fieldId: keyof T;              // MUST cast: bdo.field.id as keyof T
+  label?: string;
+  enableSorting?: boolean;
+  enableFiltering?: boolean;
+  transform?: (value: any, row: T) => React.ReactNode;  // Custom rendering
+}
+```
 
-// ✅ CORRECT
-table.rows       // current page data
-table.totalItems // total matching records
+### UseTableReturnType
+
+```typescript
+interface UseTableReturnType<T> {
+  rows: T[];                     // Plain objects — access row.field directly (NOT .get())
+  totalItems: number;
+  isLoading: boolean;
+  isFetching: boolean;
+  error: Error | null;
+  search: { query: string; field: keyof T | null; set: (field: keyof T, query: string) => void; clear: () => void; };
+  sort: { field: keyof T | null; direction: "ASC" | "DESC" | null; toggle: (field: keyof T) => void; set: (field: keyof T, dir: "ASC" | "DESC") => void; clear: () => void; };
+  filter: UseFilterReturnType<T>;  // Full useFilter API
+  pagination: { pageNo: number; pageSize: number; totalPages: number; totalItems: number; canGoNext: boolean; canGoPrevious: boolean; goToNext: () => void; goToPrevious: () => void; goToPage: (n: number) => void; setPageSize: (n: number) => void; };
+  refetch: () => Promise<any>;
+}
+```
+
+### UseTableOptionsType
+
+```typescript
+interface UseTableOptionsType<T> {
+  source: string;                // bdo.meta._id (NOT the bdo instance)
+  columns: ColumnDefinitionType<T>[];
+  initialState?: {
+    sort?: Record<string, "ASC" | "DESC">[];
+    pagination?: { pageNo: number; pageSize: number; };
+    filter?: UseFilterOptionsType<T>;
+  };
+  onError?: (error: Error) => void;
+  onSuccess?: (data: T[]) => void;
+}
 ```

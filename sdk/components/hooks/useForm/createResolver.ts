@@ -88,7 +88,22 @@ export function createResolver<B extends BaseBdo<any, any, any>>(
       const field = fields[fieldName];
       if (!field) continue;
 
-      const value = values[fieldName];
+      let value = values[fieldName];
+
+      // Coerce string → number for NumberField (HTML inputs always send strings)
+      if ("integerPart" in field && typeof value === "string" && value !== "") {
+        const num = Number(value);
+        if (!isNaN(num)) {
+          value = num;
+          values[fieldName] = num;
+        }
+      }
+
+      // Match backend BDO core: skip ALL validation for non-required empty fields
+      // (backend get_value(None) returns immediately without calling validate())
+      if (!field.required && (value == null || value === "" || (Array.isArray(value) && value.length === 0))) {
+        continue;
+      }
 
       // 1. Type validation (existing)
       const typeResult: ValidationResultType = (

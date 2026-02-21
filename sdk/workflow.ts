@@ -23,10 +23,3 @@ export type {
   UseActivityFormOptions,
   UseActivityFormReturn,
 } from './workflow/components/useActivityForm';
-
-export { useActivityTable, ActivityTableStatus } from './workflow/components/useActivityTable';
-export type {
-  UseActivityTableOptionsType,
-  UseActivityTableReturnType,
-  ActivityRowType,
-} from './workflow/components/useActivityTable';

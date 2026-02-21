@@ -253,7 +253,7 @@ export function createResourceClient<T = any>(
         throw new Error(`Failed to create ${basePath}: ${response.statusText}`);
       }
 
-      return response.json();
+      return (await response.json()).Data;
     },
 
     async update(
@@ -272,7 +272,7 @@ export function createResourceClient<T = any>(
         );
       }
 
-      return response.json();
+      return (await response.json()).Data;
     },
 
     async delete(id: string): Promise<DeleteResponseType> {
@@ -555,7 +555,12 @@ export function createResourceClient<T = any>(
 
       const responseData: { Data: FileDownloadResponseType } =
         await response.json();
-      return responseData.Data;
+      const downloadData = responseData.Data;
+      // Normalize: runtime returns DownloadUrl, components expect URL
+      if (downloadData && (downloadData as any).DownloadUrl && !(downloadData as any).URL) {
+        (downloadData as any).URL = (downloadData as any).DownloadUrl;
+      }
+      return downloadData;
     },
 
     async getDownloadUrls(
@@ -578,7 +583,16 @@ export function createResourceClient<T = any>(
 
       const responseData: { Data: FileDownloadResponseType[] } =
         await response.json();
-      return responseData.Data;
+      const downloadList = responseData.Data;
+      // Normalize: runtime returns DownloadUrl, components expect URL
+      if (Array.isArray(downloadList)) {
+        downloadList.forEach((item) => {
+          if (item && (item as any).DownloadUrl && !(item as any).URL) {
+            (item as any).URL = (item as any).DownloadUrl;
+          }
+        });
+      }
+      return downloadList;
     },
 
     async deleteAttachment(
