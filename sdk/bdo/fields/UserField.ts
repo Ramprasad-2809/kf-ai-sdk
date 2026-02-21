@@ -35,7 +35,7 @@ export class UserField extends BaseField<UserFieldType> {
   async fetchOptions(instanceId: string): Promise<UserFieldType[]> {
     if (!this._parentBoId) {
       throw new Error(
-        `Field ${this.id} not bound to a BDO. Cannot fetch options.`
+        `Field ${this.id} not bound to a BDO. Cannot fetch options.`,
       );
     }
     return api(this._parentBoId).fetchField<UserFieldType>(instanceId, this.id);

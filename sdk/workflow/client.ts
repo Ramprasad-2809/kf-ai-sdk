@@ -8,7 +8,8 @@ import {
 } from "../api/client";
 import type {
   ListResponseType,
-  MetricResponseType,
+  ListOptionsType,
+  CountResponseType,
   ReadResponseType,
   DraftResponseType,
   CreateUpdateResponseType,
@@ -108,8 +109,20 @@ export class Workflow<T = any> {
 
     return {
       // ── List-level ────────────────────────────────────────────
+      // TODO: Backend currently only supports GET for list/metric endpoints.
+      // Once backend is updated to accept POST with Filter/Sort/Page body,
+      // switch back to POST so useTable features (search, sort, pagination) work.
+      //
+      // POST version (waiting for backend):
+      // async inProgressList(options?: ListOptionsType) {
+      //   return fetch(url + "/inprogress/list", {
+      //     method: "POST", headers: getDefaultHeaders(),
+      //     body: options ? JSON.stringify(options) : undefined,
+      //   });
+      // }
+      // (same pattern for completedList, inProgressMetric, completedMetric)
 
-      async inProgressList(): Promise<ListResponseType<ActivityInstanceFieldsType & T>> {
+      async inProgressList(_options?: ListOptionsType): Promise<ListResponseType<ActivityInstanceFieldsType & T>> {
         const response = await fetch(`${getApiBaseUrl()}${base}/inprogress/list`, {
           method: "GET",
           headers: getDefaultHeaders(),
@@ -122,7 +135,7 @@ export class Workflow<T = any> {
         return response.json();
       },
 
-      async completedList(): Promise<ListResponseType<ActivityInstanceFieldsType & T>> {
+      async completedList(_options?: ListOptionsType): Promise<ListResponseType<ActivityInstanceFieldsType & T>> {
         const response = await fetch(`${getApiBaseUrl()}${base}/completed/list`, {
           method: "GET",
           headers: getDefaultHeaders(),
@@ -135,27 +148,27 @@ export class Workflow<T = any> {
         return response.json();
       },
 
-      async inProgressMetric(): Promise<MetricResponseType> {
+      async inProgressMetric(_options?: ListOptionsType): Promise<CountResponseType> {
         const response = await fetch(`${getApiBaseUrl()}${base}/inprogress/metric`, {
           method: "GET",
           headers: getDefaultHeaders(),
         });
 
         if (!response.ok) {
-          throw new Error(`Failed to get in-progress activity metrics: ${response.statusText}`);
+          throw new Error(`Failed to get in-progress activity count: ${response.statusText}`);
         }
 
         return response.json();
       },
 
-      async completedMetric(): Promise<MetricResponseType> {
+      async completedMetric(_options?: ListOptionsType): Promise<CountResponseType> {
         const response = await fetch(`${getApiBaseUrl()}${base}/completed/metric`, {
           method: "GET",
           headers: getDefaultHeaders(),
         });
 
         if (!response.ok) {
-          throw new Error(`Failed to get completed activity metrics: ${response.statusText}`);
+          throw new Error(`Failed to get completed activity count: ${response.statusText}`);
         }
 
         return response.json();

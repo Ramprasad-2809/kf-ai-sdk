@@ -1,8 +1,10 @@
-import type { ListResponseType, SortType, ColumnDefinitionType } from "../../../types/common";
-
-// Re-export ColumnDefinitionType for backwards compatibility
-export type { ColumnDefinitionType };
-import type { UseFilterReturnType, UseFilterOptionsType } from "../useFilter";
+import type {
+  ListResponseType,
+  ListOptionsType,
+  CountResponseType,
+  SortType,
+} from '../../../types/common';
+import type { UseFilterReturnType, UseFilterOptionsType } from '../useFilter';
 
 // ============================================================
 // STATE TYPE DEFINITIONS
@@ -23,10 +25,12 @@ export interface PaginationStateType {
 // ============================================================
 
 export interface UseTableOptionsType<T> {
-  /** Data source identifier */
-  source: string;
-  /** Column configurations */
-  columns: ColumnDefinitionType<T>[];
+  /** Unique query key for React Query caching */
+  queryKey: string[];
+  /** Fetch list data (POST with filter/sort/pagination) */
+  listFn: (options: ListOptionsType) => Promise<ListResponseType<T>>;
+  /** Fetch count (POST with filter only) */
+  countFn: (options: ListOptionsType) => Promise<CountResponseType>;
   /** Initial state */
   initialState?: {
     /** Sort configuration: [{ "fieldName": "ASC" }] */
@@ -38,7 +42,7 @@ export interface UseTableOptionsType<T> {
   };
   /** Error callback */
   onError?: (error: Error) => void;
-  /** Success callback */
+  /** Success callback — receives rows from current page */
   onSuccess?: (data: T[]) => void;
 }
 
@@ -65,10 +69,10 @@ export interface UseTableReturnType<T> {
   // Sorting (Flat Access)
   sort: {
     field: keyof T | null;
-    direction: "ASC" | "DESC" | null;
+    direction: 'ASC' | 'DESC' | null;
     toggle: (field: keyof T) => void;
     clear: () => void;
-    set: (field: keyof T, direction: "ASC" | "DESC") => void;
+    set: (field: keyof T | null, direction: 'ASC' | 'DESC' | null) => void;
   };
 
   // Filter (Simplified chainable API)

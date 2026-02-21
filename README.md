@@ -463,7 +463,8 @@ cn("text-red-500", condition && "text-blue-500");
 
 Detailed documentation for each feature:
 
-- [useTable Documentation](./docs/useTable.md)
+- [useBDOTable Documentation](./docs/useBDOTable.md)
+- [useActivityTable Documentation](./docs/useActivityTable.md)
 - [useFilter Documentation](./docs/useFilter.md)
 - [useForm Documentation](./docs/useForm.md)
 - [useAuth Documentation](./docs/useAuth.md)

@@ -17,9 +17,18 @@ export type {
   ActivityProgressType,
   WorkflowStartResponseType,
 } from './workflow/types';
+export { createFieldFromMeta, buildFieldsFromInput } from './workflow/createFieldFromMeta';
 
-export { useActivityForm } from './workflow/components/useActivityForm';
+export { useActivityForm } from './components/hooks/useActivityForm';
 export type {
   UseActivityFormOptions,
   UseActivityFormReturn,
-} from './workflow/components/useActivityForm';
+} from './components/hooks/useActivityForm';
+
+export { useActivityTable, ActivityTableStatus } from './components/hooks/useActivityTable';
+export type {
+  UseActivityTableOptionsType,
+  UseActivityTableReturnType,
+  ActivityTableStatusType,
+  ActivityRowType,
+} from './components/hooks/useActivityTable';

@@ -12,9 +12,4 @@ export type {
   ActivityProgressType,
   WorkflowStartResponseType,
 } from './types';
-
-export { useActivityForm } from './components/useActivityForm';
-export type {
-  UseActivityFormOptions,
-  UseActivityFormReturn,
-} from './components/useActivityForm';
+export { createFieldFromMeta, buildFieldsFromInput } from './createFieldFromMeta';

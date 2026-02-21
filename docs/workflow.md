@@ -11,6 +11,8 @@ import {
   Activity,
   ActivityInstance,
   useActivityForm,
+  useActivityTable,
+  ActivityTableStatus,
 } from "@ram_28/kf-ai-sdk/workflow";
 
 // Type-only exports
@@ -20,6 +22,10 @@ import type {
   WorkflowStartResponseType,
   UseActivityFormOptions,
   UseActivityFormReturn,
+  UseActivityTableOptionsType,
+  UseActivityTableReturnType,
+  ActivityTableStatusType,
+  ActivityRowType,
 } from "@ram_28/kf-ai-sdk/workflow";
 
 // Field classes (for defining Activity fields)
@@ -31,7 +37,7 @@ import {
   DateTimeField,
   SelectField,
   ReferenceField,
-} from "@ram_28/kf-ai-sdk/bdo/fields";
+} from '@ram_28/kf-ai-sdk/bdo/fields';
 
 // Field types (for entity type definitions)
 import type {
@@ -42,7 +48,7 @@ import type {
   DateTimeFieldType,
   SelectFieldType,
   ReferenceFieldType,
-} from "@ram_28/kf-ai-sdk/types";
+} from '@ram_28/kf-ai-sdk/types';
 ```
 
 ---
@@ -82,10 +88,17 @@ System fields present on every activity instance. Returned alongside activity-sp
 type ActivityInstanceFieldsType = {
   _id: StringFieldType;
   Status: SelectFieldType<"InProgress" | "Completed">;
-  AssignedTo: ReferenceFieldType<{ _id: StringFieldType; username: StringFieldType }>;
+  AssignedTo: UserFieldType[];
   CompletedAt: DateTimeFieldType;
 };
 ```
+
+### Activity Table Types
+
+See the dedicated [useActivityTable documentation](./useActivityTable.md) for `ActivityTableStatus`, `ActivityRowType`, `UseActivityTableOptionsType`, and `UseActivityTableReturnType`.
+
+**Key change:** Entity fields are now nested under `ADO` instead of being flattened at the top level. Access entity fields as `row.ADO.FieldName`.
+
 
 ### UseActivityFormOptions\<A\>
 
@@ -140,6 +153,13 @@ interface UseActivityFormReturn<A extends Activity<any, any, any>> {
   clearErrors: () => void;
 }
 ```
+
+### File & Image Types
+
+Image accessor: `item.field.get()` returns `FileType | null`. Has `upload(file: File)`, `deleteAttachment()`, `getDownloadUrl()`.
+File accessor: `item.field.get()` returns `FileType[]`. Has `upload(files: File[])`, `deleteAttachment(id)`, `getDownloadUrl(id)`.
+
+Activity forms always have an instance ID, so attachment operations work immediately — no draft creation is needed.
 
 ---
 
@@ -250,21 +270,30 @@ Each Activity class provides methods to query and access activity instances. Lis
 const activity = wf.employeeInputActivity();
 ```
 
-### getInProgressList()
+### getInProgressList(options?)
 
-List in-progress activity instances. Filtering and pagination are handled server-side automatically.
+List in-progress activity instances. Accepts optional `ListOptionsType` payload for server-side filtering, sorting, and pagination.
 
 ```typescript
+// No options — returns all in-progress items (default pagination)
 const result = await activity.getInProgressList();
 
 for (const item of result.Data) {
   console.log(item._id, item.Status, item.StartDate);
 }
+
+// With options — server-side filter, sort, and pagination
+const filtered = await activity.getInProgressList({
+  Filter: { Operator: 'And', Condition: [{ LHSField: 'Status', Operator: 'EQ', RHSValue: 'InProgress', RHSType: 'Constant' }] },
+  Sort: [{ '_created_at': 'DESC' }],
+  Page: 1,
+  PageSize: 10,
+});
 ```
 
-### getCompletedList()
+### getCompletedList(options?)
 
-List completed activity instances. Filtering and pagination are handled server-side automatically.
+List completed activity instances. Same options as `getInProgressList`.
 
 ```typescript
 const result = await activity.getCompletedList();
@@ -274,20 +303,22 @@ for (const item of result.Data) {
 }
 ```
 
-### inProgressMetrics()
+### inProgressMetrics(options?)
 
-Get aggregated metrics for in-progress activity instances.
+Get count of in-progress activity instances. Returns `CountResponseType` (`{ Count: number }`).
 
 ```typescript
-const metrics = await activity.inProgressMetrics();
+const { Count } = await activity.inProgressMetrics();
+console.log('In-progress count:', Count);
 ```
 
-### completedMetrics()
+### completedMetrics(options?)
 
-Get aggregated metrics for completed activity instances.
+Get count of completed activity instances. Returns `CountResponseType` (`{ Count: number }`).
 
 ```typescript
-const metrics = await activity.completedMetrics();
+const { Count } = await activity.completedMetrics();
+console.log('Completed count:', Count);
 ```
 
 ### getInstance(instanceId)
@@ -382,6 +413,15 @@ User clicks Complete
 
 ---
 
+## useActivityTable Hook
+
+See the dedicated [useActivityTable documentation](./useActivityTable.md) for the full API reference, type definitions, and examples.
+
+`useActivityTable` now wraps the base `useTable` hook, providing the same search, sort, filter, and pagination capabilities as BDO tables. Entity fields are accessed via `row.ADO.FieldName`.
+
+---
+
+
 ## Use Case: Employee Creating Leave
 
 ### Step 1 — Start the workflow
@@ -465,22 +505,22 @@ function LeaveRequestForm({ activityInstanceId, onComplete }: LeaveRequestFormPr
 
       {/* Start Date */}
       <div>
-        <label>{activity.StartDate.meta.label}</label>
-        <input type="date" {...register(activity.StartDate.meta.id)} />
+        <label>{activity.StartDate.label}</label>
+        <input type="date" {...register(activity.StartDate.id)} />
         {errors.StartDate && <span>{errors.StartDate.message}</span>}
       </div>
 
       {/* End Date */}
       <div>
-        <label>{activity.EndDate.meta.label}</label>
-        <input type="date" {...register(activity.EndDate.meta.id)} />
+        <label>{activity.EndDate.label}</label>
+        <input type="date" {...register(activity.EndDate.id)} />
         {errors.EndDate && <span>{errors.EndDate.message}</span>}
       </div>
 
       {/* Leave Type */}
       <div>
-        <label>{activity.LeaveType.meta.label}</label>
-        <select {...register(activity.LeaveType.meta.id)}>
+        <label>{activity.LeaveType.label}</label>
+        <select {...register(activity.LeaveType.id)}>
           <option value="">Select type</option>
           <option value="PTO">PTO</option>
           <option value="Sick">Sick</option>
@@ -491,8 +531,8 @@ function LeaveRequestForm({ activityInstanceId, onComplete }: LeaveRequestFormPr
 
       {/* Leave Days (readonly — auto-disabled, computed by server) */}
       <div>
-        <label>{activity.LeaveDays.meta.label}</label>
-        <input type="number" {...register(activity.LeaveDays.meta.id)} />
+        <label>{activity.LeaveDays.label}</label>
+        <input type="number" {...register(activity.LeaveDays.id)} />
       </div>
 
       {/* Actions */}
@@ -544,16 +584,72 @@ function LeaveRequestPage() {
 
 ### Step 1 — List in-progress items
 
-```typescript
-import { SimpleLeaveProcess } from "@/bdo/workflows/SimpleLeaveProcess";
+```tsx
+import { useMemo, useState } from "react";
+import { useActivityTable, ActivityTableStatus } from "@ram_28/kf-ai-sdk/workflow";
+import { SimpleLeaveProcess, ManagerApprovalActivity } from "@/bdo/workflows/SimpleLeaveProcess";
 
 const wf = new SimpleLeaveProcess();
 const activity = wf.managerApprovalActivity();
 
-const result = await activity.getInProgressList();
+  const { rows, totalItems, isLoading, error, pagination, refetch } = useActivityTable(activity, {
+    status: ActivityTableStatus.InProgress,
+    initialState: {
+      pagination: { pageNo: 1, pageSize: 10 },
+    },
+  });
 
-for (const item of result.Data) {
-  console.log(item._id, item.Status, item.AssignedTo.username);
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
+
+  if (selectedId) {
+    return (
+      <ApprovalForm
+        activityInstanceId={selectedId}
+        onComplete={() => {
+          setSelectedId(null);
+          refetch();
+        }}
+      />
+    );
+  }
+
+  return (
+    <div>
+      <h2>Pending Approvals ({totalItems})</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Status</th>
+            <th>Assigned To</th>
+            <th>Approved</th>
+            <th>Reason</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row._id}>
+              <td>{row._id}</td>
+              <td>{row.Status}</td>
+              <td>{row.AssignedTo.map((u) => u._name).join(", ")}</td>
+              <td>{row.ADO.ManagerApproved ? "Yes" : "No"}</td>
+              <td>{row.ADO.ManagerReason}</td>
+              <td>
+                <button onClick={() => setSelectedId(row._id)}>Review</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div>
+        <button onClick={pagination.goToPrevious} disabled={!pagination.canGoPrevious}>Previous</button>
+        <span>Page {pagination.pageNo} of {pagination.totalPages}</span>
+        <button onClick={pagination.goToNext} disabled={!pagination.canGoNext}>Next</button>
+      </div>
+    </div>
+  );
 }
 ```
 
@@ -610,14 +706,14 @@ function ApprovalForm({ activityInstanceId, onComplete }: ApprovalFormProps) {
 
       <div>
         <label>
-          <input type="checkbox" {...register(activity.ManagerApproved.meta.id)} />
-          {activity.ManagerApproved.meta.label}
+          <input type="checkbox" {...register(activity.ManagerApproved.id)} />
+          {activity.ManagerApproved.label}
         </label>
       </div>
 
       <div>
-        <label>{activity.ManagerReason.meta.label}</label>
-        <textarea {...register(activity.ManagerReason.meta.id)} rows={4} />
+        <label>{activity.ManagerReason.label}</label>
+        <textarea {...register(activity.ManagerReason.id)} rows={4} />
       </div>
 
       <button type="button" onClick={handleComplete(onSuccess, onError)}>
@@ -653,7 +749,7 @@ instance.StartDate.set("2026-03-01");
 instance.EndDate.set("2026-03-05");
 
 // Field metadata
-console.log(instance.StartDate.meta.label);  // "Start Date"
+console.log(instance.StartDate.label);  // "Start Date"
 
 // Persist changes
 await instance.update({ StartDate: "2026-03-01", EndDate: "2026-03-05" });
@@ -672,18 +768,31 @@ const progress = await instance.progress();
 
 ## Filtering Reference
 
-Status filtering is built into the method names (`getInProgressList` / `getCompletedList`). All filtering (by current user, activity status, and activity ID) and pagination are handled server-side automatically — no client-side options are needed.
+Status filtering is built into the method names (`getInProgressList` / `getCompletedList`). Internal filters (ActivityId, Status, AssignedTo) are **always applied** by the backend. Frontend filters passed via `ListOptionsType` are AND-merged with the internal filters.
+
+All four list/metric endpoints now use **POST** with an optional `ListOptionsType` body (same shape as BDO list API: `{ Filter, Sort, Page, PageSize }`).
 
 ### In-progress items
 
 ```typescript
+// No options — returns all (default pagination)
 const result = await activity.getInProgressList();
+
+// With filter + pagination
+const result = await activity.getInProgressList({
+  Sort: [{ '_created_at': 'DESC' }],
+  Page: 1,
+  PageSize: 25,
+});
 ```
 
 ### Completed items
 
 ```typescript
-const result = await activity.getCompletedList();
+const result = await activity.getCompletedList({
+  Page: 1,
+  PageSize: 25,
+});
 ```
 
 ### Process progress
@@ -703,7 +812,7 @@ const progressList = await wf.progress(BPInstanceId);
 |-------|------|-------------|
 | `_id` | `StringFieldType` | Unique activity instance identifier |
 | `Status` | `SelectFieldType<"InProgress" \| "Completed">` | Current status |
-| `AssignedTo` | `ReferenceFieldType<UserRefType>` | Assigned user (has `._id` and `.username`) |
+| `AssignedTo` | `UserFieldType[]` | Assigned users (each has `._id` and `._name`) |
 | `CompletedAt` | `DateTimeFieldType` | Completion timestamp (`"YYYY-MM-DDTHH:MM:SS"`) |
 
 ---
