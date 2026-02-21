@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useEffect } from "react";
+import { useMemo, useCallback, useEffect, useRef } from "react";
 import {
   useForm as useRHF,
   type FieldValues,
@@ -11,6 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createResolver } from "./createResolver";
 import { createItemProxy } from "./createItemProxy";
 import { getBdoSchema } from "../../../api/metadata";
+import { api } from "../../../api/client";
 import type { BaseBdo } from "../../../bdo";
 import type { CreateUpdateResponseType } from "../../../types/common";
 import type { BaseField } from "../../../bdo/fields/BaseField";
@@ -70,6 +71,7 @@ function coerceRecordForForm(bdo: BaseBdo<any, any, any>, data: Record<string, u
  * - Smart register: auto-disables readonly fields
  * - Payload filtering: handleSubmit auto-filters to editable fields only
  * - Constraint validation: auto-validates required, length, etc. from field meta
+ * - Draft auto-save: creates draft on form open, patches on field changes
  */
 export function useForm<B extends BaseBdo<any, any, any>>(
   options: UseFormOptionsType<B>,
@@ -109,14 +111,11 @@ export function useForm<B extends BaseBdo<any, any, any>>(
   } = useQuery({
     queryKey: ["form-record", bdo.meta._id, recordId],
     queryFn: async () => {
-      // bdo.get returns ItemWithData - extract raw data via toJSON
-      // Safe: update operation requires UpdatableBdo (enforced by UseFormOptionsType)
       const item = await (bdo as unknown as UpdatableBdo).get(recordId!);
-      // Strip Z from DateTime values so HTML datetime-local inputs display correctly
       return coerceRecordForForm(bdo, item.toJSON() as Record<string, unknown>);
     },
     enabled: operation === "update" && !!recordId,
-    staleTime: 0, // Always fetch fresh data for forms
+    staleTime: 0,
   });
 
   // ============================================================
@@ -126,15 +125,16 @@ export function useForm<B extends BaseBdo<any, any, any>>(
   const {
     data: draftData,
     isLoading: isCreatingDraft,
+    error: draftError,
   } = useQuery({
     queryKey: ["form-draft", bdo.meta._id],
     queryFn: async () => {
-      const result = await (bdo as unknown as { draftInteraction(data: Record<string, unknown>): Promise<{ _id: string }> }).draftInteraction({});
-      return result;
+      return api(bdo.meta._id).draftInteraction({});
     },
     enabled: operation === "create",
     staleTime: Infinity,
-    gcTime: 0, // Clean up when form unmounts so next open creates a new draft
+    gcTime: 0,
+    retry: 1,
   });
 
   // ============================================================
@@ -144,8 +144,8 @@ export function useForm<B extends BaseBdo<any, any, any>>(
   const { data: schema } = useQuery({
     queryKey: ["form-schema", bdo.meta._id],
     queryFn: () => getBdoSchema(bdo.meta._id),
-    staleTime: 30 * 60 * 1000, // Cache for 30 minutes
-    gcTime: 60 * 60 * 1000, // Keep in cache for 1 hour
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
     enabled: enableExpressionValidation !== false,
   });
 
@@ -164,13 +164,23 @@ export function useForm<B extends BaseBdo<any, any, any>>(
 
   const form = useRHF<FieldValues>({
     mode,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resolver: resolver as any, // Validation integrated here!
+    resolver: resolver as any,
     defaultValues: defaultValues as any,
-    // `values` prop reactively updates form when record loads
-    values:
-      operation === "update" && record ? (record as FieldValues) : undefined,
+    // NOTE: Don't use `values` prop — it continuously syncs and overrides
+    // setValue() calls for unregistered fields (Image/File attachments).
+    // Instead, we reset once when record arrives (see useEffect below).
   });
+
+  // Reset form whenever record data changes (edit mode)
+  // Track the record object reference — React Query returns a new object on each fetch,
+  // so this resets the form both on initial load AND when navigating between records.
+  const lastResetDataRef = useRef<Record<string, unknown> | null>(null);
+  useEffect(() => {
+    if (operation === "update" && record && record !== lastResetDataRef.current) {
+      form.reset(record as FieldValues);
+      lastResetDataRef.current = record;
+    }
+  }, [record, operation, form]);
 
   // Set draft _id into form values when it arrives
   useEffect(() => {
@@ -197,16 +207,58 @@ export function useForm<B extends BaseBdo<any, any, any>>(
   const smartRegister = useCallback(
     (name: string, registerOptions?: RegisterOptions) => {
       const rhfResult = form.register(name as any, registerOptions);
-
-      // If field is readonly, add disabled: true
       if (fields[name]?.readOnly) {
         return { ...rhfResult, disabled: true };
       }
-
       return rhfResult;
     },
     [form, fields],
   );
+
+  // ============================================================
+  // DRAFT AUTO-SAVE (Create Mode - patch dirty fields on change)
+  // ============================================================
+
+  const draftPatchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (operation !== "create" || !draftData?._id) return;
+
+    const subscription = form.watch((_values, { type }) => {
+      if (type !== "change") return;
+
+      if (draftPatchTimeoutRef.current) {
+        clearTimeout(draftPatchTimeoutRef.current);
+      }
+
+      draftPatchTimeoutRef.current = setTimeout(async () => {
+        const currentValues = form.getValues();
+        const dirtyFields = form.formState.dirtyFields;
+        const dirtyData: Record<string, unknown> = {};
+
+        for (const [key, value] of Object.entries(currentValues)) {
+          if (fields[key] && !fields[key].readOnly && dirtyFields[key]) {
+            dirtyData[key] = coerceFieldValue(fields[key], value);
+          }
+        }
+
+        if (Object.keys(dirtyData).length > 0) {
+          try {
+            await api(bdo.meta._id).draftInteraction({ _id: draftData._id, ...dirtyData });
+          } catch {
+            // Draft auto-save is best-effort — don't block user interaction
+          }
+        }
+      }, 800);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+      if (draftPatchTimeoutRef.current) {
+        clearTimeout(draftPatchTimeoutRef.current);
+      }
+    };
+  }, [form, operation, draftData, fields, bdo]);
 
   // ============================================================
   // CUSTOM HANDLE SUBMIT (with API call + payload filtering)
@@ -215,58 +267,50 @@ export function useForm<B extends BaseBdo<any, any, any>>(
   const handleSubmit: HandleSubmitType<CreateUpdateResponseType> = useCallback(
     (onSuccess, onError) => {
       return form.handleSubmit(
-        // onValid - validation passed, make API call
         async (data, e) => {
           try {
             const filteredData: Record<string, unknown> = {};
 
+            // Get ALL form values at once (includes setValue values for Image/File fields)
+            const allValues = form.getValues() as Record<string, unknown>;
             if (operation === "create") {
-              // Create mode - send all known, non-readonly fields
-              for (const [key, value] of Object.entries(data)) {
-                if (fields[key] && !fields[key].readOnly) {
-                  filteredData[key] = coerceFieldValue(fields[key], value);
+              for (const [key, field] of Object.entries(fields)) {
+                if (field.readOnly) continue;
+                // Check both allValues and RHF resolved data for the value
+                const value = allValues[key] !== undefined ? allValues[key] : data[key];
+                if (value !== undefined) {
+                  filteredData[key] = coerceFieldValue(field, value);
                 }
               }
             } else {
-              // Update mode - send only known, non-readonly, dirty fields
               const dirtyFields = form.formState.dirtyFields;
-              for (const [key, value] of Object.entries(data)) {
-                if (fields[key] && !fields[key].readOnly && dirtyFields[key]) {
-                  filteredData[key] = coerceFieldValue(fields[key], value);
-                }
+              for (const [key, field] of Object.entries(fields)) {
+                if (field.readOnly || !dirtyFields[key]) continue;
+                const value = allValues[key] !== undefined ? allValues[key] : data[key];
+                filteredData[key] = coerceFieldValue(field, value);
               }
             }
 
             let result: unknown;
 
             if (operation === "create") {
-              // Interactive create: commit draft via POST /<bdo_id>/draft
               filteredData._id = draftData?._id;
-              result = await (bdo as unknown as { draft(data: Record<string, unknown>): Promise<unknown> }).draft(
-                filteredData,
-              );
+              result = await api(bdo.meta._id).draft(filteredData);
             } else {
-              // Safe: update operation requires UpdatableBdo (enforced by UseFormOptionsType)
-              result = await (bdo as unknown as UpdatableBdo).update(
-                recordId!,
-                filteredData,
-              );
+              result = await api(bdo.meta._id).update(recordId!, filteredData);
             }
 
-            // Success callback
             onSuccess?.(result as any, e);
           } catch (error) {
-            // API error
             onError?.(error as Error, e);
           }
         },
-        // onInvalid - validation failed
         (errors, e) => {
           onError?.(errors as FieldErrors, e);
         },
       );
     },
-    [form, bdo, operation, recordId, fields],
+    [form, bdo, operation, recordId, fields, draftData],
   );
 
   // ============================================================
@@ -274,21 +318,15 @@ export function useForm<B extends BaseBdo<any, any, any>>(
   // ============================================================
 
   return {
-    // Item - synced with form
     item,
 
-    // BDO reference
     bdo,
     operation,
     recordId,
 
-    // Smart register (auto-disables readonly fields)
     register: smartRegister as any,
-
-    // Custom handleSubmit (handles API call + filters payload)
     handleSubmit,
 
-    // RHF methods (spread, but handleSubmit is overridden above)
     watch: form.watch as any,
     setValue: form.setValue as any,
     getValues: form.getValues as any,
@@ -297,7 +335,6 @@ export function useForm<B extends BaseBdo<any, any, any>>(
     control: form.control as unknown as Control<AllFieldsType<B>>,
     formState: form.formState as any,
 
-    // Flattened state for convenience
     errors: form.formState.errors as any,
     isDirty: form.formState.isDirty,
     isValid: form.formState.isValid,
@@ -305,11 +342,12 @@ export function useForm<B extends BaseBdo<any, any, any>>(
     isSubmitSuccessful: form.formState.isSubmitSuccessful,
     dirtyFields: form.formState.dirtyFields as any,
 
-    // Loading states
     isLoading: isLoadingRecord || isCreatingDraft,
     isFetching: isFetchingRecord,
 
-    // Error
-    loadError: recordError as Error | null,
+    loadError: (recordError ?? draftError) as Error | null,
+
+    draftId: draftData?._id,
+    isCreatingDraft,
   };
 }

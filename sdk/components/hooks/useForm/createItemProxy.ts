@@ -2,6 +2,10 @@ import type { UseFormReturn, Path, FieldValues } from "react-hook-form";
 import type { BaseBdo } from "../../../bdo";
 import type { BaseFieldMetaType } from "../../../bdo/core/types";
 import type { BaseField } from "../../../bdo/fields/BaseField";
+import type { FileType } from "../../../types/base-fields";
+import type { FileDownloadResponseType, AttachmentViewType } from "../../../types/common";
+import { api } from "../../../api/client";
+import { validateFileExtension, extractFileExtension } from "../../../bdo/fields/attachment-constants";
 import { validateConstraints } from "./createResolver";
 import type {
   FormItemType,
@@ -17,6 +21,10 @@ import type {
  * Key principle: Item has NO state. It's a view over RHF's state.
  * Editable fields get set(), readonly fields do not.
  *
+ * Draft-based upload: In create mode (no _id), upload() automatically creates
+ * a draft record via draftInteraction() to get an _id, then uploads immediately.
+ * On form submit, if a draft _id exists, update() is used instead of create().
+ *
  * @param bdo - The BDO instance for field metadata
  * @param form - The RHF useForm return object
  * @returns SmartFormItem proxy
@@ -27,6 +35,35 @@ export function createItemProxy<B extends BaseBdo<any, any, any>>(
 ): FormItemType<ExtractEditableType<B>, ExtractReadonlyType<B>> {
   const fields = bdo.getFields();
   const accessorCache = new Map<string, EditableFormFieldAccessorType<unknown> | ReadonlyFormFieldAccessorType<unknown>>();
+
+  // Draft tracking for create mode — shared across all attachment fields in this form
+  const boIdShared = bdo.getBoId();
+  let draftId: string | null = null;
+  let draftPromise: Promise<string> | null = null;
+
+  /**
+   * Ensures a record _id exists for attachment uploads.
+   * In edit mode, returns the existing _id.
+   * In create mode, creates a draft record via draftInteraction() to get an _id.
+   * The draft _id is shared across all attachment fields and only created once.
+   */
+  async function ensureDraft(): Promise<string> {
+    // If form already has an _id (edit mode or previous draft), use it
+    const existing = form.getValues("_id" as Path<FieldValues>) as string | undefined;
+    if (existing) return existing;
+    if (draftId) return draftId;
+    if (!draftPromise) {
+      draftPromise = api(boIdShared).draftInteraction({}).then((d: any) => {
+        draftId = d._id;
+        form.setValue("_id" as Path<FieldValues>, draftId as any, { shouldDirty: false });
+        return draftId!;
+      }).catch((err: Error) => {
+        draftPromise = null;
+        throw err;
+      });
+    }
+    return draftPromise;
+  }
 
   return new Proxy({} as FormItemType<ExtractEditableType<B>, ExtractReadonlyType<B>>, {
     get(_, prop: string | symbol) {
@@ -50,6 +87,11 @@ export function createItemProxy<B extends BaseBdo<any, any, any>>(
         return () => form.trigger();
       }
 
+      // Internal: check if a draft was created (used by handleSubmit)
+      if (prop === "_hasDraft") {
+        return () => !!draftId;
+      }
+
       // Return cached accessor if available
       if (accessorCache.has(prop)) {
         return accessorCache.get(prop);
@@ -67,7 +109,21 @@ export function createItemProxy<B extends BaseBdo<any, any, any>>(
       // Full validation: type + constraint + expression (matches createResolver pipeline)
       const validate = () => {
         if (!bdoField) return { valid: true, errors: [] };
-        const value = form.getValues(prop as Path<FieldValues>);
+        let value = form.getValues(prop as Path<FieldValues>);
+
+        // Coerce string → number for NumberField (HTML inputs always send strings)
+        if ("integerPart" in bdoField && typeof value === "string" && value !== "") {
+          const num = Number(value);
+          if (!isNaN(num)) {
+            value = num;
+            form.setValue(prop as Path<FieldValues>, num as any, { shouldDirty: false });
+          }
+        }
+
+        // Match backend BDO core: skip ALL validation for non-required empty fields
+        if (!bdoField.required && (value == null || value === "" || (Array.isArray(value) && value.length === 0))) {
+          return { valid: true, errors: [] };
+        }
 
         // 1. Type validation
         const typeResult = bdoField.validate(value);
@@ -98,13 +154,20 @@ export function createItemProxy<B extends BaseBdo<any, any, any>>(
       };
 
       if (!isReadOnly) {
+        // Defensive get(): File fields return [] instead of null/undefined, Image returns null
+        const fieldGet = () => {
+          const val = form.getValues(prop as Path<FieldValues>);
+          if (fieldMeta.Type === "File") return val ?? [];
+          return val;
+        };
+
         const accessor: EditableFormFieldAccessorType<unknown> = {
           label: bdoField?.label ?? prop,
           required: bdoField?.required ?? false,
           readOnly: false,
           defaultValue: bdoField?.defaultValue,
           meta: fieldMeta,
-          get: () => form.getValues(prop as Path<FieldValues>),
+          get: fieldGet,
           getOrDefault,
           set: (value: unknown) => {
             form.setValue(prop as Path<FieldValues>, value as any, {
@@ -115,9 +178,127 @@ export function createItemProxy<B extends BaseBdo<any, any, any>>(
           },
           validate,
         };
+
+        // Enrich Image/File field accessors with attachment methods (draft-based upload)
+        if (fieldMeta.Type === "Image" || fieldMeta.Type === "File") {
+          const boId = boIdShared;
+          const requireInstanceId = (): string => {
+            const id = form.getValues("_id" as Path<FieldValues>) as string | undefined;
+            if (!id) throw new Error("Save the record before attachment operations");
+            return id;
+          };
+
+          if (fieldMeta.Type === "Image") {
+            // Image: single file upload — always uploads immediately (draft in create mode)
+            (accessor as any).upload = async (file: File): Promise<FileType> => {
+              validateFileExtension(file.name, "Image");
+              const id = await ensureDraft();
+
+              const [uploadInfo] = await api(boId).getUploadUrl(id, prop, [
+                { FileName: file.name, Size: file.size, FileExtension: extractFileExtension(file.name) },
+              ]);
+              await fetch(uploadInfo.UploadUrl.URL, {
+                method: "PUT",
+                headers: { "Content-Type": uploadInfo.ContentType },
+                body: file,
+              });
+              const metadata: FileType = {
+                _id: uploadInfo._id,
+                _name: uploadInfo._name,
+                FileName: uploadInfo.FileName,
+                FileExtension: uploadInfo.FileExtension,
+                Size: uploadInfo.Size,
+                ContentType: uploadInfo.ContentType,
+              };
+              form.setValue(prop as Path<FieldValues>, metadata as any, { shouldDirty: true });
+              return metadata;
+            };
+
+            (accessor as any).deleteAttachment = async (): Promise<void> => {
+              const val = form.getValues(prop as Path<FieldValues>) as any;
+              const instanceId = requireInstanceId();
+              if (!(val?._id)) throw new Error(`${prop} has no image to delete`);
+              await api(boId).deleteAttachment(instanceId, prop, val._id);
+              form.setValue(prop as Path<FieldValues>, null as any, { shouldDirty: true });
+            };
+
+            (accessor as any).getDownloadUrl = async (viewType?: AttachmentViewType): Promise<FileDownloadResponseType> => {
+              const val = form.getValues(prop as Path<FieldValues>) as any;
+              const instanceId = requireInstanceId();
+              if (!(val?._id)) throw new Error(`${prop} has no image`);
+              return api(boId).getDownloadUrl(instanceId, prop, val._id, viewType);
+            };
+          } else {
+            // File field — multi-file, always uploads immediately (draft in create mode)
+            (accessor as any).upload = async (files: File[]): Promise<FileType[]> => {
+              for (const file of files) validateFileExtension(file.name, "File");
+              const id = await ensureDraft();
+
+              const requests = files.map((file) => ({
+                FileName: file.name,
+                Size: file.size,
+                FileExtension: extractFileExtension(file.name),
+              }));
+              const uploadInfos = await api(boId).getUploadUrl(id, prop, requests);
+              const uploaded: FileType[] = await Promise.all(
+                files.map(async (file, i) => {
+                  await fetch(uploadInfos[i].UploadUrl.URL, {
+                    method: "PUT",
+                    headers: { "Content-Type": uploadInfos[i].ContentType },
+                    body: file,
+                  });
+                  return {
+                    _id: uploadInfos[i]._id,
+                    _name: uploadInfos[i]._name,
+                    FileName: uploadInfos[i].FileName,
+                    FileExtension: uploadInfos[i].FileExtension,
+                    Size: uploadInfos[i].Size,
+                    ContentType: uploadInfos[i].ContentType,
+                  };
+                }),
+              );
+              const current = (form.getValues(prop as Path<FieldValues>) as FileType[] | undefined) ?? [];
+              form.setValue(prop as Path<FieldValues>, [...current, ...uploaded] as any, { shouldDirty: true });
+              return uploaded;
+            };
+
+            (accessor as any).deleteAttachment = async (attachmentId: string): Promise<void> => {
+              const current = (form.getValues(prop as Path<FieldValues>) as any[]) ?? [];
+              const instanceId = requireInstanceId();
+              await api(boId).deleteAttachment(instanceId, prop, attachmentId);
+              form.setValue(
+                prop as Path<FieldValues>,
+                current.filter((f) => f._id !== attachmentId) as any,
+                { shouldDirty: true },
+              );
+            };
+
+            (accessor as any).getDownloadUrl = async (
+              attachmentId: string,
+              viewType?: AttachmentViewType,
+            ): Promise<FileDownloadResponseType> => {
+              const instanceId = requireInstanceId();
+              return api(boId).getDownloadUrl(instanceId, prop, attachmentId, viewType);
+            };
+            (accessor as any).getDownloadUrls = async (
+              viewType?: AttachmentViewType,
+            ): Promise<FileDownloadResponseType[]> => {
+              const instanceId = requireInstanceId();
+              return api(boId).getDownloadUrls(instanceId, prop, viewType);
+            };
+          }
+        }
+
         accessorCache.set(prop, accessor);
         return accessor;
       }
+
+      // Defensive get() for readonly accessor too
+      const readonlyGet = () => {
+        const val = form.getValues(prop as Path<FieldValues>);
+        if (fieldMeta.Type === "File") return val ?? [];
+        return val;
+      };
 
       const accessor: ReadonlyFormFieldAccessorType<unknown> = {
         label: bdoField?.label ?? prop,
@@ -125,10 +306,44 @@ export function createItemProxy<B extends BaseBdo<any, any, any>>(
         readOnly: true,
         defaultValue: bdoField?.defaultValue,
         meta: fieldMeta,
-        get: () => form.getValues(prop as Path<FieldValues>),
+        get: readonlyGet,
         getOrDefault,
         validate,
       };
+
+      // Enrich readonly Image/File field accessors with download methods
+      if (fieldMeta.Type === "Image" || fieldMeta.Type === "File") {
+        const boId = boIdShared;
+        const requireInstanceId = (): string => {
+          const id = form.getValues("_id" as Path<FieldValues>) as string | undefined;
+          if (!id) throw new Error("Cannot perform attachment operation: item has no _id. Save the item first.");
+          return id;
+        };
+
+        if (fieldMeta.Type === "Image") {
+          (accessor as any).getDownloadUrl = async (viewType?: AttachmentViewType): Promise<FileDownloadResponseType> => {
+            const val = form.getValues(prop as Path<FieldValues>) as any;
+            const instanceId = requireInstanceId();
+            if (!(val?._id)) throw new Error(`${prop} has no image to download`);
+            return api(boId).getDownloadUrl(instanceId, prop, val._id, viewType);
+          };
+        } else {
+          (accessor as any).getDownloadUrl = async (
+            attachmentId: string,
+            viewType?: AttachmentViewType,
+          ): Promise<FileDownloadResponseType> => {
+            const instanceId = requireInstanceId();
+            return api(boId).getDownloadUrl(instanceId, prop, attachmentId, viewType);
+          };
+          (accessor as any).getDownloadUrls = async (
+            viewType?: AttachmentViewType,
+          ): Promise<FileDownloadResponseType[]> => {
+            const instanceId = requireInstanceId();
+            return api(boId).getDownloadUrls(instanceId, prop, viewType);
+          };
+        }
+      }
+
       accessorCache.set(prop, accessor);
       return accessor;
     },
@@ -136,6 +351,8 @@ export function createItemProxy<B extends BaseBdo<any, any, any>>(
     has(_, prop) {
       if (typeof prop === "symbol") return false;
       if (prop === "_id" || prop === "toJSON" || prop === "validate")
+        return true;
+      if (prop === "_hasDraft")
         return true;
       return prop in fields;
     },
@@ -148,7 +365,7 @@ export function createItemProxy<B extends BaseBdo<any, any, any>>(
       if (typeof prop === "symbol") return undefined;
       return {
         configurable: true,
-        enumerable: prop !== "toJSON" && prop !== "validate",
+        enumerable: prop !== "toJSON" && prop !== "validate" && prop !== "_hasDraft",
       };
     },
   });

@@ -119,6 +119,7 @@ export interface UserFieldMetaType extends BaseFieldMetaType {
   Type: "User";
   Constraint?: BaseConstraintType;
   View?: {
+    DataObject?: { Type: string; Id: string };
     Filter?: Record<string, unknown>;
     Sort?: unknown[];
     BusinessEntity?: string;

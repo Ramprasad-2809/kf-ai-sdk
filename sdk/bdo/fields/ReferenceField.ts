@@ -68,7 +68,8 @@ export class ReferenceField<TRef = unknown> extends BaseField<
   }
 
   /**
-   * Fetch referenced records from the backend, returned as typed TRef[]
+   * Fetch referenced records from the backend via the fetchField API.
+   * Requires the field to be bound to a parent BDO.
    */
   async fetchOptions(instanceId: string): Promise<TRef[]> {
     if (!this._parentBoId) {

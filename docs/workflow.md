@@ -13,7 +13,7 @@ import {
   useActivityForm,
   useActivityTable,
   ActivityTableStatus,
-} from '@ram_28/kf-ai-sdk/workflow';
+} from "@ram_28/kf-ai-sdk/workflow";
 
 // Type-only exports
 import type {
@@ -25,7 +25,7 @@ import type {
   UseActivityTableOptionsType,
   UseActivityTableReturnType,
   ActivityRowType,
-} from '@ram_28/kf-ai-sdk/workflow';
+} from "@ram_28/kf-ai-sdk/workflow";
 
 // Field classes (for defining Activity fields)
 import {
@@ -87,7 +87,7 @@ System fields present on every activity instance. Returned alongside activity-sp
 type ActivityInstanceFieldsType = {
   _id: StringFieldType;
   Status: SelectFieldType<"InProgress" | "Completed">;
-  AssignedTo: UserFieldType;
+  AssignedTo: UserFieldType[];
   CompletedAt: DateTimeFieldType;
 };
 ```
@@ -97,6 +97,7 @@ type ActivityInstanceFieldsType = {
 See the dedicated [useActivityTable documentation](./useActivityTable.md) for `ActivityTableStatus`, `ActivityRowType`, `UseActivityTableOptionsType`, and `UseActivityTableReturnType`.
 
 **Key change:** Entity fields are now nested under `ADO` instead of being flattened at the top level. Access entity fields as `row.ADO.FieldName`.
+
 
 ### UseActivityFormOptions\<A\>
 
@@ -412,6 +413,7 @@ See the dedicated [useActivityTable documentation](./useActivityTable.md) for th
 
 ---
 
+
 ## Use Case: Employee Creating Leave
 
 ### Step 1 — Start the workflow
@@ -572,16 +574,15 @@ function LeaveRequestPage() {
 
 ## Use Case: Manager Approving Leave
 
-### Step 1 — List in-progress items with useActivityTable
+### Step 1 — List in-progress items
 
 ```tsx
-import { useMemo, useState } from 'react';
-import { useActivityTable, ActivityTableStatus } from '@ram_28/kf-ai-sdk/workflow';
-import { SimpleLeaveProcess, ManagerApprovalActivity } from '@/bdo/workflows/SimpleLeaveProcess';
+import { useMemo, useState } from "react";
+import { useActivityTable, ActivityTableStatus } from "@ram_28/kf-ai-sdk/workflow";
+import { SimpleLeaveProcess, ManagerApprovalActivity } from "@/bdo/workflows/SimpleLeaveProcess";
 
-function ManagerApprovalPage() {
-  const activity = useMemo(() => new SimpleLeaveProcess().managerApprovalActivity(), []);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+const wf = new SimpleLeaveProcess();
+const activity = wf.managerApprovalActivity();
 
   const { rows, totalItems, isLoading, error, pagination, refetch } = useActivityTable(activity, {
     status: ActivityTableStatus.InProgress,
@@ -624,8 +625,8 @@ function ManagerApprovalPage() {
             <tr key={row._id}>
               <td>{row._id}</td>
               <td>{row.Status}</td>
-              <td>{row.AssignedTo._name}</td>
-              <td>{row.ADO.ManagerApproved ? 'Yes' : 'No'}</td>
+              <td>{row.AssignedTo.map((u) => u._name).join(", ")}</td>
+              <td>{row.ADO.ManagerApproved ? "Yes" : "No"}</td>
               <td>{row.ADO.ManagerReason}</td>
               <td>
                 <button onClick={() => setSelectedId(row._id)}>Review</button>
@@ -803,7 +804,7 @@ const progressList = await wf.progress(BPInstanceId);
 |-------|------|-------------|
 | `_id` | `StringFieldType` | Unique activity instance identifier |
 | `Status` | `SelectFieldType<"InProgress" \| "Completed">` | Current status |
-| `AssignedTo` | `UserFieldType` | Assigned user (has `._id` and `._name`) |
+| `AssignedTo` | `UserFieldType[]` | Assigned users (each has `._id` and `._name`) |
 | `CompletedAt` | `DateTimeFieldType` | Completion timestamp (`"YYYY-MM-DDTHH:MM:SS"`) |
 
 ---

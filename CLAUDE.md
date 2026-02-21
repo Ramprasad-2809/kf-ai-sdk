@@ -72,7 +72,8 @@ See `@docs/bdo.md` for full documentation including field classes, Item proxy, e
 ### Hooks
 
 Integrate with `@tanstack/react-query` (useTable, useForm) or plain React state (useFilter):
-- **useTable** — Table state (sorting, pagination, filtering). See `@docs/useTable.md`
+- **useBDOTable** — BDO table state (sorting, pagination, filtering). See `@docs/useBDOTable.md`
+- **useActivityTable** — Activity table state (sorting, pagination, filtering). See `@docs/useActivityTable.md`
 - **useForm** — BDO-integrated forms with 3-phase validation (type + constraint + expression). See `@docs/useForm.md`
 - **useFilter** — Filter condition builder. See `@docs/useFilter.md`
 
@@ -139,6 +140,10 @@ All extend `BaseField<T>`, store raw backend meta, expose: `id`, `label`, `readO
 | `config/vite.config.js` | Build configuration with entry points |
 
 ---
+
+## Deep Internals Reference
+
+See `.claude/knowledge.md` for detailed SDK internals including: proxy implementations, hook state management, validation pipelines, API endpoint mappings, export chains, type hierarchies, and workflow-specific logic.
 
 ## Compaction Instructions
 

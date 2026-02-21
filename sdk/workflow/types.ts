@@ -14,6 +14,7 @@ import type {
   StringFieldType,
   SelectFieldType,
   DateTimeFieldType,
+  UserFieldType,
 } from "../types/base-fields";
 
 /**
@@ -45,13 +46,11 @@ export interface ActivityProgressType {
  * System fields present on every activity instance response.
  * Returned alongside activity-specific fields from `list()` and `read()`.
  */
-export type ActivityAssigneeType = { _id: string; Type: string };
-
 export type ActivityInstanceFieldsType = {
   _id: StringFieldType;
   BPInstanceId: StringFieldType;
   Status: SelectFieldType<"InProgress" | "Completed">;
-  AssignedTo: ActivityAssigneeType[];
+  AssignedTo: UserFieldType[];
   CompletedAt: DateTimeFieldType;
 };
 
