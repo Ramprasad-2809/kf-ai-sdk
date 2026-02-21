@@ -130,10 +130,10 @@ product.product_name.defaultValue  // unknown
 | `BooleanField` | — | |
 | `DateField` | — | Format: YYYY-MM-DD |
 | `DateTimeField` | `precision` | Format: YYYY-MM-DDTHH:MM:SS |
-| `SelectField` | **`options`**, `fetchOptions()` | `.options` returns `{ value, label }[]` |
-| `ReferenceField` | `fetchOptions()`, `referenceBdo` | Value is object `{ _id, _name, ... }` |
+| `SelectField` | **`options`**, `fetchOptions(instanceId)` | `.options` returns `{ value, label }[]` |
+| `ReferenceField` | `fetchOptions(instanceId)`, `referenceBdo` | Value is object `{ _id, _name, ... }` |
 | `TextField` | `format` | Long text |
-| `UserField` | — | Value: `{ _id, _name }` |
+| `UserField` | `fetchOptions(instanceId)` | Value: `{ _id, _name }` |
 | `ImageField` | — | Value: `FileType \| null` |
 | `FileField` | — | Value: `FileType[]` |
 

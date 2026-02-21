@@ -111,6 +111,7 @@ ReferenceField stores an object `{ _id, _name, ... }`, not a string. Use the pre
 // ✅ CORRECT
 <ReferenceSelect
   bdoField={bdo.category}
+  instanceId={id || String(watch("_id") ?? "")}
   value={watch(bdo.category.id)}
   onChange={(val) => setValue(bdo.category.id, val, { shouldDirty: true })}
 />
@@ -251,6 +252,7 @@ export default function ProductForm() {
         <label>{bdo.category.label}</label>
         <ReferenceSelect
           bdoField={bdo.category}
+          instanceId={id || String(watch("_id") ?? "")}
           value={watch(bdo.category.id)}
           onChange={(val) => setValue(bdo.category.id, val, { shouldDirty: true })}
         />
@@ -368,6 +370,7 @@ ValidationMode.OnBlur / .OnChange / .OnSubmit / .OnTouched / .All
 | `BooleanField` | `<Checkbox checked={watch()} onCheckedChange={v => setValue()} />` |
 | `DateField` | `<input type="date" {...register(bdo.field.id)} />` |
 | `DateTimeField` | `<input type="datetime-local" {...register(bdo.field.id)} />` |
-| `ReferenceField` | `<ReferenceSelect bdoField={bdo.field} value={watch()} onChange={...} />` |
+| `ReferenceField` | `<ReferenceSelect bdoField={bdo.field} instanceId={id \|\| String(watch("_id") ?? "")} value={watch()} onChange={...} />` |
+| `UserField` | `<ReferenceSelect bdoField={bdo.field} instanceId={id \|\| String(watch("_id") ?? "")} value={watch()} onChange={...} />` |
 | `ImageField` | `<ImageUpload field={item.field} value={watch()} boId={} instanceId={} fieldId={} />` |
 | `FileField` | `<FileUpload field={item.field} value={watch()} boId={} instanceId={} fieldId={} />` |
