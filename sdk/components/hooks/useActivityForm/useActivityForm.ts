@@ -64,6 +64,31 @@ function coerceFieldValue(
 }
 
 // ============================================================
+// RECORD COERCION (strip trailing Z from DateTime for HTML inputs)
+// ============================================================
+
+/**
+ * Coerce record values for form display.
+ * Strips trailing 'Z' from DateTime values so `<input type="datetime-local">` works.
+ */
+function coerceRecordForForm(
+  fields: Record<string, BaseField<unknown>>,
+  data: Record<string, unknown>,
+): Record<string, unknown> {
+  const result = { ...data };
+  for (const [key, value] of Object.entries(result)) {
+    if (
+      typeof value === 'string' &&
+      fields[key]?.meta.Type === 'DateTime' &&
+      value.endsWith('Z')
+    ) {
+      result[key] = value.slice(0, -1);
+    }
+  }
+  return result;
+}
+
+// ============================================================
 // MAIN HOOK
 // ============================================================
 
@@ -93,6 +118,9 @@ export function useActivityForm<A extends Activity<any, any, any>>(
 
   // Prevent concurrent update calls
   const isComputingRef = useRef(false);
+
+  // Track last data reference to avoid unnecessary resets
+  const lastResetDataRef = useRef<Record<string, unknown> | null>(null);
 
   // ============================================================
   // 1. FETCH BP METADATA
@@ -160,6 +188,9 @@ export function useActivityForm<A extends Activity<any, any, any>>(
   // REACT HOOK FORM
   // ============================================================
 
+  // NOTE: Don't use `values` prop — it continuously syncs and overrides
+  // setValue() calls for unregistered fields (Image/File attachments).
+  // Instead, we reset once when record arrives (see useEffect below).
   const rhf = useReactHookForm({
     mode,
     defaultValues: defaultValues as any,
@@ -167,19 +198,20 @@ export function useActivityForm<A extends Activity<any, any, any>>(
   });
 
   // ============================================================
-  // ITEM PROXY (always in sync with RHF state)
-  // ============================================================
-
-  const item = useMemo(
-    () => createActivityItemProxy(activity, rhf as any),
-    [activity, rhf],
-  );
-
-  // ============================================================
   // ACTIVITY OPERATIONS
   // ============================================================
 
   const activityRef = useMemo(() => activity._getOps(), [activity]);
+
+  // ============================================================
+  // ITEM PROXY (always in sync with RHF state)
+  // ============================================================
+
+  const item = useMemo(
+    () =>
+      createActivityItemProxy(activity, rhf as any, activity_instance_id),
+    [activity, rhf, activity_instance_id],
+  );
 
   // ============================================================
   // LOAD EXISTING DATA — activity.read() on mount
@@ -201,7 +233,19 @@ export function useActivityForm<A extends Activity<any, any, any>>(
 
         // Populate form with existing data
         if (data && typeof data === 'object') {
-          rhf.reset({ ...defaultValues, ...data } as any);
+          const coerced = coerceRecordForForm(
+            dynamicFields,
+            data as Record<string, unknown>,
+          );
+          const merged = { ...defaultValues, ...coerced };
+
+          if (
+            lastResetDataRef.current === null ||
+            data !== lastResetDataRef.current
+          ) {
+            rhf.reset(merged as any);
+            lastResetDataRef.current = data as Record<string, unknown>;
+          }
 
           // Detect extra fields from Context (not in Input metadata)
           const activitySystemFields = new Set([
@@ -426,17 +470,23 @@ export function useActivityForm<A extends Activity<any, any, any>>(
 
           try {
             // Only send dirty (changed) fields — matches useForm update behavior
+            // Use getValues() to capture Image/File values set via setValue()
+            // that RHF resolver doesn't include in `data`
             const cleanedData: Record<string, unknown> = {};
             const readonlySet = new Set(readonlyFieldNames);
             const dirtyFields = rhf.formState.dirtyFields;
+            const allValues = rhf.getValues() as Record<string, unknown>;
 
-            for (const [key, value] of Object.entries(data)) {
-              if (!readonlySet.has(key) && dirtyFields[key]) {
-                const field = allFields[key];
-                cleanedData[key] = field
-                  ? coerceFieldValue(field, value)
-                  : value;
-              }
+            for (const key of Object.keys(allValues)) {
+              if (readonlySet.has(key) || !dirtyFields[key]) continue;
+              const value =
+                allValues[key] !== undefined
+                  ? allValues[key]
+                  : (data as Record<string, unknown>)[key];
+              const field = allFields[key];
+              cleanedData[key] = field
+                ? coerceFieldValue(field, value)
+                : value;
             }
 
             // Save via activity.update()
@@ -483,17 +533,23 @@ export function useActivityForm<A extends Activity<any, any, any>>(
 
           try {
             // Only send dirty (changed) fields — matches useForm update behavior
+            // Use getValues() to capture Image/File values set via setValue()
+            // that RHF resolver doesn't include in `data`
             const cleanedData: Record<string, unknown> = {};
             const readonlySet = new Set(readonlyFieldNames);
             const dirtyFields = rhf.formState.dirtyFields;
+            const allValues = rhf.getValues() as Record<string, unknown>;
 
-            for (const [key, value] of Object.entries(data)) {
-              if (!readonlySet.has(key) && dirtyFields[key]) {
-                const field = allFields[key];
-                cleanedData[key] = field
-                  ? coerceFieldValue(field, value)
-                  : value;
-              }
+            for (const key of Object.keys(allValues)) {
+              if (readonlySet.has(key) || !dirtyFields[key]) continue;
+              const value =
+                allValues[key] !== undefined
+                  ? allValues[key]
+                  : (data as Record<string, unknown>)[key];
+              const field = allFields[key];
+              cleanedData[key] = field
+                ? coerceFieldValue(field, value)
+                : value;
             }
 
             if (Object.keys(cleanedData).length > 0) {

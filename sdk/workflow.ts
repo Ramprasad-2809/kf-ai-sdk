@@ -29,5 +29,6 @@ export { useActivityTable, ActivityTableStatus } from './components/hooks/useAct
 export type {
   UseActivityTableOptionsType,
   UseActivityTableReturnType,
+  ActivityTableStatusType,
   ActivityRowType,
 } from './components/hooks/useActivityTable';

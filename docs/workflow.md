@@ -24,6 +24,7 @@ import type {
   UseActivityFormReturn,
   UseActivityTableOptionsType,
   UseActivityTableReturnType,
+  ActivityTableStatusType,
   ActivityRowType,
 } from "@ram_28/kf-ai-sdk/workflow";
 
@@ -153,6 +154,13 @@ interface UseActivityFormReturn<A extends Activity<any, any, any>> {
 }
 ```
 
+### File & Image Types
+
+Image accessor: `item.field.get()` returns `FileType | null`. Has `upload(file: File)`, `deleteAttachment()`, `getDownloadUrl()`.
+File accessor: `item.field.get()` returns `FileType[]`. Has `upload(files: File[])`, `deleteAttachment(id)`, `getDownloadUrl(id)`.
+
+Activity forms always have an instance ID, so attachment operations work immediately — no draft creation is needed.
+
 ---
 
 ## Generated Workflow SDK
@@ -271,7 +279,7 @@ List in-progress activity instances. Accepts optional `ListOptionsType` payload 
 const result = await activity.getInProgressList();
 
 for (const item of result.Data) {
-  console.log(item._id, item.Status, item.ADO.StartDate);
+  console.log(item._id, item.Status, item.StartDate);
 }
 
 // With options — server-side filter, sort, and pagination
@@ -291,7 +299,7 @@ List completed activity instances. Same options as `getInProgressList`.
 const result = await activity.getCompletedList();
 
 for (const item of result.Data) {
-  console.log(item._id, item.CompletedAt, item.ADO.StartDate);
+  console.log(item._id, item.CompletedAt, item.StartDate);
 }
 ```
 
@@ -497,22 +505,22 @@ function LeaveRequestForm({ activityInstanceId, onComplete }: LeaveRequestFormPr
 
       {/* Start Date */}
       <div>
-        <label>{activity.StartDate.meta.label}</label>
-        <input type="date" {...register(activity.StartDate.meta.id)} />
+        <label>{activity.StartDate.label}</label>
+        <input type="date" {...register(activity.StartDate.id)} />
         {errors.StartDate && <span>{errors.StartDate.message}</span>}
       </div>
 
       {/* End Date */}
       <div>
-        <label>{activity.EndDate.meta.label}</label>
-        <input type="date" {...register(activity.EndDate.meta.id)} />
+        <label>{activity.EndDate.label}</label>
+        <input type="date" {...register(activity.EndDate.id)} />
         {errors.EndDate && <span>{errors.EndDate.message}</span>}
       </div>
 
       {/* Leave Type */}
       <div>
-        <label>{activity.LeaveType.meta.label}</label>
-        <select {...register(activity.LeaveType.meta.id)}>
+        <label>{activity.LeaveType.label}</label>
+        <select {...register(activity.LeaveType.id)}>
           <option value="">Select type</option>
           <option value="PTO">PTO</option>
           <option value="Sick">Sick</option>
@@ -523,8 +531,8 @@ function LeaveRequestForm({ activityInstanceId, onComplete }: LeaveRequestFormPr
 
       {/* Leave Days (readonly — auto-disabled, computed by server) */}
       <div>
-        <label>{activity.LeaveDays.meta.label}</label>
-        <input type="number" {...register(activity.LeaveDays.meta.id)} />
+        <label>{activity.LeaveDays.label}</label>
+        <input type="number" {...register(activity.LeaveDays.id)} />
       </div>
 
       {/* Actions */}
@@ -698,14 +706,14 @@ function ApprovalForm({ activityInstanceId, onComplete }: ApprovalFormProps) {
 
       <div>
         <label>
-          <input type="checkbox" {...register(activity.ManagerApproved.meta.id)} />
-          {activity.ManagerApproved.meta.label}
+          <input type="checkbox" {...register(activity.ManagerApproved.id)} />
+          {activity.ManagerApproved.label}
         </label>
       </div>
 
       <div>
-        <label>{activity.ManagerReason.meta.label}</label>
-        <textarea {...register(activity.ManagerReason.meta.id)} rows={4} />
+        <label>{activity.ManagerReason.label}</label>
+        <textarea {...register(activity.ManagerReason.id)} rows={4} />
       </div>
 
       <button type="button" onClick={handleComplete(onSuccess, onError)}>
@@ -741,7 +749,7 @@ instance.StartDate.set("2026-03-01");
 instance.EndDate.set("2026-03-05");
 
 // Field metadata
-console.log(instance.StartDate.meta.label);  // "Start Date"
+console.log(instance.StartDate.label);  // "Start Date"
 
 // Persist changes
 await instance.update({ StartDate: "2026-03-01", EndDate: "2026-03-05" });

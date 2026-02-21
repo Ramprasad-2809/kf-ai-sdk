@@ -6,7 +6,7 @@ Thin wrapper around `useTable` for BDO (Business Data Object) tables. Instead of
 
 ```typescript
 import { useBDOTable } from "@ram_28/kf-ai-sdk/table";
-import { ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
+import { ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/table";
 import type { UseBDOTableOptionsType, UseBDOTableReturnType } from "@ram_28/kf-ai-sdk/table/types";
 ```
 
@@ -118,7 +118,7 @@ A product listing page with search, filter, sort, and pagination.
 ```tsx
 import { useMemo, useState } from "react";
 import { useBDOTable } from "@ram_28/kf-ai-sdk/table";
-import { ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
+import { ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/table";
 import type { UseBDOTableReturnType } from "@ram_28/kf-ai-sdk/table/types";
 import { BuyerProduct } from "../bdo/buyer/Product";
 import type { BuyerProductFieldType } from "../bdo/buyer/Product";
