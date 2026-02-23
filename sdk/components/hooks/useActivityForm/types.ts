@@ -2,7 +2,7 @@
 // TYPE DEFINITIONS FOR useActivityForm HOOK
 // ============================================================
 // BDO-aligned types for the Activity pattern.
-// Reuses shared types from useForm where identical.
+// Reuses shared types from useBDOForm where identical.
 
 import type {
   UseFormWatch,
@@ -16,14 +16,14 @@ import type {
 
 import type { Activity } from '../../../workflow/Activity';
 
-// Reuse shared types from useForm — identical interfaces, no duplication
+// Reuse shared types from useBDOForm — identical interfaces, no duplication
 import type {
   HandleSubmitType,
   FormItemType,
   FormRegisterType,
   EditableFormFieldAccessorType,
   ReadonlyFormFieldAccessorType,
-} from '../useForm/types';
+} from '../useBDOForm/types';
 
 // Re-export for consumers who import from this module
 export type {
@@ -89,7 +89,7 @@ export interface UseActivityFormOptions<A extends Activity<any, any, any>> {
 // ============================================================
 
 /**
- * useActivityForm hook return type — mirrors useForm return structure
+ * useActivityForm hook return type — mirrors useBDOForm return structure
  */
 export interface UseActivityFormReturn<A extends Activity<any, any, any>> {
   /** Item proxy with typed field accessors */

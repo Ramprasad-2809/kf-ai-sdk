@@ -189,7 +189,7 @@
     "react",
     "hooks",
     "typescript",
-    "useForm",
+    "useBDOForm",
     "useTable",
     "useFilter",
     "bdo",

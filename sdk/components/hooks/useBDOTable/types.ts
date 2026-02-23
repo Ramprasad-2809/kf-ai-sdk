@@ -3,11 +3,9 @@ import type { UseFilterOptionsType } from '../useFilter/types';
 import type { SortType } from '../../../types/common';
 
 export interface UseBDOTableOptionsType<T> {
-  /** BDO instance with list() and count() methods */
+  /** BDO instance — only meta._id is used (for API routing) */
   bdo: {
     meta: { readonly _id: string; readonly name: string };
-    list(options?: any): Promise<any>;
-    count(options?: any): Promise<any>;
   };
   /** Initial state */
   initialState?: {

@@ -109,23 +109,12 @@ export class Workflow<T = any> {
 
     return {
       // ── List-level ────────────────────────────────────────────
-      // TODO: Backend currently only supports GET for list/metric endpoints.
-      // Once backend is updated to accept POST with Filter/Sort/Page body,
-      // switch back to POST so useTable features (search, sort, pagination) work.
-      //
-      // POST version (waiting for backend):
-      // async inProgressList(options?: ListOptionsType) {
-      //   return fetch(url + "/inprogress/list", {
-      //     method: "POST", headers: getDefaultHeaders(),
-      //     body: options ? JSON.stringify(options) : undefined,
-      //   });
-      // }
-      // (same pattern for completedList, inProgressMetric, completedMetric)
 
-      async inProgressList(_options?: ListOptionsType): Promise<ListResponseType<ActivityInstanceFieldsType & T>> {
+      async inProgressList(options?: ListOptionsType): Promise<ListResponseType<ActivityInstanceFieldsType & T>> {
         const response = await fetch(`${getApiBaseUrl()}${base}/inprogress/list`, {
-          method: "GET",
+          method: "POST",
           headers: getDefaultHeaders(),
+          body: options ? JSON.stringify(options) : undefined,
         });
 
         if (!response.ok) {
@@ -135,10 +124,11 @@ export class Workflow<T = any> {
         return response.json();
       },
 
-      async completedList(_options?: ListOptionsType): Promise<ListResponseType<ActivityInstanceFieldsType & T>> {
+      async completedList(options?: ListOptionsType): Promise<ListResponseType<ActivityInstanceFieldsType & T>> {
         const response = await fetch(`${getApiBaseUrl()}${base}/completed/list`, {
-          method: "GET",
+          method: "POST",
           headers: getDefaultHeaders(),
+          body: options ? JSON.stringify(options) : undefined,
         });
 
         if (!response.ok) {
@@ -148,10 +138,11 @@ export class Workflow<T = any> {
         return response.json();
       },
 
-      async inProgressMetric(_options?: ListOptionsType): Promise<CountResponseType> {
+      async inProgressMetric(options?: ListOptionsType): Promise<CountResponseType> {
         const response = await fetch(`${getApiBaseUrl()}${base}/inprogress/metric`, {
-          method: "GET",
+          method: "POST",
           headers: getDefaultHeaders(),
+          body: options ? JSON.stringify(options) : undefined,
         });
 
         if (!response.ok) {
@@ -161,10 +152,11 @@ export class Workflow<T = any> {
         return response.json();
       },
 
-      async completedMetric(_options?: ListOptionsType): Promise<CountResponseType> {
+      async completedMetric(options?: ListOptionsType): Promise<CountResponseType> {
         const response = await fetch(`${getApiBaseUrl()}${base}/completed/metric`, {
-          method: "GET",
+          method: "POST",
           headers: getDefaultHeaders(),
+          body: options ? JSON.stringify(options) : undefined,
         });
 
         if (!response.ok) {

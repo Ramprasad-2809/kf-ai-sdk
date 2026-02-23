@@ -1,3 +1,4 @@
+import { api } from '../../../api/client';
 import { useTable } from '../useTable';
 import type { UseBDOTableOptionsType, UseBDOTableReturnType } from './types';
 
@@ -8,8 +9,8 @@ export function useBDOTable<T = any>(
 
   return useTable<T>({
     queryKey: ['table', bdo.meta._id],
-    listFn: (opts) => bdo.list(opts),
-    countFn: (opts) => bdo.count(opts),
+    listFn: (opts) => api<T>(bdo.meta._id).list(opts),
+    countFn: (opts) => api<T>(bdo.meta._id).count(opts),
     ...rest,
   });
 }

@@ -125,7 +125,7 @@ product.product_name.defaultValue  // unknown
 
 | Class | Extra Getters | Notes |
 |-------|--------------|-------|
-| `StringField` | `length` | May have `Constraint.Enum` — see useForm Mistake #3 |
+| `StringField` | `length` | May have `Constraint.Enum` — see useBDOForm Mistake #3 |
 | `NumberField` | `integerPart`, `fractionPart` | |
 | `BooleanField` | — | |
 | `DateField` | — | Format: YYYY-MM-DD |

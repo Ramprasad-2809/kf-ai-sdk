@@ -187,7 +187,7 @@ export const QueryType = {
  * @example
  * import { FormOperation } from "@ram_28/kf-ai-sdk/form";
  *
- * const { handleSubmit } = useForm({
+ * const { handleSubmit } = useBDOForm({
  *   source: "products",
  *   operation: FormOperation.Create,
  * });
@@ -206,7 +206,7 @@ export const FormOperation = {
  * @example
  * import { InteractionMode } from "@ram_28/kf-ai-sdk/form";
  *
- * const { handleSubmit } = useForm({
+ * const { handleSubmit } = useBDOForm({
  *   source: "products",
  *   operation: "create",
  *   interactionMode: InteractionMode.Interactive,
@@ -225,7 +225,7 @@ export const InteractionMode = {
  * @example
  * import { ValidationMode } from "@ram_28/kf-ai-sdk/form";
  *
- * const { handleSubmit } = useForm({
+ * const { handleSubmit } = useBDOForm({
  *   source: "products",
  *   operation: "create",
  *   mode: ValidationMode.OnBlur,

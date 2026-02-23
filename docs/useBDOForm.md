@@ -1,13 +1,13 @@
-# Form SDK API
+# useBDOForm
 
-React hook for forms with validation, API integration, and typed field handling.
+React hook for BDO forms with validation, API integration, and typed field handling.
 
 ## Imports
 
 ```typescript
-import { useForm } from "@ram_28/kf-ai-sdk/form";
+import { useBDOForm } from "@ram_28/kf-ai-sdk/form";
 import { ValidationMode, FormOperation } from "@ram_28/kf-ai-sdk/form";
-import type { UseFormOptionsType, UseFormReturnType, FormItemType, FormRegisterType, HandleSubmitType } from "@ram_28/kf-ai-sdk/form/types";
+import type { UseBDOFormOptionsType, UseBDOFormReturnType, FormItemType, FormRegisterType, HandleSubmitType } from "@ram_28/kf-ai-sdk/form/types";
 import type { CreateUpdateResponseType } from "@ram_28/kf-ai-sdk/api/types";
 
 // Pre-built components for special field types
@@ -20,34 +20,34 @@ import { FileUpload } from "@/components/ui/file-upload";
 
 ## Common Mistakes (READ FIRST)
 
-### 1. Missing `operation` in useForm options (TS2345)
+### 1. Missing `operation` in useBDOForm options (TS2345)
 
 ALWAYS include `operation`. Without it, TypeScript cannot resolve the union type.
 
 ```typescript
 // ❌ WRONG — missing operation (TS2345)
-useForm({ bdo: product, mode: ValidationMode.OnBlur });
+useBDOForm({ bdo: product, mode: ValidationMode.OnBlur });
 
 // ✅ CORRECT — always include operation
-useForm({ bdo: product, operation: FormOperation.Create, mode: ValidationMode.OnBlur });
-useForm({ bdo: product, operation: FormOperation.Update, recordId: id, mode: ValidationMode.OnBlur });
+useBDOForm({ bdo: product, operation: FormOperation.Create, mode: ValidationMode.OnBlur });
+useBDOForm({ bdo: product, operation: FormOperation.Update, recordId: id, mode: ValidationMode.OnBlur });
 ```
 
-### 2. Annotating ternary with UseFormOptionsType (TS2322)
+### 2. Annotating ternary with UseBDOFormOptionsType (TS2322)
 
-`UseFormOptionsType` is a discriminated union. Type-annotating a variable prevents TS narrowing. NEVER annotate — call useForm inline in each branch.
+`UseBDOFormOptionsType` is a discriminated union. Type-annotating a variable prevents TS narrowing. NEVER annotate — call useBDOForm inline in each branch.
 
 ```typescript
 // ❌ WRONG — type annotation prevents union narrowing (TS2322)
-const options: UseFormOptionsType<typeof bdo> = id
+const options: UseBDOFormOptionsType<typeof bdo> = id
   ? { bdo, operation: FormOperation.Update, recordId: id, mode: ValidationMode.OnBlur }
   : { bdo, operation: FormOperation.Create, mode: ValidationMode.OnBlur };
-const formResult = useForm(options);
+const formResult = useBDOForm(options);
 
-// ✅ CORRECT — call useForm inline, no type annotation
+// ✅ CORRECT — call useBDOForm inline, no type annotation
 const formResult = id
-  ? useForm({ bdo, operation: FormOperation.Update, recordId: id, mode: ValidationMode.OnBlur })
-  : useForm({ bdo, operation: FormOperation.Create, mode: ValidationMode.OnBlur });
+  ? useBDOForm({ bdo, operation: FormOperation.Update, recordId: id, mode: ValidationMode.OnBlur })
+  : useBDOForm({ bdo, operation: FormOperation.Create, mode: ValidationMode.OnBlur });
 const { register, handleSubmit, watch, setValue, item, formState: { errors, isSubmitting }, isLoading } = formResult;
 ```
 
@@ -161,11 +161,11 @@ const onSuccess = (data: CreateUpdateResponseType) => { toast.success("Saved"); 
 
 ```typescript
 // ❌ WRONG
-useForm<ProductFieldType>({ ... });
+useBDOForm<ProductFieldType>({ ... });
 
 // ✅ CORRECT — pass BDO class instance
 const product = useMemo(() => new SellerProduct(), []);
-useForm({ bdo: product, operation: FormOperation.Create, mode: ValidationMode.OnBlur });
+useBDOForm({ bdo: product, operation: FormOperation.Create, mode: ValidationMode.OnBlur });
 ```
 
 ### 9. Wrong default values for date fields
@@ -187,7 +187,7 @@ defaultValues: { start_date: undefined }
 
 import { useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useForm, ValidationMode, FormOperation } from "@ram_28/kf-ai-sdk/form";
+import { useBDOForm, ValidationMode, FormOperation } from "@ram_28/kf-ai-sdk/form";
 import type { CreateUpdateResponseType } from "@ram_28/kf-ai-sdk/api/types";
 import { AdminProduct } from "@/bdo/admin/Product";
 import { ReferenceSelect } from "@/components/ui/reference-select";
@@ -203,8 +203,8 @@ export default function ProductForm() {
 
   // Create/Edit ternary — NO type annotation on result
   const formResult = id
-    ? useForm({ bdo, operation: FormOperation.Update, recordId: id, mode: ValidationMode.OnBlur })
-    : useForm({ bdo, operation: FormOperation.Create, mode: ValidationMode.OnBlur });
+    ? useBDOForm({ bdo, operation: FormOperation.Update, recordId: id, mode: ValidationMode.OnBlur })
+    : useBDOForm({ bdo, operation: FormOperation.Create, mode: ValidationMode.OnBlur });
 
   const { register, handleSubmit, watch, setValue, item, formState: { errors, isSubmitting }, isLoading } = formResult;
 
@@ -310,19 +310,19 @@ export default function ProductForm() {
 
 ## Type Definitions
 
-### UseFormOptionsType (Discriminated Union)
+### UseBDOFormOptionsType (Discriminated Union)
 
 ```typescript
-type UseFormOptionsType<B extends BaseBdo<any, any, any>> =
+type UseBDOFormOptionsType<B extends BaseBdo<any, any, any>> =
   | { bdo: B; operation: "create"; defaultValues?: Partial<EditableFieldType>; mode?: ValidationModeType; }
   | { bdo: B; operation: "update"; recordId: string; mode?: ValidationModeType; }
   | { bdo: B; recordId?: string; defaultValues?: Partial<EditableFieldType>; mode?: ValidationModeType; };
 ```
 
-### UseFormReturnType
+### UseBDOFormReturnType
 
 ```typescript
-interface UseFormReturnType<B> {
+interface UseBDOFormReturnType<B> {
   item: FormItemType<EditableFieldType, ReadonlyFieldType>;  // Field accessors (.get(), .set(), .upload())
   register: FormRegisterType;       // Auto-disables readonly fields
   handleSubmit: HandleSubmitType;   // Auto-calls bdo.create() or bdo.update()

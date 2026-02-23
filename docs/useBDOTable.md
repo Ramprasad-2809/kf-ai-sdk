@@ -28,10 +28,10 @@ useBDOTable({ bdo: product });
 
 ### 2. Passing a raw object instead of a BDO instance
 
-The `bdo` property expects an object with `meta`, `list()`, and `count()`. A plain object or entity type will not work.
+The `bdo` property expects an object with a `meta` property containing `_id` and `name`. A plain object or entity type will not work.
 
 ```typescript
-// ❌ WRONG — plain object without list/count methods
+// ❌ WRONG — plain object without meta
 useBDOTable({ bdo: { _id: 'BO_Product', name: 'Product' } });
 
 // ✅ CORRECT — a BDO class instance
@@ -78,7 +78,7 @@ const table = useBDOTable({ bdo: product });
 
 ### 5. Calling `.get()` on table rows
 
-Table `rows` are plain objects, NOT `ItemType`. The `.get()` accessor is only available on items returned by `bdo.get()`, `bdo.create()`, or the `useForm` item proxy.
+Table `rows` are plain objects, NOT `ItemType`. The `.get()` accessor is only available on items returned by `bdo.get()`, `bdo.create()`, or the `useBDOForm` item proxy.
 
 ```typescript
 // ❌ WRONG — rows are plain objects, not ItemType
@@ -243,11 +243,9 @@ function ProductListPage() {
 
 ```typescript
 export interface UseBDOTableOptionsType<T> {
-  /** BDO instance with list() and count() methods */
+  /** BDO instance — only meta._id is used (for API routing) */
   bdo: {
     meta: { readonly _id: string; readonly name: string };
-    list(options?: any): Promise<any>;
-    count(options?: any): Promise<any>;
   };
 
   /** Initial state */

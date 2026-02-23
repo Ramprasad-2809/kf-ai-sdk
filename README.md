@@ -14,7 +14,7 @@ A type-safe SDK for building modern web applications with React hooks for forms,
   - [Multiple Auth Providers](#multiple-auth-providers)
   - [Protected Routes](#protected-routes)
 - [Hooks](#hooks)
-  - [useForm](#useform)
+  - [useBDOForm](#usebdoform)
   - [useTable](#usetable)
   - [useFilter](#usefilter)
 - [BDO (Business Data Object)](#bdo-business-data-object)
@@ -42,7 +42,7 @@ npm install react @tanstack/react-query
 ## Features
 
 - **Authentication** - Cookie-based auth with AuthProvider and useAuth hook
-- **useForm** - BDO-integrated forms with automatic validation and API calls
+- **useBDOForm** - BDO-integrated forms with automatic validation and API calls
 - **useTable** - Data tables with sorting, pagination, and React Query integration
 - **useFilter** - Advanced filtering with logical operators and payload builders
 - **BDO Module** - Type-safe, role-based data access layer with expression validation
@@ -58,12 +58,12 @@ import { AuthProvider, useAuth } from "@ram_28/kf-ai-sdk/auth";
 import type { UseAuthReturnType, UserDetailsType } from "@ram_28/kf-ai-sdk/auth/types";
 
 // Hooks
-import { useForm } from "@ram_28/kf-ai-sdk/form";
+import { useBDOForm } from "@ram_28/kf-ai-sdk/form";
 import { useTable } from "@ram_28/kf-ai-sdk/table";
 import { useFilter } from "@ram_28/kf-ai-sdk/filter";
 
 // Types
-import type { UseFormOptionsType, UseFormReturnType } from "@ram_28/kf-ai-sdk/form/types";
+import type { UseBDOFormOptionsType, UseBDOFormReturnType } from "@ram_28/kf-ai-sdk/form/types";
 import type { UseTableOptionsType, UseTableReturnType } from "@ram_28/kf-ai-sdk/table/types";
 import type { UseFilterOptionsType, UseFilterReturnType } from "@ram_28/kf-ai-sdk/filter/types";
 
@@ -202,18 +202,18 @@ function ProtectedRoute({ children, requiredRoles }) {
 
 ## Hooks
 
-### useForm
+### useBDOForm
 
 BDO-integrated form hook with automatic validation and API calls.
 
 ```tsx
-import { useForm } from "@ram_28/kf-ai-sdk/form";
+import { useBDOForm } from "@ram_28/kf-ai-sdk/form";
 import { AdminProduct } from "./bdo/admin/Product";
 
 function ProductForm() {
   const product = new AdminProduct();
 
-  const { register, handleSubmit, errors, isSubmitting } = useForm({
+  const { register, handleSubmit, errors, isSubmitting } = useBDOForm({
     bdo: product,
     defaultValues: { Title: "", Price: 0 },
   });
@@ -466,7 +466,7 @@ Detailed documentation for each feature:
 - [useBDOTable Documentation](./docs/useBDOTable.md)
 - [useActivityTable Documentation](./docs/useActivityTable.md)
 - [useFilter Documentation](./docs/useFilter.md)
-- [useForm Documentation](./docs/useForm.md)
+- [useBDOForm Documentation](./docs/useBDOForm.md)
 - [useAuth Documentation](./docs/useAuth.md)
 - [API Documentation](./docs/api.md)
 

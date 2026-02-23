@@ -8,7 +8,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useForm as useReactHookForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
-import type { Path, FieldValues } from 'react-hook-form';
 
 import type { Activity } from '../../../workflow/Activity';
 import type {
@@ -19,6 +18,13 @@ import type {
 
 import { createActivityResolver } from './createActivityResolver';
 import { createActivityItemProxy } from './createActivityItemProxy';
+import {
+  coerceFieldValue,
+  coerceRecordForForm,
+  createSyncField,
+  createEnhancedRegister,
+  createEnhancedControl,
+} from '../useBDOForm/shared';
 import { toError } from '../../../utils/error-handling';
 import { getBdoSchema } from '../../../api/metadata';
 import {
@@ -27,66 +33,6 @@ import {
   findFieldInBpActivities,
 } from '../../../workflow/createFieldFromMeta';
 import type { BaseField } from '../../../bdo/fields/BaseField';
-
-// ============================================================
-// FIELD VALUE COERCION (HTML inputs return strings)
-// ============================================================
-
-/** Coerce form value to match field's expected type before sending to API */
-function coerceFieldValue(
-  field: BaseField<unknown>,
-  value: unknown,
-): unknown {
-  const type = field.meta.Type;
-  // Number: string → number
-  if (typeof value === 'string' && type === 'Number') {
-    return value === '' ? undefined : Number(value);
-  }
-  // Date/DateTime: empty string → undefined
-  if (
-    typeof value === 'string' &&
-    value === '' &&
-    (type === 'Date' || type === 'DateTime')
-  ) {
-    return undefined;
-  }
-  // DateTime: normalize to HH:MM:SS and ensure Z suffix
-  if (typeof value === 'string' && value !== '' && type === 'DateTime') {
-    let normalized = value;
-    if (normalized.endsWith('Z')) normalized = normalized.slice(0, -1);
-    const timePart = normalized.split('T')[1] || '';
-    if ((timePart.match(/:/g) || []).length === 1) {
-      normalized += ':00';
-    }
-    return normalized + 'Z';
-  }
-  return value;
-}
-
-// ============================================================
-// RECORD COERCION (strip trailing Z from DateTime for HTML inputs)
-// ============================================================
-
-/**
- * Coerce record values for form display.
- * Strips trailing 'Z' from DateTime values so `<input type="datetime-local">` works.
- */
-function coerceRecordForForm(
-  fields: Record<string, BaseField<unknown>>,
-  data: Record<string, unknown>,
-): Record<string, unknown> {
-  const result = { ...data };
-  for (const [key, value] of Object.entries(result)) {
-    if (
-      typeof value === 'string' &&
-      fields[key]?.meta.Type === 'DateTime' &&
-      value.endsWith('Z')
-    ) {
-      result[key] = value.slice(0, -1);
-    }
-  }
-  return result;
-}
 
 // ============================================================
 // MAIN HOOK
@@ -303,150 +249,54 @@ export function useActivityForm<A extends Activity<any, any, any>>(
   }, [enabled, isMetadataLoading, activityRef, activity_instance_id]);
 
   // ============================================================
-  // SYNC FIELD — validate + send single field value to API
+  // PER-FIELD SYNC (shared with useBDOForm)
   // ============================================================
 
-  const syncField = useCallback(
-    async (fieldName: string) => {
-      if (isComputingRef.current) return;
-      isComputingRef.current = true;
-
-      try {
-        const isValid = await rhf.trigger(fieldName as Path<FieldValues>);
-        if (!isValid) return;
-
-        const rawValue = rhf.getValues(fieldName as any);
-        const field = allFields[fieldName];
-        const value = field
-          ? coerceFieldValue(field, rawValue)
-          : rawValue;
-
-        const response = await activityRef.update(activity_instance_id, {
-          [fieldName]: value,
-        } as any);
-
-        // Field saved — reset dirty state so it's not re-sent on submit
-        rhf.resetField(fieldName as Path<FieldValues>, {
-          defaultValue: rawValue,
-          keepTouched: true,
-          keepError: true,
-        } as any);
-
-        // Update computed/readonly fields from response
-        if (response && typeof response === 'object') {
-          const responseData =
-            (response as any).Data ?? (response as any);
-          if (responseData && typeof responseData === 'object') {
-            const readonlySet = new Set(readonlyFieldNames);
-            for (const key of Object.keys(responseData)) {
-              if (readonlySet.has(key) && responseData[key] !== undefined) {
-                const current = rhf.getValues(key as any);
-                if (current !== responseData[key]) {
-                  rhf.setValue(
-                    key as Path<FieldValues>,
-                    responseData[key] as any,
-                    { shouldDirty: false, shouldValidate: false },
-                  );
-                }
-              }
-            }
-          }
-        }
-      } catch (error) {
-        console.warn('syncField failed:', error);
-      } finally {
-        isComputingRef.current = false;
-      }
-    },
-    [activityRef, readonlyFieldNames, allFields, rhf, activity_instance_id],
+  const syncApiFn = useCallback(
+    (fieldName: string, value: unknown) =>
+      activityRef.update(activity_instance_id, {
+        [fieldName]: value,
+      } as any),
+    [activityRef, activity_instance_id],
   );
 
-  // ============================================================
-  // MODE-AWARE HANDLER ENHANCEMENT
-  // Injects syncField into onChange/onBlur based on consumer's mode
-  // ============================================================
+  const syncField = useMemo(
+    () =>
+      createSyncField({
+        apiFn: syncApiFn,
+        allFields,
+        readonlyFieldNames,
+        rhf,
+        isComputingRef,
+      }),
+    [syncApiFn, allFields, readonlyFieldNames, rhf],
+  );
 
   const syncOnChange = mode === 'onChange' || mode === 'all';
-  const syncOnBlur = mode === 'onBlur' || mode === 'onTouched' || mode === 'all';
+  const syncOnBlur =
+    mode === 'onBlur' || mode === 'onTouched' || mode === 'all';
 
-  // ============================================================
-  // REGISTER (enhanced with mode-aware sync + auto-disable)
-  // ============================================================
-
-  const register = useCallback(
-    (name: string, registerOptions?: any) => {
-      const field = allFields[name];
-      const isReadonly = field ? field.readOnly : false;
-
-      const result = rhf.register(name as Path<FieldValues>, {
-        ...registerOptions,
-        ...(syncOnBlur
-          ? {
-              onBlur: async (e: any) => {
-                await registerOptions?.onBlur?.(e);
-                await syncField(name);
-              },
-            }
-          : {}),
-        ...(syncOnChange
-          ? {
-              onChange: async (e: any) => {
-                await registerOptions?.onChange?.(e);
-                await syncField(name);
-              },
-            }
-          : {}),
-        ...(isReadonly ? { disabled: true } : {}),
-      });
-
-      if (isReadonly) {
-        return { ...result, disabled: true as const };
-      }
-
-      return result;
-    },
+  const register = useMemo(
+    () =>
+      createEnhancedRegister({
+        rhf,
+        allFields,
+        syncField,
+        syncOnBlur,
+        syncOnChange,
+      }),
     [rhf, allFields, syncField, syncOnBlur, syncOnChange],
   ) as UseActivityFormReturn<A>['register'];
 
-  // ============================================================
-  // ENHANCED CONTROL (for Controller — same sync behavior as register)
-  // ============================================================
-
   const enhancedControl = useMemo(
     () =>
-      new Proxy(rhf.control, {
-        get(target, prop, receiver) {
-          if (prop === 'register') {
-            return (name: string, options?: any) => {
-              const result = target.register(name as any, options);
-              const originalOnChange = result.onChange;
-              const originalOnBlur = result.onBlur;
-
-              return {
-                ...result,
-                ...(syncOnChange
-                  ? {
-                      onChange: async (event: any) => {
-                        await originalOnChange(event);
-                        await syncField(name);
-                      },
-                    }
-                  : {}),
-                ...(syncOnBlur
-                  ? {
-                      onBlur: async (event: any) => {
-                        await originalOnBlur(event);
-                        await syncField(name);
-                      },
-                    }
-                  : {}),
-              };
-            };
-          }
-          return Reflect.get(target, prop, receiver);
-        },
+      createEnhancedControl({
+        control: rhf.control,
+        syncField,
+        syncOnBlur,
+        syncOnChange,
       }),
-    [rhf.control, syncField, syncOnChange, syncOnBlur],
+    [rhf.control, syncField, syncOnBlur, syncOnChange],
   );
 
   // ============================================================
@@ -469,7 +319,7 @@ export function useActivityForm<A extends Activity<any, any, any>>(
           setIsSubmitting(true);
 
           try {
-            // Only send dirty (changed) fields — matches useForm update behavior
+            // Only send dirty (changed) fields — matches useBDOForm update behavior
             // Use getValues() to capture Image/File values set via setValue()
             // that RHF resolver doesn't include in `data`
             const cleanedData: Record<string, unknown> = {};
@@ -532,7 +382,7 @@ export function useActivityForm<A extends Activity<any, any, any>>(
           setIsSubmitting(true);
 
           try {
-            // Only send dirty (changed) fields — matches useForm update behavior
+            // Only send dirty (changed) fields — matches useBDOForm update behavior
             // Use getValues() to capture Image/File values set via setValue()
             // that RHF resolver doesn't include in `data`
             const cleanedData: Record<string, unknown> = {};
