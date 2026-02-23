@@ -26,8 +26,8 @@ export function useActivityTable<A extends Activity<any, any, any>>(
   const countFn = useMemo(
     () =>
       status === 'inprogress'
-        ? (opts: any) => ops.inProgressMetric(opts)
-        : (opts: any) => ops.completedMetric(opts),
+        ? (opts: any) => ops.inProgressCount(opts)
+        : (opts: any) => ops.completedCount(opts),
     [ops, status],
   );
 

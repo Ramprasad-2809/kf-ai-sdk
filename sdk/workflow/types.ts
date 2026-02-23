@@ -6,6 +6,8 @@ import type {
   ListResponseType,
   ListOptionsType,
   CountResponseType,
+  MetricOptionsType,
+  MetricResponseType,
   DraftResponseType,
   CreateUpdateResponseType,
 } from "../types/common";
@@ -70,10 +72,16 @@ export interface ActivityOperations<T> {
   completedList(options?: ListOptionsType): Promise<ListResponseType<ActivityInstanceFieldsType & T>>;
 
   /** Get in-progress activity count (POST .../inprogress/metric) */
-  inProgressMetric(options?: ListOptionsType): Promise<CountResponseType>;
+  inProgressCount(options?: ListOptionsType): Promise<CountResponseType>;
 
   /** Get completed activity count (POST .../completed/metric) */
-  completedMetric(options?: ListOptionsType): Promise<CountResponseType>;
+  completedCount(options?: ListOptionsType): Promise<CountResponseType>;
+
+  /** Get in-progress aggregated metrics (POST .../inprogress/metric) */
+  inProgressMetric(options: Omit<MetricOptionsType, 'Type'>): Promise<MetricResponseType>;
+
+  /** Get completed aggregated metrics (POST .../completed/metric) */
+  completedMetric(options: Omit<MetricOptionsType, 'Type'>): Promise<MetricResponseType>;
 
   // ── Instance-level ──────────────────────────────────────────
 

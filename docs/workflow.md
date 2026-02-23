@@ -253,22 +253,46 @@ for (const item of result.Data) {
 }
 ```
 
-### inProgressMetrics(options?)
+### inProgressCount(options?)
 
-Get count of in-progress activity instances. Returns `CountResponseType` (`{ Count: number }`).
+Get count of in-progress activity instances. Returns `number`.
 
 ```typescript
-const { Count } = await activity.inProgressMetrics();
-console.log('In-progress count:', Count);
+const count = await activity.inProgressCount();
+console.log('In-progress count:', count);
 ```
 
-### completedMetrics(options?)
+### completedCount(options?)
 
-Get count of completed activity instances. Returns `CountResponseType` (`{ Count: number }`).
+Get count of completed activity instances. Returns `number`.
 
 ```typescript
-const { Count } = await activity.completedMetrics();
-console.log('Completed count:', Count);
+const count = await activity.completedCount();
+console.log('Completed count:', count);
+```
+
+### inProgressMetric(options)
+
+Get aggregated metrics for in-progress activity instances. Accepts `Omit<MetricOptionsType, 'Type'>` for custom aggregations (Sum, Avg, Count, etc.). Returns `MetricResponseType` (`{ Data: Record<string, any>[] }`).
+
+```typescript
+const result = await activity.inProgressMetric({
+  GroupBy: ['Status'],
+  Metric: [{ Field: '_id', Type: 'Count' }],
+});
+console.log(result.Data);
+```
+
+### completedMetric(options)
+
+Get aggregated metrics for completed activity instances. Same signature as `inProgressMetric`.
+
+```typescript
+const result = await activity.completedMetric({
+  GroupBy: [],
+  Metric: [{ Field: 'LeaveDays', Type: 'Sum' }],
+});
+console.log('Total leave days:', result.Data[0]?.sum_LeaveDays);
 ```
 
 ### getInstance(instanceId)

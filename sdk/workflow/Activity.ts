@@ -12,8 +12,10 @@
 // Methods:
 //   activity.getInProgressList()          // list in-progress activity instances
 //   activity.getCompletedList()           // list completed activity instances
-//   activity.inProgressMetrics()          // get in-progress aggregated metrics
-//   activity.completedMetrics()           // get completed aggregated metrics
+//   activity.inProgressCount()            // get in-progress count (returns number)
+//   activity.completedCount()             // get completed count (returns number)
+//   activity.inProgressMetric(options)    // get in-progress aggregated metrics
+//   activity.completedMetric(options)     // get completed aggregated metrics
 //   activity.getInstance(instanceId)      // get typed ActivityInstance
 
 import { Workflow } from "./client";
@@ -23,7 +25,8 @@ import type { ActivityInstanceFieldsType, ActivityOperations } from "./types";
 import type {
   ListResponseType,
   ListOptionsType,
-  CountResponseType,
+  MetricOptionsType,
+  MetricResponseType,
 } from "../types/common";
 import { BaseField } from "../bdo/fields/BaseField";
 
@@ -141,15 +144,35 @@ export abstract class Activity<
 
   /**
    * Get count of in-progress activity instances.
+   * Returns a number (same as BDO count()).
    */
-  async inProgressMetrics(options?: ListOptionsType): Promise<CountResponseType> {
-    return this._ops().inProgressMetric(options);
+  async inProgressCount(options?: ListOptionsType): Promise<number> {
+    const response = await this._ops().inProgressCount(options);
+    return response.Count;
   }
 
   /**
    * Get count of completed activity instances.
+   * Returns a number (same as BDO count()).
    */
-  async completedMetrics(options?: ListOptionsType): Promise<CountResponseType> {
+  async completedCount(options?: ListOptionsType): Promise<number> {
+    const response = await this._ops().completedCount(options);
+    return response.Count;
+  }
+
+  /**
+   * Get aggregated metrics for in-progress activity instances.
+   * Accepts MetricOptionsType (without Type) for custom aggregations (Sum, Avg, etc.).
+   */
+  async inProgressMetric(options: Omit<MetricOptionsType, 'Type'>): Promise<MetricResponseType> {
+    return this._ops().inProgressMetric(options);
+  }
+
+  /**
+   * Get aggregated metrics for completed activity instances.
+   * Accepts MetricOptionsType (without Type) for custom aggregations (Sum, Avg, etc.).
+   */
+  async completedMetric(options: Omit<MetricOptionsType, 'Type'>): Promise<MetricResponseType> {
     return this._ops().completedMetric(options);
   }
 
