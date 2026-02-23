@@ -1,6 +1,6 @@
 # useBDOTable
 
-Thin wrapper around `useTable` for BDO (Business Data Object) tables. Instead of manually wiring up `queryKey`, `listFn`, and `countFn`, you pass a BDO instance and the hook handles the rest.
+Hook for BDO (Business Data Object) tables with search, sort, filter, and pagination. Pass a BDO instance and the hook handles the rest.
 
 ## Imports
 
@@ -277,41 +277,10 @@ The return type is identical to `UseTableReturnType<T>`. All properties — `row
 
 ## Search, Sort, Filter, and Pagination
 
-These features are inherited from the base `useTable` hook. `useBDOTable` passes `initialState`, `onError`, and `onSuccess` straight through.
+`useBDOTable` supports `initialState`, `onError`, and `onSuccess` options.
 
 - **Search** — `table.search.set(field, query)`, `table.search.clear()`, 300ms debounce
 - **Sort** — `table.sort.toggle(field)`, `table.sort.set(field, direction)`, `table.sort.clear()`
 - **Filter** — `table.filter.addCondition(...)`, `table.filter.removeCondition(...)`, `table.filter.clearAllConditions()`
 - **Pagination** — `table.pagination.goToNext()`, `table.pagination.goToPrevious()`, `table.pagination.goToPage(n)`, `table.pagination.setPageSize(n)`
 
----
-
-## Migration Guide: `useTable` to `useBDOTable`
-
-### Before (useTable)
-
-```typescript
-const table = useTable<BuyerProductFieldType>({
-  queryKey: ["table", product.meta._id],
-  listFn: (opts) => product.list(opts),
-  countFn: (opts) => product.count(opts),
-  initialState: { sort: [{ [product.Title.id]: "ASC" }], pagination: { pageNo: 1, pageSize: 10 } },
-});
-```
-
-### After (useBDOTable)
-
-```typescript
-const table = useBDOTable<BuyerProductFieldType>({
-  bdo: product,
-  initialState: { sort: [{ [product.Title.id]: "ASC" }], pagination: { pageNo: 1, pageSize: 10 } },
-});
-```
-
-| Property | `useTable` | `useBDOTable` |
-|----------|-----------|---------------|
-| Data source | `queryKey` + `listFn` + `countFn` | `bdo` (single property) |
-| Query key | Manual: `["table", bdo.meta._id]` | Automatic: derived from `bdo.meta._id` |
-| List function | Manual: `(opts) => bdo.list(opts)` | Automatic: bound from `bdo.list()` |
-| Count function | Manual: `(opts) => bdo.count(opts)` | Automatic: bound from `bdo.count()` |
-| Return type | `UseTableReturnType<T>` | `UseBDOTableReturnType<T>` (alias) |

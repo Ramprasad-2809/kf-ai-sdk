@@ -97,7 +97,7 @@ type ActivityInstanceFieldsType = {
 
 See the dedicated [useActivityTable documentation](./useActivityTable.md) for `ActivityTableStatus`, `ActivityRowType`, `UseActivityTableOptionsType`, and `UseActivityTableReturnType`.
 
-**Key change:** Entity fields are now nested under `ADO` instead of being flattened at the top level. Access entity fields as `row.ADO.FieldName`.
+Entity fields and system fields are flat at the top level, same as BDO tables. Access entity fields as `row.FieldName`.
 
 
 ### UseActivityFormOptions\<A\>
@@ -417,7 +417,7 @@ User clicks Complete
 
 See the dedicated [useActivityTable documentation](./useActivityTable.md) for the full API reference, type definitions, and examples.
 
-`useActivityTable` now wraps the base `useTable` hook, providing the same search, sort, filter, and pagination capabilities as BDO tables. Entity fields are accessed via `row.ADO.FieldName`.
+`useActivityTable` provides search, sort, filter, and pagination capabilities, same as `useBDOTable`. Entity fields are accessed at the top level (e.g., `row.FieldName`).
 
 ---
 
@@ -592,7 +592,8 @@ import { SimpleLeaveProcess, ManagerApprovalActivity } from "@/bdo/workflows/Sim
 const wf = new SimpleLeaveProcess();
 const activity = wf.managerApprovalActivity();
 
-  const { rows, totalItems, isLoading, error, pagination, refetch } = useActivityTable(activity, {
+  const { rows, totalItems, isLoading, error, pagination, refetch } = useActivityTable({
+    activity,
     status: ActivityTableStatus.InProgress,
     initialState: {
       pagination: { pageNo: 1, pageSize: 10 },
@@ -634,8 +635,8 @@ const activity = wf.managerApprovalActivity();
               <td>{row._id}</td>
               <td>{row.Status}</td>
               <td>{row.AssignedTo.map((u) => u._name).join(", ")}</td>
-              <td>{row.ADO.ManagerApproved ? "Yes" : "No"}</td>
-              <td>{row.ADO.ManagerReason}</td>
+              <td>{row.ManagerApproved ? "Yes" : "No"}</td>
+              <td>{row.ManagerReason}</td>
               <td>
                 <button onClick={() => setSelectedId(row._id)}>Review</button>
               </td>

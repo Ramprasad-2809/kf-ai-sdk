@@ -1,6 +1,6 @@
 # useActivityTable
 
-Thin wrapper around `useTable` for listing workflow activity (business process) instances. It provides the same search, sort, filter, and pagination capabilities tailored to activity data.
+Hook for listing workflow activity (business process) instances with search, sort, filter, and pagination.
 
 ## Imports
 
@@ -18,94 +18,62 @@ import type {
 
 ## Common Mistakes (READ FIRST)
 
-### 1. Accessing entity fields at the top level
+### 1. Passing a Workflow instead of an Activity
 
-Entity fields live under `ADO`, not at the top level. This is different from BDO tables.
-
-```typescript
-// ❌ WRONG — entity fields are not at the top level
-row.StartDate
-row.LeaveType
-row.ManagerApproved
-
-// ✅ CORRECT — access entity fields through ADO
-row.ADO.StartDate
-row.ADO.LeaveType
-row.ADO.ManagerApproved
-```
-
-### 2. Passing a Workflow instead of an Activity
-
-The first argument must be an `Activity` instance, not a `Workflow` instance.
+The `activity` property must be an `Activity` instance, not a `Workflow` instance.
 
 ```typescript
 // ❌ WRONG — passing the workflow class
 const wf = new SimpleLeaveProcess();
-useActivityTable(wf, { status: ActivityTableStatus.InProgress });
+useActivityTable({ activity: wf, status: ActivityTableStatus.InProgress });
 
 // ✅ CORRECT — pass the activity instance
 const activity = new SimpleLeaveProcess().employeeInputActivity();
-useActivityTable(activity, { status: ActivityTableStatus.InProgress });
+useActivityTable({ activity, status: ActivityTableStatus.InProgress });
 ```
 
-### 3. Using string literals instead of ActivityTableStatus
+### 2. Using string literals instead of ActivityTableStatus
 
 While string literals work at runtime, always use the `ActivityTableStatus` constant for type safety and readability.
 
 ```typescript
 // ❌ WRONG — raw string (no type safety, easy to typo)
-useActivityTable(activity, { status: "inProgress" });
-useActivityTable(activity, { status: "in_progress" });
+useActivityTable({ activity, status: "inProgress" });
+useActivityTable({ activity, status: "in_progress" });
 
 // ✅ CORRECT — use the constant
-useActivityTable(activity, { status: ActivityTableStatus.InProgress });
-useActivityTable(activity, { status: ActivityTableStatus.Completed });
+useActivityTable({ activity, status: ActivityTableStatus.InProgress });
+useActivityTable({ activity, status: ActivityTableStatus.Completed });
 ```
 
-### 4. Forgetting to memoize the activity instance
+### 3. Forgetting to memoize the activity instance
 
 Like BDO instances passed to `useBDOTable`, the activity instance should be memoized to prevent unnecessary re-renders and refetches.
 
 ```typescript
 // ❌ WRONG — creates a new activity on every render
 const activity = new SimpleLeaveProcess().employeeInputActivity();
-useActivityTable(activity, { status: ActivityTableStatus.InProgress });
+useActivityTable({ activity, status: ActivityTableStatus.InProgress });
 
 // ✅ CORRECT — memoize with useMemo
 const activity = useMemo(
   () => new SimpleLeaveProcess().employeeInputActivity(),
   [],
 );
-useActivityTable(activity, { status: ActivityTableStatus.InProgress });
+useActivityTable({ activity, status: ActivityTableStatus.InProgress });
 ```
 
-### 5. Using useTable directly for activity data
-
-Use `useActivityTable` instead of `useTable` for activity data. The hook handles the query key construction, endpoint selection based on status, and proper typing automatically.
-
-```typescript
-// ❌ WRONG — manual setup with useTable
-useTable({
-  queryKey: ["activity-table", bpId, activityId, "inprogress"],
-  listFn: (opts) => activity._getOps().inProgressList(opts),
-  countFn: (opts) => activity._getOps().inProgressMetric(opts),
-});
-
-// ✅ CORRECT — let useActivityTable handle it
-useActivityTable(activity, { status: ActivityTableStatus.InProgress });
-```
-
-### 6. Calling `.get()` on activity table rows
+### 4. Calling `.get()` on activity table rows
 
 Table rows are plain objects, not `ActivityInstance` proxies. There is no `.get()` method.
 
 ```typescript
 // ❌ WRONG — rows are plain objects
-row.ADO.StartDate.get();
+row.StartDate.get();
 row.Status.get();
 
 // ✅ CORRECT — access values directly
-row.ADO.StartDate;
+row.StartDate;
 row.Status;
 ```
 
@@ -138,7 +106,8 @@ function EmployeeLeaveTable() {
     sort,
     pagination,
     refetch,
-  } = useActivityTable(activity, {
+  } = useActivityTable({
+    activity,
     status: ActivityTableStatus.InProgress,
     initialState: {
       pagination: { pageNo: 1, pageSize: 10 },
@@ -159,7 +128,7 @@ function EmployeeLeaveTable() {
           type="text"
           placeholder="Search by leave type..."
           value={search.query}
-          onChange={(e) => search.set("ADO", e.target.value)}
+          onChange={(e) => search.set(activity.LeaveType.id, e.target.value)}
         />
         {search.query && <button onClick={search.clear}>Clear</button>}
         {isFetching && <span>Loading...</span>}
@@ -174,7 +143,7 @@ function EmployeeLeaveTable() {
             <th>Assigned To</th>
             <th
               style={{ cursor: "pointer" }}
-              onClick={() => sort.toggle("ADO" as any)}
+              onClick={() => sort.toggle(activity.LeaveType.id)}
             >
               Leave Type
             </th>
@@ -190,10 +159,10 @@ function EmployeeLeaveTable() {
               <td>{row._id}</td>
               <td>{row.Status}</td>
               <td>{row.AssignedTo.map((u) => u._name).join(", ")}</td>
-              <td>{row.ADO.LeaveType}</td>
-              <td>{row.ADO.StartDate}</td>
-              <td>{row.ADO.EndDate}</td>
-              <td>{row.ADO.LeaveDays}</td>
+              <td>{row.LeaveType}</td>
+              <td>{row.StartDate}</td>
+              <td>{row.EndDate}</td>
+              <td>{row.LeaveDays}</td>
               <td>
                 <button onClick={() => setSelectedId(row._id)}>View</button>
               </td>
@@ -237,14 +206,8 @@ import {
   useActivityTable,
   ActivityTableStatus,
 } from "@ram_28/kf-ai-sdk/workflow";
-import type {
-  ActivityRowType,
-  UseActivityTableOptionsType,
-} from "@ram_28/kf-ai-sdk/workflow";
-import {
-  SimpleLeaveProcess,
-  ManagerApprovalActivity,
-} from "@/bdo/workflows/SimpleLeaveProcess";
+import type { ActivityRowType } from "@ram_28/kf-ai-sdk/workflow";
+import { SimpleLeaveProcess } from "@/bdo/workflows/SimpleLeaveProcess";
 
 type StatusTab = "inprogress" | "completed";
 
@@ -255,14 +218,6 @@ function ManagerApprovalTable() {
   );
   const [activeTab, setActiveTab] = useState<StatusTab>("inprogress");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  const options: UseActivityTableOptionsType<ManagerApprovalActivity> = {
-    status: activeTab,
-    initialState: {
-      pagination: { pageNo: 1, pageSize: 10 },
-    },
-    onError: (err) => console.error("Fetch failed:", err.message),
-  };
 
   const {
     rows,
@@ -275,7 +230,14 @@ function ManagerApprovalTable() {
     filter,
     pagination,
     refetch,
-  } = useActivityTable(activity, options);
+  } = useActivityTable({
+    activity,
+    status: activeTab,
+    initialState: {
+      pagination: { pageNo: 1, pageSize: 10 },
+    },
+    onError: (err) => console.error("Fetch failed:", err.message),
+  });
 
   if (selectedId) {
     return (
@@ -311,14 +273,6 @@ function ManagerApprovalTable() {
         {activeTab === "inprogress" ? "Pending" : "Completed"} Approvals ({totalItems})
       </h2>
 
-      {/* Search */}
-      <input
-        type="text"
-        placeholder="Search..."
-        value={search.query}
-        onChange={(e) => search.set("_id", e.target.value)}
-      />
-
       {isLoading && <div>Loading...</div>}
       {error && <div>Error: {error.message}</div>}
 
@@ -348,8 +302,8 @@ function ManagerApprovalTable() {
               <td>{row._id}</td>
               <td>{row.Status}</td>
               <td>{row.AssignedTo.map((u) => u._name).join(", ")}</td>
-              <td>{row.ADO.ManagerApproved ? "Yes" : "No"}</td>
-              <td>{row.ADO.ManagerReason}</td>
+              <td>{row.ManagerApproved ? "Yes" : "No"}</td>
+              <td>{row.ManagerReason}</td>
               {activeTab === "inprogress" && (
                 <td>
                   <button onClick={() => setSelectedId(row._id)}>Review</button>
@@ -393,26 +347,6 @@ function ManagerApprovalTable() {
 
 ---
 
-## Accessing Entity Fields
-
-Activity row data has a two-level structure. System fields (`_id`, `Status`, `AssignedTo`, `CompletedAt`) are at the top level. Entity-specific fields are nested under the `ADO` property.
-
-```typescript
-// System fields — top level
-row._id
-row.Status
-row.AssignedTo.map((u) => u._name)
-row.CompletedAt
-
-// Entity fields — under ADO
-row.ADO.StartDate
-row.ADO.LeaveType
-row.ADO.LeaveDays
-row.ADO.ManagerApproved
-```
-
----
-
 ## Type Definitions
 
 ### ActivityTableStatus
@@ -429,12 +363,12 @@ export type ActivityTableStatusType =
 
 ### ActivityRowType\<A\>
 
-Row type for activity table data. System fields at top level, entity fields under `ADO`.
+Row type for activity table data. System fields and entity fields are flat at the top level.
 
 ```typescript
 export type ActivityRowType<A extends Activity<any, any, any>> =
   A extends Activity<infer E, any, any>
-    ? ActivityInstanceFieldsType & { ADO: E }
+    ? ActivityInstanceFieldsType & E
     : never;
 ```
 
@@ -442,6 +376,9 @@ export type ActivityRowType<A extends Activity<any, any, any>> =
 
 ```typescript
 export interface UseActivityTableOptionsType<A extends Activity<any, any, any>> {
+  /** The activity instance to fetch data for */
+  activity: A;
+
   /** Which activity instances to fetch — determines endpoint */
   status: ActivityTableStatusType;
 
@@ -473,7 +410,7 @@ The return type is identical to `UseTableReturnType`. All properties — `rows`,
 
 ## Search, Sort, Filter, and Pagination
 
-These features are inherited from the base `useTable` hook. `useActivityTable` passes `initialState`, `onError`, and `onSuccess` straight through.
+`useActivityTable` supports `initialState`, `onError`, and `onSuccess` options.
 
 - **Search** — `search.set(field, query)`, `search.clear()`, 300ms debounce
 - **Sort** — `sort.toggle(field)`, `sort.set(field, direction)`, `sort.clear()`

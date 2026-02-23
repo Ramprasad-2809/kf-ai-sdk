@@ -17,16 +17,18 @@ export type ActivityTableStatusType =
 
 /**
  * Row type for activity table data.
- * System fields at top level, entity fields under ADO.
+ * System fields and entity fields are flat at the top level.
  */
 export type ActivityRowType<A extends Activity<any, any, any>> =
   A extends Activity<infer E, any, any>
-    ? ActivityInstanceFieldsType & { ADO: E }
+    ? ActivityInstanceFieldsType & E
     : never;
 
 export interface UseActivityTableOptionsType<
   A extends Activity<any, any, any>,
 > {
+  /** The activity instance to fetch data for */
+  activity: A;
   /** Which operation — determines endpoint (inprogress vs completed) */
   status: ActivityTableStatusType;
   /** Initial state */
