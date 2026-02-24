@@ -67,7 +67,7 @@ Use the Activity instance's field to get the field ID, label, and metadata — n
 {errors.StartDate && <p>{errors.StartDate.message}</p>}
 ```
 
-For **select, reference, boolean, and other custom components** that don't fire native change events, use `watch()` + `setValue()` instead of `register()`:
+For **select, reference, boolean, and other custom components** that don't fire native change events, use `watch()` + `setValue()` instead of `register()` (see [Fields — Selection & Reference](../fields/README.md#selection--reference-fields) for full patterns):
 
 ```tsx
 <Select
@@ -226,9 +226,12 @@ item.StartDate.readOnly;             // is readonly?
 ## Further Reading
 
 - [API Reference](./api_reference.md) — All options, return values, and type definitions
+- [Fields](../fields/README.md) — All 13 field classes, constraint getters, and attachment methods
 - [Submit Leave Request](../examples/workflow/submit-leave-request.md) — Employee form submission
 - [Approve Leave Request](../examples/workflow/approve-leave-request.md) — Manager approval with readonly context
 - [Start New Workflow](../examples/workflow/start-new-workflow.md) — `workflow.start()` flow
+- [Primitive Fields](../examples/fields/primitive-fields.md) — Form with String, Number, Boolean, Date, DateTime, Text
+- [Complex Fields](../examples/fields/complex-fields.md) — Form with Select, Reference, User, File, Image
 
 ## Common Mistakes
 
