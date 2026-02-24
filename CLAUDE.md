@@ -25,7 +25,7 @@ React SDK (`@ram_28/kf-ai-sdk`) providing type-safe hooks for building web appli
 ### Directory Structure
 
 - **`sdk/`** — Source code
-  - **`components/hooks/`** — React hooks (`useForm`, `useTable`, `useFilter`)
+  - **`components/hooks/`** — React hooks (`useBDOForm`, `useTable`, `useFilter`)
   - **`api/`** — API client for CRUD operations against Business Objects
   - **`auth/`** — Authentication (AuthProvider, useAuth hook)
   - **`bdo/`** — Business Data Object module (type-safe data access layer)
@@ -61,21 +61,21 @@ api("bo_id").update(id, data)
 api("bo_id").delete(id)
 ```
 
-Base path is `/api/app/{bo_id}/` with operation suffixes (`/read`, `/create`, `/update`, `/delete`, `/list`, etc.). See `@docs/api.md` for full details.
+Base path is `/api/app/{bo_id}/` with operation suffixes (`/read`, `/create`, `/update`, `/delete`, `/list`, etc.).
 
 ### BDO Module
 
 Type-safe, role-based data access layer. Three generics pattern: `BaseBdo<TEntity, TEditable, TReadonly>`. Protected CRUD methods exposed selectively per role. `create()` returns `ItemType`, not `CreateUpdateResponseType`.
 
-See `@docs/bdo.md` for full documentation including field classes, Item proxy, expressions, and implementation patterns.
+See `docs/bdo/README.md` for full documentation including field classes, Item proxy, expressions, and implementation patterns.
 
 ### Hooks
 
-Integrate with `@tanstack/react-query` (useTable, useForm) or plain React state (useFilter):
-- **useBDOTable** — BDO table state (sorting, pagination, filtering). See `@docs/useBDOTable.md`
-- **useActivityTable** — Activity table state (sorting, pagination, filtering). See `@docs/useActivityTable.md`
-- **useForm** — BDO-integrated forms with 3-phase validation (type + constraint + expression). See `@docs/useForm.md`
-- **useFilter** — Filter condition builder. See `@docs/useFilter.md`
+Integrate with `@tanstack/react-query` (useTable, useBDOForm) or plain React state (useFilter):
+- **useBDOTable** — BDO table state (sorting, pagination, filtering). See `docs/useBDOTable/README.md`
+- **useActivityTable** — Activity table state (sorting, pagination, filtering). See `docs/useActivityTable/README.md`
+- **useBDOForm** — BDO-integrated forms with 3-phase validation (type + constraint + expression). See `docs/useBDOForm/README.md`
+- **useFilter** — Filter condition builder. See `docs/useFilter/README.md`
 
 ---
 
@@ -135,8 +135,8 @@ All extend `BaseField<T>`, store raw backend meta, expose: `id`, `label`, `readO
 | `sdk/types/base-fields.ts` | Field value types, SystemFieldsType |
 | `sdk/api/client.ts` | API client factory |
 | `sdk/api/metadata.ts` | getBdoSchema(), listMetadata() |
-| `sdk/components/hooks/useForm/useForm.ts` | Form hook with schema fetching |
-| `sdk/components/hooks/useForm/createResolver.ts` | RHF resolver with 3-phase validation |
+| `sdk/components/hooks/useBDOForm/useBDOForm.ts` | BDO form hook with schema fetching |
+| `sdk/components/hooks/useBDOForm/createResolver.ts` | RHF resolver with 3-phase validation |
 | `config/vite.config.js` | Build configuration with entry points |
 
 ---

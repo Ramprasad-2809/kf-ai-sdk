@@ -4,60 +4,29 @@ import {
   type FieldValues,
   type FieldErrors,
   type Control,
-  type RegisterOptions,
   type UseFormReturn as RHFUseFormReturn,
 } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { createResolver } from "./createResolver";
 import { createItemProxy } from "./createItemProxy";
+import {
+  coerceFieldValue,
+  coerceRecordForForm,
+  createSyncField,
+  createEnhancedRegister,
+  createEnhancedControl,
+} from "./shared";
 import { getBdoSchema } from "../../../api/metadata";
 import { api } from "../../../api/client";
 import type { BaseBdo } from "../../../bdo";
 import type { CreateUpdateResponseType } from "../../../types/common";
-import type { BaseField } from "../../../bdo/fields/BaseField";
 import type {
-  UseFormOptionsType,
-  UseFormReturnType,
+  UseBDOFormOptionsType,
+  UseBDOFormReturnType,
   HandleSubmitType,
   AllFieldsType,
   UpdatableBdo,
 } from "./types";
-
-/** Coerce form value to match field's expected type (HTML inputs return strings) */
-function coerceFieldValue(field: BaseField<unknown>, value: unknown): unknown {
-  const type = field.meta.Type;
-  if (typeof value === "string" && type === "Number") {
-    return value === "" ? undefined : Number(value);
-  }
-  // Date/DateTime: empty string → undefined (don't send to backend)
-  if (typeof value === "string" && value === "" && (type === "Date" || type === "DateTime")) {
-    return undefined;
-  }
-  // DateTime: normalize to HH:MM:SS and ensure Z suffix for API request format
-  if (typeof value === "string" && value !== "" && type === "DateTime") {
-    let normalized = value;
-    if (normalized.endsWith("Z")) normalized = normalized.slice(0, -1);
-    // HTML datetime-local may omit seconds (e.g. "2026-02-18T15:12")
-    const timePart = normalized.split("T")[1] || "";
-    if ((timePart.match(/:/g) || []).length === 1) {
-      normalized += ":00";
-    }
-    return normalized + "Z";
-  }
-  return value;
-}
-
-/** Strip trailing Z from DateTime response values for HTML datetime-local inputs */
-function coerceRecordForForm(bdo: BaseBdo<any, any, any>, data: Record<string, unknown>): Record<string, unknown> {
-  const fields = bdo.getFields();
-  const result = { ...data };
-  for (const [key, value] of Object.entries(result)) {
-    if (typeof value === "string" && fields[key]?.meta.Type === "DateTime" && value.endsWith("Z")) {
-      result[key] = value.slice(0, -1);
-    }
-  }
-  return result;
-}
 
 /**
  * A form hook that integrates with React Hook Form.
@@ -71,11 +40,11 @@ function coerceRecordForForm(bdo: BaseBdo<any, any, any>, data: Record<string, u
  * - Smart register: auto-disables readonly fields
  * - Payload filtering: handleSubmit auto-filters to editable fields only
  * - Constraint validation: auto-validates required, length, etc. from field meta
- * - Draft auto-save: creates draft on form open, patches on field changes
+ * - Per-field sync: validates, sends to API, resets dirty, updates computed fields
  */
-export function useForm<B extends BaseBdo<any, any, any>>(
-  options: UseFormOptionsType<B>,
-): UseFormReturnType<B> {
+export function useBDOForm<B extends BaseBdo<any, any, any>>(
+  options: UseBDOFormOptionsType<B>,
+): UseBDOFormReturnType<B> {
   const {
     bdo,
     recordId,
@@ -112,7 +81,7 @@ export function useForm<B extends BaseBdo<any, any, any>>(
     queryKey: ["form-record", bdo.meta._id, recordId],
     queryFn: async () => {
       const item = await (bdo as unknown as UpdatableBdo).get(recordId!);
-      return coerceRecordForForm(bdo, item.toJSON() as Record<string, unknown>);
+      return coerceRecordForForm(bdo.getFields(), item.toJSON() as Record<string, unknown>);
     },
     enabled: operation === "update" && !!recordId,
     staleTime: 0,
@@ -199,66 +168,71 @@ export function useForm<B extends BaseBdo<any, any, any>>(
   );
 
   // ============================================================
-  // SMART REGISTER (auto-disables readonly fields)
+  // PER-FIELD SYNC (validate → API call → reset dirty → update computed)
   // ============================================================
 
   const fields = bdo.getFields();
+  const isComputingRef = useRef(false);
 
-  const smartRegister = useCallback(
-    (name: string, registerOptions?: RegisterOptions) => {
-      const rhfResult = form.register(name as any, registerOptions);
-      if (fields[name]?.readOnly) {
-        return { ...rhfResult, disabled: true };
-      }
-      return rhfResult;
-    },
-    [form, fields],
+  const readonlyFieldNames = useMemo<string[]>(
+    () => Object.keys(fields).filter((k) => fields[k].readOnly),
+    [fields],
   );
 
-  // ============================================================
-  // DRAFT AUTO-SAVE (Create Mode - patch dirty fields on change)
-  // ============================================================
-
-  const draftPatchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (operation !== "create" || !draftData?._id) return;
-
-    const subscription = form.watch((_values, { type }) => {
-      if (type !== "change") return;
-
-      if (draftPatchTimeoutRef.current) {
-        clearTimeout(draftPatchTimeoutRef.current);
+  const syncApiFn = useCallback(
+    async (fieldName: string, value: unknown) => {
+      if (operation === "create" && draftData?._id) {
+        return api(bdo.meta._id).draftInteraction({
+          _id: draftData._id,
+          [fieldName]: value,
+        });
+      } else if (operation === "update" && recordId) {
+        return api(bdo.meta._id).update(recordId, {
+          [fieldName]: value,
+        });
       }
+    },
+    [operation, draftData, recordId, bdo],
+  );
 
-      draftPatchTimeoutRef.current = setTimeout(async () => {
-        const currentValues = form.getValues();
-        const dirtyFields = form.formState.dirtyFields;
-        const dirtyData: Record<string, unknown> = {};
+  const syncField = useMemo(
+    () =>
+      createSyncField({
+        apiFn: syncApiFn,
+        allFields: fields,
+        readonlyFieldNames,
+        rhf: form,
+        isComputingRef,
+      }),
+    [syncApiFn, fields, readonlyFieldNames, form],
+  );
 
-        for (const [key, value] of Object.entries(currentValues)) {
-          if (fields[key] && !fields[key].readOnly && dirtyFields[key]) {
-            dirtyData[key] = coerceFieldValue(fields[key], value);
-          }
-        }
+  const syncOnChange = mode === "onChange" || mode === "all";
+  const syncOnBlur =
+    mode === "onBlur" || mode === "onTouched" || mode === "all";
 
-        if (Object.keys(dirtyData).length > 0) {
-          try {
-            await api(bdo.meta._id).draftInteraction({ _id: draftData._id, ...dirtyData });
-          } catch {
-            // Draft auto-save is best-effort — don't block user interaction
-          }
-        }
-      }, 800);
-    });
+  const smartRegister = useMemo(
+    () =>
+      createEnhancedRegister({
+        rhf: form,
+        allFields: fields,
+        syncField,
+        syncOnBlur,
+        syncOnChange,
+      }),
+    [form, fields, syncField, syncOnBlur, syncOnChange],
+  );
 
-    return () => {
-      subscription.unsubscribe();
-      if (draftPatchTimeoutRef.current) {
-        clearTimeout(draftPatchTimeoutRef.current);
-      }
-    };
-  }, [form, operation, draftData, fields, bdo]);
+  const enhancedControl = useMemo(
+    () =>
+      createEnhancedControl({
+        control: form.control,
+        syncField,
+        syncOnBlur,
+        syncOnChange,
+      }),
+    [form.control, syncField, syncOnBlur, syncOnChange],
+  );
 
   // ============================================================
   // CUSTOM HANDLE SUBMIT (with API call + payload filtering)
@@ -332,7 +306,7 @@ export function useForm<B extends BaseBdo<any, any, any>>(
     getValues: form.getValues as any,
     reset: form.reset as any,
     trigger: form.trigger as any,
-    control: form.control as unknown as Control<AllFieldsType<B>>,
+    control: enhancedControl as unknown as Control<AllFieldsType<B>>,
     formState: form.formState as any,
 
     errors: form.formState.errors as any,

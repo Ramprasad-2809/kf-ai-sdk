@@ -10,7 +10,7 @@ import type { FieldValues } from 'react-hook-form';
 import type { Activity } from '../../../workflow/Activity';
 import type { BaseField } from '../../../bdo/fields/BaseField';
 import type { ValidationResultType } from '../../../bdo/core/types';
-import { validateConstraints } from '../useForm/createResolver';
+import { validateConstraints } from '../useBDOForm/createResolver';
 
 /**
  * Creates a React Hook Form resolver for Activity field validation.

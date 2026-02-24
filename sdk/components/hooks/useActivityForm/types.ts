@@ -2,7 +2,7 @@
 // TYPE DEFINITIONS FOR useActivityForm HOOK
 // ============================================================
 // BDO-aligned types for the Activity pattern.
-// Reuses shared types from useForm where identical.
+// Reuses shared types from useBDOForm where identical.
 
 import type {
   UseFormWatch,
@@ -15,15 +15,16 @@ import type {
 } from 'react-hook-form';
 
 import type { Activity } from '../../../workflow/Activity';
+import type { CreateUpdateResponseType } from '../../../types/common';
 
-// Reuse shared types from useForm — identical interfaces, no duplication
+// Reuse shared types from useBDOForm — identical interfaces, no duplication
 import type {
   HandleSubmitType,
   FormItemType,
   FormRegisterType,
   EditableFormFieldAccessorType,
   ReadonlyFormFieldAccessorType,
-} from '../useForm/types';
+} from '../useBDOForm/types';
 
 // Re-export for consumers who import from this module
 export type {
@@ -89,7 +90,7 @@ export interface UseActivityFormOptions<A extends Activity<any, any, any>> {
 // ============================================================
 
 /**
- * useActivityForm hook return type — mirrors useForm return structure
+ * useActivityForm hook return type — mirrors useBDOForm return structure
  */
 export interface UseActivityFormReturn<A extends Activity<any, any, any>> {
   /** Item proxy with typed field accessors */
@@ -104,11 +105,8 @@ export interface UseActivityFormReturn<A extends Activity<any, any, any>> {
     ExtractActivityReadonly<A>
   >;
 
-  /** Handle form submission — calls activity.update() */
-  handleSubmit: HandleSubmitType<AllActivityFields<A>>;
-
-  /** Handle form completion — calls activity.update() + activity.complete() */
-  handleComplete: HandleSubmitType<AllActivityFields<A>>;
+  /** Handle form submission — validates, updates dirty fields, then completes the activity */
+  handleSubmit: HandleSubmitType<CreateUpdateResponseType>;
 
   /** Watch field values */
   watch: UseFormWatch<AllActivityFields<A>>;
@@ -141,7 +139,7 @@ export interface UseActivityFormReturn<A extends Activity<any, any, any>> {
   /** Form has been modified */
   isDirty: boolean;
 
-  /** Form is currently submitting (save or complete) */
+  /** Form is currently submitting */
   isSubmitting: boolean;
 
   /** Form submission was successful */

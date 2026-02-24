@@ -1,11 +1,11 @@
 // ============================================================
 // Form Types Entry Point
 // ============================================================
-// Type-only exports for useForm hook.
+// Type-only exports for useBDOForm hook.
 
 export type {
-  UseFormOptionsType,
-  UseFormReturnType,
+  UseBDOFormOptionsType,
+  UseBDOFormReturnType,
   FormItemType,
   EditableFormFieldAccessorType,
   ReadonlyFormFieldAccessorType,
@@ -14,4 +14,4 @@ export type {
   ExtractEditableType,
   ExtractReadonlyType,
   AllFieldsType,
-} from "./components/hooks/useForm";
+} from "./components/hooks/useBDOForm";

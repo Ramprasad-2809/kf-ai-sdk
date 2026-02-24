@@ -43,7 +43,7 @@ let authConfig: AuthConfigType = { ...defaultAuthConfig };
  *   autoRedirect: true,
  *   providers: {
  *     google: { loginPath: "/api/auth/google/login" },
- *     microsoft: { loginPath: "/api/auth/microsoft/login" },
+ *     azure: { loginPath: "/api/auth/azure/login" },
  *   },
  * });
  * ```

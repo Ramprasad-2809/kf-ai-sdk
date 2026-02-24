@@ -14,7 +14,7 @@ A type-safe SDK for building modern web applications with React hooks for forms,
   - [Multiple Auth Providers](#multiple-auth-providers)
   - [Protected Routes](#protected-routes)
 - [Hooks](#hooks)
-  - [useForm](#useform)
+  - [useBDOForm](#usebdoform)
   - [useTable](#usetable)
   - [useFilter](#usefilter)
 - [BDO (Business Data Object)](#bdo-business-data-object)
@@ -42,7 +42,7 @@ npm install react @tanstack/react-query
 ## Features
 
 - **Authentication** - Cookie-based auth with AuthProvider and useAuth hook
-- **useForm** - BDO-integrated forms with automatic validation and API calls
+- **useBDOForm** - BDO-integrated forms with automatic validation and API calls
 - **useTable** - Data tables with sorting, pagination, and React Query integration
 - **useFilter** - Advanced filtering with logical operators and payload builders
 - **BDO Module** - Type-safe, role-based data access layer with expression validation
@@ -58,12 +58,12 @@ import { AuthProvider, useAuth } from "@ram_28/kf-ai-sdk/auth";
 import type { UseAuthReturnType, UserDetailsType } from "@ram_28/kf-ai-sdk/auth/types";
 
 // Hooks
-import { useForm } from "@ram_28/kf-ai-sdk/form";
+import { useBDOForm } from "@ram_28/kf-ai-sdk/form";
 import { useTable } from "@ram_28/kf-ai-sdk/table";
 import { useFilter } from "@ram_28/kf-ai-sdk/filter";
 
 // Types
-import type { UseFormOptionsType, UseFormReturnType } from "@ram_28/kf-ai-sdk/form/types";
+import type { UseBDOFormOptionsType, UseBDOFormReturnType } from "@ram_28/kf-ai-sdk/form/types";
 import type { UseTableOptionsType, UseTableReturnType } from "@ram_28/kf-ai-sdk/table/types";
 import type { UseFilterOptionsType, UseFilterReturnType } from "@ram_28/kf-ai-sdk/filter/types";
 
@@ -202,18 +202,18 @@ function ProtectedRoute({ children, requiredRoles }) {
 
 ## Hooks
 
-### useForm
+### useBDOForm
 
 BDO-integrated form hook with automatic validation and API calls.
 
 ```tsx
-import { useForm } from "@ram_28/kf-ai-sdk/form";
+import { useBDOForm } from "@ram_28/kf-ai-sdk/form";
 import { AdminProduct } from "./bdo/admin/Product";
 
 function ProductForm() {
   const product = new AdminProduct();
 
-  const { register, handleSubmit, errors, isSubmitting } = useForm({
+  const { register, handleSubmit, errors, isSubmitting } = useBDOForm({
     bdo: product,
     defaultValues: { Title: "", Price: 0 },
   });
@@ -461,14 +461,22 @@ cn("text-red-500", condition && "text-blue-500");
 
 ## Documentation
 
-Detailed documentation for each feature:
+Detailed, use-case-driven documentation with examples for each module:
 
-- [useBDOTable Documentation](./docs/useBDOTable.md)
-- [useActivityTable Documentation](./docs/useActivityTable.md)
-- [useFilter Documentation](./docs/useFilter.md)
-- [useForm Documentation](./docs/useForm.md)
-- [useAuth Documentation](./docs/useAuth.md)
-- [API Documentation](./docs/api.md)
+**Hooks:**
+- [useBDOForm](./docs/useBDOForm/README.md) — BDO-integrated forms with validation and API submission
+- [useBDOTable](./docs/useBDOTable/README.md) — Data tables with sorting, search, filtering, and pagination
+- [useActivityForm](./docs/useActivityForm/README.md) — Workflow activity forms with save-draft and complete
+- [useActivityTable](./docs/useActivityTable/README.md) — Activity instance tables for workflow tasks
+- [useFilter](./docs/useFilter/README.md) — Filter condition builder with nested groups
+
+**Core:**
+- [BDO](./docs/bdo/README.md) — Type-safe, role-based data access layer
+- [Workflow](./docs/workflow/README.md) — Business process orchestration
+- [API Client](./docs/api/README.md) — Low-level CRUD, metric, pivot, draft, and attachment operations
+
+**Auth:**
+- [useAuth](./docs/useAuth/README.md) — Cookie-based authentication with session management
 
 ## Requirements
 

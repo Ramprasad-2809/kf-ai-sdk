@@ -1,15 +1,20 @@
 import { useTable } from '../useTable';
-import type { UseBDOTableOptionsType, UseBDOTableReturnType } from './types';
+import type {
+  BDOTableSourceType,
+  BDORowType,
+  UseBDOTableOptionsType,
+  UseBDOTableReturnType,
+} from './types';
 
-export function useBDOTable<T = any>(
-  options: UseBDOTableOptionsType<T>,
-): UseBDOTableReturnType<T> {
+export function useBDOTable<B extends BDOTableSourceType>(
+  options: UseBDOTableOptionsType<B>,
+): UseBDOTableReturnType<B> {
   const { bdo, ...rest } = options;
 
-  return useTable<T>({
+  return useTable<BDORowType<B>>({
     queryKey: ['table', bdo.meta._id],
-    listFn: (opts) => bdo.list(opts),
-    countFn: (opts) => bdo.count(opts),
+    listFn: async (opts) => ({ Data: await bdo.list(opts) }),
+    countFn: async (opts) => ({ Count: await bdo.count(opts) }),
     ...rest,
   });
 }

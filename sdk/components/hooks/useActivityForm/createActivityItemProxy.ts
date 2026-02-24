@@ -18,7 +18,7 @@ import type {
   FormItemType,
   EditableFormFieldAccessorType,
   ReadonlyFormFieldAccessorType,
-} from '../useForm/types';
+} from '../useBDOForm/types';
 import type { Activity } from '../../../workflow/Activity';
 import type {
   ExtractActivityEditable,
