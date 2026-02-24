@@ -196,18 +196,9 @@ export class Item<T extends Record<string, unknown>> {
     }) as Item<T>;
   }
 
-  /**
-   * Require instanceId or throw.
-   * TODO: Support create flow via draftInteraction to get temp _id
-   */
   private _requireInstanceId(): string {
     const id = this._data._id as string | undefined;
-    if (!id) {
-      throw new Error(
-        "Cannot perform attachment operation: item has no _id. Save the item first.",
-      );
-    }
-    return id;
+    return id || "draft";
   }
 
   /**

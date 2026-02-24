@@ -10,6 +10,12 @@ React SDK for building web applications with type-safe hooks for forms, tables, 
 
 BDO is the data access layer. See the [BDO module docs](./bdo/README.md) for field classes, Item proxy, and the three-generics pattern.
 
+### When working with field types and metadata
+
+**See [Fields](./fields/README.md)** · [API Reference](./fields/api_reference.md)
+
+All 13 field classes (`StringField`, `NumberField`, `SelectField`, `ReferenceField`, `FileField`, etc.), the `BaseField<T>` contract, field-specific getters (`length`, `options`, `precision`, `format`), and pre-built UI components for attachments.
+
 ### When building a form for a BDO record
 
 **Use [`useBDOForm`](./useBDOForm/README.md)** · [API Reference](./useBDOForm/api_reference.md)
