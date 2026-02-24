@@ -10,12 +10,9 @@ import { useForm as useReactHookForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 
 import type { Activity } from '../../../workflow/Activity';
-import type {
-  UseActivityFormOptions,
-  UseActivityFormReturn,
-  AllActivityFields,
-} from './types';
+import type { UseActivityFormOptions, UseActivityFormReturn } from './types';
 
+import type { CreateUpdateResponseType } from '../../../types/common';
 import { createActivityResolver } from './createActivityResolver';
 import { createActivityItemProxy } from './createActivityItemProxy';
 import {
@@ -300,13 +297,13 @@ export function useActivityForm<A extends Activity<any, any, any>>(
   );
 
   // ============================================================
-  // HANDLE SUBMIT — activity.update()
+  // HANDLE SUBMIT — activity.update() + activity.complete()
   // ============================================================
 
   const handleSubmit = useCallback(
     (
       onSuccess?: (
-        data: AllActivityFields<A>,
+        data: CreateUpdateResponseType,
         e?: React.BaseSyntheticEvent,
       ) => void | Promise<void>,
       onError?: (
@@ -319,7 +316,7 @@ export function useActivityForm<A extends Activity<any, any, any>>(
           setIsSubmitting(true);
 
           try {
-            // Only send dirty (changed) fields — matches useBDOForm update behavior
+            // Only send dirty (changed) fields — matches useBDOForm behavior
             // Use getValues() to capture Image/File values set via setValue()
             // that RHF resolver doesn't include in `data`
             const cleanedData: Record<string, unknown> = {};
@@ -339,7 +336,7 @@ export function useActivityForm<A extends Activity<any, any, any>>(
                 : value;
             }
 
-            // Save via activity.update()
+            // Send remaining dirty fields via update
             if (Object.keys(cleanedData).length > 0) {
               await activityRef.update(
                 activity_instance_id,
@@ -347,7 +344,10 @@ export function useActivityForm<A extends Activity<any, any, any>>(
               );
             }
 
-            await onSuccess?.(data as AllActivityFields<A>, event);
+            // Complete the activity — advances the workflow
+            const result = await activityRef.complete(activity_instance_id);
+
+            await onSuccess?.(result, event);
           } catch (error) {
             onError?.(toError(error), event);
           } finally {
@@ -361,68 +361,6 @@ export function useActivityForm<A extends Activity<any, any, any>>(
     },
     [rhf, activityRef, readonlyFieldNames, allFields, activity_instance_id],
   ) as UseActivityFormReturn<A>['handleSubmit'];
-
-  // ============================================================
-  // HANDLE COMPLETE — activity.update() + activity.complete()
-  // ============================================================
-
-  const handleComplete = useCallback(
-    (
-      onSuccess?: (
-        data: AllActivityFields<A>,
-        e?: React.BaseSyntheticEvent,
-      ) => void | Promise<void>,
-      onError?: (
-        error: any,
-        e?: React.BaseSyntheticEvent,
-      ) => void | Promise<void>,
-    ) => {
-      return rhf.handleSubmit(
-        async (data, event) => {
-          setIsSubmitting(true);
-
-          try {
-            // Only send dirty (changed) fields — matches useBDOForm update behavior
-            // Use getValues() to capture Image/File values set via setValue()
-            // that RHF resolver doesn't include in `data`
-            const cleanedData: Record<string, unknown> = {};
-            const readonlySet = new Set(readonlyFieldNames);
-            const dirtyFields = rhf.formState.dirtyFields;
-            const allValues = rhf.getValues() as Record<string, unknown>;
-
-            for (const key of Object.keys(allValues)) {
-              if (readonlySet.has(key) || !dirtyFields[key]) continue;
-              const value =
-                allValues[key] !== undefined
-                  ? allValues[key]
-                  : (data as Record<string, unknown>)[key];
-              const field = allFields[key];
-              cleanedData[key] = field
-                ? coerceFieldValue(field, value)
-                : value;
-            }
-
-            if (Object.keys(cleanedData).length > 0) {
-              await activityRef.update(
-                activity_instance_id,
-                cleanedData as any,
-              );
-            }
-            await activityRef.complete(activity_instance_id);
-            await onSuccess?.(data as AllActivityFields<A>, event);
-          } catch (error) {
-            onError?.(toError(error), event);
-          } finally {
-            setIsSubmitting(false);
-          }
-        },
-        (errors, event) => {
-          onError?.(errors, event);
-        },
-      );
-    },
-    [rhf, activityRef, readonlyFieldNames, allFields, activity_instance_id],
-  ) as UseActivityFormReturn<A>['handleComplete'];
 
   // ============================================================
   // CLEAR ERRORS
@@ -448,7 +386,6 @@ export function useActivityForm<A extends Activity<any, any, any>>(
     // Form methods
     register,
     handleSubmit,
-    handleComplete,
     watch: rhf.watch as any,
     setValue: rhf.setValue as any,
     getValues: rhf.getValues as any,

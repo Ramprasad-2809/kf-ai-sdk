@@ -13,22 +13,24 @@ export function useActivityTable<A extends Activity<any, any, any>>(
   const { activity, status, ...rest } = options;
   const { businessProcessId, activityId } = activity.meta;
 
-  const ops = useMemo(() => activity._getOps(), [activity]);
-
   const listFn = useMemo(
     () =>
       status === 'inprogress'
-        ? (opts: any) => ops.inProgressList(opts)
-        : (opts: any) => ops.completedList(opts),
-    [ops, status],
+        ? async (opts: any) => ({
+            Data: (await activity.getInProgressList(opts)) as ActivityRowType<A>[],
+          })
+        : async (opts: any) => ({
+            Data: (await activity.getCompletedList(opts)) as ActivityRowType<A>[],
+          }),
+    [activity, status],
   );
 
   const countFn = useMemo(
     () =>
       status === 'inprogress'
-        ? (opts: any) => ops.inProgressCount(opts)
-        : (opts: any) => ops.completedCount(opts),
-    [ops, status],
+        ? async (opts: any) => ({ Count: await activity.inProgressCount(opts) })
+        : async (opts: any) => ({ Count: await activity.completedCount(opts) }),
+    [activity, status],
   );
 
   return useTable<ActivityRowType<A>>({

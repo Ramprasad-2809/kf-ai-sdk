@@ -29,7 +29,7 @@ export type AuthStatusType = "loading" | "authenticated" | "unauthenticated";
 /**
  * Authentication provider type (extensible for multiple OAuth providers)
  */
-export type AuthProviderNameType = "google" | "microsoft" | "github" | "custom";
+export type AuthProviderNameType = "google" | "azure" | "github" | "custom";
 
 /**
  * Auth endpoint configuration for a specific provider

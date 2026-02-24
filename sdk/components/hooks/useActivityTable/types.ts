@@ -1,5 +1,4 @@
 import type { Activity } from '../../../workflow/Activity';
-import type { ActivityInstanceFieldsType } from '../../../workflow/types';
 import type { UseTableReturnType, PaginationStateType } from '../useTable/types';
 import type { UseFilterOptionsType } from '../useFilter/types';
 import type { SortType } from '../../../types/common';
@@ -16,12 +15,12 @@ export type ActivityTableStatusType =
   (typeof ActivityTableStatus)[keyof typeof ActivityTableStatus];
 
 /**
- * Row type for activity table data.
- * System fields and entity fields are flat at the top level.
+ * Row type — inferred from Activity's getInProgressList() return type.
+ * Resolves to ActivityInstanceType (proxy with .get()/.set()).
  */
 export type ActivityRowType<A extends Activity<any, any, any>> =
-  A extends Activity<infer E, any, any>
-    ? ActivityInstanceFieldsType & E
+  A extends { getInProgressList(opts?: any): Promise<(infer R)[]> }
+    ? R
     : never;
 
 export interface UseActivityTableOptionsType<

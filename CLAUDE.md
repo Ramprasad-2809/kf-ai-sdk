@@ -61,21 +61,21 @@ api("bo_id").update(id, data)
 api("bo_id").delete(id)
 ```
 
-Base path is `/api/app/{bo_id}/` with operation suffixes (`/read`, `/create`, `/update`, `/delete`, `/list`, etc.). See `@docs/api.md` for full details.
+Base path is `/api/app/{bo_id}/` with operation suffixes (`/read`, `/create`, `/update`, `/delete`, `/list`, etc.).
 
 ### BDO Module
 
 Type-safe, role-based data access layer. Three generics pattern: `BaseBdo<TEntity, TEditable, TReadonly>`. Protected CRUD methods exposed selectively per role. `create()` returns `ItemType`, not `CreateUpdateResponseType`.
 
-See `@docs/bdo.md` for full documentation including field classes, Item proxy, expressions, and implementation patterns.
+See `docs/bdo/README.md` for full documentation including field classes, Item proxy, expressions, and implementation patterns.
 
 ### Hooks
 
 Integrate with `@tanstack/react-query` (useTable, useBDOForm) or plain React state (useFilter):
-- **useBDOTable** — BDO table state (sorting, pagination, filtering). See `@docs/useBDOTable.md`
-- **useActivityTable** — Activity table state (sorting, pagination, filtering). See `@docs/useActivityTable.md`
-- **useBDOForm** — BDO-integrated forms with 3-phase validation (type + constraint + expression). See `@docs/useBDOForm.md`
-- **useFilter** — Filter condition builder. See `@docs/useFilter.md`
+- **useBDOTable** — BDO table state (sorting, pagination, filtering). See `docs/useBDOTable/README.md`
+- **useActivityTable** — Activity table state (sorting, pagination, filtering). See `docs/useActivityTable/README.md`
+- **useBDOForm** — BDO-integrated forms with 3-phase validation (type + constraint + expression). See `docs/useBDOForm/README.md`
+- **useFilter** — Filter condition builder. See `docs/useFilter/README.md`
 
 ---
 

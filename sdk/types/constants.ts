@@ -351,7 +351,7 @@ export const AuthStatus = {
  */
 export const AuthProviderName = {
   Google: "google",
-  Microsoft: "microsoft",
+  Azure: "azure",
   GitHub: "github",
   Custom: "custom",
 } as const;

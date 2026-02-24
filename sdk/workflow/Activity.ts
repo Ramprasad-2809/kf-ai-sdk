@@ -23,12 +23,14 @@ import { createActivityInstance } from "./ActivityInstance";
 import type { ActivityInstanceType } from "./ActivityInstance";
 import type { ActivityInstanceFieldsType, ActivityOperations } from "./types";
 import type {
-  ListResponseType,
   ListOptionsType,
   MetricOptionsType,
   MetricResponseType,
 } from "../types/common";
 import { BaseField } from "../bdo/fields/BaseField";
+
+/** Activity system fields treated as readonly on list results */
+type ActivitySystemReadonlyType = Omit<ActivityInstanceFieldsType, '_id'>;
 
 // ============================================================
 // ABSTRACT BASE CLASS
@@ -128,18 +130,48 @@ export abstract class Activity<
 
   /**
    * List in-progress activity instances.
-   * Accepts optional filter/sort/pagination options.
+   * Each row is wrapped in an ActivityInstance proxy with field accessors.
    */
-  async getInProgressList(options?: ListOptionsType): Promise<ListResponseType<ActivityInstanceFieldsType & TEntity>> {
-    return this._ops().inProgressList(options);
+  async getInProgressList(
+    options?: ListOptionsType,
+  ): Promise<ActivityInstanceType<
+    ActivityInstanceFieldsType & TEntity,
+    TEditable,
+    TReadonly & ActivitySystemReadonlyType
+  >[]> {
+    const ops = this._ops();
+    const response = await ops.inProgressList(options);
+    const fields = this._discoverFields();
+    return response.Data.map((data) =>
+      createActivityInstance<
+        ActivityInstanceFieldsType & TEntity,
+        TEditable,
+        TReadonly & ActivitySystemReadonlyType
+      >(ops, (data as any)._id, data as (ActivityInstanceFieldsType & TEntity), fields),
+    );
   }
 
   /**
    * List completed activity instances.
-   * Accepts optional filter/sort/pagination options.
+   * Each row is wrapped in an ActivityInstance proxy with field accessors.
    */
-  async getCompletedList(options?: ListOptionsType): Promise<ListResponseType<ActivityInstanceFieldsType & TEntity>> {
-    return this._ops().completedList(options);
+  async getCompletedList(
+    options?: ListOptionsType,
+  ): Promise<ActivityInstanceType<
+    ActivityInstanceFieldsType & TEntity,
+    TEditable,
+    TReadonly & ActivitySystemReadonlyType
+  >[]> {
+    const ops = this._ops();
+    const response = await ops.completedList(options);
+    const fields = this._discoverFields();
+    return response.Data.map((data) =>
+      createActivityInstance<
+        ActivityInstanceFieldsType & TEntity,
+        TEditable,
+        TReadonly & ActivitySystemReadonlyType
+      >(ops, (data as any)._id, data as (ActivityInstanceFieldsType & TEntity), fields),
+    );
   }
 
   /**

@@ -15,6 +15,7 @@ import type {
 } from 'react-hook-form';
 
 import type { Activity } from '../../../workflow/Activity';
+import type { CreateUpdateResponseType } from '../../../types/common';
 
 // Reuse shared types from useBDOForm — identical interfaces, no duplication
 import type {
@@ -104,11 +105,8 @@ export interface UseActivityFormReturn<A extends Activity<any, any, any>> {
     ExtractActivityReadonly<A>
   >;
 
-  /** Handle form submission — calls activity.update() */
-  handleSubmit: HandleSubmitType<AllActivityFields<A>>;
-
-  /** Handle form completion — calls activity.update() + activity.complete() */
-  handleComplete: HandleSubmitType<AllActivityFields<A>>;
+  /** Handle form submission — validates, updates dirty fields, then completes the activity */
+  handleSubmit: HandleSubmitType<CreateUpdateResponseType>;
 
   /** Watch field values */
   watch: UseFormWatch<AllActivityFields<A>>;
@@ -141,7 +139,7 @@ export interface UseActivityFormReturn<A extends Activity<any, any, any>> {
   /** Form has been modified */
   isDirty: boolean;
 
-  /** Form is currently submitting (save or complete) */
+  /** Form is currently submitting */
   isSubmitting: boolean;
 
   /** Form submission was successful */

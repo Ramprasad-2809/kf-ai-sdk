@@ -461,14 +461,22 @@ cn("text-red-500", condition && "text-blue-500");
 
 ## Documentation
 
-Detailed documentation for each feature:
+Detailed, use-case-driven documentation with examples for each module:
 
-- [useBDOTable Documentation](./docs/useBDOTable.md)
-- [useActivityTable Documentation](./docs/useActivityTable.md)
-- [useFilter Documentation](./docs/useFilter.md)
-- [useBDOForm Documentation](./docs/useBDOForm.md)
-- [useAuth Documentation](./docs/useAuth.md)
-- [API Documentation](./docs/api.md)
+**Hooks:**
+- [useBDOForm](./docs/useBDOForm/README.md) — BDO-integrated forms with validation and API submission
+- [useBDOTable](./docs/useBDOTable/README.md) — Data tables with sorting, search, filtering, and pagination
+- [useActivityForm](./docs/useActivityForm/README.md) — Workflow activity forms with save-draft and complete
+- [useActivityTable](./docs/useActivityTable/README.md) — Activity instance tables for workflow tasks
+- [useFilter](./docs/useFilter/README.md) — Filter condition builder with nested groups
+
+**Core:**
+- [BDO](./docs/bdo/README.md) — Type-safe, role-based data access layer
+- [Workflow](./docs/workflow/README.md) — Business process orchestration
+- [API Client](./docs/api/README.md) — Low-level CRUD, metric, pivot, draft, and attachment operations
+
+**Auth:**
+- [useAuth](./docs/useAuth/README.md) — Cookie-based authentication with session management
 
 ## Requirements
 

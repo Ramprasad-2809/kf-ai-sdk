@@ -14,6 +14,8 @@ export type {
 
 export type {
   // BDO wrapper types
+  BDOTableSourceType,
+  BDORowType,
   UseBDOTableOptionsType,
   UseBDOTableReturnType,
 } from './components/hooks/useBDOTable/types';
