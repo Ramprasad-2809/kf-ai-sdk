@@ -8,6 +8,9 @@ import {
 } from "../api/client";
 import type {
   ListResponseType,
+  ListOptionsType,
+  CountResponseType,
+  MetricOptionsType,
   MetricResponseType,
   ReadResponseType,
   DraftResponseType,
@@ -42,8 +45,8 @@ import type {
  * // List operations (by status — filtering/pagination handled server-side)
  * await act.inProgressList();
  * await act.completedList();
- * await act.inProgressMetric();
- * await act.completedMetric();
+ * await act.inProgressCount();
+ * await act.completedCount();
  *
  * // Process progress (requires instance_id)
  * const progress = await wf.progress("bp_inst_123");
@@ -109,10 +112,11 @@ export class Workflow<T = any> {
     return {
       // ── List-level ────────────────────────────────────────────
 
-      async inProgressList(): Promise<ListResponseType<ActivityInstanceFieldsType & T>> {
+      async inProgressList(options?: ListOptionsType): Promise<ListResponseType<ActivityInstanceFieldsType & T>> {
         const response = await fetch(`${getApiBaseUrl()}${base}/inprogress/list`, {
-          method: "GET",
+          method: "POST",
           headers: getDefaultHeaders(),
+          body: options ? JSON.stringify(options) : undefined,
         });
 
         if (!response.ok) {
@@ -122,10 +126,11 @@ export class Workflow<T = any> {
         return response.json();
       },
 
-      async completedList(): Promise<ListResponseType<ActivityInstanceFieldsType & T>> {
+      async completedList(options?: ListOptionsType): Promise<ListResponseType<ActivityInstanceFieldsType & T>> {
         const response = await fetch(`${getApiBaseUrl()}${base}/completed/list`, {
-          method: "GET",
+          method: "POST",
           headers: getDefaultHeaders(),
+          body: options ? JSON.stringify(options) : undefined,
         });
 
         if (!response.ok) {
@@ -135,27 +140,75 @@ export class Workflow<T = any> {
         return response.json();
       },
 
-      async inProgressMetric(): Promise<MetricResponseType> {
+      async inProgressCount(options?: ListOptionsType): Promise<CountResponseType> {
+        const requestBody = {
+          Type: 'Metric',
+          GroupBy: [],
+          Metric: [{ Field: '_id', Type: 'Count' }],
+          ...(options?.Filter && { Filter: options.Filter }),
+        };
         const response = await fetch(`${getApiBaseUrl()}${base}/inprogress/metric`, {
-          method: "GET",
+          method: 'POST',
           headers: getDefaultHeaders(),
+          body: JSON.stringify(requestBody),
         });
 
         if (!response.ok) {
-          throw new Error(`Failed to get in-progress activity metrics: ${response.statusText}`);
+          throw new Error(`Failed to get in-progress count: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        const count = result.Data?.[0]?.count__id ?? 0;
+        return { Count: count };
+      },
+
+      async completedCount(options?: ListOptionsType): Promise<CountResponseType> {
+        const requestBody = {
+          Type: 'Metric',
+          GroupBy: [],
+          Metric: [{ Field: '_id', Type: 'Count' }],
+          ...(options?.Filter && { Filter: options.Filter }),
+        };
+        const response = await fetch(`${getApiBaseUrl()}${base}/completed/metric`, {
+          method: 'POST',
+          headers: getDefaultHeaders(),
+          body: JSON.stringify(requestBody),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to get completed count: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        const count = result.Data?.[0]?.count__id ?? 0;
+        return { Count: count };
+      },
+
+      async inProgressMetric(options: Omit<MetricOptionsType, 'Type'>): Promise<MetricResponseType> {
+        const requestBody: MetricOptionsType = { Type: 'Metric', ...options };
+        const response = await fetch(`${getApiBaseUrl()}${base}/inprogress/metric`, {
+          method: 'POST',
+          headers: getDefaultHeaders(),
+          body: JSON.stringify(requestBody),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to get in-progress metrics: ${response.statusText}`);
         }
 
         return response.json();
       },
 
-      async completedMetric(): Promise<MetricResponseType> {
+      async completedMetric(options: Omit<MetricOptionsType, 'Type'>): Promise<MetricResponseType> {
+        const requestBody: MetricOptionsType = { Type: 'Metric', ...options };
         const response = await fetch(`${getApiBaseUrl()}${base}/completed/metric`, {
-          method: "GET",
+          method: 'POST',
           headers: getDefaultHeaders(),
+          body: JSON.stringify(requestBody),
         });
 
         if (!response.ok) {
-          throw new Error(`Failed to get completed activity metrics: ${response.statusText}`);
+          throw new Error(`Failed to get completed metrics: ${response.statusText}`);
         }
 
         return response.json();

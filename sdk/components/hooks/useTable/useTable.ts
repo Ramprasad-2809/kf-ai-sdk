@@ -1,10 +1,14 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { api } from "../../../api";
-import type { ListResponseType, ListOptionsType, FilterType, ConditionType } from "../../../types/common";
-import { toError } from "../../../utils/error-handling";
-import { useFilter } from "../useFilter";
-import type { UseTableOptionsType, UseTableReturnType } from "./types";
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import type {
+  ListResponseType,
+  ListOptionsType,
+  FilterType,
+  ConditionType,
+} from '../../../types/common';
+import { toError } from '../../../utils/error-handling';
+import { useFilter } from '../useFilter';
+import type { UseTableOptionsType, UseTableReturnType } from './types';
 
 // ============================================================
 // INTERNAL STATE TYPES
@@ -18,7 +22,7 @@ interface SearchState<T> {
 
 interface SortingState<T> {
   field: keyof T | null;
-  direction: "ASC" | "DESC" | null;
+  direction: 'ASC' | 'DESC' | null;
 }
 
 interface PaginationState {
@@ -31,15 +35,15 @@ interface PaginationState {
 // ============================================================
 
 export function useTable<T = any>(
-  options: UseTableOptionsType<T>
+  options: UseTableOptionsType<T>,
 ): UseTableReturnType<T> {
   // ============================================================
   // STATE MANAGEMENT
   // ============================================================
 
   const [search, setSearch] = useState<SearchState<T>>({
-    query: "",
-    debouncedQuery: "",
+    query: '',
+    debouncedQuery: '',
     field: null,
   });
 
@@ -53,8 +57,8 @@ export function useTable<T = any>(
     if (sortConfig && sortConfig.length > 0) {
       const firstSort = sortConfig[0];
       const field = Object.keys(firstSort)[0] as keyof T;
-      const raw = firstSort[field as string]?.toUpperCase() as "ASC" | "DESC";
-      const direction = raw === "ASC" || raw === "DESC" ? raw : "ASC";
+      const raw = firstSort[field as string]?.toUpperCase() as 'ASC' | 'DESC';
+      const direction = raw === 'ASC' || raw === 'DESC' ? raw : 'ASC';
       return { field, direction };
     }
     return { field: null, direction: null };
@@ -73,7 +77,7 @@ export function useTable<T = any>(
 
   const filter = useFilter<T>({
     conditions: options.initialState?.filter?.conditions,
-    operator: options.initialState?.filter?.operator || "And",
+    operator: options.initialState?.filter?.operator || 'And',
   });
 
   // ============================================================
@@ -99,14 +103,14 @@ export function useTable<T = any>(
     if (search.debouncedQuery && search.field) {
       const searchCondition: ConditionType = {
         LHSField: search.field,
-        Operator: "Contains",
+        Operator: 'Contains',
         RHSValue: search.debouncedQuery,
-        RHSType: "Constant",
+        RHSType: 'Constant',
       };
 
       if (combinedFilter) {
         // Merge with existing filter
-        if (combinedFilter.Operator === "And") {
+        if (combinedFilter.Operator === 'And') {
           combinedFilter = {
             ...combinedFilter,
             Condition: [...(combinedFilter.Condition || []), searchCondition],
@@ -114,14 +118,14 @@ export function useTable<T = any>(
         } else {
           // Wrap existing filter in And with search condition
           combinedFilter = {
-            Operator: "And",
+            Operator: 'And',
             Condition: [combinedFilter, searchCondition],
           };
         }
       } else {
         // Create new filter with just the search condition
         combinedFilter = {
-          Operator: "And",
+          Operator: 'And',
           Condition: [searchCondition],
         };
       }
@@ -166,10 +170,10 @@ export function useTable<T = any>(
     error,
     refetch: queryRefetch,
   } = useQuery({
-    queryKey: ["table", options.source, apiOptions],
+    queryKey: [...options.queryKey, apiOptions],
     queryFn: async (): Promise<ListResponseType<T>> => {
       try {
-        const response = await api<T>(options.source).list(apiOptions);
+        const response = await options.listFn(apiOptions);
         if (options.onSuccess) {
           options.onSuccess(response.Data);
         }
@@ -193,10 +197,10 @@ export function useTable<T = any>(
     error: countError,
     refetch: countRefetch,
   } = useQuery({
-    queryKey: ["table-count", options.source, countApiOptions],
+    queryKey: [...options.queryKey, 'count', countApiOptions],
     queryFn: async () => {
       try {
-        return await api<T>(options.source).count(countApiOptions);
+        return await options.countFn(countApiOptions);
       } catch (err) {
         if (options.onError) {
           options.onError(toError(err));
@@ -226,13 +230,13 @@ export function useTable<T = any>(
   const toggleSort = useCallback((field: keyof T) => {
     setSorting((prev) => {
       if (prev.field === field) {
-        if (prev.direction === "ASC") {
-          return { field, direction: "DESC" };
-        } else if (prev.direction === "DESC") {
+        if (prev.direction === 'ASC') {
+          return { field, direction: 'DESC' };
+        } else if (prev.direction === 'DESC') {
           return { field: null, direction: null };
         }
       }
-      return { field, direction: "ASC" };
+      return { field, direction: 'ASC' };
     });
   }, []);
 
@@ -241,44 +245,47 @@ export function useTable<T = any>(
   }, []);
 
   const setSort = useCallback(
-    (field: keyof T | null, direction: "ASC" | "DESC" | null) => {
+    (field: keyof T | null, direction: 'ASC' | 'DESC' | null) => {
       setSorting({ field, direction });
     },
-    []
+    [],
   );
 
   // ============================================================
   // SEARCH OPERATIONS
   // ============================================================
 
-  const setSearchFieldAndQuery = useCallback((field: keyof T, query: string) => {
-    // Validate search query length to prevent DoS
-    if (query.length > 255) {
-      console.warn("Search query exceeds maximum length of 255 characters");
-      return;
-    }
+  const setSearchFieldAndQuery = useCallback(
+    (field: keyof T, query: string) => {
+      // Validate search query length to prevent DoS
+      if (query.length > 255) {
+        console.warn('Search query exceeds maximum length of 255 characters');
+        return;
+      }
 
-    // Update immediate value for UI
-    setSearch((prev) => ({ ...prev, query, field }));
+      // Update immediate value for UI
+      setSearch((prev) => ({ ...prev, query, field }));
 
-    // Clear existing debounce timeout
-    if (searchDebounceRef.current) {
-      clearTimeout(searchDebounceRef.current);
-    }
+      // Clear existing debounce timeout
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
 
-    // Debounce the actual API query update
-    searchDebounceRef.current = setTimeout(() => {
-      setSearch((prev) => ({ ...prev, debouncedQuery: query }));
-      setPagination((prev) => ({ ...prev, pageNo: 1 }));
-    }, SEARCH_DEBOUNCE_MS);
-  }, []);
+      // Debounce the actual API query update
+      searchDebounceRef.current = setTimeout(() => {
+        setSearch((prev) => ({ ...prev, debouncedQuery: query }));
+        setPagination((prev) => ({ ...prev, pageNo: 1 }));
+      }, SEARCH_DEBOUNCE_MS);
+    },
+    [],
+  );
 
   const clearSearch = useCallback(() => {
     // Clear debounce timeout
     if (searchDebounceRef.current) {
       clearTimeout(searchDebounceRef.current);
     }
-    setSearch({ query: "", debouncedQuery: "", field: null });
+    setSearch({ query: '', debouncedQuery: '', field: null });
     setPagination((prev) => ({ ...prev, pageNo: 1 }));
   }, []);
 
@@ -315,7 +322,7 @@ export function useTable<T = any>(
       const pageNo = Math.max(1, Math.min(page, totalPages));
       setPagination((prev) => ({ ...prev, pageNo }));
     },
-    [totalPages]
+    [totalPages],
   );
 
   const setPageSize = useCallback((size: number) => {

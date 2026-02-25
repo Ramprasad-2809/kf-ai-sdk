@@ -4,6 +4,9 @@
 
 import type {
   ListResponseType,
+  ListOptionsType,
+  CountResponseType,
+  MetricOptionsType,
   MetricResponseType,
   DraftResponseType,
   CreateUpdateResponseType,
@@ -13,9 +16,8 @@ import type {
   StringFieldType,
   SelectFieldType,
   DateTimeFieldType,
-  ReferenceFieldType,
+  UserFieldType,
 } from "../types/base-fields";
-import type { UserRefType } from "../types/base-fields";
 
 /**
  * Response from Workflow.start()
@@ -48,8 +50,9 @@ export interface ActivityProgressType {
  */
 export type ActivityInstanceFieldsType = {
   _id: StringFieldType;
+  BPInstanceId: StringFieldType;
   Status: SelectFieldType<"InProgress" | "Completed">;
-  AssignedTo: ReferenceFieldType<UserRefType>;
+  AssignedTo: UserFieldType[];
   CompletedAt: DateTimeFieldType;
 };
 
@@ -62,17 +65,23 @@ export type ActivityInstanceFieldsType = {
 export interface ActivityOperations<T> {
   // ── List-level ──────────────────────────────────────────────
 
-  /** List in-progress activity instances (GET .../inprogress/list) */
-  inProgressList(): Promise<ListResponseType<ActivityInstanceFieldsType & T>>;
+  /** List in-progress activity instances (POST .../inprogress/list) */
+  inProgressList(options?: ListOptionsType): Promise<ListResponseType<ActivityInstanceFieldsType & T>>;
 
-  /** List completed activity instances (GET .../completed/list) */
-  completedList(): Promise<ListResponseType<ActivityInstanceFieldsType & T>>;
+  /** List completed activity instances (POST .../completed/list) */
+  completedList(options?: ListOptionsType): Promise<ListResponseType<ActivityInstanceFieldsType & T>>;
 
-  /** Get in-progress activity metrics (GET .../inprogress/metric) */
-  inProgressMetric(): Promise<MetricResponseType>;
+  /** Get in-progress activity count (POST .../inprogress/metric) */
+  inProgressCount(options?: ListOptionsType): Promise<CountResponseType>;
 
-  /** Get completed activity metrics (GET .../completed/metric) */
-  completedMetric(): Promise<MetricResponseType>;
+  /** Get completed activity count (POST .../completed/metric) */
+  completedCount(options?: ListOptionsType): Promise<CountResponseType>;
+
+  /** Get in-progress aggregated metrics (POST .../inprogress/metric) */
+  inProgressMetric(options: Omit<MetricOptionsType, 'Type'>): Promise<MetricResponseType>;
+
+  /** Get completed aggregated metrics (POST .../completed/metric) */
+  completedMetric(options: Omit<MetricOptionsType, 'Type'>): Promise<MetricResponseType>;
 
   // ── Instance-level ──────────────────────────────────────────
 

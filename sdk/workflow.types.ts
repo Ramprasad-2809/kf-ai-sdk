@@ -9,3 +9,10 @@ export type {
   ActivityProgressType,
   WorkflowStartResponseType,
 } from './workflow/types';
+
+export type {
+  UseActivityTableOptionsType,
+  UseActivityTableReturnType,
+  ActivityTableStatusType,
+  ActivityRowType,
+} from './components/hooks/useActivityTable/types';

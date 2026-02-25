@@ -3,8 +3,11 @@
 // @ram_28/kf-ai-sdk/table
 // ============================================================
 
-// Main hook
+// Base hook
 export { useTable } from './components/hooks/useTable/useTable';
+
+// BDO wrapper hook
+export { useBDOTable } from './components/hooks/useBDOTable/useBDOTable';
 
 // Constants
 export {

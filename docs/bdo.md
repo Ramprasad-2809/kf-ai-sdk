@@ -58,7 +58,7 @@ These field types return complex objects from `.get()` — NOT renderable as Rea
 
 // ✅ CORRECT — extract the renderable value
 // Image: use ImageThumbnail component (NEVER use src="#")
-import { ImageThumbnail } from "@/components/ui/image-thumbnail";
+import { ImageThumbnail } from "@/components/system/image-thumbnail";
 <ImageThumbnail boId={bdo.meta._id} instanceId={item._id} fieldId={bdo.product_image.id} value={item.product_image.get()} imgClassName="w-24 h-24 object-cover rounded" />
 
 // Image: if you only need the filename as text
@@ -66,7 +66,7 @@ const img = item.product_image.get();
 <span>{img ? (img as any).FileName : "No image"}</span>
 
 // File array: use FilePreview component
-import { FilePreview } from "@/components/ui/file-preview";
+import { FilePreview } from "@/components/system/file-preview";
 <FilePreview boId={bdo.meta._id} instanceId={item._id} fieldId={bdo.attachments.id} value={item.attachments.get()} />
 
 // Reference: access _name
@@ -125,7 +125,7 @@ product.product_name.defaultValue  // unknown
 
 | Class | Extra Getters | Notes |
 |-------|--------------|-------|
-| `StringField` | `length` | May have `Constraint.Enum` — see useForm Mistake #3 |
+| `StringField` | `length` | May have `Constraint.Enum` — see useBDOForm Mistake #3 |
 | `NumberField` | `integerPart`, `fractionPart` | |
 | `BooleanField` | — | |
 | `DateField` | — | Format: YYYY-MM-DD |

@@ -4,13 +4,16 @@
 // ============================================================
 
 export type {
-  // Core hook types
+  // Base hook types
   UseTableOptionsType,
   UseTableReturnType,
-
-  // Column definition
-  ColumnDefinitionType,
 
   // State types
   PaginationStateType,
 } from './components/hooks/useTable/types';
+
+export type {
+  // BDO wrapper types
+  UseBDOTableOptionsType,
+  UseBDOTableReturnType,
+} from './components/hooks/useBDOTable/types';

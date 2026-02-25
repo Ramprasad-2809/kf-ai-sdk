@@ -127,7 +127,7 @@ export abstract class BaseBdo<
   /**
    * Load backend metadata for expression-based validation
    *
-   * Called by useForm after fetching schema from the backend.
+   * Called by useBDOForm after fetching schema from the backend.
    * This enables expression-based validation rules to be used
    * in addition to type validation.
    *
@@ -241,7 +241,7 @@ export abstract class BaseBdo<
   }
 
   // ============================================================
-  // DRAFT OPERATIONS (for useForm integration)
+  // DRAFT OPERATIONS (for useBDOForm integration)
   // ============================================================
 
   /**

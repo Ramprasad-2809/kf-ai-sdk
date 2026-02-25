@@ -33,7 +33,7 @@ export type AllFieldsType<B> = ExtractEditableType<B> & ExtractReadonlyType<B> &
 // BDO CAPABILITY CONSTRAINTS
 // ============================================================
 
-/** Minimum BDO shape required for any useForm usage */
+/** Minimum BDO shape required for any useBDOForm usage */
 interface BaseBdoShape {
   readonly meta: BdoMetaType;
   getFields(): Record<string, BaseField<unknown>>;
@@ -81,13 +81,13 @@ export type HandleSubmitType<TRead = unknown> = (
 // OPTIONS TYPE
 // ============================================================
 
-export type UseFormOptionsType<B extends BaseBdo<any, any, any>> =
-  | UseFormCreateOptionsType<B>
-  | UseFormUpdateOptionsType<B>
-  | UseFormAutoOptionsType<B>;
+export type UseBDOFormOptionsType<B extends BaseBdo<any, any, any>> =
+  | UseBDOFormCreateOptionsType<B>
+  | UseBDOFormUpdateOptionsType<B>
+  | UseBDOFormAutoOptionsType<B>;
 
 /** Options when operation is explicitly "create" — BDO must have create() */
-interface UseFormCreateOptionsType<B extends BaseBdo<any, any, any>> {
+interface UseBDOFormCreateOptionsType<B extends BaseBdo<any, any, any>> {
   bdo: B & CreatableBdo<ExtractEditableType<B>>;
   operation: "create";
   recordId?: undefined;
@@ -99,7 +99,7 @@ interface UseFormCreateOptionsType<B extends BaseBdo<any, any, any>> {
 }
 
 /** Options when operation is explicitly "update" — BDO must have get() + update() */
-interface UseFormUpdateOptionsType<B extends BaseBdo<any, any, any>> {
+interface UseBDOFormUpdateOptionsType<B extends BaseBdo<any, any, any>> {
   bdo: B & UpdatableBdo<ExtractEditableType<B>>;
   operation: "update";
   recordId: string;
@@ -111,7 +111,7 @@ interface UseFormUpdateOptionsType<B extends BaseBdo<any, any, any>> {
 }
 
 /** Options when operation is auto-inferred — BDO must support both */
-interface UseFormAutoOptionsType<B extends BaseBdo<any, any, any>> {
+interface UseBDOFormAutoOptionsType<B extends BaseBdo<any, any, any>> {
   bdo: B & FormBdo<ExtractEditableType<B>>;
   operation?: undefined;
   recordId?: string;
@@ -187,7 +187,7 @@ export type FormItemType<
 // RETURN TYPE
 // ============================================================
 
-export interface UseFormReturnType<B extends BaseBdo<any, any, any>> {
+export interface UseBDOFormReturnType<B extends BaseBdo<any, any, any>> {
   // Item with typed accessors
   item: FormItemType<ExtractEditableType<B>, ExtractReadonlyType<B>>;
 

@@ -11,6 +11,8 @@ import {
   Activity,
   ActivityInstance,
   useActivityForm,
+  useActivityTable,
+  ActivityTableStatus,
 } from "@ram_28/kf-ai-sdk/workflow";
 
 // Type-only exports
@@ -20,6 +22,10 @@ import type {
   WorkflowStartResponseType,
   UseActivityFormOptions,
   UseActivityFormReturn,
+  UseActivityTableOptionsType,
+  UseActivityTableReturnType,
+  ActivityTableStatusType,
+  ActivityRowType,
 } from "@ram_28/kf-ai-sdk/workflow";
 
 // Field classes (for defining Activity fields)
@@ -31,7 +37,7 @@ import {
   DateTimeField,
   SelectField,
   ReferenceField,
-} from "@ram_28/kf-ai-sdk/bdo/fields";
+} from '@ram_28/kf-ai-sdk/bdo/fields';
 
 // Field types (for entity type definitions)
 import type {
@@ -42,7 +48,7 @@ import type {
   DateTimeFieldType,
   SelectFieldType,
   ReferenceFieldType,
-} from "@ram_28/kf-ai-sdk/types";
+} from '@ram_28/kf-ai-sdk/types';
 ```
 
 ---
@@ -82,64 +88,28 @@ System fields present on every activity instance. Returned alongside activity-sp
 type ActivityInstanceFieldsType = {
   _id: StringFieldType;
   Status: SelectFieldType<"InProgress" | "Completed">;
-  AssignedTo: ReferenceFieldType<{ _id: StringFieldType; username: StringFieldType }>;
+  AssignedTo: UserFieldType[];
   CompletedAt: DateTimeFieldType;
 };
 ```
 
-### UseActivityFormOptions\<A\>
+### Activity Table Types
 
-```typescript
-interface UseActivityFormOptions<A extends Activity<any, any, any>> {
-  /** Activity instance identifier (from wf.start() or getInProgressList()) */
-  activity_instance_id: string;
+See the dedicated [useActivityTable documentation](./useActivityTable.md) for `ActivityTableStatus`, `ActivityRowType`, `UseActivityTableOptionsType`, and `UseActivityTableReturnType`.
 
-  /** Default form values */
-  defaultValues?: Partial<ExtractActivityEditable<A>>;
+Entity fields and system fields are flat at the top level, same as BDO tables. Access entity fields as `row.FieldName`.
 
-  /** Validation mode (default: "onBlur") */
-  mode?: "onBlur" | "onChange" | "onSubmit" | "onTouched" | "all";
 
-  /** Whether to load activity data on mount (default: true) */
-  enabled?: boolean;
-}
-```
+### UseActivityFormOptions\<A\> / UseActivityFormReturn\<A\>
 
-### UseActivityFormReturn\<A\>
+See the dedicated [useActivityForm documentation](./useActivityForm.md) for the full type definitions.
 
-```typescript
-interface UseActivityFormReturn<A extends Activity<any, any, any>> {
-  // Core
-  item: FormItemType<EditableFields, ReadonlyFields>;
-  activity: A;
-  register: FormRegisterType<EditableFields, ReadonlyFields>;
-  handleSubmit: HandleSubmitType;    // Save the activity form
-  handleComplete: HandleSubmitType;  // Complete the activity
+### File & Image Types
 
-  // RHF methods
-  watch: UseFormWatch;
-  setValue: UseFormSetValue;
-  getValues: UseFormGetValues;
-  reset: UseFormReset;
-  trigger: UseFormTrigger;
-  control: Control;
+Image accessor: `item.field.get()` returns `FileType | null`. Has `upload(file: File)`, `deleteAttachment()`, `getDownloadUrl()`.
+File accessor: `item.field.get()` returns `FileType[]`. Has `upload(files: File[])`, `deleteAttachment(id)`, `getDownloadUrl(id)`.
 
-  // Form state
-  errors: FieldErrors;
-  isValid: boolean;
-  isDirty: boolean;
-  isSubmitting: boolean;
-  isSubmitSuccessful: boolean;
-
-  // Loading
-  isLoading: boolean;
-  loadError: Error | null;
-  hasError: boolean;
-
-  // Operations
-  clearErrors: () => void;
-}
-```
+Activity forms always have an instance ID, so attachment operations work immediately — no draft creation is needed.
 
 ---
 
@@ -250,21 +220,30 @@ Each Activity class provides methods to query and access activity instances. Lis
 const activity = wf.employeeInputActivity();
 ```
 
-### getInProgressList()
+### getInProgressList(options?)
 
-List in-progress activity instances. Filtering and pagination are handled server-side automatically.
+List in-progress activity instances. Accepts optional `ListOptionsType` payload for server-side filtering, sorting, and pagination.
 
 ```typescript
+// No options — returns all in-progress items (default pagination)
 const result = await activity.getInProgressList();
 
 for (const item of result.Data) {
   console.log(item._id, item.Status, item.StartDate);
 }
+
+// With options — server-side filter, sort, and pagination
+const filtered = await activity.getInProgressList({
+  Filter: { Operator: 'And', Condition: [{ LHSField: 'Status', Operator: 'EQ', RHSValue: 'InProgress', RHSType: 'Constant' }] },
+  Sort: [{ '_created_at': 'DESC' }],
+  Page: 1,
+  PageSize: 10,
+});
 ```
 
-### getCompletedList()
+### getCompletedList(options?)
 
-List completed activity instances. Filtering and pagination are handled server-side automatically.
+List completed activity instances. Same options as `getInProgressList`.
 
 ```typescript
 const result = await activity.getCompletedList();
@@ -274,20 +253,46 @@ for (const item of result.Data) {
 }
 ```
 
-### inProgressMetrics()
+### inProgressCount(options?)
 
-Get aggregated metrics for in-progress activity instances.
+Get count of in-progress activity instances. Returns `number`.
 
 ```typescript
-const metrics = await activity.inProgressMetrics();
+const count = await activity.inProgressCount();
+console.log('In-progress count:', count);
 ```
 
-### completedMetrics()
+### completedCount(options?)
 
-Get aggregated metrics for completed activity instances.
+Get count of completed activity instances. Returns `number`.
 
 ```typescript
-const metrics = await activity.completedMetrics();
+const count = await activity.completedCount();
+console.log('Completed count:', count);
+```
+
+### inProgressMetric(options)
+
+Get aggregated metrics for in-progress activity instances. Accepts `Omit<MetricOptionsType, 'Type'>` for custom aggregations (Sum, Avg, Count, etc.). Returns `MetricResponseType` (`{ Data: Record<string, any>[] }`).
+
+```typescript
+const result = await activity.inProgressMetric({
+  GroupBy: ['Status'],
+  Metric: [{ Field: '_id', Type: 'Count' }],
+});
+console.log(result.Data);
+```
+
+### completedMetric(options)
+
+Get aggregated metrics for completed activity instances. Same signature as `inProgressMetric`.
+
+```typescript
+const result = await activity.completedMetric({
+  GroupBy: [],
+  Metric: [{ Field: 'LeaveDays', Type: 'Sum' }],
+});
+console.log('Total leave days:', result.Data[0]?.sum_LeaveDays);
 ```
 
 ### getInstance(instanceId)
@@ -320,67 +325,18 @@ const progress = await instance.progress();           // get progress (ActivityP
 
 ## useActivityForm Hook
 
-React hook for building forms bound to workflow activity input fields. Integrates with `react-hook-form`.
-
-### Options
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `activity_instance_id` | `string` | *required* | Activity instance ID (from `wf.start()` or `getInProgressList()`) |
-| `defaultValues` | `Partial<Editable>` | `{}` | Initial form values |
-| `mode` | `"onBlur" \| "onChange" \| "onSubmit" \| "onTouched" \| "all"` | `"onBlur"` | Validation timing |
-| `enabled` | `boolean` | `true` | Whether to load activity data on mount |
-
-### Lifecycle
-
-```
-Mount
-  |
-  |-> Load activity instance data -> populate form
-  |
-  v
-User edits field -> blurs
-  |
-  |-> Field validation (BaseField.validate)
-  |-> If valid + readonly fields exist -> update computed fields
-  |
-  v
-User clicks Save
-  |
-  |-> handleSubmit -> save activity data
-  |
-  v
-User clicks Complete
-  |
-  |-> handleComplete -> complete activity
-```
-
-### Return Value
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `item` | `FormItemType` | Proxy with typed field accessors (`.get()`, `.set()`, `.meta`) |
-| `activity` | `A` | The Activity instance |
-| `register` | `FormRegisterType` | Smart register (auto-disables readonly fields) |
-| `handleSubmit` | `HandleSubmitType` | Save activity data |
-| `handleComplete` | `HandleSubmitType` | Complete the activity |
-| `watch` | `UseFormWatch` | Watch field values |
-| `setValue` | `UseFormSetValue` | Set field value programmatically |
-| `getValues` | `UseFormGetValues` | Get current field values |
-| `reset` | `UseFormReset` | Reset form to default values |
-| `trigger` | `UseFormTrigger` | Trigger validation |
-| `control` | `Control` | RHF control (for Controller components) |
-| `errors` | `FieldErrors` | Validation errors |
-| `isValid` | `boolean` | Form is valid |
-| `isDirty` | `boolean` | Form has been modified |
-| `isSubmitting` | `boolean` | Currently submitting |
-| `isSubmitSuccessful` | `boolean` | Last submission succeeded |
-| `isLoading` | `boolean` | Loading activity data |
-| `loadError` | `Error \| null` | Load error |
-| `hasError` | `boolean` | Any error active |
-| `clearErrors` | `() => void` | Clear all form errors |
+See the dedicated [useActivityForm documentation](./useActivityForm.md) for the full API reference, type definitions, and examples.
 
 ---
+
+## useActivityTable Hook
+
+See the dedicated [useActivityTable documentation](./useActivityTable.md) for the full API reference, type definitions, and examples.
+
+`useActivityTable` provides search, sort, filter, and pagination capabilities, same as `useBDOTable`. Entity fields are accessed at the top level (e.g., `row.FieldName`).
+
+---
+
 
 ## Use Case: Employee Creating Leave
 
@@ -399,115 +355,7 @@ const progress = await wf.progress(BPInstanceId);
 
 ### Step 2 — React component with useActivityForm
 
-```tsx
-import { useMemo } from "react";
-import { useActivityForm } from "@ram_28/kf-ai-sdk/workflow";
-import type { UseActivityFormOptions } from "@ram_28/kf-ai-sdk/workflow";
-import type { FieldErrors } from "react-hook-form";
-import { SimpleLeaveProcess, EmployeeInputActivity } from "@/bdo/workflows/SimpleLeaveProcess";
-
-interface LeaveRequestFormProps {
-  activityInstanceId: string;
-  onComplete: () => void;
-}
-
-function LeaveRequestForm({ activityInstanceId, onComplete }: LeaveRequestFormProps) {
-  // 1. Get the typed activity from the workflow
-  const activity = useMemo(() => new SimpleLeaveProcess().employeeInputActivity(), []);
-
-  // 2. Hook options
-  const options: UseActivityFormOptions<EmployeeInputActivity> = {
-    activity_instance_id: activityInstanceId,
-    defaultValues: {
-      StartDate: undefined,
-      EndDate: undefined,
-      LeaveType: undefined,
-    },
-    mode: "onBlur",
-  };
-
-  // 3. Initialize hook
-  const {
-    register,
-    handleSubmit,
-    handleComplete,
-    item,
-    errors,
-    isLoading,
-    isSubmitting,
-    loadError,
-  } = useActivityForm(activity, options);
-
-  if (isLoading) return <div>Loading...</div>;
-  if (loadError) return <div>Error: {loadError.message}</div>;
-
-  // 4. Handlers
-  const onSaveSuccess = (): void => {
-    console.log("Saved!");
-  };
-
-  const onCompleteSuccess = (): void => {
-    console.log("Leave request submitted!");
-    onComplete();
-  };
-
-  const onError = (error: FieldErrors | Error): void => {
-    if (error instanceof Error) {
-      console.error("API Error:", error.message);
-    } else {
-      console.error("Validation errors:", error);
-    }
-  };
-
-  return (
-    <form>
-      <h2>Leave Request</h2>
-
-      {/* Start Date */}
-      <div>
-        <label>{activity.StartDate.meta.label}</label>
-        <input type="date" {...register(activity.StartDate.meta.id)} />
-        {errors.StartDate && <span>{errors.StartDate.message}</span>}
-      </div>
-
-      {/* End Date */}
-      <div>
-        <label>{activity.EndDate.meta.label}</label>
-        <input type="date" {...register(activity.EndDate.meta.id)} />
-        {errors.EndDate && <span>{errors.EndDate.message}</span>}
-      </div>
-
-      {/* Leave Type */}
-      <div>
-        <label>{activity.LeaveType.meta.label}</label>
-        <select {...register(activity.LeaveType.meta.id)}>
-          <option value="">Select type</option>
-          <option value="PTO">PTO</option>
-          <option value="Sick">Sick</option>
-          <option value="Parental">Parental</option>
-        </select>
-        {errors.LeaveType && <span>{errors.LeaveType.message}</span>}
-      </div>
-
-      {/* Leave Days (readonly — auto-disabled, computed by server) */}
-      <div>
-        <label>{activity.LeaveDays.meta.label}</label>
-        <input type="number" {...register(activity.LeaveDays.meta.id)} />
-      </div>
-
-      {/* Actions */}
-      <div>
-        <button type="button" onClick={handleSubmit(onSaveSuccess, onError)}>
-          {isSubmitting ? "Saving..." : "Save Draft"}
-        </button>
-        <button type="button" onClick={handleComplete(onCompleteSuccess, onError)}>
-          {isSubmitting ? "Submitting..." : "Submit Leave Request"}
-        </button>
-      </div>
-    </form>
-  );
-}
-```
+See [useActivityForm](./useActivityForm.md) for the full form component example.
 
 ### Full flow orchestration
 
@@ -544,89 +392,79 @@ function LeaveRequestPage() {
 
 ### Step 1 — List in-progress items
 
-```typescript
-import { SimpleLeaveProcess } from "@/bdo/workflows/SimpleLeaveProcess";
+```tsx
+import { useMemo, useState } from "react";
+import { useActivityTable, ActivityTableStatus } from "@ram_28/kf-ai-sdk/workflow";
+import { SimpleLeaveProcess, ManagerApprovalActivity } from "@/bdo/workflows/SimpleLeaveProcess";
 
 const wf = new SimpleLeaveProcess();
 const activity = wf.managerApprovalActivity();
 
-const result = await activity.getInProgressList();
+  const { rows, totalItems, isLoading, error, pagination, refetch } = useActivityTable({
+    activity,
+    status: ActivityTableStatus.InProgress,
+    initialState: {
+      pagination: { pageNo: 1, pageSize: 10 },
+    },
+  });
 
-for (const item of result.Data) {
-  console.log(item._id, item.Status, item.AssignedTo.username);
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
+
+  if (selectedId) {
+    return (
+      <ApprovalForm
+        activityInstanceId={selectedId}
+        onComplete={() => {
+          setSelectedId(null);
+          refetch();
+        }}
+      />
+    );
+  }
+
+  return (
+    <div>
+      <h2>Pending Approvals ({totalItems})</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Status</th>
+            <th>Assigned To</th>
+            <th>Approved</th>
+            <th>Reason</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row._id}>
+              <td>{row._id}</td>
+              <td>{row.Status}</td>
+              <td>{row.AssignedTo.map((u) => u._name).join(", ")}</td>
+              <td>{row.ManagerApproved ? "Yes" : "No"}</td>
+              <td>{row.ManagerReason}</td>
+              <td>
+                <button onClick={() => setSelectedId(row._id)}>Review</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div>
+        <button onClick={pagination.goToPrevious} disabled={!pagination.canGoPrevious}>Previous</button>
+        <span>Page {pagination.pageNo} of {pagination.totalPages}</span>
+        <button onClick={pagination.goToNext} disabled={!pagination.canGoNext}>Next</button>
+      </div>
+    </div>
+  );
 }
 ```
 
 ### Step 2 — Approval form component
 
-```tsx
-import { useMemo } from "react";
-import { useActivityForm } from "@ram_28/kf-ai-sdk/workflow";
-import type { UseActivityFormOptions } from "@ram_28/kf-ai-sdk/workflow";
-import type { FieldErrors } from "react-hook-form";
-import { SimpleLeaveProcess, ManagerApprovalActivity } from "@/bdo/workflows/SimpleLeaveProcess";
-
-interface ApprovalFormProps {
-  activityInstanceId: string;
-  onComplete: () => void;
-}
-
-function ApprovalForm({ activityInstanceId, onComplete }: ApprovalFormProps) {
-  const activity = useMemo(() => new SimpleLeaveProcess().managerApprovalActivity(), []);
-
-  const options: UseActivityFormOptions<ManagerApprovalActivity> = {
-    activity_instance_id: activityInstanceId,
-    defaultValues: {
-      ManagerApproved: false,
-      ManagerReason: "",
-    },
-    mode: "onBlur",
-  };
-
-  const {
-    register,
-    handleComplete,
-    errors,
-    isLoading,
-    isSubmitting,
-    loadError,
-  } = useActivityForm(activity, options);
-
-  if (isLoading) return <div>Loading...</div>;
-  if (loadError) return <div>Error: {loadError.message}</div>;
-
-  const onSuccess = (): void => {
-    console.log("Approval submitted!");
-    onComplete();
-  };
-
-  const onError = (error: FieldErrors | Error): void => {
-    if (error instanceof Error) console.error("API Error:", error.message);
-  };
-
-  return (
-    <form>
-      <h2>Leave Approval</h2>
-
-      <div>
-        <label>
-          <input type="checkbox" {...register(activity.ManagerApproved.meta.id)} />
-          {activity.ManagerApproved.meta.label}
-        </label>
-      </div>
-
-      <div>
-        <label>{activity.ManagerReason.meta.label}</label>
-        <textarea {...register(activity.ManagerReason.meta.id)} rows={4} />
-      </div>
-
-      <button type="button" onClick={handleComplete(onSuccess, onError)}>
-        {isSubmitting ? "Submitting..." : "Submit Decision"}
-      </button>
-    </form>
-  );
-}
-```
+See [useActivityForm](./useActivityForm.md) for the full approval form component example.
 
 ---
 
@@ -653,7 +491,7 @@ instance.StartDate.set("2026-03-01");
 instance.EndDate.set("2026-03-05");
 
 // Field metadata
-console.log(instance.StartDate.meta.label);  // "Start Date"
+console.log(instance.StartDate.label);  // "Start Date"
 
 // Persist changes
 await instance.update({ StartDate: "2026-03-01", EndDate: "2026-03-05" });
@@ -672,18 +510,31 @@ const progress = await instance.progress();
 
 ## Filtering Reference
 
-Status filtering is built into the method names (`getInProgressList` / `getCompletedList`). All filtering (by current user, activity status, and activity ID) and pagination are handled server-side automatically — no client-side options are needed.
+Status filtering is built into the method names (`getInProgressList` / `getCompletedList`). Internal filters (ActivityId, Status, AssignedTo) are **always applied** by the backend. Frontend filters passed via `ListOptionsType` are AND-merged with the internal filters.
+
+All four list/metric endpoints now use **POST** with an optional `ListOptionsType` body (same shape as BDO list API: `{ Filter, Sort, Page, PageSize }`).
 
 ### In-progress items
 
 ```typescript
+// No options — returns all (default pagination)
 const result = await activity.getInProgressList();
+
+// With filter + pagination
+const result = await activity.getInProgressList({
+  Sort: [{ '_created_at': 'DESC' }],
+  Page: 1,
+  PageSize: 25,
+});
 ```
 
 ### Completed items
 
 ```typescript
-const result = await activity.getCompletedList();
+const result = await activity.getCompletedList({
+  Page: 1,
+  PageSize: 25,
+});
 ```
 
 ### Process progress
@@ -703,7 +554,7 @@ const progressList = await wf.progress(BPInstanceId);
 |-------|------|-------------|
 | `_id` | `StringFieldType` | Unique activity instance identifier |
 | `Status` | `SelectFieldType<"InProgress" \| "Completed">` | Current status |
-| `AssignedTo` | `ReferenceFieldType<UserRefType>` | Assigned user (has `._id` and `.username`) |
+| `AssignedTo` | `UserFieldType[]` | Assigned users (each has `._id` and `._name`) |
 | `CompletedAt` | `DateTimeFieldType` | Completion timestamp (`"YYYY-MM-DDTHH:MM:SS"`) |
 
 ---
