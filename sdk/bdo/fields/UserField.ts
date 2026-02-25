@@ -32,7 +32,7 @@ export class UserField extends BaseField<UserFieldType> {
    * Fetch user records from the backend via the fetchField API.
    * Requires the field to be bound to a parent BDO.
    */
-  async fetchOptions(instanceId: string): Promise<UserFieldType[]> {
+  async fetchOptions(instanceId: string = "draft"): Promise<UserFieldType[]> {
     if (!this._parentBoId) {
       throw new Error(
         `Field ${this.id} not bound to a BDO. Cannot fetch options.`,
