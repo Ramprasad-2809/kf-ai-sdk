@@ -126,13 +126,13 @@ const { data: options = [] } = useQuery({
 
 ## UI Components
 
-| Component           | Field     | Mode      | Key Props                                         |
-| ------------------- | --------- | --------- | ------------------------------------------------- |
-| `<ReferenceSelect>` | Reference | Edit      | `bdoField`, `instanceId`, `value`, `onChange`     |
-| `<FileUpload>`      | File      | Edit      | `field`, `value`, `boId`, `instanceId`, `fieldId` |
-| `<ImageUpload>`     | Image     | Edit      | `field`, `value`, `boId`, `instanceId`, `fieldId` |
-| `<FilePreview>`     | File      | Read-only | `boId`, `instanceId`, `fieldId`, `value`          |
-| `<ImageThumbnail>`  | Image     | Read-only | `boId`, `instanceId`, `fieldId`, `value`          |
+| Component           | Field     | Mode      | Import Path                            | Key Props                                         |
+| ------------------- | --------- | --------- | -------------------------------------- | ------------------------------------------------- |
+| `<ReferenceSelect>` | Reference | Edit      | `@/components/system/reference-select` | `bdoField`, `instanceId`, `value`, `onChange`     |
+| `<FileUpload>`      | File      | Edit      | `@/components/system/file-upload`      | `field`, `value`, `boId`, `instanceId`, `fieldId` |
+| `<ImageUpload>`     | Image     | Edit      | `@/components/system/image-upload`     | `field`, `value`, `boId`, `instanceId`, `fieldId` |
+| `<FilePreview>`     | File      | Read-only | `@/components/system/file-preview`     | `boId`, `instanceId`, `fieldId`, `value`          |
+| `<ImageThumbnail>`  | Image     | Read-only | `@/components/system/image-thumbnail`  | `boId`, `instanceId`, `fieldId`, `value`          |
 
 ## Further Reading
 
