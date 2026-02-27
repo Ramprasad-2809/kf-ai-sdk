@@ -23,11 +23,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ReferenceSelect } from "@/components/ui/reference-select";
-import { FileUpload } from "@/components/ui/file-upload";
-import { ImageUpload } from "@/components/ui/image-upload";
-import { FilePreview } from "@/components/ui/file-preview";
-import { ImageThumbnail } from "@/components/ui/image-thumbnail";
+import { ReferenceSelect } from "@/components/system/reference-select";
+import { FileUpload } from "@/components/system/file-upload";
+import { ImageUpload } from "@/components/system/image-upload";
+import { FilePreview } from "@/components/system/file-preview";
+import { ImageThumbnail } from "@/components/system/image-thumbnail";
 
 export default function ComplexFieldsForm({ recordId }: { recordId?: string }) {
   const fieldTest = useMemo(() => new AdminFieldTest(), []);
@@ -204,8 +204,8 @@ export default function ComplexFieldsForm({ recordId }: { recordId?: string }) {
 For tables and detail pages, use `<FilePreview>` and `<ImageThumbnail>`:
 
 ```tsx
-import { FilePreview } from "@/components/ui/file-preview";
-import { ImageThumbnail } from "@/components/ui/image-thumbnail";
+import { FilePreview } from "@/components/system/file-preview";
+import { ImageThumbnail } from "@/components/system/image-thumbnail";
 
 // In a table row or detail page
 function RecordRow({ record }: { record: ItemType<...> }) {
