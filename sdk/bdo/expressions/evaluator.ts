@@ -106,6 +106,44 @@ function evaluateSystemIdentifier(
 }
 
 /**
+ * ISO date regex: matches YYYY-MM-DD with optional time component
+ */
+const _DATE_RE = /^\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}(:\d{2})?)?$/;
+
+/**
+ * Convert a date-like value to a comparable timestamp (ms since epoch).
+ * Returns NaN if the value is not a valid date.
+ */
+function _toTimestamp(value: unknown): number {
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === "string" && _DATE_RE.test(value)) {
+    // Append "T00:00:00" for date-only strings to ensure consistent parsing
+    const normalized =
+      value.includes("T") || value.includes(" ")
+        ? value.replace(" ", "T")
+        : value + "T00:00:00";
+    return new Date(normalized).getTime();
+  }
+  return NaN;
+}
+
+/**
+ * Compare two values for ordering operators (<, <=, >, >=).
+ * Uses date comparison for date-like values, numeric comparison otherwise.
+ */
+function _compareValues(
+  left: unknown,
+  right: unknown
+): { l: number; r: number } {
+  const lt = _toTimestamp(left);
+  const rt = _toTimestamp(right);
+  // If both are valid dates, compare as timestamps
+  if (!isNaN(lt) && !isNaN(rt)) return { l: lt, r: rt };
+  // Otherwise fall back to numeric comparison
+  return { l: Number(left), r: Number(right) };
+}
+
+/**
  * Evaluate a BinaryExpression node
  *
  * Supports:
@@ -131,15 +169,23 @@ function evaluateBinaryExpression(
     case "!=":
       return left != right;
 
-    // Numeric comparison operators
-    case "<":
-      return Number(left) < Number(right);
-    case "<=":
-      return Number(left) <= Number(right);
-    case ">":
-      return Number(left) > Number(right);
-    case ">=":
-      return Number(left) >= Number(right);
+    // Ordering comparison — date-aware
+    case "<": {
+      const { l, r } = _compareValues(left, right);
+      return l < r;
+    }
+    case "<=": {
+      const { l, r } = _compareValues(left, right);
+      return l <= r;
+    }
+    case ">": {
+      const { l, r } = _compareValues(left, right);
+      return l > r;
+    }
+    case ">=": {
+      const { l, r } = _compareValues(left, right);
+      return l >= r;
+    }
 
     // Arithmetic operators
     case "+":
