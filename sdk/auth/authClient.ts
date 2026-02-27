@@ -9,11 +9,7 @@ import type {
   LoginOptionsType,
   LogoutOptionsType,
 } from "./types";
-import {
-  getAuthBaseUrl,
-  getAuthConfig,
-  getProviderConfig,
-} from "./authConfig";
+import { getAuthBaseUrl, getAuthConfig, getProviderConfig } from "./authConfig";
 import { getDefaultHeaders } from "../api/client";
 
 /**
@@ -52,7 +48,7 @@ export async function fetchSession(): Promise<SessionResponseType> {
     }
     throw new AuthenticationError(
       `Session check failed: ${response.statusText}`,
-      response.status
+      response.status,
     );
   }
 
@@ -82,7 +78,7 @@ export async function fetchSession(): Promise<SessionResponseType> {
  */
 export function initiateLogin(
   provider?: AuthProviderNameType,
-  options?: LoginOptionsType
+  options?: LoginOptionsType,
 ): Promise<never> {
   return new Promise(() => {
     const config = getAuthConfig();
@@ -91,7 +87,7 @@ export function initiateLogin(
     // Validate base URL
     if (!baseUrl) {
       throw new Error(
-        'Auth base URL is not configured. Call setApiBaseUrl("https://...") or configureAuth({ baseUrl: "https://..." }) first.'
+        'Auth base URL is not configured. Call setApiBaseUrl("https://...") or configureAuth({ baseUrl: "https://..." }) first.',
       );
     }
 
@@ -100,9 +96,10 @@ export function initiateLogin(
 
     // Validate provider config
     if (!providerConfig) {
-      const availableProviders = Object.keys(config.providers || {}).join(", ") || "none";
+      const availableProviders =
+        Object.keys(config.providers || {}).join(", ") || "none";
       throw new Error(
-        `Auth provider "${selectedProvider}" is not configured. Available providers: ${availableProviders}`
+        `Auth provider "${selectedProvider}" is not configured. Available providers: ${availableProviders}`,
       );
     }
 
@@ -110,7 +107,7 @@ export function initiateLogin(
     if (!providerConfig.loginPath) {
       throw new Error(
         `Login path not configured for provider "${selectedProvider}". ` +
-        `Configure it with: configureAuth({ providers: { ${selectedProvider}: { loginPath: '/api/auth/...' } } })`
+          `Configure it with: configureAuth({ providers: { ${selectedProvider}: { loginPath: '/api/auth/...' } } })`,
       );
     }
 
@@ -121,14 +118,14 @@ export function initiateLogin(
     } catch {
       throw new Error(
         `Failed to construct login URL. Base URL: "${baseUrl}", Login path: "${providerConfig.loginPath}". ` +
-        `Ensure baseUrl is a valid URL (e.g., "https://example.com").`
+          `Ensure baseUrl is a valid URL (e.g., "https://example.com").`,
       );
     }
 
     if (options?.callbackUrl || config.callbackUrl) {
       loginUrl.searchParams.set(
         "callbackUrl",
-        options?.callbackUrl || config.callbackUrl || window.location.href
+        options?.callbackUrl || config.callbackUrl || window.location.href,
       );
     }
 
@@ -138,7 +135,7 @@ export function initiateLogin(
       });
     }
 
-    window.open(loginUrl.toString(), '_blank');
+    window.open(loginUrl.toString(), "_blank");
     // Promise never resolves - login opens in new tab
   });
 }
@@ -147,21 +144,18 @@ export function initiateLogin(
  * Logout the current user
  * Optionally calls the logout endpoint before clearing client state
  */
-export async function performLogout(options?: LogoutOptionsType): Promise<void> {
+export async function performLogout(
+  options?: LogoutOptionsType,
+): Promise<void> {
   const config = getAuthConfig();
   const baseUrl = getAuthBaseUrl();
-  const headers = getDefaultHeaders();
 
   const providerConfig = getProviderConfig(config.defaultProvider);
   const logoutPath = providerConfig?.logoutPath;
 
   if (logoutPath && options?.callLogoutEndpoint !== false) {
     try {
-      await fetch(`${baseUrl}${logoutPath}`, {
-        method: "POST",
-        headers,
-        credentials: "include",
-      });
+      await fetch(`${baseUrl}${logoutPath}`);
     } catch (error) {
       console.warn("Logout endpoint call failed:", error);
     }
