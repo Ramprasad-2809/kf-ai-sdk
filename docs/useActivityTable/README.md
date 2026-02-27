@@ -25,7 +25,7 @@ import { useActivityTable, ActivityTableStatus } from "@ram_28/kf-ai-sdk/workflo
 ```tsx
 import { useMemo } from "react";
 import { useActivityTable, ActivityTableStatus } from "@ram_28/kf-ai-sdk/workflow";
-import { EmployeeInputActivity } from "@/bdo/workflows/SimpleLeaveProcess";
+import { EmployeeInputActivity } from "@/workflow/SimpleLeaveProcess";
 
 function PendingLeaveRequests() {
   const activity = useMemo(() => new EmployeeInputActivity(), []);
