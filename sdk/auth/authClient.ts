@@ -165,5 +165,7 @@ export async function performLogout(
     window.location.href = options.redirectUrl;
   } else if (config.loginRedirectUrl) {
     window.location.href = config.loginRedirectUrl;
+  } else {
+    window.location.href = "/";
   }
 }
