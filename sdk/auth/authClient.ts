@@ -155,7 +155,7 @@ export async function performLogout(
 
   if (logoutPath && options?.callLogoutEndpoint !== false) {
     try {
-      await fetch(`${baseUrl}${logoutPath}`);
+      await fetch(`${baseUrl}${logoutPath}`, { method: "POST" });
     } catch (error) {
       console.warn("Logout endpoint call failed:", error);
     }
