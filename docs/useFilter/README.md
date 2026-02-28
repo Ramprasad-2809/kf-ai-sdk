@@ -229,7 +229,7 @@ filter.addCondition(
 The root operator combines all top-level conditions. It defaults to `"And"` and can be set via the `operator` option or changed later with `setRootOperator()`:
 
 ```tsx
-// Set at initialization
+// Set at initialization — camelCase hook option, NOT a condition property
 const filter = useFilter<AdminProductFieldType>({
   operator: "Or",
 });
@@ -265,16 +265,22 @@ const table = useBDOTable({
   bdo: product,
   initialState: {
     filter: {
+      // Inside condition objects → PascalCase: Operator, LHSField, RHSValue
       conditions: [
         { Operator: ConditionOperator.EQ, LHSField: "status", RHSValue: "Active" },
       ],
+      // Hook option → camelCase: operator (combines conditions, NOT a condition property)
       operator: "And",
     },
   },
 });
 
-// Same API as standalone useFilter
-table.filter.addCondition({ ... });
+// Same API as standalone useFilter — condition objects always PascalCase
+table.filter.addCondition({
+  Operator: ConditionOperator.EQ,   // PascalCase! NOT operator:
+  LHSField: product.Category.id,
+  RHSValue: "Electronics",
+});
 table.filter.clearAllConditions();
 ```
 
@@ -316,8 +322,9 @@ filter.items.map((item) => {
 
 ## Common Mistakes
 
+- **NEVER write `operator:` (lowercase) inside condition objects** -- this is the #1 error. Condition objects require PascalCase `Operator:`. The camelCase `operator` is ONLY for hook options like `useFilter({ operator: "And" })`. Inside `addCondition({...})` or `conditions: [{...}]`, ALWAYS write `{ Operator: ConditionOperator.EQ, ... }`.
 - **Don't read `filter.conditions`** -- the property is `filter.items`.
 - **Don't expect `payload` to be an empty object when empty** -- it's `undefined`. Use a simple falsy check: `if (filter.payload) { ... }`.
 - **Don't use string literals** -- use `ConditionOperator.EQ`, `GroupOperator.And`, `FilterValueSource.Constant` instead.
 - **Don't expect IDs in `payload`** -- they're stripped automatically before the payload is built.
-- **Don't mix PascalCase and camelCase** -- condition properties are PascalCase (`Operator`, `LHSField`, `RHSValue`, `RHSType`), while hook options are camelCase (`conditions`, `operator`).
+- **Don't mix PascalCase and camelCase** -- condition properties are PascalCase (`Operator`, `LHSField`, `RHSValue`, `RHSType`), while hook options are camelCase (`conditions`, `operator`). Writing `operator: "EQ"` (lowercase) in a condition causes TS2561.
