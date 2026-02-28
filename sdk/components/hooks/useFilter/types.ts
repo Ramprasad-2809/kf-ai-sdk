@@ -60,17 +60,16 @@ export interface ConditionGroupBuilder {
  * Used for initializing useFilter, and also for initialState in useTable/useBDOTable
  * @template T - Data type for type-safe field names (defaults to any)
  *
- * NAMING: Hook options use camelCase (`conditions`, `rootOperator`).
+ * NAMING: Hook options use camelCase (`conditions`, `operator`).
  * Condition OBJECTS inside the array use PascalCase (`Operator`, `LHSField`, `RHSValue`).
- * `rootOperator` combines all conditions ("And"/"Or"/"Not").
+ * `operator` combines all conditions ("And"/"Or"/"Not").
  * `ConditionType.Operator` compares a single field ("EQ"/"GT"/etc.).
  */
 export interface UseFilterOptionsType<T = any> {
   /** Filter conditions */
   conditions?: Array<ConditionType<T> | ConditionGroupType<T>>;
-  /** Root operator for combining top-level conditions (defaults to "And").
-   *  This is NOT the same as ConditionType.Operator — this combines conditions, not compares fields. */
-  rootOperator?: ConditionGroupOperatorType;
+  /** Operator for combining conditions (defaults to "And") */
+  operator?: ConditionGroupOperatorType;
 }
 
 /**

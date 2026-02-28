@@ -170,7 +170,7 @@ export function useFilter<T = any>(options: UseFilterOptionsType<T> = {}): UseFi
   );
 
   const [operator, setOperatorState] = useState<ConditionGroupOperatorType>(
-    options.rootOperator || "And"
+    options.operator || "And"
   );
 
   // Build payload for API (strip ids)

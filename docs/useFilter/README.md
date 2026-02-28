@@ -226,12 +226,12 @@ filter.addCondition(
 
 ### Root Operator
 
-The root operator combines all top-level conditions. It defaults to `"And"` and can be set via the `rootOperator` option or changed later with `setRootOperator()`:
+The root operator combines all top-level conditions. It defaults to `"And"` and can be set via the `operator` option or changed later with `setRootOperator()`:
 
 ```tsx
 // Set at initialization — camelCase hook option, NOT a condition property
 const filter = useFilter<AdminProductFieldType>({
-  rootOperator: "Or",
+  operator: "Or",
 });
 
 // Toggle between And and Or
@@ -269,8 +269,8 @@ const table = useBDOTable({
       conditions: [
         { Operator: ConditionOperator.EQ, LHSField: "status", RHSValue: "Active" },
       ],
-      // Hook option → camelCase: rootOperator (combines conditions, NOT a condition property)
-      rootOperator: "And",
+      // Hook option → camelCase: operator (combines conditions, NOT a condition property)
+      operator: "And",
     },
   },
 });
@@ -322,9 +322,9 @@ filter.items.map((item) => {
 
 ## Common Mistakes
 
-- **NEVER write `operator:` (lowercase) inside condition objects** -- this is the #1 error. Condition objects require PascalCase `Operator:`. The camelCase `rootOperator` is ONLY for hook options. Inside `addCondition({...})` or `conditions: [{...}]`, ALWAYS write `{ Operator: ConditionOperator.EQ, ... }`.
+- **NEVER write `operator:` (lowercase) inside condition objects** -- this is the #1 error. Condition objects require PascalCase `Operator:`. The camelCase `operator` is ONLY for hook options like `useFilter({ operator: "And" })`. Inside `addCondition({...})` or `conditions: [{...}]`, ALWAYS write `{ Operator: ConditionOperator.EQ, ... }`.
 - **Don't read `filter.conditions`** -- the property is `filter.items`.
 - **Don't expect `payload` to be an empty object when empty** -- it's `undefined`. Use a simple falsy check: `if (filter.payload) { ... }`.
 - **Don't use string literals** -- use `ConditionOperator.EQ`, `GroupOperator.And`, `FilterValueSource.Constant` instead.
 - **Don't expect IDs in `payload`** -- they're stripped automatically before the payload is built.
-- **Don't mix PascalCase and camelCase** -- condition properties are PascalCase (`Operator`, `LHSField`, `RHSValue`, `RHSType`), while hook options are camelCase (`conditions`, `rootOperator`). Writing `operator: "EQ"` (lowercase) in a condition causes TS2561.
+- **Don't mix PascalCase and camelCase** -- condition properties are PascalCase (`Operator`, `LHSField`, `RHSValue`, `RHSType`), while hook options are camelCase (`conditions`, `operator`). Writing `operator: "EQ"` (lowercase) in a condition causes TS2561.

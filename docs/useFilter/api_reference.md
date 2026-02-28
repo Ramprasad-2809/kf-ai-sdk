@@ -28,7 +28,7 @@ const filter: UseFilterReturnType<T> = useFilter<T>(options: UseFilterOptionsTyp
 - `conditions?: Array<ConditionType<T> | ConditionGroupType<T>>`
   - **Optional**, defaults to `[]`
   - Initial filter conditions. Each item is cloned and assigned an auto-generated `id`.
-- `rootOperator?: ConditionGroupOperatorType`
+- `operator?: ConditionGroupOperatorType`
   - **Optional**, defaults to `"And"`
   - Root operator for combining top-level conditions. NOT the same as `ConditionType.Operator`.
 
@@ -200,7 +200,7 @@ interface UseFilterOptionsType<T = any> {
   conditions?: Array<ConditionType<T> | ConditionGroupType<T>>;
   /** Root operator for combining conditions. Defaults to "And".
    *  NOT the same as ConditionType.Operator — this combines conditions, not compares fields. */
-  rootOperator?: ConditionGroupOperatorType;
+  operator?: ConditionGroupOperatorType;
 }
 
 interface UseFilterReturnType<T = any> {
