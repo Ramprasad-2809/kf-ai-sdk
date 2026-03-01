@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useEffect, useRef } from "react";
+import { useMemo, useCallback, useEffect, useRef, type MutableRefObject } from "react";
 import {
   useForm as useRHF,
   type FieldValues,
@@ -8,7 +8,7 @@ import {
 } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
 import { createResolver } from "./createResolver";
-import { createItemProxy } from "./createItemProxy";
+import { createItemProxy, type SyncFieldFnType, type PersistFieldFnType } from "./createItemProxy";
 import {
   coerceFieldValue,
   coerceRecordForForm,
@@ -146,7 +146,13 @@ export function useBDOForm<B extends BaseBdo<any, any, any>>(
   const lastResetDataRef = useRef<Record<string, unknown> | null>(null);
   useEffect(() => {
     if (operation === "update" && record && record !== lastResetDataRef.current) {
-      form.reset(record as FieldValues);
+      // If this is a refetch of the SAME record (same _id), preserve dirty values
+      // so that in-progress uploads (Image/File) aren't wiped by stale server data.
+      // For a NEW record (navigation), do a full reset.
+      const isSameRecord =
+        lastResetDataRef.current !== null &&
+        (record as any)?._id === (lastResetDataRef.current as any)?._id;
+      form.reset(record as FieldValues, isSameRecord ? { keepDirtyValues: true } : undefined);
       lastResetDataRef.current = record;
     }
   }, [record, operation, form]);
@@ -159,12 +165,22 @@ export function useBDOForm<B extends BaseBdo<any, any, any>>(
   }, [draftData, form]);
 
   // ============================================================
+  // PROXY REFS (for item proxy: set() uses syncField, upload/delete uses persist)
+  // ============================================================
+
+  const syncFieldRef = useRef<SyncFieldFnType | null>(null);
+  const persistRef = useRef<PersistFieldFnType | null>(null);
+
+  // ============================================================
   // ITEM PROXY
   // ============================================================
 
   const item = useMemo(
-    () => createItemProxy(bdo, form as RHFUseFormReturn<FieldValues>),
-    [bdo, form],
+    () => createItemProxy(bdo, form as RHFUseFormReturn<FieldValues>, {
+      syncFieldRef: syncFieldRef as MutableRefObject<SyncFieldFnType | null>,
+      persistRef: persistRef as MutableRefObject<PersistFieldFnType | null>,
+    }, operation),
+    [bdo, form, operation],
   );
 
   // ============================================================
@@ -206,6 +222,27 @@ export function useBDOForm<B extends BaseBdo<any, any, any>>(
       }),
     [syncApiFn, fields, readonlyFieldNames, form],
   );
+
+  // Keep refs in sync so item proxy always uses latest functions
+  syncFieldRef.current = syncField;
+
+  // Direct persist for Image/File upload/delete — bypasses syncField mutex and validation
+  // (the file is already uploaded/deleted, we just need to save the metadata to the record)
+  // NOTE: Do NOT call resetField() here — Image/File fields are unregistered (use setValue,
+  // not register). resetField on unregistered fields clears RHF state, causing watch() to
+  // return null and the image to flash then disappear. The value is already set by the
+  // upload/delete handler via setValue({ shouldDirty: true }), so we leave it as-is.
+  const persistValue = useCallback(
+    async (fieldName: string, value: unknown) => {
+      try {
+        await syncApiFn(fieldName, value);
+      } catch (error) {
+        console.error("[useBDOForm] persistValue failed:", error);
+      }
+    },
+    [syncApiFn, operation, recordId],
+  );
+  persistRef.current = persistValue;
 
   const syncOnChange = mode === "onChange" || mode === "all";
   const syncOnBlur =

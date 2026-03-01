@@ -1,3 +1,4 @@
+import type { MutableRefObject } from "react";
 import type { UseFormReturn, Path, FieldValues } from "react-hook-form";
 import type { BaseBdo } from "../../../bdo";
 import type { BaseFieldMetaType } from "../../../bdo/core/types";
@@ -15,6 +16,12 @@ import type {
   ReadonlyFormFieldAccessorType,
 } from "./types";
 
+/** Callback to sync a field via the full pipeline (validate → API → reset dirty → update computed) */
+export type SyncFieldFnType = (fieldName: string) => Promise<void>;
+
+/** Callback to persist a field value directly to the server (no mutex, no validation) */
+export type PersistFieldFnType = (fieldName: string, value: unknown) => Promise<void>;
+
 /**
  * Creates a Proxy-based Item that delegates to RHF for state management.
  *
@@ -26,20 +33,30 @@ import type {
  *
  * @param bdo - The BDO instance for field metadata
  * @param form - The RHF useForm return object
+ * @param refs - Optional refs for server sync
+ * @param refs.syncFieldRef - syncField pipeline ref (for set() — validates before API call)
+ * @param refs.persistRef - direct API ref (for upload/delete — no mutex, no re-validation)
  * @returns SmartFormItem proxy
  */
 export function createItemProxy<B extends BaseBdo<any, any, any>>(
   bdo: B,
   form: UseFormReturn<FieldValues>,
+  refs?: {
+    syncFieldRef?: MutableRefObject<SyncFieldFnType | null>;
+    persistRef?: MutableRefObject<PersistFieldFnType | null>;
+  },
+  operation?: "create" | "update",
 ): FormItemType<ExtractEditableType<B>, ExtractReadonlyType<B>> {
   const fields = bdo.getFields();
   const accessorCache = new Map<string, EditableFormFieldAccessorType<unknown> | ReadonlyFormFieldAccessorType<unknown>>();
 
   const boIdShared = bdo.getBoId();
 
-  /** Returns the real _id in edit mode, or 'draft' in create mode */
-  const getInstanceId = (): string =>
-    (form.getValues("_id" as Path<FieldValues>) as string) || "draft";
+  /** Returns 'draft' in create mode, or the real _id in update mode */
+  const getInstanceId = (): string => {
+    if (operation === "create") return "draft";
+    return (form.getValues("_id" as Path<FieldValues>) as string) || "draft";
+  };
 
   return new Proxy({} as FormItemType<ExtractEditableType<B>, ExtractReadonlyType<B>>, {
     get(_, prop: string | symbol) {
@@ -146,6 +163,8 @@ export function createItemProxy<B extends BaseBdo<any, any, any>>(
               shouldTouch: true,
               shouldValidate: false, // Let mode control validation timing
             });
+            // Sync to server (same pipeline as text/number onBlur)
+            refs?.syncFieldRef?.current?.(prop)?.catch(console.warn);
           },
           validate,
         };
@@ -177,6 +196,8 @@ export function createItemProxy<B extends BaseBdo<any, any, any>>(
                 ContentType: uploadInfo.ContentType,
               };
               form.setValue(prop as Path<FieldValues>, metadata as any, { shouldDirty: true });
+              // Persist image metadata directly (no mutex, no re-validation — file is already uploaded)
+              refs?.persistRef?.current?.(prop, metadata)?.catch(console.warn);
               return metadata;
             };
 
@@ -186,6 +207,8 @@ export function createItemProxy<B extends BaseBdo<any, any, any>>(
               if (!(val?._id)) throw new Error(`${prop} has no image to delete`);
               await api(boId).deleteAttachment(instanceId, prop, val._id);
               form.setValue(prop as Path<FieldValues>, null as any, { shouldDirty: true });
+              // Persist cleared image directly
+              refs?.persistRef?.current?.(prop, null)?.catch(console.warn);
             };
 
             (accessor as any).getDownloadUrl = async (viewType?: AttachmentViewType): Promise<FileDownloadResponseType> => {
@@ -224,7 +247,10 @@ export function createItemProxy<B extends BaseBdo<any, any, any>>(
                 }),
               );
               const current = (form.getValues(prop as Path<FieldValues>) as FileType[] | undefined) ?? [];
-              form.setValue(prop as Path<FieldValues>, [...current, ...uploaded] as any, { shouldDirty: true });
+              const newArray = [...current, ...uploaded];
+              form.setValue(prop as Path<FieldValues>, newArray as any, { shouldDirty: true });
+              // Persist file array directly (no mutex, no re-validation — files are already uploaded)
+              refs?.persistRef?.current?.(prop, newArray)?.catch(console.warn);
               return uploaded;
             };
 
@@ -232,11 +258,14 @@ export function createItemProxy<B extends BaseBdo<any, any, any>>(
               const current = (form.getValues(prop as Path<FieldValues>) as any[]) ?? [];
               const instanceId = getInstanceId();
               await api(boId).deleteAttachment(instanceId, prop, attachmentId);
+              const filtered = current.filter((f) => f._id !== attachmentId);
               form.setValue(
                 prop as Path<FieldValues>,
-                current.filter((f) => f._id !== attachmentId) as any,
+                filtered as any,
                 { shouldDirty: true },
               );
+              // Persist updated file array directly
+              refs?.persistRef?.current?.(prop, filtered)?.catch(console.warn);
             };
 
             (accessor as any).getDownloadUrl = async (
