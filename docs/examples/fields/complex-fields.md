@@ -101,14 +101,9 @@ export default function ComplexFieldsForm({ recordId }: { recordId?: string }) {
         <FieldContent>
           <ReferenceSelect
             bdoField={fieldTest.SupplierRef}
-            instanceId={item._id}
+            instanceId={recordId || String(watch("_id") ?? "")}
             value={watch(fieldTest.SupplierRef.id)}
-            onChange={(supplier) =>
-              setValue(
-                fieldTest.SupplierRef.id,
-                supplier as FieldTestSupplierRefType,
-              )
-            }
+            onChange={(supplier) => item.SupplierRef.set(supplier)}
           />
         </FieldContent>
         {errors.SupplierRef && <FieldError>{errors.SupplierRef.message}</FieldError>}
@@ -159,16 +154,17 @@ export default function ComplexFieldsForm({ recordId }: { recordId?: string }) {
 
       {/* ───────────────────────────────────────────────── */}
       {/* FileField — <FileUpload> for edit mode           */}
-      {/* Runtime methods (upload, delete) on item accessor */}
+      {/* MUST use item.Field (has upload/delete methods)  */}
+      {/* NEVER use bdo.Field (no upload/delete methods)   */}
       {/* ───────────────────────────────────────────────── */}
       <Field>
         <FieldLabel>{fieldTest.Documents.label}</FieldLabel>
         <FieldContent>
           <FileUpload
-            field={fieldTest.Documents}
+            field={item.Documents}
             value={watch(fieldTest.Documents.id)}
             boId={fieldTest.meta._id}
-            instanceId={item._id}
+            instanceId={recordId || String(watch("_id") ?? "")}
             fieldId={fieldTest.Documents.id}
           />
         </FieldContent>
@@ -176,16 +172,17 @@ export default function ComplexFieldsForm({ recordId }: { recordId?: string }) {
 
       {/* ───────────────────────────────────────────────── */}
       {/* ImageField — <ImageUpload> for edit mode         */}
-      {/* Single image, nullable                           */}
+      {/* MUST use item.Field (has upload/delete methods)  */}
+      {/* NEVER use bdo.Field (no upload/delete methods)   */}
       {/* ───────────────────────────────────────────────── */}
       <Field>
         <FieldLabel>{fieldTest.Thumbnail.label}</FieldLabel>
         <FieldContent>
           <ImageUpload
-            field={fieldTest.Thumbnail}
+            field={item.Thumbnail}
             value={watch(fieldTest.Thumbnail.id)}
             boId={fieldTest.meta._id}
-            instanceId={item._id}
+            instanceId={recordId || String(watch("_id") ?? "")}
             fieldId={fieldTest.Thumbnail.id}
           />
         </FieldContent>
@@ -239,7 +236,7 @@ function RecordRow({ record }: { record: ItemType<...> }) {
 
 - **ReferenceField stores the full object** — Not just an ID. The value is `{ _id, SupplierName, Email, ... }`. The `setValue()` call must pass the complete object.
 
-- **File/Image runtime methods are on `item.Field`** — The `upload()`, `getDownloadUrl()`, `deleteAttachment()` methods live on the `item` accessor (created by the `Item` proxy), not on the BDO field class. The `<FileUpload>` and `<ImageUpload>` components handle this internally.
+- **File/Image `field` prop MUST be `item.Field`, NOT `bdo.Field`** — The `upload()`, `getDownloadUrl()`, `deleteAttachment()` methods live on the `item` accessor (created by the `Item` proxy), not on the BDO field class. Passing the BDO field causes silent upload failures because `field.upload` is `undefined`.
 
 - **`<ReferenceSelect>` abstracts the full pattern** — Handles `fetchOptions()`, dropdown UI, search, and option display. Pass `bdoField`, `instanceId`, `value`, and `onChange`.
 

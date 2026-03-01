@@ -529,9 +529,9 @@ export function createResourceClient<T = any>(
         );
       }
 
-      const responseData: { Data: FileUploadResponseType[] } =
-        await response.json();
-      return responseData.Data;
+      const responseData = await response.json();
+      // Handle both wrapped { Data: [...] } and raw array [...] responses
+      return Array.isArray(responseData) ? responseData : responseData.Data;
     },
 
     async getDownloadUrl(
@@ -553,9 +553,9 @@ export function createResourceClient<T = any>(
         );
       }
 
-      const responseData: { Data: FileDownloadResponseType } =
-        await response.json();
-      const downloadData = responseData.Data;
+      const responseData = await response.json();
+      // Handle both wrapped { Data: {...} } and raw object responses
+      const downloadData: FileDownloadResponseType = responseData.Data ?? responseData;
       // Normalize: runtime returns DownloadUrl, components expect URL
       if (downloadData && (downloadData as any).DownloadUrl && !(downloadData as any).URL) {
         (downloadData as any).URL = (downloadData as any).DownloadUrl;
@@ -581,9 +581,9 @@ export function createResourceClient<T = any>(
         );
       }
 
-      const responseData: { Data: FileDownloadResponseType[] } =
-        await response.json();
-      const downloadList = responseData.Data;
+      const responseData = await response.json();
+      // Handle both wrapped { Data: [...] } and raw array responses
+      const downloadList: FileDownloadResponseType[] = Array.isArray(responseData) ? responseData : responseData.Data;
       // Normalize: runtime returns DownloadUrl, components expect URL
       if (Array.isArray(downloadList)) {
         downloadList.forEach((item) => {
