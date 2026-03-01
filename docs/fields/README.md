@@ -38,13 +38,34 @@ import type {
 } from "@ram_28/kf-ai-sdk/types";
 ```
 
+## CRITICAL: `.get()` Returns `T | undefined`
+
+**Every** field accessor's `.get()` method returns `T | undefined` — **never just `T`**. This means you MUST null-guard the return value before passing it to typed functions:
+
+```typescript
+// ❌ WRONG — TypeScript error: 'string | undefined' not assignable to 'string | number'
+const rowDate = new Date(row.start_time.get());
+const label = format(row.start_time.get(), "MMM d");
+getStatusBadge(row.status.get());  // param expects string, gets string | undefined
+
+// ✅ CORRECT — Guard undefined before use
+const startVal = row.start_time.get();
+if (!startVal) return null;  // or provide a fallback
+const rowDate = new Date(startVal);        // Now guaranteed string
+const label = format(startVal, "MMM d");   // Now guaranteed string
+getStatusBadge(row.status.get() ?? "");    // Fallback to empty string
+```
+
+This applies to ALL field types: `StringField.get()` → `string | undefined`, `NumberField.get()` → `number | undefined`, `DateTimeField.get()` → `string | undefined`, etc.
+
 ## Common Mistakes (READ FIRST)
 
 1. **`item.Title` is not the value** — Use `item.Title.get()` to read, `.set()` to write.
-2. **Don't confuse `StringField` (class) with `StringFieldType` (type alias)** — Different modules.
-3. **`fetchOptions()` requires a parent BDO** — Standalone fields will throw.
-4. **SelectField meta `Type` is `"String"`** — `Constraint.Enum` differentiates it.
-5. **Always use pre-built components for File/Image** — `<FileUpload>`, `<ImageUpload>`, `<FilePreview>`, `<ImageThumbnail>`.
+2. **`.get()` returns `T | undefined`** — Always null-guard before passing to `new Date()`, `format()`, template literals, or typed function parameters. See section above.
+3. **Don't confuse `StringField` (class) with `StringFieldType` (type alias)** — Different modules.
+4. **`fetchOptions()` requires a parent BDO** — Standalone fields will throw.
+5. **SelectField meta `Type` is `"String"`** — `Constraint.Enum` differentiates it.
+6. **Always use pre-built components for File/Image** — `<FileUpload>`, `<ImageUpload>`, `<FilePreview>`, `<ImageThumbnail>`.
 
 ## Quick Start
 
