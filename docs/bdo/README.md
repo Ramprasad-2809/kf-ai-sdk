@@ -82,7 +82,7 @@ const filtered = await product.count({
   Filter: {
     Operator: "And",
     Condition: [
-      { Operator: "eq", LHSField: "Category", RHSValue: "Electronics" },
+      { Operator: "EQ", LHSField: "Category", RHSValue: "Electronics", RHSType: "Constant" },
     ],
   },
 });
@@ -125,8 +125,8 @@ const items = await product.list({
   Filter: {
     Operator: "And",
     Condition: [
-      { Operator: "eq", LHSField: "Category", RHSValue: "Electronics" },
-      { Operator: "gte", LHSField: "Price", RHSValue: 10 },
+      { Operator: "EQ", LHSField: "Category", RHSValue: "Electronics", RHSType: "Constant" },
+      { Operator: "GTE", LHSField: "Price", RHSValue: 10, RHSType: "Constant" },
     ],
   },
   Sort: [{ Price: "DESC" }],

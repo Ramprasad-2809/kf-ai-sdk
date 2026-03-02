@@ -161,14 +161,14 @@ Sorting is controlled through the `sort` object. Column headers typically use `t
 The table includes an integrated [`useFilter`](../useFilter/README.md) instance at `table.filter`. Use it to build filter conditions that narrow down the table results:
 
 ```tsx
-import { ConditionOperator } from "@ram_28/kf-ai-sdk/table";
+import { ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/table";
 
 // Filter by leave type
 table.filter.addCondition({
   Operator: ConditionOperator.EQ,
   LHSField: activity.LeaveType.id,
   RHSValue: "PTO",
-  RHSType: "Constant",
+  RHSType: RHSType.Constant,
 });
 
 // Date range filter
@@ -176,7 +176,7 @@ table.filter.addCondition({
   Operator: ConditionOperator.GTE,
   LHSField: activity.StartDate.id,
   RHSValue: "2026-01-01",
-  RHSType: "Constant",
+  RHSType: RHSType.Constant,
 });
 
 // Clear all filters

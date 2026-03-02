@@ -6,7 +6,7 @@
 import { useState, useMemo } from "react";
 import { useBDOTable } from "@ram_28/kf-ai-sdk/table";
 import type { UseBDOTableReturnType } from "@ram_28/kf-ai-sdk/table/types";
-import { ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
+import { ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/table";
 import { BuyerProduct } from "@/bdo/buyer/Product";
 
 export default function FilteredProductTable() {

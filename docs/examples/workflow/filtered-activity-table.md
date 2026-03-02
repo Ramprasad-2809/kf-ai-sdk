@@ -6,7 +6,7 @@
 import { useState, useMemo } from "react";
 import { useActivityTable, ActivityTableStatus } from "@ram_28/kf-ai-sdk/workflow";
 import type { UseActivityTableReturnType } from "@ram_28/kf-ai-sdk/workflow";
-import { ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/filter";
+import { ConditionOperator, RHSType } from "@ram_28/kf-ai-sdk/table";
 import { EmployeeInputActivity } from "@/workflow/leave";
 
 export default function FilteredActivityTable() {
