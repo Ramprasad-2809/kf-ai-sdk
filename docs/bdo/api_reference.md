@@ -140,7 +140,7 @@ interface ConditionGroupType {
 }
 
 interface ConditionType {
-  Operator: string;        // "eq", "neq", "gt", "gte", "lt", "lte", "contains", "startswith", etc.
+  Operator: string;        // "EQ", "NE", "GT", "GTE", "LT", "LTE", "Contains", "StartsWith", "IN", "NIN", "Empty", "NotEmpty"
   LHSField: string;        // field name
   RHSValue: any;            // comparison value
   RHSType?: string;         // defaults to "Constant"
